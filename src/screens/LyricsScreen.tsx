@@ -12,10 +12,14 @@ import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
 import { useNavigation } from '@react-navigation/native';
 import { Song } from '../types';
+import ScreenWrapper from '../components/ScreenWrapper';
+import { useIsWide } from '../hooks/useLayout';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
   const { songs, setCurrentSongId } = useStore();
+  const isWide = useIsWide();
+  const numColumns = isWide ? 2 : 1;
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
@@ -28,7 +32,11 @@ export default function LyricsScreen() {
   };
 
   const renderSong = ({ item }: { item: Song }) => (
-    <TouchableOpacity style={styles.card} onPress={() => handlePressSong(item)} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.card, isWide && styles.cardWide]}
+      onPress={() => handlePressSong(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.cardLeft}>
         <Text style={styles.songName} numberOfLines={1}>{item.songName}</Text>
         <Text style={styles.artistName} numberOfLines={1}>{item.artistName || 'Unknown Artist'}</Text>
@@ -48,7 +56,7 @@ export default function LyricsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       <Text style={styles.title}>Saved Lyrics</Text>
       {songs.length === 0 ? (
         <View style={styles.empty}>
@@ -57,14 +65,17 @@ export default function LyricsScreen() {
         </View>
       ) : (
         <FlatList
+          key={numColumns}
+          numColumns={numColumns}
           data={songs}
           keyExtractor={(item) => item.id}
           renderItem={renderSong}
+          columnWrapperStyle={isWide ? styles.row : undefined}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
       )}
-    </View>
+    </ScreenWrapper>
   );
 }
 
@@ -72,8 +83,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingTop: 60,
-    paddingHorizontal: 16,
   },
   title: {
     fontSize: 26,
@@ -82,9 +91,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   list: {
-    paddingBottom: 100,
+    paddingBottom: 40,
+  },
+  row: {
+    gap: 10,
   },
   card: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
@@ -93,6 +106,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  cardWide: {
+    flex: 1,
   },
   cardLeft: {
     flex: 1,

@@ -11,9 +11,13 @@ import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
 import { WordEntry } from '../types';
+import ScreenWrapper from '../components/ScreenWrapper';
+import { useIsWide } from '../hooks/useLayout';
 
 export default function WordsScreen() {
-  const { words, setWebUrl, setCurrentSongId } = useStore();
+  const { words } = useStore();
+  const isWide = useIsWide();
+  const numColumns = isWide ? 2 : 1;
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
 
   const formatDate = (ts: number) => {
@@ -22,7 +26,7 @@ export default function WordsScreen() {
   };
 
   const renderWord = ({ item }: { item: WordEntry }) => (
-    <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.card, isWide && styles.cardWide]} activeOpacity={0.7}>
       <View style={styles.cardRow}>
         <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
         <View style={styles.cardContent}>
@@ -42,7 +46,7 @@ export default function WordsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       <Text style={styles.title}>Saved Words</Text>
       {sortedWords.length === 0 ? (
         <View style={styles.empty}>
@@ -51,14 +55,17 @@ export default function WordsScreen() {
         </View>
       ) : (
         <FlatList
+          key={numColumns}
+          numColumns={numColumns}
           data={sortedWords}
           keyExtractor={(item) => item.id}
           renderItem={renderWord}
+          columnWrapperStyle={isWide ? styles.row : undefined}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
       )}
-    </View>
+    </ScreenWrapper>
   );
 }
 
@@ -66,8 +73,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingTop: 60,
-    paddingHorizontal: 16,
   },
   title: {
     fontSize: 26,
@@ -76,15 +81,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   list: {
-    paddingBottom: 100,
+    paddingBottom: 40,
+  },
+  row: {
+    gap: 10,
   },
   card: {
+    flex: 1,
     backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  cardWide: {
+    flex: 1,
   },
   cardRow: {
     flexDirection: 'row',

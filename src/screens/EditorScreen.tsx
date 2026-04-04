@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   Alert,
   Modal,
   FlatList,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -17,10 +16,13 @@ import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { LANGUAGES } from '../constants/languages';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import ScreenWrapper from '../components/ScreenWrapper';
+import { useIsWide } from '../hooks/useLayout';
 
 export default function EditorScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const isWide = useIsWide();
 
   const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl } = useStore();
 
@@ -43,6 +45,15 @@ export default function EditorScreen() {
       setTranslations(editSong.translations.map((t) => ({ ...t })));
     }
   }, [editSong?.id]);
+
+  // Handle scraped lyrics from Web screen
+  useEffect(() => {
+    const scraped = route.params?.scrapedLyrics as string | undefined;
+    if (scraped) {
+      setOriginalLyrics(scraped);
+      navigation.setParams({ scrapedLyrics: undefined });
+    }
+  }, [route.params?.scrapedLyrics]);
 
   const isEditMode = !!editSong;
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
@@ -109,17 +120,15 @@ export default function EditorScreen() {
     setShowAddDialog(false);
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
+  /* ─── Shared Controls ─────────────────────────────────────── */
+  const infoPanel = (
+    <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
       <View style={styles.header}>
         <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
-        <TouchableOpacity style={styles.iconButton} onPress={() => {/* fetch song metadata placeholder */}}>
+        <TouchableOpacity style={styles.iconButton}>
           <Ionicons name="musical-note" size={22} color={Colors.primary} />
         </TouchableOpacity>
       </View>
-
-      {/* Song Info Inputs */}
       <View style={styles.inputRow}>
         <Ionicons name="musical-note-outline" size={20} color={Colors.textSecondary} />
         <TextInput
@@ -140,8 +149,6 @@ export default function EditorScreen() {
           onChangeText={setArtistName}
         />
       </View>
-
-      {/* Google Search Button */}
       <TouchableOpacity
         style={[styles.searchButton, searchDisabled && styles.disabled]}
         disabled={searchDisabled}
@@ -150,8 +157,6 @@ export default function EditorScreen() {
         <Ionicons name="search" size={18} color={Colors.white} />
         <Text style={styles.searchButtonText}>Google Search</Text>
       </TouchableOpacity>
-
-      {/* Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 0 && styles.tabActive]}
@@ -173,42 +178,81 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* Lyrics TextInput */}
-      <View style={styles.lyricsContainer}>
-        <TextInput
-          style={styles.lyricsInput}
-          multiline
-          placeholder="Paste or type lyrics here..."
-          placeholderTextColor={Colors.textMuted}
-          value={currentLyrics}
-          onChangeText={setCurrentLyrics}
-          textAlignVertical="top"
-        />
-      </View>
-
-      {/* Bottom Actions */}
-      <View style={styles.actions}>
-        {currentLyrics.length === 0 ? (
-          <TouchableOpacity style={styles.actionButton} onPress={handlePaste}>
-            <Ionicons name="clipboard-outline" size={20} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Paste</Text>
+      {isWide && (
+        <View style={styles.actions}>
+          {currentLyrics.length === 0 ? (
+            <TouchableOpacity style={styles.actionButton} onPress={handlePaste}>
+              <Ionicons name="clipboard-outline" size={20} color={Colors.white} />
+              <Text style={styles.actionButtonText}>Paste</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
+              <Ionicons name="checkmark" size={20} color={Colors.white} />
+              <Text style={styles.actionButtonText}>Save</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
+            disabled={allEmpty}
+            onPress={handleClear}
+          >
+            <Ionicons name="close" size={20} color={Colors.white} />
+            <Text style={styles.actionButtonText}>Clear</Text>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
-            <Ionicons name="checkmark" size={20} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Save</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
-          disabled={allEmpty}
-          onPress={handleClear}
-        >
-          <Ionicons name="close" size={20} color={Colors.white} />
-          <Text style={styles.actionButtonText}>Clear</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
+    </View>
+  );
+
+  const lyricsPanel = (
+    <View style={[styles.lyricsContainer, isWide && styles.lyricsContainerWide]}>
+      <TextInput
+        style={styles.lyricsInput}
+        multiline
+        placeholder="Paste or type lyrics here..."
+        placeholderTextColor={Colors.textMuted}
+        value={currentLyrics}
+        onChangeText={setCurrentLyrics}
+        textAlignVertical="top"
+      />
+    </View>
+  );
+
+  return (
+    <ScreenWrapper>
+      {isWide ? (
+        <View style={styles.wideLayout}>
+          {infoPanel}
+          <View style={styles.wideDivider} />
+          {lyricsPanel}
+        </View>
+      ) : (
+        <View style={styles.narrowLayout}>
+          {infoPanel}
+          {lyricsPanel}
+          <View style={styles.actions}>
+            {currentLyrics.length === 0 ? (
+              <TouchableOpacity style={styles.actionButton} onPress={handlePaste}>
+                <Ionicons name="clipboard-outline" size={20} color={Colors.white} />
+                <Text style={styles.actionButtonText}>Paste</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
+                <Ionicons name="checkmark" size={20} color={Colors.white} />
+                <Text style={styles.actionButtonText}>Save</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
+              disabled={allEmpty}
+              onPress={handleClear}
+            >
+              <Ionicons name="close" size={20} color={Colors.white} />
+              <Text style={styles.actionButtonText}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Add Translation Modal */}
       <Modal visible={showAddDialog} transparent animationType="fade">
@@ -246,16 +290,30 @@ export default function EditorScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  /* Layouts */
+  wideLayout: {
     flex: 1,
-    backgroundColor: Colors.background,
-    paddingTop: 60,
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+  },
+  narrowLayout: {
+    flex: 1,
+  },
+  wideDivider: {
+    width: 1,
+    backgroundColor: Colors.border,
+    marginHorizontal: 14,
+  },
+  infoPanel: {},
+  infoPanelWide: {
+    flex: 2,
+  },
+  lyricsContainerWide: {
+    flex: 3,
   },
   header: {
     flexDirection: 'row',
@@ -351,6 +409,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   lyricsInput: {
+    minHeight: 120,
     flex: 1,
     backgroundColor: Colors.surface,
     borderRadius: 12,
@@ -398,7 +457,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     width: '85%',
-    maxHeight: '60%',
+    maxWidth: 440,
+    maxHeight: '70%',
   },
   modalTitle: {
     fontSize: 20,

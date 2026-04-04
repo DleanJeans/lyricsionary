@@ -12,6 +12,7 @@ import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
+import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -57,7 +58,7 @@ export default function LearnScreen() {
 
   const handleGoogleWord = () => {
     if (!selectedWord) return;
-    setWebUrl(`https://www.google.com/search?q=define+${encodeURIComponent(selectedWord)}`);
+    setWebUrl(`${GOOGLE_SEARCH_URL}&q=define+${encodeURIComponent(selectedWord)}`);
     navigation.navigate('Web');
   };
 

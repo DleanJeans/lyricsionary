@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Song, WordEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
@@ -38,7 +39,7 @@ export const useStore = create<AppState>((set, get) => ({
   songs: [],
   words: [],
   currentSongId: null,
-  webUrl: 'https://www.google.com',
+  webUrl: GOOGLE_SEARCH_URL,
   fontSize: 18,
   showTranslations: true,
 

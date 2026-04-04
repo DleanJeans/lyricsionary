@@ -16,8 +16,20 @@ export default function WebScreen() {
   const isWide = width >= WIDE_BREAKPOINT;
   const webViewRef = useRef<WebView>(null);
   const [currentUrl, setCurrentUrl] = useState(webUrl);
+  const [addressText, setAddressText] = useState(webUrl);
   const [showFab, setShowFab] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const handleNavigate = () => {
+    let url = addressText.trim();
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    if (url) {
+      setAddressText(url);
+      setWebUrl(url);
+    }
+  };
 
   const checkForLyrics = (url: string) => {
     const hasLyrics = LYRICS_DOMAINS.some((d) => url.includes(d)) ||
@@ -74,12 +86,31 @@ export default function WebScreen() {
 
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
+      <View style={styles.addressBar}>
+        <TextInput
+          style={styles.addressInput}
+          value={addressText}
+          onChangeText={setAddressText}
+          onSubmitEditing={handleNavigate}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          returnKeyType="go"
+          selectTextOnFocus
+          placeholderTextColor={Colors.textMuted}
+          placeholder="Enter URL"
+        />
+        <TouchableOpacity onPress={handleNavigate} style={styles.goButton}>
+          <Ionicons name="arrow-forward-circle" size={28} color={Colors.primary} />
+        </TouchableOpacity>
+      </View>
       <WebView
         ref={webViewRef}
         source={{ uri: webUrl }}
         style={styles.webview}
         onNavigationStateChange={(navState) => {
           setCurrentUrl(navState.url);
+          setAddressText(navState.url);
           checkForLyrics(navState.url);
         }}
         onLoadStart={() => setLoading(true)}
@@ -106,6 +137,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  addressBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceLight,
+  },
+  addressInput: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    color: Colors.text,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    fontSize: 13,
+    fontFamily: 'monospace',
+  },
+  goButton: {
+    paddingLeft: 8,
   },
   webview: {
     flex: 1,

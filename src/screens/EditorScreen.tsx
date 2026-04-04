@@ -18,6 +18,7 @@ import { LANGUAGES } from '../constants/languages';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
+import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
 export default function EditorScreen() {
   const navigation = useNavigation<any>();
@@ -105,7 +106,7 @@ export default function EditorScreen() {
 
   const handleGoogleSearch = () => {
     const query = encodeURIComponent(`${songName} ${artistName} lyrics`);
-    setWebUrl(`https://www.google.com/search?q=${query}`);
+    setWebUrl(`${GOOGLE_SEARCH_URL}&q=${query}`);
     navigation.navigate('Web');
   };
 

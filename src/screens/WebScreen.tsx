@@ -1,16 +1,19 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
+import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 
 const LYRICS_DOMAINS = ['genius.com', 'musixmatch.com', 'lyricstranslate.com'];
 
 export default function WebScreen() {
   const navigation = useNavigation<any>();
   const { webUrl, setWebUrl } = useStore();
+  const { width } = useWindowDimensions();
+  const isWide = width >= WIDE_BREAKPOINT;
   const webViewRef = useRef<WebView>(null);
   const [currentUrl, setCurrentUrl] = useState(webUrl);
   const [showFab, setShowFab] = useState(false);
@@ -70,7 +73,7 @@ export default function WebScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
       <WebView
         ref={webViewRef}
         source={{ uri: webUrl }}

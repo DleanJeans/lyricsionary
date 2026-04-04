@@ -10,9 +10,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
+import ScreenWrapper from '../components/ScreenWrapper';
+import { useIsWide } from '../hooks/useLayout';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
+  const isWide = useIsWide();
   const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, addOrUpdateWord, setWebUrl } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
@@ -32,13 +35,15 @@ export default function LearnScreen() {
 
   if (!song) {
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
-        <Text style={styles.emptyText}>No lyrics to display.{'\n'}Go to Editor to add lyrics.</Text>
-        <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
-          <Text style={styles.goButtonText}>Go to Editor</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenWrapper>
+        <View style={styles.emptyInner}>
+          <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
+          <Text style={styles.emptyText}>No lyrics to display.{'\n'}Go to Editor to add lyrics.</Text>
+          <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
+            <Text style={styles.goButtonText}>Go to Editor</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenWrapper>
     );
   }
 
@@ -91,9 +96,67 @@ export default function LearnScreen() {
     );
   };
 
+  /* ─── Word panel ──────────────────────────────────────── */
+  const wordPanel = selectedWord ? (
+    <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
+      <View style={styles.wordHeader}>
+        <Text style={styles.wordText}>{selectedWord}</Text>
+        <TouchableOpacity onPress={() => setSelectedWord(null)}>
+          <Ionicons name="close" size={22} color={Colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.wordActions}>
+        <TouchableOpacity style={styles.wordBtn} onPress={handleGoogleWord}>
+          <Ionicons name="logo-google" size={18} color={Colors.white} />
+          <Text style={styles.wordBtnText}>Google</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.wordBtn} onPress={handleWiktionaryWord}>
+          <Ionicons name="book-outline" size={18} color={Colors.white} />
+          <Text style={styles.wordBtnText}>Wiktionary</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  ) : null;
+
+  /* ─── Action bar ──────────────────────────────────────── */
+  const actionBar = (
+    <View style={styles.actionBar}>
+      <View style={styles.fontSizeControl}>
+        <Ionicons name="text-outline" size={18} color={Colors.textSecondary} />
+        <TouchableOpacity onPress={() => setFontSize(fontSize - 1)} style={styles.fontBtn}>
+          <Ionicons name="remove" size={18} color={Colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.fontSizeText}>{fontSize}</Text>
+        <TouchableOpacity onPress={() => setFontSize(fontSize + 1)} style={styles.fontBtn}>
+          <Ionicons name="add" size={18} color={Colors.text} />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.lineCounter}>{lineCount} lines</Text>
+    </View>
+  );
+
+  /* ─── Lyrics scroll ────────────────────────────────────── */
+  const lyricsView = (
+    <ScrollView style={styles.lyricsScroll} contentContainerStyle={styles.lyricsContent}>
+      {lines.map((line, i) => (
+        <View key={i} style={styles.lineBlock}>
+          {renderPressableText(line.original)}
+          {showTranslations &&
+            line.translations.map((tl, ti) =>
+              tl ? (
+                <Text key={ti} style={[styles.translationLine, { fontSize: fontSize - 2 }]}>
+                  {tl}
+                </Text>
+              ) : null
+            )}
+        </View>
+      ))}
+    </ScrollView>
+  );
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <ScreenWrapper noPadding>
+      {/* Header – always spans full available width */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.songName} numberOfLines={1}>{song.songName}</Text>
@@ -116,78 +179,71 @@ export default function LearnScreen() {
         </View>
       </View>
 
-      {/* Selected Word Panel */}
-      {selectedWord && (
-        <View style={styles.wordPanel}>
-          <View style={styles.wordHeader}>
-            <Text style={styles.wordText}>{selectedWord}</Text>
-            <TouchableOpacity onPress={() => setSelectedWord(null)}>
-              <Ionicons name="close" size={22} color={Colors.textSecondary} />
-            </TouchableOpacity>
+      {isWide ? (
+        /* ── Wide: left lyrics panel + right word/controls panel ── */
+        <View style={styles.wideMain}>
+          <View style={styles.wideLeft}>
+            {actionBar}
+            {lyricsView}
           </View>
-          <View style={styles.wordActions}>
-            <TouchableOpacity style={styles.wordBtn} onPress={handleGoogleWord}>
-              <Ionicons name="logo-google" size={18} color={Colors.white} />
-              <Text style={styles.wordBtnText}>Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.wordBtn} onPress={handleWiktionaryWord}>
-              <Ionicons name="book-outline" size={18} color={Colors.white} />
-              <Text style={styles.wordBtnText}>Wiktionary</Text>
-            </TouchableOpacity>
+          <View style={styles.wideRightDivider} />
+          <View style={styles.wideRight}>
+            {wordPanel ?? (
+              <View style={styles.wordPlaceholder}>
+                <Ionicons name="finger-print-outline" size={40} color={Colors.textMuted} />
+                <Text style={styles.wordPlaceholderText}>Tap a word to look it up</Text>
+              </View>
+            )}
           </View>
+        </View>
+      ) : (
+        /* ── Narrow: stacked ── */
+        <View style={styles.narrowMain}>
+          {wordPanel}
+          {actionBar}
+          {lyricsView}
         </View>
       )}
-
-      {/* Action Bar */}
-      <View style={styles.actionBar}>
-        <View style={styles.fontSizeControl}>
-          <Ionicons name="text-outline" size={18} color={Colors.textSecondary} />
-          <TouchableOpacity onPress={() => setFontSize(fontSize - 1)} style={styles.fontBtn}>
-            <Ionicons name="remove" size={18} color={Colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.fontSizeText}>{fontSize}</Text>
-          <TouchableOpacity onPress={() => setFontSize(fontSize + 1)} style={styles.fontBtn}>
-            <Ionicons name="add" size={18} color={Colors.text} />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.lineCounter}>{lineCount} lines</Text>
-      </View>
-
-      {/* Lyrics */}
-      <ScrollView style={styles.lyricsScroll} contentContainerStyle={styles.lyricsContent}>
-        {lines.map((line, i) => (
-          <View key={i} style={styles.lineBlock}>
-            {renderPressableText(line.original)}
-            {showTranslations &&
-              line.translations.map((tl, ti) =>
-                tl ? (
-                  <Text
-                    key={ti}
-                    style={[styles.translationLine, { fontSize: fontSize - 2 }]}
-                  >
-                    {tl}
-                  </Text>
-                ) : null
-              )}
-          </View>
-        ))}
-      </ScrollView>
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  /* Layout */
+  wideMain: {
     flex: 1,
-    backgroundColor: Colors.background,
-    paddingTop: 60,
+    flexDirection: 'row',
   },
-  emptyContainer: {
+  wideLeft: {
+    flex: 3,
+  },
+  wideRightDivider: {
+    width: 1,
+    backgroundColor: Colors.border,
+  },
+  wideRight: {
+    flex: 2,
+    padding: 16,
+  },
+  narrowMain: {
     flex: 1,
-    backgroundColor: Colors.background,
+  },
+  emptyInner: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+  },
+  wordPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  wordPlaceholderText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 16,
@@ -213,6 +269,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 16,
+    paddingTop: 4,
     marginBottom: 8,
   },
   headerLeft: {
@@ -246,6 +303,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  wordPanelWide: {
+    marginHorizontal: 0,
+    marginBottom: 0,
   },
   wordHeader: {
     flexDirection: 'row',
@@ -312,7 +373,7 @@ const styles = StyleSheet.create({
   lyricsContent: {
     paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   lineBlock: {
     marginBottom: 6,

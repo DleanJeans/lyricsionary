@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Lyricsionary",
-    "slug": "Lyricsionary",
+    "slug": "lyricsionary",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,6 +25,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "126d9654-6b1d-4ff7-ae63-43d646dcb8a3"
+      }
+    },
+    "owner": "dleanjeans"
   }
 }

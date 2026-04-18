@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, useWindowDimensions, TextInput } from 'react-native';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -34,6 +34,7 @@ export default function WebScreen() {
   const checkForLyrics = (url: string) => {
     const hasLyrics = LYRICS_DOMAINS.some((d) => url.includes(d)) ||
       url.includes('google.com/search') && url.includes('lyrics');
+    console.log({hasLyrics})
     setShowFab(hasLyrics);
   };
 
@@ -42,6 +43,14 @@ export default function WebScreen() {
     const injectedJS = `
       (function() {
         let lyrics = '';
+        // Google
+        const google = document.querySelectorAll('div[data-song-title]');
+        if (google.length > 0) {
+          google.forEach(el => { lyrics += el.innerText + '\\n'; });
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
+          return;
+        }
+
         // Genius
         const genius = document.querySelectorAll('[data-lyrics-container="true"]');
         if (genius.length > 0) {
@@ -49,6 +58,7 @@ export default function WebScreen() {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
           return;
         }
+
         // Musixmatch
         const musix = document.querySelectorAll('.lyrics__content__ok, .mxm-lyrics__content');
         if (musix.length > 0) {
@@ -56,6 +66,7 @@ export default function WebScreen() {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
           return;
         }
+
         // LyricsTranslate
         const lt = document.querySelectorAll('.ltf, .song-node');
         if (lt.length > 0) {
@@ -63,6 +74,7 @@ export default function WebScreen() {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
           return;
         }
+        
         // Generic: try to grab visible text from body
         const body = document.body.innerText;
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: body.substring(0, 5000) }));
@@ -123,7 +135,7 @@ export default function WebScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}
-      {showFab && (
+      {true && (
         <TouchableOpacity style={styles.fab} onPress={handleScrapeLyrics} activeOpacity={0.8}>
           <Ionicons name="download-outline" size={26} color={Colors.white} />
           <Text style={styles.fabText}>Get Lyrics</Text>
@@ -175,8 +187,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 90,
-    right: 20,
+    bottom: 30,
+    right: 40,
     backgroundColor: Colors.primary,
     borderRadius: 28,
     paddingHorizontal: 20,

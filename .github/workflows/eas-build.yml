@@ -8,8 +8,38 @@ on:
   workflow_dispatch:
 
 jobs:
+  check-commit-message:
+    name: Check commit message
+    runs-on: ubuntu-latest
+    outputs:
+      should-build-apk: ${{ steps.check.outputs.should-build-apk }}
+      commit-message: ${{ steps.check.outputs.commit-message }}
+      skip-ota: ${{ steps.check.outputs.skip-ota }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check commit message for [build-apk]
+        id: check
+        run: |
+          SUBJECT=$(git log -1 --pretty=%s ${{ github.event.after }})
+          echo "Commit subject: $SUBJECT"
+          echo "commit-message=$SUBJECT" >> $GITHUB_OUTPUT
+          if git log -1 --pretty=%B ${{ github.event.after }} | grep -q '\[build-apk\]'; then
+            echo "should-build-apk=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-build-apk=false" >> $GITHUB_OUTPUT
+          fi
+          if git log -1 --pretty=%B ${{ github.event.after }} | grep -q '\[skip-ota\]'; then
+            echo "skip-ota=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip-ota=false" >> $GITHUB_OUTPUT
+          fi
+
   ota-update:
     name: Send OTA Update
+    needs: check-commit-message
+    if: needs.check-commit-message.outputs.skip-ota == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -19,21 +49,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - name: Setup environment
+        uses: ./.github/actions/setup
         with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          expo-token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Send OTA Update (Production)
         if: github.event_name == 'push'
@@ -57,11 +76,7 @@ jobs:
             const dashboardUrl = updateId
               ? `https://expo.dev/accounts/dleanjeans/projects/lyricsionary/updates/${updateId}`
               : `https://expo.dev/accounts/dleanjeans/projects/lyricsionary/updates`;
-            const comment = `### 🚀 OTA Update Sent
-
-            Preview update has been sent to the \`preview\` channel!
-
-            **[View Update on EAS Dashboard](${dashboardUrl})**`;
+            const comment = `### 🚀 OTA Update sent to [EAS Dashboard](${dashboardUrl})!`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -70,80 +85,59 @@ jobs:
               body: comment
             });
 
-  test-local-build:
-    name: Test Local Android Build
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    permissions:
-      contents: read
-    env:
-      npm_config_user_agent: pnpm
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Build APK locally
-        run: eas build --platform android --profile preview --local --non-interactive --output ./lyricsionary.apk
-
-  build-and-release:
-    name: Build APK and Create Release
-    if: github.event_name == 'push'
+  build-apk:
+    name: Build APK
+    needs: check-commit-message
+    if: github.event_name == 'workflow_dispatch' || needs.check-commit-message.outputs.should-build-apk == 'true' && (github.event_name == 'push' || github.event_name == 'pull_request')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: write
+      pull-requests: write
     env:
       npm_config_user_agent: pnpm
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - name: Setup environment
+        uses: ./.github/actions/setup
         with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          expo-token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Build APK locally
         run: eas build --platform android --profile preview --local --non-interactive --output ./lyricsionary.apk
 
+      - name: Upload APK artifact
+        if: github.event_name == 'pull_request'
+        id: upload-artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: lyricsionary-apk
+          path: ./lyricsionary.apk
+
+      - name: Comment PR with APK download link
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### 📦 [APK Ready!](${{ steps.upload-artifact.outputs.artifact-url }})\nCommit: \`${{ needs.check-commit-message.outputs.commit-message }}\``
+            });
+
       - name: Get version from package.json
+        if: github.event_name != 'pull_request'
         id: package-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.package-version.outputs.version }}-build.${{ github.run_number }}
           name: Release v${{ steps.package-version.outputs.version }} (Build ${{ github.run_number }})

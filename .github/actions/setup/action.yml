@@ -1,0 +1,39 @@
+name: 'Setup EAS Environment'
+description: 'Setup pnpm + Node, cache dependencies, setup Expo, and install packages'
+
+inputs:
+  expo-token:
+    description: 'Expo token for authentication'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v5
+
+    - uses: actions/setup-node@v6
+      with:
+        cache: 'pnpm'
+
+    - name: 📦 Get pnpm cache directory path
+      id: pnpm-cache-dir-path
+      shell: bash
+      run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: 📦 Setup pnpm cache
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.pnpm-cache-dir-path.outputs.dir }}
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-
+
+    - name: Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        eas-version: latest
+        token: ${{ inputs.expo-token }}
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

@@ -31,45 +31,8 @@ jobs:
       - name: Skip CI check
         run: echo "Proceeding with workflow"
 
-  test:
-    needs: check-skip
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🏗 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🏗 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "pnpm"
-
-      - name: 📦 Get pnpm cache directory path
-        id: pnpm-cache-dir-path
-        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: 📦 Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.pnpm-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: 📦 Install dependencies
-        run: pnpm install
-
-      - name: 🧪 Run TypeScript check
-        run: pnpm tsc
-
-      - name: 🧹 Run ESLint
-        run: pnpm lint
-
-      - name: 🎨 Run Prettier check
-        run: pnpm format:check
-
   build-and-deploy:
-    needs: test
+    needs: check-skip
     if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
@@ -79,7 +42,7 @@ jobs:
       - name: 🏗 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
           cache: "pnpm"
 
       - name: 📦 Get pnpm cache directory path

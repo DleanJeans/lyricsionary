@@ -46,11 +46,7 @@ jobs:
             const dashboardUrl = updateId
               ? `https://expo.dev/accounts/dleanjeans/projects/lyricsionary/updates/${updateId}`
               : `https://expo.dev/accounts/dleanjeans/projects/lyricsionary/updates`;
-            const comment = `### 🚀 OTA Update Sent
-
-            Preview update has been sent to the \`preview\` channel!
-
-            **[View Update on EAS Dashboard](${dashboardUrl})**`;
+            const comment = `🚀 Preview update sent! [View on EAS Dashboard](${dashboardUrl})`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -100,7 +96,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `### 📦 APK Build Ready\n\n**[Download APK](${{ steps.upload-artifact.outputs.artifact-url }})**`
+              body: `📦 APK ready! [Download APK](${{ steps.upload-artifact.outputs.artifact-url }})`
             });
 
       - name: Get version from package.json

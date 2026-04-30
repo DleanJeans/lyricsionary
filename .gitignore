@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Detox
+.detoxrc.local.js
+e2e/artifacts/

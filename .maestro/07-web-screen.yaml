@@ -1,0 +1,10 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: Web Screen Functionality
+# This flow tests the integrated web browser screen
+
+- launchApp
+- tapOn: "Web"
+
+# Web screen should be visible
+- assertVisible: "Web"

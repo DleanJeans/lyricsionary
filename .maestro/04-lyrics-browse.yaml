@@ -1,0 +1,15 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: Browse Saved Lyrics
+# This flow tests the lyrics library screen
+
+- launchApp
+- tapOn: "Lyrics"
+- assertVisible: "Saved Lyrics"
+
+# If there are no lyrics yet, show empty state
+- runFlow:
+    when:
+      visible: "No saved lyrics yet"
+    commands:
+      - assertVisible: "Go to Editor to add some!"

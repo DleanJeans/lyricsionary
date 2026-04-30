@@ -1,0 +1,11 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: App Launch and Basic Navigation
+# This flow verifies that the app launches successfully and all main tabs are accessible
+
+- launchApp
+- assertVisible: "Editor"
+- assertVisible: "Lyrics"
+- assertVisible: "Learn"
+- assertVisible: "Words"
+- assertVisible: "Web"

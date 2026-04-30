@@ -1,0 +1,38 @@
+appId: com.dleanjeans.lyricsionary
+---
+# End-to-End Test: Complete User Journey
+# This flow tests the complete workflow from creating lyrics to learning them
+
+- launchApp
+- tapOn: "Editor"
+
+# Step 1: Create a song with lyrics
+- tapOn: "Song Name"
+- inputText: "E2E Test Song"
+- tapOn: "Artist Name"
+- inputText: "E2E Artist"
+- tapOn: "Paste or type lyrics here..."
+- inputText: |
+    First line of lyrics
+    Second line of lyrics
+    Third line of lyrics
+
+# Save the song
+- tapOn: "Save"
+- assertVisible: "Saved"
+- tapOn: "OK"
+
+# Step 2: Navigate to Lyrics screen and verify it's saved
+- tapOn: "Lyrics"
+- assertVisible: "Saved Lyrics"
+- assertVisible: "E2E Test Song"
+- assertVisible: "E2E Artist"
+
+# Step 3: Open the song in Learn mode
+- tapOn: "E2E Test Song"
+- assertVisible: "E2E Test Song"
+
+# Navigate back to check Words screen
+- back
+- tapOn: "Words"
+- assertVisible: "Words"

@@ -1,0 +1,16 @@
+# Maestro Configuration
+
+# This file configures Maestro for the Lyricsionary app
+# See: https://maestro.mobile.dev/advanced/configuration
+
+# Default app identifier
+appId: com.dleanjeans.lyricsionary
+
+# Optional: Set default tags for all flows
+tags:
+  - mobile
+  - react-native
+  - expo
+
+# Optional: Configure test execution
+retries: 0

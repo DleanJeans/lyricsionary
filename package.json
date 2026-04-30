@@ -6,7 +6,9 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test:maestro": "maestro test .maestro",
+    "test:maestro:studio": "maestro studio"
   },
   "dependencies": {
     "@expo/metro-runtime": "^55.0.9",

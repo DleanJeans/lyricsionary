@@ -1,0 +1,10 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: Learn Screen Functionality
+# This flow tests the learn screen where users read lyrics
+
+- launchApp
+- tapOn: "Learn"
+
+# Screen should be visible even if no lyrics selected
+- assertVisible: "Learn"

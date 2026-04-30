@@ -1,0 +1,26 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: Create New Lyrics Entry
+# This flow tests creating a new lyrics entry with song name, artist, and lyrics
+
+- launchApp
+- tapOn: "Editor"
+- assertVisible: "New Lyrics"
+
+# Fill in song details
+- tapOn: "Song Name"
+- inputText: "Test Song"
+- tapOn: "Artist Name"
+- inputText: "Test Artist"
+
+# Add original lyrics
+- tapOn: "Paste or type lyrics here..."
+- inputText: |
+    This is a test song
+    With some sample lyrics
+    For Maestro testing
+
+# Save the song
+- tapOn: "Save"
+- assertVisible: "Saved"
+- tapOn: "OK"

@@ -1,0 +1,33 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: Add Translation to Lyrics
+# This flow tests adding a translation to an existing lyrics entry
+
+- launchApp
+- tapOn: "Editor"
+
+# Fill in basic info first
+- tapOn: "Song Name"
+- inputText: "Translation Test"
+- tapOn: "Artist Name"
+- inputText: "Test Artist"
+
+# Add original lyrics
+- tapOn: "Paste or type lyrics here..."
+- inputText: "Original lyrics in English"
+
+# Add a translation
+- tapOn: "Add Translation"
+- assertVisible: "Add Translation"
+- tapOn: "Vietnamese"
+- tapOn: "Add"
+
+# Switch to translation tab and add lyrics
+- tapOn: "Vietnamese"
+- tapOn: "Paste or type lyrics here..."
+- inputText: "Lời bài hát tiếng Việt"
+
+# Save
+- tapOn: "Save"
+- assertVisible: "Saved"
+- tapOn: "OK"

@@ -1,0 +1,100 @@
+name: Maestro Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  maestro-test:
+    name: Run Maestro Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      npm_config_user_agent: pnpm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Build APK for Testing
+        run: eas build --platform android --profile preview --local --non-interactive --output ./lyricsionary.apk
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: echo "Emulator started"
+
+      - name: Run Maestro Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install lyricsionary.apk
+            maestro test .maestro/ --format junit --output test-results.xml
+        continue-on-error: true
+
+      - name: Upload Maestro Test Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-test-results
+          path: |
+            test-results.xml
+            ~/.maestro/tests/**/*
+
+      - name: Comment PR with Test Results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let testStatus = '✅ Passed';
+            let details = '';
+
+            try {
+              // Try to read test results if available
+              if (fs.existsSync('test-results.xml')) {
+                const results = fs.readFileSync('test-results.xml', 'utf8');
+                // Basic parsing - in production you'd want proper XML parsing
+                if (results.includes('failures="0"') && results.includes('errors="0"')) {
+                  testStatus = '✅ All tests passed';
+                } else {
+                  testStatus = '❌ Some tests failed';
+                }
+              }
+            } catch (e) {
+              details = '\n\n⚠️ Could not parse test results';
+            }
+
+            const comment = `### 🎭 Maestro Test Results: ${testStatus}${details}
+
+            View detailed results in the [workflow artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

@@ -1,0 +1,10 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: Words Screen Functionality
+# This flow tests the words vocabulary screen
+
+- launchApp
+- tapOn: "Words"
+
+# Screen should show either words or empty state
+- assertVisible: "Words"

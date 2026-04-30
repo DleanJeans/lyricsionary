@@ -6,6 +6,7 @@ import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
+import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 
 const LYRICS_DOMAINS = ['genius.com', 'musixmatch.com', 'lyricstranslate.com'];
 
@@ -88,8 +89,13 @@ export default function WebScreen() {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'lyrics' && data.text) {
+        // Clean lyrics if from Genius
+        let lyrics = data.text.trim();
+        if (currentUrl.includes('genius.com')) {
+          lyrics = cleanGeniusLyrics(lyrics);
+        }
         // Navigate to Editor with scraped lyrics
-        navigation.navigate('Editor', { scrapedLyrics: data.text.trim() });
+        navigation.navigate('Editor', { scrapedLyrics: lyrics });
       }
     } catch (e) {
       // ignore parse errors

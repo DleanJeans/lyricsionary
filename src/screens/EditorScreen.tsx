@@ -89,10 +89,12 @@ export default function EditorScreen() {
         translations,
       });
       Alert.alert('Updated', 'Song updated successfully.');
+      navigation.navigate('Learn');
     } else {
       const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, translations);
       setCurrentSongId(song.id);
       Alert.alert('Saved', 'Song saved successfully.');
+      navigation.navigate('Learn');
     }
   };
 

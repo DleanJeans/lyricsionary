@@ -22,7 +22,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.dleanjeans.lyricsionary"
+      "package": "com.dleanjeans.lyricsionary",
+      "permissions": [
+        "BIND_NOTIFICATION_LISTENER_SERVICE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

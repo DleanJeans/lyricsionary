@@ -8,29 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-build-apk:
-    name: Check [build-apk] trigger
-    runs-on: ubuntu-latest
-    outputs:
-      should-build: ${{ steps.check.outputs.should-build }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - name: Check commit message for [build-apk]
-        id: check
-        run: |
-          MSG=$(git log -1 --pretty=%B ${{ github.event.after }})
-          echo "Commit message: $MSG"
-          if echo "$MSG" | grep -q '\[build-apk\]'; then
-            echo "should-build=true" >> $GITHUB_OUTPUT
-          else
-            echo "should-build=false" >> $GITHUB_OUTPUT
-          fi
-
   ota-update:
     name: Send OTA Update
-    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -67,7 +46,7 @@ jobs:
             const dashboardUrl = updateId
               ? `https://expo.dev/accounts/dleanjeans/projects/lyricsionary/updates/${updateId}`
               : `https://expo.dev/accounts/dleanjeans/projects/lyricsionary/updates`;
-            const comment = `### 🚀 OTA Update sent to EAS [Dashboard](${dashboardUrl})!`;
+            const comment = `### 🚀 OTA Update sent to [EAS Dashboard](${dashboardUrl})!`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -75,6 +54,28 @@ jobs:
               repo: context.repo.repo,
               body: comment
             });
+
+  check-build-apk:
+    name: Check [build-apk]
+    runs-on: ubuntu-latest
+    outputs:
+      should-build: ${{ steps.check.outputs.should-build }}
+      commit-message: ${{ steps.check.outputs.commit-message }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check commit message for [build-apk]
+        id: check
+        run: |
+          MSG=$(git log -1 --pretty=%B ${{ github.event.after }})
+          echo "Commit message: $MSG"
+          echo "commit-message=$MSG" >> $GITHUB_OUTPUT
+          if echo "$MSG" | grep -q '\[build-apk\]'; then
+            echo "should-build=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-build=false" >> $GITHUB_OUTPUT
+          fi
 
   build-apk:
     name: Build APK
@@ -118,7 +119,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `### 📦 [APK Ready!](${{ steps.upload-artifact.outputs.artifact-url }})`
+              body: `### 📦 [APK Ready!](${{ steps.upload-artifact.outputs.artifact-url }})\nCommit: \`${{ needs.check-build-apk.outputs.commit-message }}\``
             });
 
       - name: Get version from package.json

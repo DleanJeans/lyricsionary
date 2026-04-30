@@ -8,6 +8,16 @@ on:
   workflow_dispatch:
 
 jobs:
+  debug-commit:
+    name: Debug Commit Message
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Print latest commit message
+        run: echo "${{ github.event.head_commit.message }}"
+
   ota-update:
     name: Send OTA Update
     runs-on: ubuntu-latest
@@ -57,7 +67,7 @@ jobs:
 
   build-apk:
     name: Build APK
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:

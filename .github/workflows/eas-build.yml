@@ -59,6 +59,7 @@ jobs:
 
   build-apk:
     name: Build APK
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[build-apk]') || contains(github.event.pull_request.body, '[build-apk]')))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:

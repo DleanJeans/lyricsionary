@@ -8,8 +8,38 @@ on:
   workflow_dispatch:
 
 jobs:
+  check-commit-message:
+    name: Check commit message
+    runs-on: ubuntu-latest
+    outputs:
+      should-build-apk: ${{ steps.check.outputs.should-build-apk }}
+      commit-message: ${{ steps.check.outputs.commit-message }}
+      skip-ota: ${{ steps.check.outputs.skip-ota }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check commit message for [build-apk]
+        id: check
+        run: |
+          SUBJECT=$(git log -1 --pretty=%s ${{ github.event.after }})
+          echo "Commit subject: $SUBJECT"
+          echo "commit-message=$SUBJECT" >> $GITHUB_OUTPUT
+          if git log -1 --pretty=%B ${{ github.event.after }} | grep -q '\[build-apk\]'; then
+            echo "should-build-apk=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-build-apk=false" >> $GITHUB_OUTPUT
+          fi
+          if git log -1 --pretty=%B ${{ github.event.after }} | grep -q '\[skip-ota\]'; then
+            echo "skip-ota=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip-ota=false" >> $GITHUB_OUTPUT
+          fi
+
   ota-update:
     name: Send OTA Update
+    needs: check-commit-message
+    if: needs.check-commit-message.outputs.skip-ota == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,32 +85,10 @@ jobs:
               body: comment
             });
 
-  check-build-apk:
-    name: Check [build-apk]
-    runs-on: ubuntu-latest
-    outputs:
-      should-build: ${{ steps.check.outputs.should-build }}
-      commit-message: ${{ steps.check.outputs.commit-message }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - name: Check commit message for [build-apk]
-        id: check
-        run: |
-          MSG=$(git log -1 --pretty=%B ${{ github.event.after }})
-          echo "Commit message: $MSG"
-          echo "commit-message=$MSG" >> $GITHUB_OUTPUT
-          if echo "$MSG" | grep -q '\[build-apk\]'; then
-            echo "should-build=true" >> $GITHUB_OUTPUT
-          else
-            echo "should-build=false" >> $GITHUB_OUTPUT
-          fi
-
   build-apk:
     name: Build APK
-    needs: check-build-apk
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.check-build-apk.outputs.should-build == 'true')
+    needs: check-commit-message
+    if: github.event_name == 'workflow_dispatch' || needs.check-commit-message.outputs.should-build-apk == 'true' && (github.event_name == 'push' || github.event_name == 'pull_request')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -119,7 +127,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `### 📦 [APK Ready!](${{ steps.upload-artifact.outputs.artifact-url }})\nCommit: \`${{ needs.check-build-apk.outputs.commit-message }}\``
+              body: `### 📦 [APK Ready!](${{ steps.upload-artifact.outputs.artifact-url }})\nCommit: \`${{ needs.check-commit-message.outputs.commit-message }}\``
             });
 
       - name: Get version from package.json

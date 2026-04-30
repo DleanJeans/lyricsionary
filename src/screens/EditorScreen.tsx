@@ -88,6 +88,7 @@ export default function EditorScreen() {
         originalLyrics,
         translations,
       });
+      setCurrentSongId(editSong.id);
       Alert.alert('Updated', 'Song updated successfully.');
       navigation.navigate('Learn');
     } else {

@@ -22,8 +22,7 @@ import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import {
   hasNotificationPermission,
   requestNotificationPermission,
-  getLatestMediaInfo,
-  startMediaListener,
+  getCurrentlyPlayingMedia,
 } from '../services/mediaNotification';
 
 export default function EditorScreen() {
@@ -61,11 +60,6 @@ export default function EditorScreen() {
       navigation.setParams({ scrapedLyrics: undefined });
     }
   }, [route.params?.scrapedLyrics]);
-
-  // Start media notification listener on mount
-  useEffect(() => {
-    startMediaListener();
-  }, []);
 
   const isEditMode = !!editSong;
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
@@ -159,14 +153,11 @@ export default function EditorScreen() {
         return;
       }
 
-      // Get the latest media info
-      const mediaInfo = getLatestMediaInfo();
+      const mediaInfo = await getCurrentlyPlayingMedia();
 
       if (mediaInfo) {
-        // Fill in the fields
         setSongName(mediaInfo.songName);
         setArtistName(mediaInfo.artistName);
-        Alert.alert('Success', 'Filled in song and artist from currently playing media.');
       } else {
         Alert.alert(
           'No Media Playing',

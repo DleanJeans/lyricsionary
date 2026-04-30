@@ -19,15 +19,3 @@ export async function requestNotificationPermission(): Promise<void> {
 export async function getCurrentlyPlayingMedia(): Promise<MediaInfo | null> {
   throw new Error('Media notification reading is only available on Android');
 }
-
-export async function startMediaListener(): Promise<void> {
-  // No-op on web
-}
-
-export function getLatestMediaInfo(): MediaInfo | null {
-  return null;
-}
-
-export function isMediaApp(packageName: string): boolean {
-  return false;
-}

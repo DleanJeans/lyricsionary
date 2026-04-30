@@ -32,8 +32,8 @@ export async function hasNotificationPermission(): Promise<boolean> {
   }
 
   try {
-    const { NotificationListenerModule } = require('react-native-nitro-notification-listener');
-    return await NotificationListenerModule.hasPermission();
+    const NotificationListener = require('react-native-android-notification-listener').default;
+    return await NotificationListener.hasPermission();
   } catch (error) {
     console.error('Error checking notification permission:', error);
     return false;
@@ -50,8 +50,8 @@ export async function requestNotificationPermission(): Promise<void> {
   }
 
   try {
-    const { NotificationListenerModule } = require('react-native-nitro-notification-listener');
-    await NotificationListenerModule.requestPermission();
+    const NotificationListener = require('react-native-android-notification-listener').default;
+    await NotificationListener.requestPermission();
   } catch (error) {
     console.error('Error requesting notification permission:', error);
     throw error;
@@ -59,100 +59,34 @@ export async function requestNotificationPermission(): Promise<void> {
 }
 
 /**
- * Get currently playing media information from notifications
- * Returns the most recent media notification from known music apps
+ * Get currently playing media information from notifications.
+ * Reads the most recent notification from a known music app.
  */
 export async function getCurrentlyPlayingMedia(): Promise<MediaInfo | null> {
   if (Platform.OS !== 'android') {
     throw new Error('Media notification reading is only available on Android');
   }
 
-  try {
-    const { NotificationListenerModule } = require('react-native-nitro-notification-listener');
+  const NotificationListener = require('react-native-android-notification-listener').default;
 
-    // Check if we have permission
-    const hasPermission = await NotificationListenerModule.hasPermission();
-    if (!hasPermission) {
-      throw new Error('PERMISSION_REQUIRED');
-    }
-
-    // Start the listener if not already started
-    try {
-      await NotificationListenerModule.start();
-    } catch (error) {
-      // Listener may already be running, that's fine
-      console.log('Listener may already be running:', error);
-    }
-
-    // For now, we'll return a mock implementation since the library
-    // doesn't provide a way to query current notifications synchronously
-    // In a real implementation, we'd need to:
-    // 1. Listen to notifications continuously in the background
-    // 2. Store the latest media notification in local state
-    // 3. Return the stored value when requested
-
-    return null;
-  } catch (error) {
-    console.error('Error getting currently playing media:', error);
-    throw error;
-  }
-}
-
-/**
- * Start listening to notifications in the background
- * Stores the latest media notification for quick retrieval
- */
-let latestMediaInfo: MediaInfo | null = null;
-let listenerStarted = false;
-
-export async function startMediaListener(): Promise<void> {
-  if (Platform.OS !== 'android' || listenerStarted) {
-    return;
+  const hasPermission = await NotificationListener.hasPermission();
+  if (!hasPermission) {
+    throw new Error('PERMISSION_REQUIRED');
   }
 
-  try {
-    const { NotificationListenerModule } = require('react-native-nitro-notification-listener');
+  const notifications: Array<{ app: string; title: string; text: string; time: string }> =
+    await NotificationListener.getNotifications();
 
-    // Check permission
-    const hasPermission = await NotificationListenerModule.hasPermission();
-    if (!hasPermission) {
-      return;
+  // Find the most recent notification from a known media app
+  // (getNotifications returns them newest-first)
+  for (const notification of notifications) {
+    if (MEDIA_APP_PACKAGES.includes(notification.app) && notification.title && notification.text) {
+      return {
+        songName: notification.title,
+        artistName: notification.text,
+      };
     }
-
-    // Start listening
-    await NotificationListenerModule.start();
-    listenerStarted = true;
-
-    // Listen for notifications
-    NotificationListenerModule.addListener((event: any) => {
-      // Check if this is from a known media app
-      if (MEDIA_APP_PACKAGES.includes(event.packageName)) {
-        // Extract song and artist from notification
-        // Typically: title = song name, text = artist name
-        if (event.title && event.text) {
-          latestMediaInfo = {
-            songName: event.title,
-            artistName: event.text,
-          };
-          console.log('Updated media info:', latestMediaInfo);
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error starting media listener:', error);
   }
-}
 
-/**
- * Get the latest media information from the background listener
- */
-export function getLatestMediaInfo(): MediaInfo | null {
-  return latestMediaInfo;
-}
-
-/**
- * Check if this is a media-related package
- */
-export function isMediaApp(packageName: string): boolean {
-  return MEDIA_APP_PACKAGES.includes(packageName);
+  return null;
 }

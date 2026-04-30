@@ -17,34 +17,10 @@ jobs:
     env:
       npm_config_user_agent: pnpm
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v5
-
-      - uses: actions/setup-node@v6
+      - name: Setup environment
+        uses: ./.github/actions/setup
         with:
-          cache: 'pnpm'
-
-      - name: 📦 Get pnpm cache directory path
-        id: pnpm-cache-dir-path
-        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: 📦 Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.pnpm-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          expo-token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Send OTA Update (Production)
         if: github.event_name == 'push'
@@ -91,34 +67,10 @@ jobs:
     env:
       npm_config_user_agent: pnpm
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v5
-
-      - uses: actions/setup-node@v6
+      - name: Setup environment
+        uses: ./.github/actions/setup
         with:
-          cache: 'pnpm'
-
-      - name: 📦 Get pnpm cache directory path
-        id: pnpm-cache-dir-path
-        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: 📦 Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.pnpm-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          expo-token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4

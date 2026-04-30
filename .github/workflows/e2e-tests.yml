@@ -1,0 +1,65 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-android:
+    name: Run E2E Tests (Android)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      npm_config_user_agent: pnpm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Install Android SDK components
+        run: |
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          sdkmanager "system-images;android-34;google_apis;x86_64"
+          sdkmanager "emulator"
+
+      - name: Create AVD
+        run: |
+          avdmanager create avd --force --name Pixel_7_API_34 --device "pixel_7" --package "system-images;android-34;google_apis;x86_64"
+
+      - name: Prebuild Android project
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build the app for Detox
+        run: pnpm test:e2e:build
+
+      - name: Start Android Emulator
+        run: |
+          $ANDROID_HOME/emulator/emulator -avd Pixel_7_API_34 -no-audio -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim &
+          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+          adb devices
+
+      - name: Run Detox tests
+        run: pnpm test:e2e:android
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: detox-artifacts
+          path: e2e/artifacts/

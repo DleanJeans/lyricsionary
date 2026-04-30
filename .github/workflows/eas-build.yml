@@ -17,6 +17,8 @@ jobs:
     env:
       npm_config_user_agent: pnpm
     steps:
+      - uses: actions/checkout@v4
+
       - name: Setup environment
         uses: ./.github/actions/setup
         with:
@@ -68,6 +70,8 @@ jobs:
     env:
       npm_config_user_agent: pnpm
     steps:
+      - uses: actions/checkout@v4
+
       - name: Setup environment
         uses: ./.github/actions/setup
         with:

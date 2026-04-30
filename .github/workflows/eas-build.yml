@@ -8,19 +8,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  debug-commit:
-    name: Debug Commit Message
+  check-build-apk:
+    name: Check [build-apk] trigger
     runs-on: ubuntu-latest
+    outputs:
+      should-build: ${{ steps.check.outputs.should-build }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Print latest commit message
-        run: echo '${{ toJSON(github.event) }}'
+      - name: Check commit message for [build-apk]
+        id: check
+        run: |
+          MSG=$(git log -1 --pretty=%B ${{ github.event.after }})
+          echo "Commit message: $MSG"
+          if echo "$MSG" | grep -q '\[build-apk\]'; then
+            echo "should-build=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-build=false" >> $GITHUB_OUTPUT
+          fi
 
   ota-update:
     name: Send OTA Update
-    if: false # temporarily disable for debugging
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -68,7 +77,8 @@ jobs:
 
   build-apk:
     name: Build APK
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: check-build-apk
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.check-build-apk.outputs.should-build == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:

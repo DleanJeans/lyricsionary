@@ -40,7 +40,7 @@ jobs:
 
       - name: Create AVD
         run: |
-          avdmanager create avd --force --name Pixel_7_API_34 --device "pixel_7" --package "system-images;android-34;google_apis;x86_64"
+          echo "no" | avdmanager create avd --force --name Pixel_7_API_34 --package "system-images;android-34;google_apis;x86_64"
 
       - name: Prebuild Android project
         run: npx expo prebuild --platform android --clean
@@ -50,9 +50,10 @@ jobs:
 
       - name: Start Android Emulator
         run: |
-          $ANDROID_HOME/emulator/emulator -avd Pixel_7_API_34 -no-audio -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim &
-          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-          adb devices
+          nohup $ANDROID_HOME/emulator/emulator -avd Pixel_7_API_34 -no-audio -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim &
+          $ANDROID_HOME/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
+          $ANDROID_HOME/platform-tools/adb devices
+          echo "Emulator started successfully"
 
       - name: Run Detox tests
         run: pnpm test:e2e:android

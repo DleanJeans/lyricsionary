@@ -150,8 +150,8 @@ The CI workflow:
 # Check available emulators
 emulator -list-avds
 
-# Create a new AVD if needed
-avdmanager create avd -n Pixel_7_API_34 -k "system-images;android-34;google_apis;x86_64" -d pixel_7
+# Create a new AVD if needed (without device profile to avoid compatibility issues)
+echo "no" | avdmanager create avd -n Pixel_7_API_34 -k "system-images;android-34;google_apis;x86_64"
 ```
 
 **App won't install:**

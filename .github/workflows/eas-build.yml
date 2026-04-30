@@ -20,7 +20,7 @@ jobs:
       - name: Check commit message for [build-apk]
         id: check
         run: |
-          MSG=$(git log -1 --pretty=%B ${{ github.event.after }})
+          MSG=$(git log -1 --pretty=%B)
           echo "Commit message: $MSG"
           if echo "$MSG" | grep -q '\[build-apk\]'; then
             echo "should-build=true" >> $GITHUB_OUTPUT
@@ -30,6 +30,7 @@ jobs:
 
   ota-update:
     name: Send OTA Update
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read

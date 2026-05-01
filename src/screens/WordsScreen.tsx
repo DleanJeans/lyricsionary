@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -15,7 +16,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 
 export default function WordsScreen() {
-  const { words } = useStore();
+  const { words, deleteWord } = useStore();
   const isWide = useIsWide();
   const numColumns = isWide ? 2 : 1;
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
@@ -25,8 +26,30 @@ export default function WordsScreen() {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const handleDeleteWord = (word: WordEntry) => {
+    Alert.alert(
+      'Delete Word',
+      `Are you sure you want to delete "${word.word}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteWord(word.id),
+        },
+      ]
+    );
+  };
+
   const renderWord = ({ item }: { item: WordEntry }) => (
-    <TouchableOpacity style={[styles.card, isWide && styles.cardWide]} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.card, isWide && styles.cardWide]}
+      onLongPress={() => handleDeleteWord(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.cardRow}>
         <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
         <View style={styles.cardContent}>

@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -17,13 +18,31 @@ import { useIsWide } from '../hooks/useLayout';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
-  const { songs, setCurrentSongId } = useStore();
+  const { songs, setCurrentSongId, deleteSong } = useStore();
   const isWide = useIsWide();
   const numColumns = isWide ? 2 : 1;
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
     navigation.navigate('Learn');
+  };
+
+  const handleDeleteSong = (song: Song) => {
+    Alert.alert(
+      'Delete Song',
+      `Are you sure you want to delete "${song.songName}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteSong(song.id),
+        },
+      ]
+    );
   };
 
   const getWordCount = (song: Song) => {
@@ -35,6 +54,7 @@ export default function LyricsScreen() {
     <TouchableOpacity
       style={[styles.card, isWide && styles.cardWide]}
       onPress={() => handlePressSong(item)}
+      onLongPress={() => handleDeleteSong(item)}
       activeOpacity={0.7}
     >
       <View style={styles.cardLeft}>

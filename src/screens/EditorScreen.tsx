@@ -150,14 +150,16 @@ export default function EditorScreen() {
           onChangeText={setArtistName}
         />
       </View>
-      <TouchableOpacity
-        style={[styles.searchButton, searchDisabled && styles.disabled]}
-        disabled={searchDisabled}
-        onPress={handleGoogleSearch}
-      >
-        <Ionicons name="search" size={18} color={Colors.white} />
-        <Text style={styles.searchButtonText}>Google Search</Text>
-      </TouchableOpacity>
+      {!originalLyrics && (
+        <TouchableOpacity
+          style={[styles.searchButton, searchDisabled && styles.disabled]}
+          disabled={searchDisabled}
+          onPress={handleGoogleSearch}
+        >
+          <Ionicons name="search" size={18} color={Colors.white} />
+          <Text style={styles.searchButtonText}>Google Search</Text>
+        </TouchableOpacity>
+      )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 0 && styles.tabActive]}

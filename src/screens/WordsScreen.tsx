@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,20 +13,41 @@ import { getFlagForLanguage } from '../constants/languages';
 import { WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function WordsScreen() {
-  const { words } = useStore();
+  const { words, deleteWord } = useStore();
   const isWide = useIsWide();
   const numColumns = isWide ? 2 : 1;
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
+  const [wordToDelete, setWordToDelete] = useState<WordEntry | null>(null);
 
   const formatDate = (ts: number) => {
     const d = new Date(ts);
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const handleDeleteWord = (word: WordEntry) => {
+    setWordToDelete(word);
+  };
+
+  const confirmDelete = () => {
+    if (wordToDelete) {
+      deleteWord(wordToDelete.id);
+      setWordToDelete(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setWordToDelete(null);
+  };
+
   const renderWord = ({ item }: { item: WordEntry }) => (
-    <TouchableOpacity style={[styles.card, isWide && styles.cardWide]} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.card, isWide && styles.cardWide]}
+      onLongPress={() => handleDeleteWord(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.cardRow}>
         <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
         <View style={styles.cardContent}>
@@ -65,6 +86,16 @@ export default function WordsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      <ConfirmDialog
+        visible={wordToDelete !== null}
+        title={`Delete Word: ${wordToDelete?.word}`}
+        message={`This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        destructive
+      />
     </ScreenWrapper>
   );
 }

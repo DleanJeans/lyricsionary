@@ -55,6 +55,9 @@
         "projectId": "126d9654-6b1d-4ff7-ae63-43d646dcb8a3"
       }
     },
+    "plugins": [
+      "./plugins/withJVMMemory"
+    ],
     "owner": "dleanjeans"
   }
 }

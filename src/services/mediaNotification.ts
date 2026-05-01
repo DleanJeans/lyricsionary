@@ -10,6 +10,17 @@ export interface MediaInfo {
   artistName: string;
 }
 
+// Import the native module once at the top
+// Wrap in try-catch to handle cases where module isn't available
+let NotificationListener: any = null;
+try {
+  if (Platform.OS === 'android') {
+    NotificationListener = require('react-native-android-notification-listener').default;
+  }
+} catch (error) {
+  console.warn('react-native-android-notification-listener not available:', error);
+}
+
 // Known media app package names
 const MEDIA_APP_PACKAGES = [
   'com.spotify.music',
@@ -31,8 +42,12 @@ export async function hasNotificationPermission(): Promise<boolean> {
     return false;
   }
 
+  if (!NotificationListener) {
+    console.error('NotificationListener module not available');
+    return false;
+  }
+
   try {
-    const NotificationListener = require('react-native-android-notification-listener').default;
     return await NotificationListener.hasPermission();
   } catch (error) {
     console.error('Error checking notification permission:', error);
@@ -49,8 +64,11 @@ export async function requestNotificationPermission(): Promise<void> {
     throw new Error('Notification listener is only available on Android');
   }
 
+  if (!NotificationListener) {
+    throw new Error('NotificationListener module not available');
+  }
+
   try {
-    const NotificationListener = require('react-native-android-notification-listener').default;
     await NotificationListener.requestPermission();
   } catch (error) {
     console.error('Error requesting notification permission:', error);
@@ -67,7 +85,9 @@ export async function getCurrentlyPlayingMedia(): Promise<MediaInfo | null> {
     throw new Error('Media notification reading is only available on Android');
   }
 
-  const NotificationListener = require('react-native-android-notification-listener').default;
+  if (!NotificationListener) {
+    throw new Error('NotificationListener module not available');
+  }
 
   const hasPermission = await NotificationListener.hasPermission();
   if (!hasPermission) {

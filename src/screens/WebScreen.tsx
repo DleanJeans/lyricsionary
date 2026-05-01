@@ -105,8 +105,8 @@ export default function WebScreen() {
 
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
-      <DrawerButton />
       <View style={styles.addressBar}>
+        <DrawerButton />
         <TextInput
           style={styles.addressInput}
           value={addressText}

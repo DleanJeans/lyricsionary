@@ -129,6 +129,7 @@ export default function EditorScreen() {
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
       <View style={styles.header}>
+        <DrawerButton />
         <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
         <TouchableOpacity style={styles.iconButton}>
           <Ionicons name="musical-note" size={22} color={Colors.primary} />
@@ -227,7 +228,6 @@ export default function EditorScreen() {
 
   return (
     <ScreenWrapper>
-      <DrawerButton />
       {isWide ? (
         <View style={styles.wideLayout}>
           {infoPanel}

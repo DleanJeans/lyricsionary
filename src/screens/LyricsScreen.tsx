@@ -76,8 +76,10 @@ export default function LyricsScreen() {
 
   return (
     <ScreenWrapper>
-      <DrawerButton />
-      <Text style={styles.title}>Saved Lyrics</Text>
+      <View style={styles.titleRow}>
+        <DrawerButton />
+        <Text style={styles.title}>Saved Lyrics</Text>
+      </View>
       {songs.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="library-outline" size={64} color={Colors.textMuted} />
@@ -114,11 +116,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   title: {
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 16,
   },
   list: {
     paddingBottom: 40,

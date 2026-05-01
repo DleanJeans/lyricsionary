@@ -31,12 +31,8 @@ export default function DrawerButton() {
 
 const styles = StyleSheet.create({
   button: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    zIndex: 100,
     padding: 8,
     borderRadius: 8,
-    backgroundColor: `${Colors.surface}CC`, // Semi-transparent
+    marginRight: 4,
   },
 });

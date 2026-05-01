@@ -158,9 +158,8 @@ export default function LearnScreen() {
 
   return (
     <ScreenWrapper noPadding>
-      <DrawerButton />
-      {/* Header – always spans full available width */}
       <View style={styles.header}>
+        <DrawerButton />
         <View style={styles.headerLeft}>
           <Text style={styles.songName} numberOfLines={1}>{song.songName}</Text>
           <Text style={styles.artistName}>{song.artistName}</Text>

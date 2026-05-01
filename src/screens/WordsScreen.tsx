@@ -69,8 +69,10 @@ export default function WordsScreen() {
 
   return (
     <ScreenWrapper>
-      <DrawerButton />
-      <Text style={styles.title}>Saved Words</Text>
+      <View style={styles.titleRow}>
+        <DrawerButton />
+        <Text style={styles.title}>Saved Words</Text>
+      </View>
       {sortedWords.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="book-outline" size={64} color={Colors.textMuted} />
@@ -107,11 +109,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   title: {
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 16,
   },
   list: {
     paddingBottom: 40,

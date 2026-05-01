@@ -1,1 +1,0 @@
-- Add [build-apk] to commit description if requiring APK update (e.g. permissions)

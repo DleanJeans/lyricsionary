@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { WIDE_BREAKPOINT, SIDE_NAV_WIDTH } from '../hooks/useLayout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import VersionInfo from '../components/VersionInfo';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -73,6 +74,12 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             </TouchableOpacity>
           );
         })}
+
+        {/* Version Info at bottom */}
+        <View style={styles.versionInfoContainer}>
+          <View style={styles.divider} />
+          <VersionInfo />
+        </View>
       </View>
     );
   }
@@ -159,6 +166,11 @@ const styles = StyleSheet.create({
   sideLabelActive: {
     color: Colors.primary,
     fontWeight: '600',
+  },
+  versionInfoContainer: {
+    marginTop: 'auto',
+    paddingTop: 12,
+    gap: 12,
   },
 
   /* Bottom bar */

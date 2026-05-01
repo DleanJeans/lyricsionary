@@ -11,6 +11,7 @@ import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
+import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
@@ -157,6 +158,7 @@ export default function LearnScreen() {
 
   return (
     <ScreenWrapper noPadding>
+      <DrawerButton />
       {/* Header – always spans full available width */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>

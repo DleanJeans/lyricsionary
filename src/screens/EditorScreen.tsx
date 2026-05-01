@@ -17,6 +17,7 @@ import { Colors } from '../constants/theme';
 import { LANGUAGES } from '../constants/languages';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
+import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
@@ -226,6 +227,7 @@ export default function EditorScreen() {
 
   return (
     <ScreenWrapper>
+      <DrawerButton />
       {isWide ? (
         <View style={styles.wideLayout}>
           {infoPanel}

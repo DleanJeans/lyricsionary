@@ -13,6 +13,7 @@ import { getFlagForLanguage } from '../constants/languages';
 import { useNavigation } from '@react-navigation/native';
 import { Song } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
+import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -75,6 +76,7 @@ export default function LyricsScreen() {
 
   return (
     <ScreenWrapper>
+      <DrawerButton />
       <Text style={styles.title}>Saved Lyrics</Text>
       {songs.length === 0 ? (
         <View style={styles.empty}>

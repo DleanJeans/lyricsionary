@@ -1,2 +1,3 @@
-- Add [build-apk] to commit description if requiring APK update (e.g. permissions)
+- Add [build-apk] to commit description (not commit title) if requiring APK update (e.g. permissions)
 - Update pnpm-lock.yaml not package-lock.json when there is change to package.json
+- Don't add [WIP] to pull request title

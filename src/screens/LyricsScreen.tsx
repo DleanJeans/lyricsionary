@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,16 +14,33 @@ import { useNavigation } from '@react-navigation/native';
 import { Song } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
-  const { songs, setCurrentSongId } = useStore();
+  const { songs, setCurrentSongId, deleteSong } = useStore();
   const isWide = useIsWide();
   const numColumns = isWide ? 2 : 1;
+  const [songToDelete, setSongToDelete] = useState<Song | null>(null);
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
     navigation.navigate('Learn');
+  };
+
+  const handleDeleteSong = (song: Song) => {
+    setSongToDelete(song);
+  };
+
+  const confirmDelete = () => {
+    if (songToDelete) {
+      deleteSong(songToDelete.id);
+      setSongToDelete(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setSongToDelete(null);
   };
 
   const getWordCount = (song: Song) => {
@@ -35,6 +52,7 @@ export default function LyricsScreen() {
     <TouchableOpacity
       style={[styles.card, isWide && styles.cardWide]}
       onPress={() => handlePressSong(item)}
+      onLongPress={() => handleDeleteSong(item)}
       activeOpacity={0.7}
     >
       <View style={styles.cardLeft}>
@@ -75,6 +93,16 @@ export default function LyricsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      <ConfirmDialog
+        visible={songToDelete !== null}
+        title={`Delete Song: ${songToDelete?.songName}`}
+        message={`This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        destructive
+      />
     </ScreenWrapper>
   );
 }

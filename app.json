@@ -7,13 +7,15 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "scheme": "exp+lyricsionary",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dleanjeans.lyricsionary"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,17 +27,41 @@
       "package": "com.dleanjeans.lyricsionary",
       "permissions": [
         "BIND_NOTIFICATION_LISTENER_SERVICE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "exp+lyricsionary"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["./plugins/withNotificationListener"],
+    "updates": {
+      "url": "https://u.expo.dev/126d9654-6b1d-4ff7-ae63-43d646dcb8a3"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "eas": {
         "projectId": "126d9654-6b1d-4ff7-ae63-43d646dcb8a3"
       }
     },
+    "plugins": [
+      "./plugins/withJVMMemory",
+      "./plugins/withNotificationListener"
+    ],
     "owner": "dleanjeans"
   }
 }

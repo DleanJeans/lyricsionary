@@ -1,2 +1,0 @@
-- Add [build-apk] to commit description if requiring APK update (e.g. permissions)
-- Update pnpm-lock.yaml not package-lock.json when there is change to package.json

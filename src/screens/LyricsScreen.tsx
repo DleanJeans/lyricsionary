@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -15,12 +14,14 @@ import { useNavigation } from '@react-navigation/native';
 import { Song } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
   const { songs, setCurrentSongId, deleteSong } = useStore();
   const isWide = useIsWide();
   const numColumns = isWide ? 2 : 1;
+  const [songToDelete, setSongToDelete] = useState<Song | null>(null);
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
@@ -28,21 +29,18 @@ export default function LyricsScreen() {
   };
 
   const handleDeleteSong = (song: Song) => {
-    Alert.alert(
-      'Delete Song',
-      `Are you sure you want to delete "${song.songName}"? This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteSong(song.id),
-        },
-      ]
-    );
+    setSongToDelete(song);
+  };
+
+  const confirmDelete = () => {
+    if (songToDelete) {
+      deleteSong(songToDelete.id);
+      setSongToDelete(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setSongToDelete(null);
   };
 
   const getWordCount = (song: Song) => {
@@ -95,6 +93,16 @@ export default function LyricsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      <ConfirmDialog
+        visible={songToDelete !== null}
+        title="Delete Song"
+        message={`Are you sure you want to delete "${songToDelete?.songName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        destructive
+      />
     </ScreenWrapper>
   );
 }

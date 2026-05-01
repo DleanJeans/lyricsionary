@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -14,12 +13,14 @@ import { getFlagForLanguage } from '../constants/languages';
 import { WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function WordsScreen() {
   const { words, deleteWord } = useStore();
   const isWide = useIsWide();
   const numColumns = isWide ? 2 : 1;
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
+  const [wordToDelete, setWordToDelete] = useState<WordEntry | null>(null);
 
   const formatDate = (ts: number) => {
     const d = new Date(ts);
@@ -27,21 +28,18 @@ export default function WordsScreen() {
   };
 
   const handleDeleteWord = (word: WordEntry) => {
-    Alert.alert(
-      'Delete Word',
-      `Are you sure you want to delete "${word.word}"? This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteWord(word.id),
-        },
-      ]
-    );
+    setWordToDelete(word);
+  };
+
+  const confirmDelete = () => {
+    if (wordToDelete) {
+      deleteWord(wordToDelete.id);
+      setWordToDelete(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setWordToDelete(null);
   };
 
   const renderWord = ({ item }: { item: WordEntry }) => (
@@ -88,6 +86,16 @@ export default function WordsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      <ConfirmDialog
+        visible={wordToDelete !== null}
+        title="Delete Word"
+        message={`Are you sure you want to delete "${wordToDelete?.word}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        destructive
+      />
     </ScreenWrapper>
   );
 }

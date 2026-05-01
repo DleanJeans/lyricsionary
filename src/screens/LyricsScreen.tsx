@@ -95,8 +95,8 @@ export default function LyricsScreen() {
       )}
       <ConfirmDialog
         visible={songToDelete !== null}
-        title="Delete Song"
-        message={`Are you sure you want to delete "${songToDelete?.songName}"? This action cannot be undone.`}
+        title={`Delete Song: ${songToDelete?.songName}`}
+        message={`This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         onConfirm={confirmDelete}

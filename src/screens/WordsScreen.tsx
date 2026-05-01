@@ -88,8 +88,8 @@ export default function WordsScreen() {
       )}
       <ConfirmDialog
         visible={wordToDelete !== null}
-        title="Delete Word"
-        message={`Are you sure you want to delete "${wordToDelete?.word}"? This action cannot be undone.`}
+        title={`Delete Word: ${wordToDelete?.word}`}
+        message={`This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         onConfirm={confirmDelete}

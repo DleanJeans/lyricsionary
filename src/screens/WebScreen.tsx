@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, useWindowDimensions, TextInput } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, useWindowDimensions, TextInput, BackHandler, ToastAndroid, Platform } from 'react-native';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -21,6 +21,9 @@ export default function WebScreen() {
   const [addressText, setAddressText] = useState(webUrl);
   const [showFab, setShowFab] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const backPressedOnce = useRef(false);
+  const timeoutRef = useRef<number | null>(null);
 
   const handleNavigate = () => {
     let url = addressText.trim();
@@ -103,6 +106,48 @@ export default function WebScreen() {
     }
   };
 
+  // Handle Android back button
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (canGoBack && webViewRef.current) {
+        // Go back in WebView history
+        webViewRef.current.goBack();
+        return true; // Prevent default behavior
+      }
+
+      // No history - show "back to quit" behavior
+      if (backPressedOnce.current) {
+        // Second press - allow default behavior (exit app)
+        return false;
+      }
+
+      // First press - show toast and prevent exit
+      backPressedOnce.current = true;
+      ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+
+      // Reset after 2 seconds
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        backPressedOnce.current = false;
+      }, 2000) as unknown as number;
+
+      return true; // Prevent default behavior
+    });
+
+    return () => {
+      backHandler.remove();
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [canGoBack]);
+
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
       <View style={styles.addressBar}>
@@ -131,6 +176,7 @@ export default function WebScreen() {
         onNavigationStateChange={(navState) => {
           setCurrentUrl(navState.url);
           setAddressText(navState.url);
+          setCanGoBack(navState.canGoBack);
           checkForLyrics(navState.url);
         }}
         onLoadStart={() => setLoading(true)}

@@ -20,11 +20,13 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import { useBackToQuit } from '../hooks/useBackToQuit';
 
 export default function EditorScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const isWide = useIsWide();
+  useBackToQuit();
 
   const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl } = useStore();
 

@@ -108,8 +108,6 @@ export default function EditorScreen() {
   };
 
   const handleClear = () => {
-    setSongName('');
-    setArtistName('');
     setOriginalLyrics('');
     setTranslations([]);
     setActiveTab(0);

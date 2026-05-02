@@ -59,11 +59,11 @@ jobs:
         run: |
           eas update --branch production --message "Production update from commit ${{ github.sha }}"
 
-      - name: Send OTA Update (Preview)
+      - name: Send OTA Update (Development)
         if: github.event_name == 'pull_request'
         id: ota-update
         run: |
-          OUTPUT=$(eas update --branch preview --platform android --message "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" --json)
+          OUTPUT=$(eas update --branch development --platform android --message "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" --json)
           GROUP_ID=$(echo "$OUTPUT" | jq -r '.[0].group')
           echo "group-id=$GROUP_ID" >> $GITHUB_OUTPUT
 
@@ -112,7 +112,7 @@ jobs:
         run: echo "datetime=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Build APK locally
-        run: eas build --platform android --profile preview --local --non-interactive --output ./lyricsionary-${{ steps.datetime.outputs.datetime }}.apk
+        run: eas build --platform android --profile development --local --non-interactive --output ./lyricsionary-${{ steps.datetime.outputs.datetime }}.apk
 
       - name: Upload APK artifact
         if: github.event_name == 'pull_request'

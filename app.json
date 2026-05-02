@@ -60,7 +60,8 @@
     },
     "plugins": [
       "./plugins/withJVMMemory",
-      "./plugins/withNotificationListener"
+      "./plugins/withNotificationListener",
+      "expo-dev-client"
     ],
     "owner": "dleanjeans"
   }

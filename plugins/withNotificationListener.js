@@ -28,7 +28,7 @@ const withNotificationListener = (config) => {
       application.service = [];
     }
 
-    const serviceName = 'com.kevinresol.react_native_notification_listener.NotificationListener';
+    const serviceName = 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListener';
     const alreadyAdded = application.service.some(
       (s) => s.$['android:name'] === serviceName
     );

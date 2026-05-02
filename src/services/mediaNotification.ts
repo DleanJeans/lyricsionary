@@ -34,21 +34,48 @@ const MEDIA_APP_PACKAGES = [
   'com.pandora.android',
 ];
 
+// In-memory cache of the last received media notification (populated by headless task)
+let lastMediaNotification: MediaInfo | null = null;
+
 /**
- * Check if notification listener permission is granted
+ * Called from the headless task handler in index.ts when a notification arrives.
+ * Caches the most recent media notification so getCurrentlyPlayingMedia can return it.
+ */
+export function handleNotificationEvent(notification: {
+  app: string;
+  title: string;
+  text: string;
+  time: string;
+}) {
+  if (MEDIA_APP_PACKAGES.includes(notification.app) && notification.title && notification.text) {
+    lastMediaNotification = {
+      songName: notification.title,
+      artistName: notification.text,
+    };
+  }
+}
+
+function isAvailable(): boolean {
+  return (
+    Platform.OS === 'android' &&
+    !!NotificationListener &&
+    typeof NotificationListener.getPermissionStatus === 'function'
+  );
+}
+
+/**
+ * Check if notification listener permission is granted.
+ * The native module returns "authorized" or "denied".
  */
 export async function hasNotificationPermission(): Promise<boolean> {
-  if (Platform.OS !== 'android') {
-    return false;
-  }
-
-  if (!NotificationListener) {
+  if (!isAvailable()) {
     console.error('NotificationListener module not available');
     return false;
   }
 
   try {
-    return await NotificationListener.hasPermission();
+    const status = await NotificationListener.getPermissionStatus();
+    return status === 'authorized';
   } catch (error) {
     console.error('Error checking notification permission:', error);
     return false;
@@ -60,11 +87,11 @@ export async function hasNotificationPermission(): Promise<boolean> {
  * Opens Android settings where user must manually enable the permission
  */
 export async function requestNotificationPermission(): Promise<void> {
-  if (Platform.OS !== 'android') {
-    throw new Error('Notification listener is only available on Android');
+  if (Platform.OS !== "android") {
+    throw new Error("Notification listener is only available on Android");
   }
 
-  if (!NotificationListener) {
+  if (!isAvailable()) {
     throw new Error('NotificationListener module not available');
   }
 
@@ -77,36 +104,23 @@ export async function requestNotificationPermission(): Promise<void> {
 }
 
 /**
- * Get currently playing media information from notifications.
- * Reads the most recent notification from a known music app.
+ * Get currently playing media information.
+ * Returns the last media notification received by the background headless task listener.
+ * Play something in a music app first — the library captures it when the notification fires.
  */
 export async function getCurrentlyPlayingMedia(): Promise<MediaInfo | null> {
   if (Platform.OS !== 'android') {
     throw new Error('Media notification reading is only available on Android');
   }
 
-  if (!NotificationListener) {
+  if (!isAvailable()) {
     throw new Error('NotificationListener module not available');
   }
 
-  const hasPermission = await NotificationListener.hasPermission();
-  if (!hasPermission) {
+  const status = await NotificationListener.getPermissionStatus();
+  if (status !== 'authorized') {
     throw new Error('PERMISSION_REQUIRED');
   }
 
-  const notifications: Array<{ app: string; title: string; text: string; time: string }> =
-    await NotificationListener.getNotifications();
-
-  // Find the most recent notification from a known media app
-  // (getNotifications returns them newest-first)
-  for (const notification of notifications) {
-    if (MEDIA_APP_PACKAGES.includes(notification.app) && notification.title && notification.text) {
-      return {
-        songName: notification.title,
-        artistName: notification.text,
-      };
-    }
-  }
-
-  return null;
+  return lastMediaNotification;
 }

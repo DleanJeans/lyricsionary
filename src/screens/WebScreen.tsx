@@ -7,6 +7,7 @@ import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
+import DrawerButton from '../components/DrawerButton';
 
 const LYRICS_DOMAINS = ['genius.com', 'musixmatch.com', 'lyricstranslate.com'];
 
@@ -105,6 +106,7 @@ export default function WebScreen() {
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
       <View style={styles.addressBar}>
+        <DrawerButton />
         <TextInput
           style={styles.addressInput}
           value={addressText}

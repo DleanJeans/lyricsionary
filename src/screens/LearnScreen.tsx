@@ -11,6 +11,7 @@ import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
+import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
@@ -157,8 +158,8 @@ export default function LearnScreen() {
 
   return (
     <ScreenWrapper noPadding>
-      {/* Header – always spans full available width */}
       <View style={styles.header}>
+        <DrawerButton />
         <View style={styles.headerLeft}>
           <Text style={styles.songName} numberOfLines={1}>{song.songName}</Text>
           <Text style={styles.artistName}>{song.artistName}</Text>

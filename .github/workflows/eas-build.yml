@@ -63,7 +63,7 @@ jobs:
         if: github.event_name == 'pull_request'
         id: ota-update
         run: |
-          OUTPUT=$(eas update --branch preview --message "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" --json)
+          OUTPUT=$(eas update --branch preview --platform android --message "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" --json)
           UPDATE_ID=$(echo "$OUTPUT" | jq -r '.[] | select(.platform != null) | .id' | head -n 1)
           echo "update-id=$UPDATE_ID" >> $GITHUB_OUTPUT
 

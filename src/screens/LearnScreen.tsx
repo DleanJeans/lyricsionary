@@ -14,10 +14,12 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import { useBackToQuit } from '../hooks/useBackToQuit';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
+  useBackToQuit();
   const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, addOrUpdateWord, setWebUrl } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);

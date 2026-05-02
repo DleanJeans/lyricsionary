@@ -16,11 +16,13 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useBackToQuit } from '../hooks/useBackToQuit';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
   const { songs, setCurrentSongId, deleteSong } = useStore();
   const isWide = useIsWide();
+  useBackToQuit();
   const numColumns = isWide ? 2 : 1;
   const [songToDelete, setSongToDelete] = useState<Song | null>(null);
 
@@ -122,6 +124,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,

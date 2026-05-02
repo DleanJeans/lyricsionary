@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Service to read currently playing media information from system notifications
@@ -34,24 +35,24 @@ const MEDIA_APP_PACKAGES = [
   'com.pandora.android',
 ];
 
-// In-memory cache of the last received media notification (populated by headless task)
-let lastMediaNotification: MediaInfo | null = null;
+const LAST_MEDIA_KEY = '@lyricsionary_last_media';
 
 /**
  * Called from the headless task handler in index.ts when a notification arrives.
- * Caches the most recent media notification so getCurrentlyPlayingMedia can return it.
+ * Persists to AsyncStorage so the main app JS context can read it.
  */
-export function handleNotificationEvent(notification: {
+export async function handleNotificationEvent(notification: {
   app: string;
   title: string;
   text: string;
   time: string;
-}) {
+}): Promise<void> {
   if (MEDIA_APP_PACKAGES.includes(notification.app) && notification.title && notification.text) {
-    lastMediaNotification = {
+    const info: MediaInfo = {
       songName: notification.title,
       artistName: notification.text,
     };
+    await AsyncStorage.setItem(LAST_MEDIA_KEY, JSON.stringify(info));
   }
 }
 
@@ -122,5 +123,6 @@ export async function getCurrentlyPlayingMedia(): Promise<MediaInfo | null> {
     throw new Error('PERMISSION_REQUIRED');
   }
 
-  return lastMediaNotification;
+  const raw = await AsyncStorage.getItem(LAST_MEDIA_KEY);
+  return raw ? (JSON.parse(raw) as MediaInfo) : null;
 }

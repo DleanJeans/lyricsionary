@@ -11,8 +11,10 @@ import App from './App';
 if (Platform.OS === 'android') {
   const { RNAndroidNotificationListenerHeadlessJsName } = require('react-native-android-notification-listener');
   const { handleNotificationEvent } = require('./src/services/mediaNotification');
-  AppRegistry.registerHeadlessTask(RNAndroidNotificationListenerHeadlessJsName, () => async (notification: any) => {
-    handleNotificationEvent(notification);
+  AppRegistry.registerHeadlessTask(RNAndroidNotificationListenerHeadlessJsName, () => async ({ notification }: { notification: string }) => {
+    if (notification) {
+      await handleNotificationEvent(JSON.parse(notification));
+    }
   });
 }
 

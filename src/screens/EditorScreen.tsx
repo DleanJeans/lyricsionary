@@ -240,7 +240,7 @@ export default function EditorScreen() {
       </ScrollView>
       {isWide && (
         <View style={styles.actions}>
-          {currentLyrics.length === 0 ? (
+          {currentLyrics.split('\n').length === 0 ? (
             <TouchableOpacity style={styles.actionButton} onPress={handlePaste}>
               <Ionicons name="clipboard-outline" size={20} color={Colors.white} />
               <Text style={styles.actionButtonText}>Paste</Text>
@@ -341,7 +341,7 @@ export default function EditorScreen() {
           {infoPanel}
           {lyricsPanel}
           <View style={styles.actions}>
-            {currentLyrics.length === 0 ? (
+            {currentLyrics.split('\n').length === 0 ? (
               <TouchableOpacity style={styles.actionButton} onPress={handlePaste}>
                 <Ionicons name="clipboard-outline" size={20} color={Colors.white} />
                 <Text style={styles.actionButtonText}>Paste</Text>

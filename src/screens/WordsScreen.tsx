@@ -15,10 +15,12 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useBackToQuit } from '../hooks/useBackToQuit';
 
 export default function WordsScreen() {
   const { words, deleteWord } = useStore();
   const isWide = useIsWide();
+  useBackToQuit();
   const numColumns = isWide ? 2 : 1;
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
   const [wordToDelete, setWordToDelete] = useState<WordEntry | null>(null);

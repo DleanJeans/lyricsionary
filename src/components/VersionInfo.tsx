@@ -17,40 +17,18 @@ export default function VersionInfo() {
   const [isChecking, setIsChecking] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<{
     updateGroupId: string | null;
-    commitSha: string | null;
-  }>({ updateGroupId: null, commitSha: null });
+  }>({ updateGroupId: null });
 
   useEffect(() => {
     // Get current update information
     const easUpdatesMetadata = Constants.manifest2?.metadata as any;
     const updateGroupId = easUpdatesMetadata?.updateGroup || 'dev';
 
-    // Try to get commit info from manifest
-    // The structure varies depending on how the update was published
-    let commitSha: string | null = null;
-
-    if (Updates.manifest) {
-      // Check different possible locations for commit info
-      const manifest = Updates.manifest as any;
-      commitSha =
-        manifest?.metadata?.commitId ||
-        manifest?.extra?.expoClient?.commitId ||
-        manifest?.commitId ||
-        manifest?.extra?.expoClient?.extra?.eas?.message;
-    }
-
-    setUpdateInfo({
-      updateGroupId,
-      commitSha: commitSha,
-    });
+    setUpdateInfo({ updateGroupId });
   }, []);
 
   // Extract update group ID (first 8 characters of updateGroupId)
   const updateGroupId = updateInfo.updateGroupId ? updateInfo.updateGroupId.substring(0, 8) : 'dev';
-
-  // Extract commit SHA (first 7 characters)
-  const commitSha = updateInfo.commitSha ? updateInfo.commitSha.substring(0, 7) : 'dev';
-  const fullCommitSha = updateInfo.commitSha || '';
 
   // Get project info from app.json
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
@@ -60,10 +38,6 @@ export default function VersionInfo() {
   // Build URLs
   const updateGroupUrl = updateInfo.updateGroupId && projectId
     ? `https://expo.dev/accounts/${owner}/projects/${slug}/updates/${updateInfo.updateGroupId}`
-    : null;
-
-  const commitUrl = fullCommitSha
-    ? `https://github.com/DleanJeans/lyricsionary/commit/${fullCommitSha}`
     : null;
 
   const handleUpdateCheck = async () => {
@@ -133,21 +107,6 @@ export default function VersionInfo() {
         <View style={styles.valueRow}>
           <Text style={styles.value}>{updateGroupId}</Text>
           {updateGroupUrl && (
-            <Ionicons name="open-outline" size={14} color={Colors.textSecondary} />
-          )}
-        </View>
-      </TouchableOpacity>
-
-      {/* Commit ID */}
-      <TouchableOpacity
-        style={styles.infoRow}
-        onPress={() => handleLinkPress(commitUrl)}
-        disabled={!commitUrl}
-      >
-        <Text style={styles.label}>Commit:</Text>
-        <View style={styles.valueRow}>
-          <Text style={styles.value}>{commitSha}</Text>
-          {commitUrl && (
             <Ionicons name="open-outline" size={14} color={Colors.textSecondary} />
           )}
         </View>

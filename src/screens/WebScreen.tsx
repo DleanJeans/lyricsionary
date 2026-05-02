@@ -48,9 +48,20 @@ export default function WebScreen() {
       (function() {
         let lyrics = '';
         // Google
-        const google = document.querySelectorAll('div[data-song-title]');
+        const google = document.querySelectorAll('div[data-song-title] div[class][jsname]')
+        // select and filter by first div's jsname, which seems to group the lyrics paragraphs together
         if (google.length > 0) {
-          google.forEach(el => { lyrics += el.innerText + '\\n'; });
+          const paragraph = google;
+          let lyricsJsname = '';
+          paragraph.forEach(p => {
+            const pJsname = p.getAttribute('jsname');
+            if (!lyricsJsname) {
+              lyricsJsname = pJsname;
+            } else if (pJsname !== lyricsJsname) {
+              return;
+            }
+            lyrics += p.innerText + '\\n\\n';
+          });
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
           return;
         }

@@ -39,7 +39,6 @@ export default function WebScreen() {
   const checkForLyrics = (url: string) => {
     const hasLyrics = LYRICS_DOMAINS.some((d) => url.includes(d)) ||
       url.includes('google.com/search') && url.includes('lyrics');
-    console.log({hasLyrics})
     setShowFab(hasLyrics);
   };
 

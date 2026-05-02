@@ -20,6 +20,11 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import {
+  hasNotificationPermission,
+  requestNotificationPermission,
+  getCurrentlyPlayingMedia,
+} from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 
 export default function EditorScreen() {
@@ -127,13 +132,60 @@ export default function EditorScreen() {
     setShowAddDialog(false);
   };
 
+  const handleGetCurrentlyPlaying = async () => {
+    try {
+      // Check if permission is granted
+      const hasPermission = await hasNotificationPermission();
+
+      if (!hasPermission) {
+        // Show alert asking user to grant permission
+        Alert.alert(
+          'Permission Required',
+          'To read currently playing songs, this app needs notification access. You will be taken to Settings to enable it.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: async () => {
+                try {
+                  await requestNotificationPermission();
+                } catch (error) {
+                  Alert.alert('Error', 'Could not open settings. Please enable notification access manually in Settings → Apps → Lyricsionary → Notifications.');
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      const mediaInfo = await getCurrentlyPlayingMedia();
+
+      if (mediaInfo) {
+        setSongName(mediaInfo.songName);
+        setArtistName(mediaInfo.artistName);
+      } else {
+        Alert.alert(
+          'No Media Playing',
+          'Could not detect any currently playing music. Please make sure a music app (Spotify, YouTube, etc.) is actively playing a song.'
+        );
+      }
+    } catch (error) {
+      console.error('Error getting currently playing media:', error);
+      Alert.alert(
+        'Error',
+        'Failed to read currently playing media. Please make sure notification access is enabled in Settings.'
+      );
+    }
+  };
+
   /* ─── Shared Controls ─────────────────────────────────────── */
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
       <View style={styles.header}>
         <DrawerButton />
         <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
-        <TouchableOpacity style={styles.iconButton}>
+        <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
           <Ionicons name="musical-note" size={22} color={Colors.primary} />
         </TouchableOpacity>
       </View>

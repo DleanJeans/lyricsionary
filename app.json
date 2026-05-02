@@ -26,6 +26,9 @@
       "softwareKeyboardLayoutMode": "pan",
       "predictiveBackGestureEnabled": false,
       "package": "com.dleanjeans.lyricsionary",
+      "permissions": [
+        "BIND_NOTIFICATION_LISTENER_SERVICE"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -57,7 +60,14 @@
       }
     },
     "plugins": [
-      "./plugins/withJVMMemory"
+      "./plugins/withJVMMemory",
+      "./plugins/withNotificationListener",
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent"
+        }
+      ]
     ],
     "owner": "dleanjeans"
   }

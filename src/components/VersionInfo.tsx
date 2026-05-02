@@ -16,13 +16,14 @@ import Constants from 'expo-constants';
 export default function VersionInfo() {
   const [isChecking, setIsChecking] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<{
-    updateId: string | null;
+    updateGroupId: string | null;
     commitSha: string | null;
-  }>({ updateId: null, commitSha: null });
+  }>({ updateGroupId: null, commitSha: null });
 
   useEffect(() => {
     // Get current update information
-    const currentUpdateId = Updates.updateId;
+    const easUpdatesMetadata = Constants.manifest2?.metadata as any;
+    const updateGroupId = easUpdatesMetadata?.updateGroup || 'dev';
 
     // Try to get commit info from manifest
     // The structure varies depending on how the update was published
@@ -31,23 +32,21 @@ export default function VersionInfo() {
     if (Updates.manifest) {
       // Check different possible locations for commit info
       const manifest = Updates.manifest as any;
-      if (manifest?.metadata?.commitId) {
-        commitSha = manifest.metadata.commitId;
-      } else if (manifest?.extra?.expoClient?.commitId) {
-        commitSha = manifest.extra.expoClient.commitId;
-      } else if (manifest?.commitId) {
-        commitSha = manifest.commitId;
-      }
+      commitSha =
+        manifest?.metadata?.commitId ||
+        manifest?.extra?.expoClient?.commitId ||
+        manifest?.commitId ||
+        manifest?.extra?.expoClient?.extra?.eas?.message;
     }
 
     setUpdateInfo({
-      updateId: currentUpdateId || null,
+      updateGroupId,
       commitSha: commitSha,
     });
   }, []);
 
-  // Extract update group ID (first 8 characters of updateId)
-  const updateGroupId = updateInfo.updateId ? updateInfo.updateId.substring(0, 8) : 'dev';
+  // Extract update group ID (first 8 characters of updateGroupId)
+  const updateGroupId = updateInfo.updateGroupId ? updateInfo.updateGroupId.substring(0, 8) : 'dev';
 
   // Extract commit SHA (first 7 characters)
   const commitSha = updateInfo.commitSha ? updateInfo.commitSha.substring(0, 7) : 'dev';
@@ -59,8 +58,8 @@ export default function VersionInfo() {
   const slug = Constants.expoConfig?.slug || 'lyricsionary';
 
   // Build URLs
-  const updateGroupUrl = updateInfo.updateId && projectId
-    ? `https://expo.dev/accounts/${owner}/projects/${slug}/updates/${updateInfo.updateId}`
+  const updateGroupUrl = updateInfo.updateGroupId && projectId
+    ? `https://expo.dev/accounts/${owner}/projects/${slug}/updates/${updateInfo.updateGroupId}`
     : null;
 
   const commitUrl = fullCommitSha

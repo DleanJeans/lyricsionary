@@ -18,8 +18,8 @@ export function useBackToQuit(enabled: boolean = true) {
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (backPressedOnce.current) {
-        // Second press - allow default behavior (exit app)
-        return false;
+        BackHandler.exitApp();
+        return true;
       }
 
       // First press - show toast and prevent exit

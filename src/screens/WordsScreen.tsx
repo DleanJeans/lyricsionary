@@ -115,6 +115,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,

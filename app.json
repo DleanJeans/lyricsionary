@@ -62,7 +62,12 @@
     "plugins": [
       "./plugins/withJVMMemory",
       "./plugins/withNotificationListener",
-      "expo-dev-client"
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent"
+        }
+      ]
     ],
     "owner": "dleanjeans"
   }

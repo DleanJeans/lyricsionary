@@ -40,6 +40,7 @@ const withNotificationListener = (config) => {
           'android:label': '@string/app_name',
           'android:permission': 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
           'android:exported': 'false',
+          'tools:replace': 'android:exported',
         },
         'intent-filter': [
           {

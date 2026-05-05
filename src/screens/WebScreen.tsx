@@ -8,6 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 import DrawerButton from '../components/DrawerButton';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LYRICS_DOMAINS = ['genius.com', 'musixmatch.com', 'lyricstranslate.com'];
 
@@ -16,6 +17,7 @@ export default function WebScreen() {
   const { webUrl, setWebUrl } = useStore();
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
+  const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
   const [currentUrl, setCurrentUrl] = useState(webUrl);
   const [addressText, setAddressText] = useState(webUrl);
@@ -160,7 +162,7 @@ export default function WebScreen() {
 
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
-      <View style={styles.addressBar}>
+      <View style={[styles.addressBar, { paddingTop: insets.top || 6 }]}>
         <DrawerButton />
         <TextInput
           style={styles.addressInput}

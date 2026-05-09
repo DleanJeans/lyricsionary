@@ -7,6 +7,7 @@ import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
+import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
 import DrawerButton from '../components/DrawerButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -45,73 +46,22 @@ export default function WebScreen() {
   };
 
   const handleScrapeLyrics = () => {
-    // Inject JS to extract lyrics text from page
-    const injectedJS = `
-      (function() {
-        let lyrics = '';
-        // Google
-        const google = document.querySelectorAll('div[data-song-title] div[class][jsname]')
-        // select and filter by first div's jsname, which seems to group the lyrics paragraphs together
-        if (google.length > 0) {
-          const paragraph = google;
-          let lyricsJsname = '';
-          paragraph.forEach(p => {
-            const pJsname = p.getAttribute('jsname');
-            if (!lyricsJsname) {
-              lyricsJsname = pJsname;
-            } else if (pJsname !== lyricsJsname) {
-              return;
-            }
-            lyrics += p.innerText + '\\n\\n';
-          });
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
-          return;
-        }
-
-        // Genius
-        const genius = document.querySelectorAll('[data-lyrics-container="true"]');
-        if (genius.length > 0) {
-          genius.forEach(el => { lyrics += el.innerText + '\\n'; });
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
-          return;
-        }
-
-        // Musixmatch
-        const musix = document.querySelectorAll('.lyrics__content__ok, .mxm-lyrics__content');
-        if (musix.length > 0) {
-          musix.forEach(el => { lyrics += el.innerText + '\\n'; });
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
-          return;
-        }
-
-        // LyricsTranslate
-        const lt = document.querySelectorAll('.ltf, .song-node');
-        if (lt.length > 0) {
-          lt.forEach(el => { lyrics += el.innerText + '\\n'; });
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
-          return;
-        }
-        
-        // Generic: try to grab visible text from body
-        const body = document.body.innerText;
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: body.substring(0, 5000) }));
-      })();
-      true;
-    `;
-    webViewRef.current?.injectJavaScript(injectedJS);
+    webViewRef.current?.injectJavaScript(scrapeLyricsJS);
   };
 
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'debug') {
+        console.log('[WebView]', typeof data.log === 'object' ? JSON.stringify(data.log) : data.log);
+        return;
+      }
       if (data.type === 'lyrics' && data.text) {
-        // Clean lyrics if from Genius
         let lyrics = data.text.trim();
         if (currentUrl.includes('genius.com')) {
           lyrics = cleanGeniusLyrics(lyrics);
         }
-        // Navigate to Editor with scraped lyrics
-        navigation.navigate('Editor', { scrapedLyrics: lyrics });
+        navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl });
       }
     } catch (e) {
       // ignore parse errors

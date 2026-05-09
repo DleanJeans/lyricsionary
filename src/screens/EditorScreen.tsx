@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   FlatList,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -27,6 +28,16 @@ import {
 } from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 
+const getFaviconUrl = (sourceUrl: string): string | null => {
+  if (!sourceUrl) return null;
+  try {
+    const { hostname } = new URL(sourceUrl);
+    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+  } catch {
+    return null;
+  }
+};
+
 export default function EditorScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -44,6 +55,7 @@ export default function EditorScreen() {
   const [songSourceUrl, setSongSourceUrl] = useState('');
   const [translations, setTranslations] = useState<{ language: string; lyrics: string; sourceUrl?: string }[]>([]);
   const [activeTab, setActiveTab] = useState(0);
+  const [showSourceUrl, setShowSourceUrl] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].name);
 
@@ -65,6 +77,17 @@ export default function EditorScreen() {
       navigation.setParams({ scrapedLyrics: undefined });
     }
   }, [route.params?.scrapedLyrics]);
+
+  // Handle scraped source URL from Web screen
+  useEffect(() => {
+    const url = route.params?.scrapedSourceUrl as string | undefined;
+    if (url) {
+      setSongSourceUrl(url);
+      setActiveTab(0);
+      setShowSourceUrl(true);
+      navigation.setParams({ scrapedSourceUrl: undefined });
+    }
+  }, [route.params?.scrapedSourceUrl]);
 
   const isEditMode = !!editSong;
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
@@ -235,16 +258,36 @@ export default function EditorScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 0 && styles.tabActive]}
-          onPress={() => setActiveTab(0)}
+          onPress={() => {
+            if (activeTab === 0) {
+              setShowSourceUrl(!showSourceUrl);
+            } else {
+              setActiveTab(0);
+              setShowSourceUrl(true);
+            }
+          }}
         >
+          {getFaviconUrl(songSourceUrl) && (
+            <Image source={{ uri: getFaviconUrl(songSourceUrl)! }} style={styles.tabFavicon} />
+          )}
           <Text style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}>Original</Text>
         </TouchableOpacity>
         {translations.map((t, i) => (
           <TouchableOpacity
             key={t.language}
             style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
-            onPress={() => setActiveTab(i + 1)}
+            onPress={() => {
+              if (activeTab === i + 1) {
+                setShowSourceUrl(!showSourceUrl);
+              } else {
+                setActiveTab(i + 1);
+                setShowSourceUrl(true);
+              }
+            }}
           >
+            {getFaviconUrl(t.sourceUrl ?? '') && (
+              <Image source={{ uri: getFaviconUrl(t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
+            )}
             <Text style={[styles.tabText, activeTab === i + 1 && styles.tabTextActive]}>{t.language}</Text>
           </TouchableOpacity>
         ))}
@@ -253,18 +296,24 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
-      <View style={styles.inputRow}>
-        <Ionicons name="link-outline" size={20} color={Colors.textSecondary} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Source URL (optional)"
-          placeholderTextColor={Colors.textMuted}
-          value={currentSourceUrl}
-          onChangeText={setCurrentSourceUrl}
-          autoCapitalize="none"
-          keyboardType="url"
-        />
-      </View>
+      {showSourceUrl && (
+        <View style={styles.inputRow}>
+          {getFaviconUrl(currentSourceUrl) ? (
+            <Image source={{ uri: getFaviconUrl(currentSourceUrl)! }} style={styles.sourceUrlIcon} />
+          ) : (
+            <Ionicons name="link-outline" size={20} color={Colors.textSecondary} />
+          )}
+          <TextInput
+            style={styles.textInput}
+            placeholder="Source URL (optional)"
+            placeholderTextColor={Colors.textMuted}
+            value={currentSourceUrl}
+            onChangeText={setCurrentSourceUrl}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+        </View>
+      )}
       {isWide && (
         <View style={styles.actions}>
           {currentLyrics.split('\n').length === 0 ? (
@@ -508,11 +557,24 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: Colors.surface,
     marginRight: 8,
+  },
+  tabFavicon: {
+    width: 14,
+    height: 14,
+    borderRadius: 2,
+  },
+  sourceUrlIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
   },
   tabActive: {
     backgroundColor: Colors.primary,

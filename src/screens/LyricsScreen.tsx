@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -17,6 +18,8 @@ import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
+import { getFaviconUrl } from '../utils/getFaviconUrl';
+
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
@@ -59,7 +62,12 @@ export default function LyricsScreen() {
       activeOpacity={0.7}
     >
       <View style={styles.cardLeft}>
+        <View style={styles.songNameRow}>
         <Text style={styles.songName} numberOfLines={1}>{item.songName}</Text>
+        {getFaviconUrl(item.sourceUrl ?? '') && (
+          <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
+        )}
+      </View>
         <Text style={styles.artistName} numberOfLines={1}>{item.artistName || 'Unknown Artist'}</Text>
         <View style={styles.meta}>
           <Text style={styles.metaText}>{getWordCount(item)} words</Text>
@@ -155,10 +163,21 @@ const styles = StyleSheet.create({
   cardLeft: {
     flex: 1,
   },
+  songNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   songName: {
+    flexShrink: 1,
     fontSize: 17,
     fontWeight: '600',
     color: Colors.text,
+  },
+  sourceFavicon: {
+    width: 14,
+    height: 14,
+    borderRadius: 2,
   },
   artistName: {
     fontSize: 14,

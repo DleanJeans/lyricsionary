@@ -7,21 +7,13 @@ import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
+import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
 import DrawerButton from '../components/DrawerButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LYRICS_DOMAINS = ['genius.com', 'musixmatch.com', 'lyricstranslate.com'];
 
-const getFaviconUrl = (url: string): string | null => {
-  if (!url) return null;
-  try {
-    const { hostname } = new URL(url);
-    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-  } catch {
-    return null;
-  }
-};
 
 export default function WebScreen() {
   const navigation = useNavigation<any>();

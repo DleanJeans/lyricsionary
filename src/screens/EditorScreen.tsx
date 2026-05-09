@@ -21,6 +21,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import { getFaviconUrl } from '../utils/getFaviconUrl';
 import {
   hasNotificationPermission,
   requestNotificationPermission,
@@ -29,15 +30,6 @@ import {
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
 
-const getFaviconUrl = (sourceUrl: string): string | null => {
-  if (!sourceUrl) return null;
-  try {
-    const { hostname } = new URL(sourceUrl);
-    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-  } catch {
-    return null;
-  }
-};
 
 export default function EditorScreen() {
   const navigation = useNavigation<any>();

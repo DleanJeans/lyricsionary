@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -24,6 +25,16 @@ export default function LyricsScreen() {
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
   const [songToDelete, setSongToDelete] = useState<Song | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredSongs = searchQuery.trim()
+    ? songs.filter(
+        (s) =>
+          s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.artistName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : songs;
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
@@ -48,6 +59,11 @@ export default function LyricsScreen() {
   const getWordCount = (song: Song) => {
     const words = song.originalLyrics.split(/\s+/).filter(Boolean);
     return words.length;
+  };
+
+  const toggleSearch = () => {
+    if (showSearch) setSearchQuery('');
+    setShowSearch((v) => !v);
   };
 
   const renderSong = ({ item }: { item: Song }) => (
@@ -78,18 +94,44 @@ export default function LyricsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Saved Lyrics</Text>
+        <Text style={styles.title}>Saved Songs</Text>
+        <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
+          <Ionicons
+            name={showSearch ? 'close' : 'search'}
+            size={22}
+            color={Colors.textMuted}
+          />
+        </TouchableOpacity>
       </View>
-      {songs.length === 0 ? (
+      {showSearch && (
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by title or artist..."
+          placeholderTextColor={Colors.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoFocus
+        />
+      )}
+      {filteredSongs.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="library-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>No saved lyrics yet.{'\n'}Go to Editor to add some!</Text>
+          {songs.length === 0 ? (
+            <>
+              <Ionicons name="library-outline" size={64} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No saved songs yet.{'\n'}Go to Editor to add some!</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="search-outline" size={64} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No songs match your search.</Text>
+            </>
+          )}
         </View>
       ) : (
         <FlatList
           key={numColumns}
           numColumns={numColumns}
-          data={songs}
+          data={filteredSongs}
           keyExtractor={(item) => item.id}
           renderItem={renderSong}
           columnWrapperStyle={isWide ? styles.row : undefined}
@@ -127,6 +169,20 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
+  },
+  searchButton: {
+    padding: 4,
+  },
+  searchInput: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    color: Colors.text,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 16,
   },
   list: {
     paddingBottom: 40,

@@ -47,7 +47,11 @@ export default function EditorScreen() {
 
   const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
 
-  const editSongId = route.params?.songId as string | undefined;
+  const paramSongId = route.params?.songId as string | undefined;
+  const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
+  useEffect(() => {
+    if (paramSongId !== undefined) setEditSongId(paramSongId);
+  }, [paramSongId]);
   const editSong = editSongId ? songs.find((s) => s.id === editSongId) : null;
 
   const [songName, setSongName] = useState('');
@@ -69,6 +73,7 @@ export default function EditorScreen() {
       setOriginalLyrics(editSong.originalLyrics);
       setSongSourceUrl(editSong.sourceUrl ?? '');
       setTranslations(editSong.translations.map((t) => ({ ...t })));
+      setPendingSourceUrls({});
       const titles: Record<number, string> = {};
       if (editSong.sourceUrlTitle) titles[0] = editSong.sourceUrlTitle;
       editSong.translations.forEach((t, i) => {
@@ -159,12 +164,16 @@ export default function EditorScreen() {
   };
 
   const handleClear = () => {
+    setSongName('');
+    setArtistName('');
     setOriginalLyrics('');
     setSongSourceUrl('');
     setTranslations([]);
     setActiveTab(0);
     setPendingSourceUrls({});
     setPendingPageTitles({});
+    setEditSongId(undefined);
+    navigation.setParams({ songId: undefined });
   };
 
   const handleGoogleSearch = () => {

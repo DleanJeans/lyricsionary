@@ -27,6 +27,7 @@ import {
   getCurrentlyPlayingMedia,
 } from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
+import { Translation } from '../types';
 
 const getFaviconUrl = (sourceUrl: string): string | null => {
   if (!sourceUrl) return null;
@@ -53,7 +54,7 @@ export default function EditorScreen() {
   const [artistName, setArtistName] = useState('');
   const [originalLyrics, setOriginalLyrics] = useState('');
   const [songSourceUrl, setSongSourceUrl] = useState('');
-  const [translations, setTranslations] = useState<{ language: string; lyrics: string; sourceUrl?: string }[]>([]);
+  const [translations, setTranslations] = useState<Translation[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [showSourceUrl, setShowSourceUrl] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -73,8 +74,18 @@ export default function EditorScreen() {
   useEffect(() => {
     const scraped = route.params?.scrapedLyrics as string | undefined;
     if (scraped) {
-      setOriginalLyrics(scraped);
-      navigation.setParams({ scrapedLyrics: undefined });
+      const targetTab = (route.params?.scrapedTargetTab as number | undefined) ?? 0;
+      if (targetTab === 0) {
+        setOriginalLyrics(scraped);
+      } else {
+        setTranslations((prev) => {
+          const updated = [...prev];
+          if (updated[targetTab - 1]) updated[targetTab - 1] = { ...updated[targetTab - 1], lyrics: scraped };
+          return updated;
+        });
+      }
+      setActiveTab(targetTab);
+      navigation.setParams({ scrapedLyrics: undefined, scrapedTargetTab: undefined });
     }
   }, [route.params?.scrapedLyrics]);
 
@@ -82,8 +93,17 @@ export default function EditorScreen() {
   useEffect(() => {
     const url = route.params?.scrapedSourceUrl as string | undefined;
     if (url) {
-      setSongSourceUrl(url);
-      setActiveTab(0);
+      const targetTab = (route.params?.scrapedTargetTab as number | undefined) ?? 0;
+      if (targetTab === 0) {
+        setSongSourceUrl(url);
+      } else {
+        setTranslations((prev) => {
+          const updated = [...prev];
+          if (updated[targetTab - 1]) updated[targetTab - 1] = { ...updated[targetTab - 1], sourceUrl: url };
+          return updated;
+        });
+      }
+      setActiveTab(targetTab);
       setShowSourceUrl(true);
       navigation.setParams({ scrapedSourceUrl: undefined });
     }
@@ -154,7 +174,7 @@ export default function EditorScreen() {
   const handleGoogleSearch = () => {
     const query = encodeURIComponent(`${songName} ${artistName} lyrics`);
     setWebUrl(`${GOOGLE_SEARCH_URL}&q=${query}`);
-    navigation.navigate('Web');
+    navigation.navigate('Web', { targetTab: activeTab });
   };
 
   const handleAddTranslation = () => {
@@ -245,7 +265,7 @@ export default function EditorScreen() {
           onChangeText={setArtistName}
         />
       </View>
-      {!originalLyrics && (
+      {!currentLyrics && (
         <TouchableOpacity
           style={[styles.searchButton, searchDisabled && styles.disabled]}
           disabled={searchDisabled}

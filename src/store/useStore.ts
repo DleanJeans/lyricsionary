@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Song, WordEntry } from '../types';
+import { Song, Translation, WordEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
@@ -17,7 +17,7 @@ interface AppState {
 
   // Song actions
   loadSongs: () => Promise<void>;
-  saveSong: (songName: string, artistName: string, originalLyrics: string, translations: { language: string; lyrics: string; sourceUrl?: string }[], sourceUrl?: string) => Promise<Song>;
+  saveSong: (songName: string, artistName: string, originalLyrics: string, translations: Translation[], sourceUrl?: string) => Promise<Song>;
   updateSong: (id: string, updates: Partial<Omit<Song, 'id' | 'createdAt'>>) => Promise<void>;
   deleteSong: (id: string) => Promise<void>;
   setCurrentSongId: (id: string | null) => void;

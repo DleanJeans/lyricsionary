@@ -17,7 +17,6 @@ import { Colors } from '../constants/theme';
 import { LANGUAGES } from '../constants/languages';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
-import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import {
@@ -181,7 +180,6 @@ export default function EditorScreen() {
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
       <View style={styles.header}>
-        <DrawerButton />
         <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
         <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
           <Ionicons name="musical-note" size={22} color={Colors.primary} />
@@ -427,11 +425,15 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 16,
   },
   title: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,

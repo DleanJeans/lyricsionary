@@ -9,7 +9,6 @@ import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
-import DrawerButton from '../components/DrawerButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LYRICS_DOMAINS = ['genius.com', 'musixmatch.com', 'lyricstranslate.com'];
@@ -117,7 +116,6 @@ export default function WebScreen() {
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
       <View style={[styles.addressBar, { paddingTop: insets.top || 6 }]}>
-        <DrawerButton />
         {showUrlInput ? (
           <>
             <TextInput

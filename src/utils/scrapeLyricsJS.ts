@@ -38,10 +38,9 @@ export const scrapeLyricsJS = `
 
     // Musixmatch
     if (url.includes('musixmatch.com')) {
-      const musix = document.querySelectorAll('.lyrics__content__ok, .mxm-lyrics__content');
-      if (musix.length > 0) {
-        musix.forEach(el => { lyrics += el.innerText + '\\n'; });
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: lyrics }));
+      const musix = document.querySelector('h2[style="color: var(--mxm-contentSecondary);"]:not([data-testid]) + div')?.innerText;
+      if (musix && musix.length > 0) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: musix }));
         return;
       }
     }
@@ -57,7 +56,7 @@ export const scrapeLyricsJS = `
     }
 
     // Generic fallback
-    consoleLog('Using fallback - scraping entire page text');
+    consoleLog(window.location.hostname ,'Using fallback - scraping entire page text');
     const body = document.body.innerText;
     window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text: body.substring(0, 5000) }));
   })();

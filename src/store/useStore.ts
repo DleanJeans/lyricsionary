@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Song, WordEntry } from '../types';
+import { Song, Translation, WordEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
@@ -12,18 +12,20 @@ interface AppState {
   words: WordEntry[];
   currentSongId: string | null;
   webUrl: string;
+  scrapeTargetTab: number;
   fontSize: number;
   showTranslations: boolean;
 
   // Song actions
   loadSongs: () => Promise<void>;
-  saveSong: (songName: string, artistName: string, originalLyrics: string, translations: { language: string; lyrics: string }[]) => Promise<Song>;
+  saveSong: (songName: string, artistName: string, originalLyrics: string, translations: Translation[], sourceUrl?: string, sourceUrlTitle?: string) => Promise<Song>;
   updateSong: (id: string, updates: Partial<Omit<Song, 'id' | 'createdAt'>>) => Promise<void>;
   deleteSong: (id: string) => Promise<void>;
   setCurrentSongId: (id: string | null) => void;
 
   // Web actions
   setWebUrl: (url: string) => void;
+  setScrapeTargetTab: (tab: number) => void;
 
   // Learn actions
   setFontSize: (size: number) => void;
@@ -40,6 +42,7 @@ export const useStore = create<AppState>((set, get) => ({
   words: [],
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
+  scrapeTargetTab: 0,
   fontSize: 18,
   showTranslations: true,
 
@@ -52,12 +55,14 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  saveSong: async (songName, artistName, originalLyrics, translations) => {
+  saveSong: async (songName, artistName, originalLyrics, translations, sourceUrl, sourceUrlTitle) => {
     const song: Song = {
       id: uuidv4(),
       songName,
       artistName,
       originalLyrics,
+      sourceUrl,
+      sourceUrlTitle,
       translations,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -86,6 +91,7 @@ export const useStore = create<AppState>((set, get) => ({
   setCurrentSongId: (id) => set({ currentSongId: id }),
 
   setWebUrl: (url) => set({ webUrl: url }),
+  setScrapeTargetTab: (tab) => set({ scrapeTargetTab: tab }),
 
   setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
 

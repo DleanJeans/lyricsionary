@@ -49,6 +49,7 @@ export default function AppNavigator() {
         drawerStyle: {
           width: 280,
         },
+        swipeEdgeWidth: width,
       }}
     >
       <Drawer.Screen name="Tabs" component={TabNavigator} />

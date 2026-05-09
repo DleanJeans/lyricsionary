@@ -12,7 +12,6 @@ import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
 import { WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
-import DrawerButton from '../components/DrawerButton';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
@@ -72,7 +71,6 @@ export default function WordsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        <DrawerButton />
         <Text style={styles.title}>Saved Words</Text>
       </View>
       {sortedWords.length === 0 ? (

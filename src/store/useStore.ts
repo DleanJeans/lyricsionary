@@ -18,7 +18,7 @@ interface AppState {
 
   // Song actions
   loadSongs: () => Promise<void>;
-  saveSong: (songName: string, artistName: string, originalLyrics: string, translations: Translation[], sourceUrl?: string) => Promise<Song>;
+  saveSong: (songName: string, artistName: string, originalLyrics: string, translations: Translation[], sourceUrl?: string, sourceUrlTitle?: string) => Promise<Song>;
   updateSong: (id: string, updates: Partial<Omit<Song, 'id' | 'createdAt'>>) => Promise<void>;
   deleteSong: (id: string) => Promise<void>;
   setCurrentSongId: (id: string | null) => void;
@@ -55,13 +55,14 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  saveSong: async (songName, artistName, originalLyrics, translations, sourceUrl) => {
+  saveSong: async (songName, artistName, originalLyrics, translations, sourceUrl, sourceUrlTitle) => {
     const song: Song = {
       id: uuidv4(),
       songName,
       artistName,
       originalLyrics,
       sourceUrl,
+      sourceUrlTitle,
       translations,
       createdAt: Date.now(),
       updatedAt: Date.now(),

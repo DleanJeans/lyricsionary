@@ -59,6 +59,8 @@ export default function EditorScreen() {
   const [showSourceUrl, setShowSourceUrl] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].name);
+  const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
+  const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (editSong) {
@@ -67,6 +69,12 @@ export default function EditorScreen() {
       setOriginalLyrics(editSong.originalLyrics);
       setSongSourceUrl(editSong.sourceUrl ?? '');
       setTranslations(editSong.translations.map((t) => ({ ...t })));
+      const titles: Record<number, string> = {};
+      if (editSong.sourceUrlTitle) titles[0] = editSong.sourceUrlTitle;
+      editSong.translations.forEach((t, i) => {
+        if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
+      });
+      setPendingPageTitles(titles);
     }
   }, [editSong?.id]);
 
@@ -81,19 +89,17 @@ export default function EditorScreen() {
     const title = route.params?.scrapedPageTitle as string | undefined;
     if (targetTab === 0) {
       setOriginalLyrics(scraped);
-      if (url) setSongSourceUrl(url);
     } else {
       setTranslations((prev) => {
         const updated = [...prev];
-        if (updated[targetTab - 1]) {
-          updated[targetTab - 1] = { ...updated[targetTab - 1], lyrics: scraped, ...(url ? { sourceUrl: url } : {}) };
-        }
+        if (updated[targetTab - 1]) updated[targetTab - 1] = { ...updated[targetTab - 1], lyrics: scraped };
         return updated;
       });
     }
+    if (url) setPendingSourceUrls((prev) => ({ ...prev, [targetTab]: url }));
+    if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
     setActiveTab(targetTab);
     if (url) setShowSourceUrl(true);
-    if (title !== undefined) setPageTitle(title);
     navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined });
   }, [route.params?.scrapedLyrics]);
 
@@ -112,9 +118,8 @@ export default function EditorScreen() {
     }
   };
 
-  const currentSourceUrl = activeTab === 0 ? songSourceUrl : translations[activeTab - 1]?.sourceUrl ?? '';
-
-  const [pageTitle, setPageTitle] = useState('');
+  const currentSourceUrl = pendingSourceUrls[activeTab] ?? (activeTab === 0 ? songSourceUrl : translations[activeTab - 1]?.sourceUrl ?? '');
+  const pageTitle = pendingPageTitles[activeTab] ?? '';
 
   const handlePaste = async () => {
     const text = await Clipboard.getStringAsync();
@@ -126,19 +131,27 @@ export default function EditorScreen() {
       Alert.alert('Missing Info', 'Please enter a song name.');
       return;
     }
+    const resolvedSourceUrl = (pendingSourceUrls[0] ?? songSourceUrl).trim() || undefined;
+    const resolvedSourceUrlTitle = resolvedSourceUrl ? (pendingPageTitles[0] || undefined) : undefined;
+    const resolvedTranslations = translations.map((t, i) =>
+      pendingSourceUrls[i + 1] !== undefined
+        ? { ...t, sourceUrl: pendingSourceUrls[i + 1], sourceUrlTitle: pendingPageTitles[i + 1] || undefined }
+        : t
+    );
     if (isEditMode && editSong) {
       await updateSong(editSong.id, {
         songName: songName.trim(),
         artistName: artistName.trim(),
         originalLyrics,
-        sourceUrl: songSourceUrl.trim() || undefined,
-        translations,
+        sourceUrl: resolvedSourceUrl,
+        sourceUrlTitle: resolvedSourceUrlTitle,
+        translations: resolvedTranslations,
       });
       setCurrentSongId(editSong.id);
       handleClear();
       navigation.navigate('Learn');
     } else {
-      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, translations, songSourceUrl.trim() || undefined);
+      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
       setCurrentSongId(song.id);
       handleClear();
       navigation.navigate('Learn');
@@ -150,6 +163,8 @@ export default function EditorScreen() {
     setSongSourceUrl('');
     setTranslations([]);
     setActiveTab(0);
+    setPendingSourceUrls({});
+    setPendingPageTitles({});
   };
 
   const handleGoogleSearch = () => {
@@ -268,8 +283,8 @@ export default function EditorScreen() {
             }
           }}
         >
-          {getFaviconUrl(songSourceUrl) && (
-            <Image source={{ uri: getFaviconUrl(songSourceUrl)! }} style={styles.tabFavicon} />
+          {getFaviconUrl(pendingSourceUrls[0] ?? songSourceUrl) && (
+            <Image source={{ uri: getFaviconUrl(pendingSourceUrls[0] ?? songSourceUrl)! }} style={styles.tabFavicon} />
           )}
           <Text style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}>Original</Text>
         </TouchableOpacity>
@@ -286,8 +301,8 @@ export default function EditorScreen() {
               }
             }}
           >
-            {getFaviconUrl(t.sourceUrl ?? '') && (
-              <Image source={{ uri: getFaviconUrl(t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
+            {getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '') && (
+              <Image source={{ uri: getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
             )}
             <Text style={[styles.tabText, activeTab === i + 1 && styles.tabTextActive]}>{t.language}</Text>
           </TouchableOpacity>

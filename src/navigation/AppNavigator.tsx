@@ -46,6 +46,7 @@ export default function AppNavigator() {
       screenOptions={{
         headerShown: false,
         drawerType: 'front',
+        drawerPosition: 'right',
         drawerStyle: {
           width: 280,
         },

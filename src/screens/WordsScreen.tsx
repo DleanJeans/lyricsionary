@@ -115,9 +115,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: 'center',
     fontSize: 26,
     fontWeight: '700',

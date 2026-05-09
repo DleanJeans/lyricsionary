@@ -12,6 +12,7 @@ interface AppState {
   words: WordEntry[];
   currentSongId: string | null;
   webUrl: string;
+  scrapeTargetTab: number;
   fontSize: number;
   showTranslations: boolean;
 
@@ -24,6 +25,7 @@ interface AppState {
 
   // Web actions
   setWebUrl: (url: string) => void;
+  setScrapeTargetTab: (tab: number) => void;
 
   // Learn actions
   setFontSize: (size: number) => void;
@@ -40,6 +42,7 @@ export const useStore = create<AppState>((set, get) => ({
   words: [],
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
+  scrapeTargetTab: 0,
   fontSize: 18,
   showTranslations: true,
 
@@ -87,6 +90,7 @@ export const useStore = create<AppState>((set, get) => ({
   setCurrentSongId: (id) => set({ currentSongId: id }),
 
   setWebUrl: (url) => set({ webUrl: url }),
+  setScrapeTargetTab: (tab) => set({ scrapeTargetTab: tab }),
 
   setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
 

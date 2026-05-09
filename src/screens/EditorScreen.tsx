@@ -45,7 +45,7 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl } = useStore();
+  const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
 
   const editSongId = route.params?.songId as string | undefined;
   const editSong = editSongId ? songs.find((s) => s.id === editSongId) : null;
@@ -70,44 +70,32 @@ export default function EditorScreen() {
     }
   }, [editSong?.id]);
 
-  // Handle scraped lyrics from Web screen
+  useEffect(() => { setScrapeTargetTab(activeTab); }, [activeTab]);
+
+  // Handle all scraped data from Web screen in one effect to avoid param-clearing races
   useEffect(() => {
     const scraped = route.params?.scrapedLyrics as string | undefined;
-    if (scraped) {
-      const targetTab = (route.params?.scrapedTargetTab as number | undefined) ?? 0;
-      if (targetTab === 0) {
-        setOriginalLyrics(scraped);
-      } else {
-        setTranslations((prev) => {
-          const updated = [...prev];
-          if (updated[targetTab - 1]) updated[targetTab - 1] = { ...updated[targetTab - 1], lyrics: scraped };
-          return updated;
-        });
-      }
-      setActiveTab(targetTab);
-      navigation.setParams({ scrapedLyrics: undefined, scrapedTargetTab: undefined });
-    }
-  }, [route.params?.scrapedLyrics]);
-
-  // Handle scraped source URL from Web screen
-  useEffect(() => {
+    if (!scraped) return;
+    const targetTab = (route.params?.scrapedTargetTab as number | undefined) ?? 0;
     const url = route.params?.scrapedSourceUrl as string | undefined;
-    if (url) {
-      const targetTab = (route.params?.scrapedTargetTab as number | undefined) ?? 0;
-      if (targetTab === 0) {
-        setSongSourceUrl(url);
-      } else {
-        setTranslations((prev) => {
-          const updated = [...prev];
-          if (updated[targetTab - 1]) updated[targetTab - 1] = { ...updated[targetTab - 1], sourceUrl: url };
-          return updated;
-        });
-      }
-      setActiveTab(targetTab);
-      setShowSourceUrl(true);
-      navigation.setParams({ scrapedSourceUrl: undefined });
+    const title = route.params?.scrapedPageTitle as string | undefined;
+    if (targetTab === 0) {
+      setOriginalLyrics(scraped);
+      if (url) setSongSourceUrl(url);
+    } else {
+      setTranslations((prev) => {
+        const updated = [...prev];
+        if (updated[targetTab - 1]) {
+          updated[targetTab - 1] = { ...updated[targetTab - 1], lyrics: scraped, ...(url ? { sourceUrl: url } : {}) };
+        }
+        return updated;
+      });
     }
-  }, [route.params?.scrapedSourceUrl]);
+    setActiveTab(targetTab);
+    if (url) setShowSourceUrl(true);
+    if (title !== undefined) setPageTitle(title);
+    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined });
+  }, [route.params?.scrapedLyrics]);
 
   const isEditMode = !!editSong;
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
@@ -127,13 +115,6 @@ export default function EditorScreen() {
   const currentSourceUrl = activeTab === 0 ? songSourceUrl : translations[activeTab - 1]?.sourceUrl ?? '';
 
   const [pageTitle, setPageTitle] = useState('');
-  useEffect(() => {
-    const title = route.params?.scrapedPageTitle as string | undefined;
-    if (title !== undefined) {
-      setPageTitle(title);
-      navigation.setParams({ scrapedPageTitle: undefined });
-    }
-  }, [route.params?.scrapedPageTitle]);
 
   const handlePaste = async () => {
     const text = await Clipboard.getStringAsync();
@@ -174,7 +155,7 @@ export default function EditorScreen() {
   const handleGoogleSearch = () => {
     const query = encodeURIComponent(`${songName} ${artistName} lyrics`);
     setWebUrl(`${GOOGLE_SEARCH_URL}&q=${query}`);
-    navigation.navigate('Web', { targetTab: activeTab });
+    navigation.navigate('Web');
   };
 
   const handleAddTranslation = () => {

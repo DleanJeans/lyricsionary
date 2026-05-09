@@ -4,7 +4,7 @@ import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
@@ -25,8 +25,7 @@ const getFaviconUrl = (url: string): string | null => {
 
 export default function WebScreen() {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const { webUrl, setWebUrl } = useStore();
+  const { webUrl, setWebUrl, scrapeTargetTab } = useStore();
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
   const insets = useSafeAreaInsets();
@@ -40,10 +39,6 @@ export default function WebScreen() {
   const [canGoBack, setCanGoBack] = useState(false);
   const backPressedOnce = useRef(false);
   const timeoutRef = useRef<number | null>(null);
-  const targetTabRef = useRef<number>(0);
-  useEffect(() => {
-    targetTabRef.current = route.params?.targetTab ?? 0;
-  }, [route.params?.targetTab]);
 
   const handleNavigate = () => {
     let url = addressText.trim();
@@ -78,7 +73,7 @@ export default function WebScreen() {
         if (currentUrl.includes('genius.com')) {
           lyrics = cleanGeniusLyrics(lyrics);
         }
-        navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: targetTabRef.current });
+        navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: scrapeTargetTab });
       }
     } catch (e) {
       // ignore parse errors

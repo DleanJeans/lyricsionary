@@ -105,15 +105,15 @@ export default function EditorScreen() {
   };
 
   const currentSourceUrl = activeTab === 0 ? songSourceUrl : translations[activeTab - 1]?.sourceUrl ?? '';
-  const setCurrentSourceUrl = (url: string) => {
-    if (activeTab === 0) {
-      setSongSourceUrl(url);
-    } else {
-      const updated = [...translations];
-      updated[activeTab - 1] = { ...updated[activeTab - 1], sourceUrl: url };
-      setTranslations(updated);
+
+  const [pageTitle, setPageTitle] = useState('');
+  useEffect(() => {
+    const title = route.params?.scrapedPageTitle as string | undefined;
+    if (title !== undefined) {
+      setPageTitle(title);
+      navigation.setParams({ scrapedPageTitle: undefined });
     }
-  };
+  }, [route.params?.scrapedPageTitle]);
 
   const handlePaste = async () => {
     const text = await Clipboard.getStringAsync();
@@ -296,23 +296,15 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
-      {showSourceUrl && (
-        <View style={styles.inputRow}>
+      {showSourceUrl && !!currentSourceUrl && (
+        <TouchableOpacity style={styles.sourceUrlRow} onPress={() => { setWebUrl(currentSourceUrl); navigation.navigate('Web'); }}>
           {getFaviconUrl(currentSourceUrl) ? (
             <Image source={{ uri: getFaviconUrl(currentSourceUrl)! }} style={styles.sourceUrlIcon} />
           ) : (
             <Ionicons name="link-outline" size={20} color={Colors.textSecondary} />
           )}
-          <TextInput
-            style={styles.textInput}
-            placeholder="Source URL (optional)"
-            placeholderTextColor={Colors.textMuted}
-            value={currentSourceUrl}
-            onChangeText={setCurrentSourceUrl}
-            autoCapitalize="none"
-            keyboardType="url"
-          />
-        </View>
+          <Text style={styles.sourceUrlText} numberOfLines={1}>{pageTitle || currentSourceUrl}</Text>
+        </TouchableOpacity>
       )}
       {isWide && (
         <View style={styles.actions}>
@@ -571,10 +563,22 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 2,
   },
+  sourceUrlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 0,
+    marginBottom: 10,
+    gap: 10,
+  },
   sourceUrlIcon: {
     width: 20,
     height: 20,
     borderRadius: 4,
+  },
+  sourceUrlText: {
+    flex: 1,
+    color: Colors.primary,
+    fontSize: 14,
   },
   tabActive: {
     backgroundColor: Colors.primary,

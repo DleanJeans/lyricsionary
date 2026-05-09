@@ -73,7 +73,7 @@ export default function WebScreen() {
         if (currentUrl.includes('genius.com')) {
           lyrics = cleanGeniusLyrics(lyrics);
         }
-        navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl });
+        navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '' });
       }
     } catch (e) {
       // ignore parse errors

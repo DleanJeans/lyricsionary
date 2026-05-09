@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -17,6 +18,54 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
+import { getFaviconUrl } from '../utils/getFaviconUrl';
+
+function HighlightedText({
+  text,
+  query,
+  style,
+  numberOfLines,
+}: {
+  text: string;
+  query: string;
+  style: any;
+  numberOfLines?: number;
+}) {
+  if (!query.trim()) {
+    return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
+  }
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const parts: { text: string; highlight: boolean }[] = [];
+  let lastIndex = 0;
+  let index = lowerText.indexOf(lowerQuery);
+
+  while (index !== -1) {
+    if (index > lastIndex) {
+      parts.push({ text: text.slice(lastIndex, index), highlight: false });
+    }
+    parts.push({ text: text.slice(index, index + query.length), highlight: true });
+    lastIndex = index + query.length;
+    index = lowerText.indexOf(lowerQuery, lastIndex);
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ text: text.slice(lastIndex), highlight: false });
+  }
+
+  return (
+    <Text style={style} numberOfLines={numberOfLines}>
+      {parts.map((part, i) =>
+        part.highlight ? (
+          <Text key={i} style={styles.highlight}>{part.text}</Text>
+        ) : (
+          <Text key={i}>{part.text}</Text>
+        )
+      )}
+    </Text>
+  );
+}
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
@@ -74,8 +123,23 @@ export default function LyricsScreen() {
       activeOpacity={0.7}
     >
       <View style={styles.cardLeft}>
-        <Text style={styles.songName} numberOfLines={1}>{item.songName}</Text>
-        <Text style={styles.artistName} numberOfLines={1}>{item.artistName || 'Unknown Artist'}</Text>
+        <View style={styles.songNameRow}>
+          <HighlightedText
+            text={item.songName}
+            query={searchQuery}
+            style={styles.songName}
+            numberOfLines={1}
+          />
+          {getFaviconUrl(item.sourceUrl ?? '') && (
+            <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
+          )}
+        </View>
+        <HighlightedText
+          text={item.artistName || 'Unknown Artist'}
+          query={searchQuery}
+          style={styles.artistName}
+          numberOfLines={1}
+        />
         <View style={styles.meta}>
           <Text style={styles.metaText}>{getWordCount(item)} words</Text>
           <View style={styles.languages}>
@@ -94,7 +158,18 @@ export default function LyricsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Saved Songs</Text>
+        {showSearch ? (
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by title or artist..."
+            placeholderTextColor={Colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+        ) : (
+          <Text style={styles.title}>Saved Songs</Text>
+        )}
         <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
           <Ionicons
             name={showSearch ? 'close' : 'search'}
@@ -103,16 +178,6 @@ export default function LyricsScreen() {
           />
         </TouchableOpacity>
       </View>
-      {showSearch && (
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by title or artist..."
-          placeholderTextColor={Colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoFocus
-        />
-      )}
       {filteredSongs.length === 0 ? (
         <View style={styles.empty}>
           {songs.length === 0 ? (
@@ -174,6 +239,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   searchInput: {
+    flex: 1,
     backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
@@ -182,7 +248,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginBottom: 16,
+    marginRight: 8,
+  },
+  highlight: {
+    backgroundColor: '#F5C542',
+    color: '#1A1A1A',
   },
   list: {
     paddingBottom: 40,
@@ -207,10 +277,21 @@ const styles = StyleSheet.create({
   cardLeft: {
     flex: 1,
   },
+  songNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   songName: {
+    flexShrink: 1,
     fontSize: 17,
     fontWeight: '600',
     color: Colors.text,
+  },
+  sourceFavicon: {
+    width: 14,
+    height: 14,
+    borderRadius: 2,
   },
   artistName: {
     fontSize: 14,

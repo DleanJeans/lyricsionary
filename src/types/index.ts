@@ -3,6 +3,7 @@ export interface Song {
   songName: string;
   artistName: string;
   originalLyrics: string;
+  sourceUrl?: string;
   translations: Translation[];
   createdAt: number;
   updatedAt: number;
@@ -11,6 +12,7 @@ export interface Song {
 export interface Translation {
   language: string;
   lyrics: string;
+  sourceUrl?: string;
 }
 
 export interface WordEntry {

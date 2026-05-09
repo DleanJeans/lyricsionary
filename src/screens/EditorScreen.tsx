@@ -41,7 +41,8 @@ export default function EditorScreen() {
   const [songName, setSongName] = useState('');
   const [artistName, setArtistName] = useState('');
   const [originalLyrics, setOriginalLyrics] = useState('');
-  const [translations, setTranslations] = useState<{ language: string; lyrics: string }[]>([]);
+  const [songSourceUrl, setSongSourceUrl] = useState('');
+  const [translations, setTranslations] = useState<{ language: string; lyrics: string; sourceUrl?: string }[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].name);
@@ -51,6 +52,7 @@ export default function EditorScreen() {
       setSongName(editSong.songName);
       setArtistName(editSong.artistName);
       setOriginalLyrics(editSong.originalLyrics);
+      setSongSourceUrl(editSong.sourceUrl ?? '');
       setTranslations(editSong.translations.map((t) => ({ ...t })));
     }
   }, [editSong?.id]);
@@ -79,6 +81,17 @@ export default function EditorScreen() {
     }
   };
 
+  const currentSourceUrl = activeTab === 0 ? songSourceUrl : translations[activeTab - 1]?.sourceUrl ?? '';
+  const setCurrentSourceUrl = (url: string) => {
+    if (activeTab === 0) {
+      setSongSourceUrl(url);
+    } else {
+      const updated = [...translations];
+      updated[activeTab - 1] = { ...updated[activeTab - 1], sourceUrl: url };
+      setTranslations(updated);
+    }
+  };
+
   const handlePaste = async () => {
     const text = await Clipboard.getStringAsync();
     if (text) setCurrentLyrics(text);
@@ -94,13 +107,14 @@ export default function EditorScreen() {
         songName: songName.trim(),
         artistName: artistName.trim(),
         originalLyrics,
+        sourceUrl: songSourceUrl.trim() || undefined,
         translations,
       });
       setCurrentSongId(editSong.id);
       handleClear();
       navigation.navigate('Learn');
     } else {
-      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, translations);
+      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, translations, songSourceUrl.trim() || undefined);
       setCurrentSongId(song.id);
       handleClear();
       navigation.navigate('Learn');
@@ -109,6 +123,7 @@ export default function EditorScreen() {
 
   const handleClear = () => {
     setOriginalLyrics('');
+    setSongSourceUrl('');
     setTranslations([]);
     setActiveTab(0);
   };
@@ -238,6 +253,18 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
+      <View style={styles.inputRow}>
+        <Ionicons name="link-outline" size={20} color={Colors.textSecondary} />
+        <TextInput
+          style={styles.textInput}
+          placeholder="Source URL (optional)"
+          placeholderTextColor={Colors.textMuted}
+          value={currentSourceUrl}
+          onChangeText={setCurrentSourceUrl}
+          autoCapitalize="none"
+          keyboardType="url"
+        />
+      </View>
       {isWide && (
         <View style={styles.actions}>
           {currentLyrics.split('\n').length === 0 ? (

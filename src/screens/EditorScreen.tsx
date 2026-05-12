@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   FlatList,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -19,12 +20,15 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import { getFaviconUrl } from '../utils/getFaviconUrl';
 import {
   hasNotificationPermission,
   requestNotificationPermission,
   getCurrentlyPlayingMedia,
 } from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
+import { Translation } from '../types';
+
 
 export default function EditorScreen() {
   const navigation = useNavigation<any>();
@@ -32,35 +36,67 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl } = useStore();
+  const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
 
-  const editSongId = route.params?.songId as string | undefined;
+  const paramSongId = route.params?.songId as string | undefined;
+  const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
+  useEffect(() => {
+    if (paramSongId !== undefined) setEditSongId(paramSongId);
+  }, [paramSongId]);
   const editSong = editSongId ? songs.find((s) => s.id === editSongId) : null;
 
   const [songName, setSongName] = useState('');
   const [artistName, setArtistName] = useState('');
   const [originalLyrics, setOriginalLyrics] = useState('');
-  const [translations, setTranslations] = useState<{ language: string; lyrics: string }[]>([]);
+  const [songSourceUrl, setSongSourceUrl] = useState('');
+  const [translations, setTranslations] = useState<Translation[]>([]);
   const [activeTab, setActiveTab] = useState(0);
+  const [showSourceUrl, setShowSourceUrl] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].name);
+  const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
+  const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (editSong) {
       setSongName(editSong.songName);
       setArtistName(editSong.artistName);
       setOriginalLyrics(editSong.originalLyrics);
+      setSongSourceUrl(editSong.sourceUrl ?? '');
       setTranslations(editSong.translations.map((t) => ({ ...t })));
+      setPendingSourceUrls({});
+      const titles: Record<number, string> = {};
+      if (editSong.sourceUrlTitle) titles[0] = editSong.sourceUrlTitle;
+      editSong.translations.forEach((t, i) => {
+        if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
+      });
+      setPendingPageTitles(titles);
     }
   }, [editSong?.id]);
 
-  // Handle scraped lyrics from Web screen
+  useEffect(() => { setScrapeTargetTab(activeTab); }, [activeTab]);
+
+  // Handle all scraped data from Web screen in one effect to avoid param-clearing races
   useEffect(() => {
     const scraped = route.params?.scrapedLyrics as string | undefined;
-    if (scraped) {
+    if (!scraped) return;
+    const targetTab = (route.params?.scrapedTargetTab as number | undefined) ?? 0;
+    const url = route.params?.scrapedSourceUrl as string | undefined;
+    const title = route.params?.scrapedPageTitle as string | undefined;
+    if (targetTab === 0) {
       setOriginalLyrics(scraped);
-      navigation.setParams({ scrapedLyrics: undefined });
+    } else {
+      setTranslations((prev) => {
+        const updated = [...prev];
+        if (updated[targetTab - 1]) updated[targetTab - 1] = { ...updated[targetTab - 1], lyrics: scraped };
+        return updated;
+      });
     }
+    if (url) setPendingSourceUrls((prev) => ({ ...prev, [targetTab]: url }));
+    if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
+    setActiveTab(targetTab);
+    if (url) setShowSourceUrl(true);
+    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined });
   }, [route.params?.scrapedLyrics]);
 
   const isEditMode = !!editSong;
@@ -78,6 +114,9 @@ export default function EditorScreen() {
     }
   };
 
+  const currentSourceUrl = pendingSourceUrls[activeTab] ?? (activeTab === 0 ? songSourceUrl : translations[activeTab - 1]?.sourceUrl ?? '');
+  const pageTitle = pendingPageTitles[activeTab] ?? '';
+
   const handlePaste = async () => {
     const text = await Clipboard.getStringAsync();
     if (text) setCurrentLyrics(text);
@@ -88,18 +127,27 @@ export default function EditorScreen() {
       Alert.alert('Missing Info', 'Please enter a song name.');
       return;
     }
+    const resolvedSourceUrl = (pendingSourceUrls[0] ?? songSourceUrl).trim() || undefined;
+    const resolvedSourceUrlTitle = resolvedSourceUrl ? (pendingPageTitles[0] || undefined) : undefined;
+    const resolvedTranslations = translations.map((t, i) =>
+      pendingSourceUrls[i + 1] !== undefined
+        ? { ...t, sourceUrl: pendingSourceUrls[i + 1], sourceUrlTitle: pendingPageTitles[i + 1] || undefined }
+        : t
+    );
     if (isEditMode && editSong) {
       await updateSong(editSong.id, {
         songName: songName.trim(),
         artistName: artistName.trim(),
         originalLyrics,
-        translations,
+        sourceUrl: resolvedSourceUrl,
+        sourceUrlTitle: resolvedSourceUrlTitle,
+        translations: resolvedTranslations,
       });
       setCurrentSongId(editSong.id);
       handleClear();
       navigation.navigate('Learn');
     } else {
-      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, translations);
+      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
       setCurrentSongId(song.id);
       handleClear();
       navigation.navigate('Learn');
@@ -107,9 +155,16 @@ export default function EditorScreen() {
   };
 
   const handleClear = () => {
+    setSongName('');
+    setArtistName('');
     setOriginalLyrics('');
+    setSongSourceUrl('');
     setTranslations([]);
     setActiveTab(0);
+    setPendingSourceUrls({});
+    setPendingPageTitles({});
+    setEditSongId(undefined);
+    navigation.setParams({ songId: undefined });
   };
 
   const handleGoogleSearch = () => {
@@ -205,7 +260,7 @@ export default function EditorScreen() {
           onChangeText={setArtistName}
         />
       </View>
-      {!originalLyrics && (
+      {!currentLyrics && (
         <TouchableOpacity
           style={[styles.searchButton, searchDisabled && styles.disabled]}
           disabled={searchDisabled}
@@ -218,16 +273,36 @@ export default function EditorScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 0 && styles.tabActive]}
-          onPress={() => setActiveTab(0)}
+          onPress={() => {
+            if (activeTab === 0) {
+              setShowSourceUrl(!showSourceUrl);
+            } else {
+              setActiveTab(0);
+              setShowSourceUrl(true);
+            }
+          }}
         >
+          {getFaviconUrl(pendingSourceUrls[0] ?? songSourceUrl) && (
+            <Image source={{ uri: getFaviconUrl(pendingSourceUrls[0] ?? songSourceUrl)! }} style={styles.tabFavicon} />
+          )}
           <Text style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}>Original</Text>
         </TouchableOpacity>
         {translations.map((t, i) => (
           <TouchableOpacity
             key={t.language}
             style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
-            onPress={() => setActiveTab(i + 1)}
+            onPress={() => {
+              if (activeTab === i + 1) {
+                setShowSourceUrl(!showSourceUrl);
+              } else {
+                setActiveTab(i + 1);
+                setShowSourceUrl(true);
+              }
+            }}
           >
+            {getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '') && (
+              <Image source={{ uri: getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
+            )}
             <Text style={[styles.tabText, activeTab === i + 1 && styles.tabTextActive]}>{t.language}</Text>
           </TouchableOpacity>
         ))}
@@ -236,6 +311,16 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
+      {showSourceUrl && !!currentSourceUrl && (
+        <TouchableOpacity style={styles.sourceUrlRow} onPress={() => { setWebUrl(currentSourceUrl); navigation.navigate('Web'); }}>
+          {getFaviconUrl(currentSourceUrl) ? (
+            <Image source={{ uri: getFaviconUrl(currentSourceUrl)! }} style={styles.sourceUrlIcon} />
+          ) : (
+            <Ionicons name="link-outline" size={20} color={Colors.textSecondary} />
+          )}
+          <Text style={styles.sourceUrlText} numberOfLines={1}>{pageTitle || currentSourceUrl}</Text>
+        </TouchableOpacity>
+      )}
       {isWide && (
         <View style={styles.actions}>
           {currentLyrics.split('\n').length === 0 ? (
@@ -483,11 +568,36 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: Colors.surface,
     marginRight: 8,
+  },
+  tabFavicon: {
+    width: 14,
+    height: 14,
+    borderRadius: 2,
+  },
+  sourceUrlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 0,
+    marginBottom: 10,
+    gap: 10,
+  },
+  sourceUrlIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+  },
+  sourceUrlText: {
+    flex: 1,
+    color: Colors.primary,
+    fontSize: 14,
   },
   tabActive: {
     backgroundColor: Colors.primary,

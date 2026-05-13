@@ -3,6 +3,7 @@ export interface Song {
   songName: string;
   artistName: string;
   originalLyrics: string;
+  originalLanguages?: string[];
   sourceUrl?: string;
   sourceUrlTitle?: string;
   translations: Translation[];
@@ -42,5 +43,5 @@ export type RootTabParamList = {
   Learn: { songId?: string } | undefined;
   Lyrics: undefined;
   Words: undefined;
-  WordLookup: { word: string; songId?: string; songName?: string; artistName?: string; lyricsLine?: string } | undefined;
+  WordLookup: { word: string; songId?: string; songName?: string; artistName?: string; lyricsLine?: string; originalLanguages?: string[] } | undefined;
 };

@@ -103,6 +103,7 @@ export default function LearnScreen() {
         songName={song.songName}
         artistName={song.artistName}
         lyricsLine={selectedLine ?? undefined}
+        originalLanguages={song.originalLanguages}
       />
     </View>
   ) : null;

@@ -28,6 +28,7 @@ import {
 } from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
+import MultiLanguageSelect from '../components/MultiLanguageSelect';
 
 
 export default function EditorScreen() {
@@ -48,6 +49,7 @@ export default function EditorScreen() {
   const [songName, setSongName] = useState('');
   const [artistName, setArtistName] = useState('');
   const [originalLyrics, setOriginalLyrics] = useState('');
+  const [originalLanguages, setOriginalLanguages] = useState<string[]>([]);
   const [songSourceUrl, setSongSourceUrl] = useState('');
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [activeTab, setActiveTab] = useState(0);
@@ -62,6 +64,7 @@ export default function EditorScreen() {
       setSongName(editSong.songName);
       setArtistName(editSong.artistName);
       setOriginalLyrics(editSong.originalLyrics);
+      setOriginalLanguages(editSong.originalLanguages ?? []);
       setSongSourceUrl(editSong.sourceUrl ?? '');
       setTranslations(editSong.translations.map((t) => ({ ...t })));
       setPendingSourceUrls({});
@@ -139,6 +142,7 @@ export default function EditorScreen() {
         songName: songName.trim(),
         artistName: artistName.trim(),
         originalLyrics,
+        originalLanguages,
         sourceUrl: resolvedSourceUrl,
         sourceUrlTitle: resolvedSourceUrlTitle,
         translations: resolvedTranslations,
@@ -147,7 +151,7 @@ export default function EditorScreen() {
       handleClear();
       navigation.navigate('Learn');
     } else {
-      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
+      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, originalLanguages, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
       setCurrentSongId(song.id);
       handleClear();
       navigation.navigate('Learn');
@@ -158,6 +162,7 @@ export default function EditorScreen() {
     setSongName('');
     setArtistName('');
     setOriginalLyrics('');
+    setOriginalLanguages([]);
     setSongSourceUrl('');
     setTranslations([]);
     setActiveTab(0);
@@ -259,6 +264,16 @@ export default function EditorScreen() {
           value={artistName}
           onChangeText={setArtistName}
         />
+      </View>
+      <View style={styles.languageRow}>
+        <Ionicons name="language-outline" size={20} color={Colors.textSecondary} />
+        <View style={styles.languageSelectWrapper}>
+          <MultiLanguageSelect
+            value={originalLanguages}
+            onValueChange={setOriginalLanguages}
+            placeholder="Original Language(s)"
+          />
+        </View>
       </View>
       {!currentLyrics && (
         <TouchableOpacity
@@ -537,6 +552,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  languageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  languageSelectWrapper: {
+    flex: 1,
+    marginLeft: 10,
   },
   textInput: {
     flex: 1,

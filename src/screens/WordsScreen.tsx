@@ -17,12 +17,10 @@ import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import HighlightedText from '../components/HighlightedText';
-import { useNavigation } from '@react-navigation/native';
-import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import WordLookupButtons from '../components/WordLookupButtons';
 
 export default function WordsScreen() {
-  const navigation = useNavigation<any>();
-  const { words, deleteWord, setWebUrl } = useStore();
+  const { words, deleteWord } = useStore();
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -66,51 +64,47 @@ export default function WordsScreen() {
     setShowSearch((v) => !v);
   };
 
-  const handleGoogleWord = () => {
-    if (!selectedWord) return;
-    setWebUrl(`${GOOGLE_SEARCH_URL}&q=define+${encodeURIComponent(selectedWord)}`);
-    navigation.navigate('Web');
-  };
+  const renderWord = ({ item }: { item: WordEntry }) => {
+    const isSelected = selectedWord === item.word;
 
-  const handleWiktionaryWord = () => {
-    if (!selectedWord) return;
-    const url = `https://en.wiktionary.org/wiki/${encodeURIComponent(selectedWord)}`;
-    setWebUrl(url);
-    navigation.navigate('Web');
-  };
-
-  const renderWord = ({ item }: { item: WordEntry }) => (
-    <TouchableOpacity
-      style={[styles.card, isWide && styles.cardWide]}
-      onPress={() => setSelectedWord(item.word)}
-      onLongPress={() => handleDeleteWord(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardRow}>
-        <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
-        <View style={styles.cardContent}>
-          <HighlightedText
-            text={item.word}
-            query={searchQuery}
-            style={styles.cardWordText}
-          />
-          {item.pronunciation ? (
+    return (
+      <TouchableOpacity
+        style={[styles.card, isWide && styles.cardWide]}
+        onPress={() => setSelectedWord(isSelected ? null : item.word)}
+        onLongPress={() => handleDeleteWord(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardRow}>
+          <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
+          <View style={styles.cardContent}>
             <HighlightedText
-              text={`/${item.pronunciation}/`}
+              text={item.word}
               query={searchQuery}
-              style={styles.pronunciation}
+              style={styles.cardWordText}
             />
-          ) : null}
-        </View>
-        <View style={styles.cardRight}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.lookupCount}×</Text>
+            {item.pronunciation ? (
+              <HighlightedText
+                text={`/${item.pronunciation}/`}
+                query={searchQuery}
+                style={styles.pronunciation}
+              />
+            ) : null}
           </View>
-          <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
+          <View style={styles.cardRight}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.lookupCount}×</Text>
+            </View>
+            <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+        {isSelected && (
+          <View style={styles.buttonsContainer}>
+            <WordLookupButtons word={item.word} />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScreenWrapper>
@@ -135,26 +129,6 @@ export default function WordsScreen() {
           />
         </TouchableOpacity>
       </View>
-      {selectedWord && (
-        <View style={styles.wordPanel}>
-          <View style={styles.wordHeader}>
-            <Text style={styles.wordText}>{selectedWord}</Text>
-            <TouchableOpacity onPress={() => setSelectedWord(null)}>
-              <Ionicons name="close" size={22} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.wordActions}>
-            <TouchableOpacity style={styles.wordBtn} onPress={handleGoogleWord}>
-              <Ionicons name="logo-google" size={18} color={Colors.white} />
-              <Text style={styles.wordBtnText}>Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.wordBtn} onPress={handleWiktionaryWord}>
-              <Ionicons name="book-outline" size={18} color={Colors.white} />
-              <Text style={styles.wordBtnText}>Wiktionary</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
       {filteredWords.length === 0 ? (
         <View style={styles.empty}>
           {words.length === 0 ? (
@@ -298,42 +272,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     lineHeight: 24,
   },
-  wordPanel: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: 16,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  wordHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  wordText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  wordActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  wordBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  wordBtnText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600',
+  buttonsContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
 });

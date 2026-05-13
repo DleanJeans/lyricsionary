@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  BackHandler,
 } from 'react-native';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootTabParamList } from '../types';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LanguageSelect from '../components/LanguageSelect';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -30,6 +32,7 @@ export default function WordLookupScreen() {
 
   const { words, addOrUpdateWord } = useStore();
   const webViewRef = useRef<WebView>(null);
+  const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
 
   const [currentUrl, setCurrentUrl] = useState('');
   const [pageTitle, setPageTitle] = useState('');
@@ -70,6 +73,29 @@ export default function WordLookupScreen() {
     }
   }, [word, lookupSource]);
 
+  // Handle Android back button
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (canGoBackInWebView && webViewRef.current) {
+        // Go back in WebView history
+        webViewRef.current.goBack();
+        return true; // Prevent default behavior
+      }
+
+      // No WebView history - go back to previous screen
+      navigation.goBack();
+      return true; // Prevent default behavior
+    });
+
+    return () => {
+      backHandler.remove();
+    };
+  }, [canGoBackInWebView, navigation]);
+
   const handleSave = async () => {
     if (!word) return;
 
@@ -90,6 +116,37 @@ export default function WordLookupScreen() {
 
   const switchToWiktionary = () => {
     setLookupSource('wiktionary');
+  };
+
+  const handleWebViewGoBack = () => {
+    if (canGoBackInWebView && webViewRef.current) {
+      webViewRef.current.goBack();
+    }
+  };
+
+  // Render context line with underlined word
+  const renderContextLine = () => {
+    if (!lyricsLine || !word) return null;
+
+    const cleanWord = word.replace(/[^\p{L}\p{N}'-]/gu, '').toLowerCase();
+    const parts = lyricsLine.split(new RegExp(`(\\b${cleanWord}\\b)`, 'gi'));
+
+    return (
+      <Text style={styles.contextLine}>
+        "
+        {parts.map((part, index) => {
+          if (part.toLowerCase() === cleanWord) {
+            return (
+              <Text key={index} style={styles.contextLineUnderlined}>
+                {part}
+              </Text>
+            );
+          }
+          return part;
+        })}
+        "
+      </Text>
+    );
   };
 
   return (
@@ -114,9 +171,7 @@ export default function WordLookupScreen() {
           <View style={styles.contextSection}>
             <Text style={styles.contextLabel}>Context</Text>
             <Text style={styles.contextSong}>{songName}</Text>
-            {lyricsLine && (
-              <Text style={styles.contextLine}>"{lyricsLine}"</Text>
-            )}
+            {lyricsLine && renderContextLine()}
           </View>
         )}
 
@@ -124,12 +179,10 @@ export default function WordLookupScreen() {
         <View style={styles.fieldSection}>
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Language</Text>
-            <TextInput
-              style={styles.fieldInput}
+            <LanguageSelect
               value={language}
-              onChangeText={setLanguage}
-              placeholder="e.g., Original, English, Spanish"
-              placeholderTextColor={Colors.textMuted}
+              onValueChange={setLanguage}
+              placeholder="Select language"
             />
           </View>
 
@@ -198,6 +251,11 @@ export default function WordLookupScreen() {
         {/* WebView Section */}
         <View style={styles.webViewContainer}>
           <View style={styles.webViewHeader}>
+            {canGoBackInWebView && (
+              <TouchableOpacity onPress={handleWebViewGoBack} style={styles.webViewBackButton}>
+                <Ionicons name="arrow-back" size={20} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
             {getFaviconUrl(currentUrl) && (
               <Image
                 source={{ uri: getFaviconUrl(currentUrl)! }}
@@ -217,6 +275,7 @@ export default function WordLookupScreen() {
                 style={styles.webview}
                 onNavigationStateChange={(navState) => {
                   setPageTitle(navState.title ?? '');
+                  setCanGoBackInWebView(navState.canGoBack);
                 }}
                 onLoadStart={() => setLoading(true)}
                 onLoadEnd={() => setLoading(false)}
@@ -299,6 +358,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontStyle: 'italic',
   },
+  contextLineUnderlined: {
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+    color: Colors.primary,
+  },
   fieldSection: {
     padding: 16,
     gap: 16,
@@ -357,8 +421,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   webViewContainer: {
-    flex: 1,
-    minHeight: 400,
+    minHeight: 500,
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: Colors.surface,
@@ -376,6 +439,9 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     gap: 8,
   },
+  webViewBackButton: {
+    padding: 4,
+  },
   favicon: {
     width: 16,
     height: 16,
@@ -387,8 +453,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   webViewWrapper: {
-    flex: 1,
-    minHeight: 350,
+    height: 450,
   },
   webview: {
     flex: 1,

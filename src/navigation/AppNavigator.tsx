@@ -7,6 +7,7 @@ import WebScreen from '../screens/WebScreen';
 import LearnScreen from '../screens/LearnScreen';
 import LyricsScreen from '../screens/LyricsScreen';
 import WordsScreen from '../screens/WordsScreen';
+import WordLookupScreen from '../screens/WordLookupScreen';
 import CustomTabBar from './CustomTabBar';
 import DrawerContent from './DrawerContent';
 import { RootTabParamList } from '../types';
@@ -26,6 +27,13 @@ function TabNavigator() {
       <Tab.Screen name="Learn" component={LearnScreen} />
       <Tab.Screen name="Lyrics" component={LyricsScreen} />
       <Tab.Screen name="Words" component={WordsScreen} />
+      <Tab.Screen
+        name="WordLookup"
+        component={WordLookupScreen}
+        options={{
+          tabBarButton: () => null, // Hide from tab bar
+        }}
+      />
     </Tab.Navigator>
   );
 }

@@ -17,11 +17,19 @@ export interface Translation {
   sourceUrlTitle?: string;
 }
 
+export interface WordDefinition {
+  text: string;
+  songId?: string;
+  songName?: string;
+  lyricsLine?: string;
+}
+
 export interface WordEntry {
   id: string;
   word: string;
   language: string;
   pronunciation: string;
+  definitions: WordDefinition[];
   lookupCount: number;
   lastLookedUp: number;
 }
@@ -32,4 +40,5 @@ export type RootTabParamList = {
   Learn: { songId?: string } | undefined;
   Lyrics: undefined;
   Words: undefined;
+  WordLookup: { word: string; songId?: string; songName?: string; lyricsLine?: string } | undefined;
 };

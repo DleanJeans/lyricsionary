@@ -33,7 +33,15 @@ interface AppState {
 
   // Word actions
   loadWords: () => Promise<void>;
-  addOrUpdateWord: (word: string, language: string, pronunciation?: string) => Promise<void>;
+  addOrUpdateWord: (
+    word: string,
+    language: string,
+    pronunciation?: string,
+    definition?: string,
+    songId?: string,
+    songName?: string,
+    lyricsLine?: string
+  ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
 }
 
@@ -100,29 +108,69 @@ export const useStore = create<AppState>((set, get) => ({
   loadWords: async () => {
     try {
       const json = await AsyncStorage.getItem(WORDS_KEY);
-      if (json) set({ words: JSON.parse(json) });
+      if (json) {
+        const loadedWords: WordEntry[] = JSON.parse(json);
+        // Migrate old words that don't have definitions array
+        const migratedWords = loadedWords.map(w => ({
+          ...w,
+          definitions: w.definitions || [],
+        }));
+        set({ words: migratedWords });
+      }
     } catch (e) {
       console.error('Failed to load words', e);
     }
   },
 
-  addOrUpdateWord: async (word, language, pronunciation = '') => {
+  addOrUpdateWord: async (word, language, pronunciation = '', definition = '', songId, songName, lyricsLine) => {
     const existing = get().words.find(
       (w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language
     );
     let words: WordEntry[];
     if (existing) {
+      // Update existing word
+      const updatedDefinitions = [...(existing.definitions || [])];
+
+      // If definition is provided, add or update it
+      if (definition) {
+        const defIndex = updatedDefinitions.findIndex(d => d.songId === songId);
+        const newDef = {
+          text: definition,
+          songId,
+          songName,
+          lyricsLine,
+        };
+        if (defIndex >= 0) {
+          updatedDefinitions[defIndex] = newDef;
+        } else {
+          updatedDefinitions.push(newDef);
+        }
+      }
+
       words = get().words.map((w) =>
         w.id === existing.id
-          ? { ...w, lookupCount: w.lookupCount + 1, lastLookedUp: Date.now(), pronunciation: pronunciation || w.pronunciation }
+          ? {
+              ...w,
+              lookupCount: w.lookupCount + 1,
+              lastLookedUp: Date.now(),
+              pronunciation: pronunciation || w.pronunciation,
+              definitions: updatedDefinitions,
+            }
           : w
       );
     } else {
+      // Create new word entry
       const entry: WordEntry = {
         id: uuidv4(),
         word,
         language,
         pronunciation,
+        definitions: definition ? [{
+          text: definition,
+          songId,
+          songName,
+          lyricsLine,
+        }] : [],
         lookupCount: 1,
         lastLookedUp: Date.now(),
       };

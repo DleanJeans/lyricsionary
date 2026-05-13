@@ -12,17 +12,17 @@ import { Colors } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
-import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, addOrUpdateWord, setWebUrl } = useStore();
+  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, addOrUpdateWord } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [selectedLine, setSelectedLine] = useState<string | null>(null);
 
   const lines = useMemo(() => {
     if (!song) return [];
@@ -50,25 +50,33 @@ export default function LearnScreen() {
     );
   }
 
-  const handleWordPress = (word: string) => {
+  const handleWordPress = (word: string, line: string) => {
     const cleaned = word.replace(/[^\p{L}\p{N}'-]/gu, '');
     if (cleaned) {
       setSelectedWord(cleaned);
+      setSelectedLine(line);
       addOrUpdateWord(cleaned, 'Original');
     }
   };
 
   const handleGoogleWord = () => {
-    if (!selectedWord) return;
-    setWebUrl(`${GOOGLE_SEARCH_URL}&q=define+${encodeURIComponent(selectedWord)}`);
-    navigation.navigate('Web');
+    if (!selectedWord || !song) return;
+    navigation.navigate('WordLookup', {
+      word: selectedWord,
+      songId: song.id,
+      songName: song.songName,
+      lyricsLine: selectedLine,
+    });
   };
 
   const handleWiktionaryWord = () => {
-    if (!selectedWord) return;
-    const url = `https://en.wiktionary.org/wiki/${encodeURIComponent(selectedWord)}`;
-    setWebUrl(url);
-    navigation.navigate('Web');
+    if (!selectedWord || !song) return;
+    navigation.navigate('WordLookup', {
+      word: selectedWord,
+      songId: song.id,
+      songName: song.songName,
+      lyricsLine: selectedLine,
+    });
   };
 
   const renderPressableText = (text: string) => {
@@ -79,7 +87,7 @@ export default function LearnScreen() {
           word.trim() ? (
             <Text
               key={i}
-              onPress={() => handleWordPress(word)}
+              onPress={() => handleWordPress(word, text)}
               style={{
                 color: selectedWord && word.replace(/[^\p{L}\p{N}'-]/gu, '') === selectedWord
                   ? Colors.primary

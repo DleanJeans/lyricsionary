@@ -32,7 +32,49 @@ export default function WordLookupScreen() {
 
   const { words, addOrUpdateWord } = useStore();
   const webViewRef = useRef<WebView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
+  const [webViewAtTop, setWebViewAtTop] = useState(true);
+  const [scrollingUp, setScrollingUp] = useState(false);
+  const [scrollViewAtBottom, setScrollViewAtBottom] = useState(false);
+
+  const webViewScrollDisabled = webViewAtTop && scrollingUp;
+  const webViewScrollEnabled = scrollViewAtBottom && !webViewScrollDisabled;
+
+  const injectedJavaScript = `
+    (function() {
+      var atTop = true;
+      var scrollingUp = false;
+      var lastY = 0;
+      window.addEventListener('scroll', function() {
+        var currentY = window.scrollY || window.pageYOffset || 0;
+        var nowAtTop = currentY === 0;
+        var nowScrollingUp = currentY < lastY;
+        lastY = currentY;
+
+        atTop = nowAtTop;
+        scrollingUp = nowScrollingUp;
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'webviewScroll', atTop, scrollingUp }));
+      }, { passive: true });
+    })();
+    true;
+  `;
+
+  const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'webviewScroll') {
+        setWebViewAtTop(data.atTop);
+        setScrollingUp(data.scrollingUp);
+      }
+    } catch {}
+  };
+
+  const handleOuterScroll = (event: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    setScrollViewAtBottom(layoutMeasurement.height + contentOffset.y >= contentSize.height - 20);
+    setScrollingUp(false);
+  };
 
   const [currentUrl, setCurrentUrl] = useState('');
   const [pageTitle, setPageTitle] = useState('');
@@ -70,6 +112,7 @@ export default function WordLookupScreen() {
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(word)}`
         : `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
       setCurrentUrl(url);
+      setWebViewAtTop(true); // reset on navigation
     }
   }, [word, lookupSource]);
 
@@ -165,7 +208,13 @@ export default function WordLookupScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.content}
+        keyboardShouldPersistTaps="handled"
+        onScroll={handleOuterScroll}
+        scrollEventThrottle={20}
+      >
         {/* Context Info */}
         {songName && (
           <View style={styles.contextSection}>
@@ -280,6 +329,9 @@ export default function WordLookupScreen() {
                 onLoadStart={() => setLoading(true)}
                 onLoadEnd={() => setLoading(false)}
                 javaScriptEnabled
+                nestedScrollEnabled={webViewScrollEnabled}
+                injectedJavaScript={injectedJavaScript}
+                onMessage={handleWebViewMessage}
               />
             ) : null}
             {loading && (
@@ -421,7 +473,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   webViewContainer: {
-    minHeight: 500,
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: Colors.surface,
@@ -453,7 +504,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   webViewWrapper: {
-    height: 450,
+    height: 500,
   },
   webview: {
     flex: 1,

@@ -108,11 +108,11 @@ export default function LyricsScreen() {
       case 'lastOpened':
         return 'time-outline';
       case 'openCount':
-        return 'bar-chart-outline';
+        return 'stats-chart-outline';
       case 'aZ':
-        return 'arrow-down-outline';
+        return 'arrow-down';
       case 'zA':
-        return 'arrow-up-outline';
+        return 'arrow-up';
       default:
         return 'time-outline';
     }

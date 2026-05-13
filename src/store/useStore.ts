@@ -22,6 +22,7 @@ interface AppState {
   updateSong: (id: string, updates: Partial<Omit<Song, 'id' | 'createdAt'>>) => Promise<void>;
   deleteSong: (id: string) => Promise<void>;
   setCurrentSongId: (id: string | null) => void;
+  trackSongOpen: (id: string) => Promise<void>;
 
   // Web actions
   setWebUrl: (url: string) => void;
@@ -57,7 +58,16 @@ export const useStore = create<AppState>((set, get) => ({
   loadSongs: async () => {
     try {
       const json = await AsyncStorage.getItem(SONGS_KEY);
-      if (json) set({ songs: JSON.parse(json) });
+      if (json) {
+        const songs = JSON.parse(json);
+        // Migration: Initialize lastOpenedAt and openCount for existing songs
+        const migratedSongs = songs.map((song: Song) => ({
+          ...song,
+          lastOpenedAt: song.lastOpenedAt ?? song.updatedAt ?? song.createdAt,
+          openCount: song.openCount ?? 0,
+        }));
+        set({ songs: migratedSongs });
+      }
     } catch (e) {
       console.error('Failed to load songs', e);
     }
@@ -74,6 +84,8 @@ export const useStore = create<AppState>((set, get) => ({
       translations,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      lastOpenedAt: Date.now(),
+      openCount: 0,
     };
     const songs = [...get().songs, song];
     set({ songs, currentSongId: song.id });
@@ -97,6 +109,16 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setCurrentSongId: (id) => set({ currentSongId: id }),
+
+  trackSongOpen: async (id) => {
+    const songs = get().songs.map((s) =>
+      s.id === id
+        ? { ...s, lastOpenedAt: Date.now(), openCount: (s.openCount ?? 0) + 1 }
+        : s
+    );
+    set({ songs });
+    await AsyncStorage.setItem(SONGS_KEY, JSON.stringify(songs));
+  },
 
   setWebUrl: (url) => set({ webUrl: url }),
   setScrapeTargetTab: (tab) => set({ scrapeTargetTab: tab }),

@@ -19,74 +19,45 @@ import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
-
-function HighlightedText({
-  text,
-  query,
-  style,
-  numberOfLines,
-}: {
-  text: string;
-  query: string;
-  style: any;
-  numberOfLines?: number;
-}) {
-  if (!query.trim()) {
-    return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
-  }
-
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-  const parts: { text: string; highlight: boolean }[] = [];
-  let lastIndex = 0;
-  let index = lowerText.indexOf(lowerQuery);
-
-  while (index !== -1) {
-    if (index > lastIndex) {
-      parts.push({ text: text.slice(lastIndex, index), highlight: false });
-    }
-    parts.push({ text: text.slice(index, index + query.length), highlight: true });
-    lastIndex = index + query.length;
-    index = lowerText.indexOf(lowerQuery, lastIndex);
-  }
-
-  if (lastIndex < text.length) {
-    parts.push({ text: text.slice(lastIndex), highlight: false });
-  }
-
-  return (
-    <Text style={style} numberOfLines={numberOfLines}>
-      {parts.map((part, i) =>
-        part.highlight ? (
-          <Text key={i} style={styles.highlight}>{part.text}</Text>
-        ) : (
-          <Text key={i}>{part.text}</Text>
-        )
-      )}
-    </Text>
-  );
-}
+import HighlightedText from '../components/HighlightedText';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
-  const { songs, setCurrentSongId, deleteSong } = useStore();
+  const { songs, setCurrentSongId, deleteSong, trackSongOpen } = useStore();
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
   const [songToDelete, setSongToDelete] = useState<Song | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
+
+  const sortedSongs = [...songs].sort((a, b) => {
+    switch (sortMode) {
+      case 'lastOpened':
+        return (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0);
+      case 'openCount':
+        return (b.openCount ?? 0) - (a.openCount ?? 0);
+      case 'aZ':
+        return a.songName.toLowerCase().localeCompare(b.songName.toLowerCase());
+      case 'zA':
+        return b.songName.toLowerCase().localeCompare(a.songName.toLowerCase());
+      default:
+        return 0;
+    }
+  });
 
   const filteredSongs = searchQuery.trim()
-    ? songs.filter(
+    ? sortedSongs.filter(
         (s) =>
           s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.artistName.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : songs;
+    : sortedSongs;
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
+    trackSongOpen(song.id);
     navigation.navigate('Learn');
   };
 
@@ -113,6 +84,38 @@ export default function LyricsScreen() {
   const toggleSearch = () => {
     if (showSearch) setSearchQuery('');
     setShowSearch((v) => !v);
+  };
+
+  const cycleSortMode = () => {
+    setSortMode((current) => {
+      switch (current) {
+        case 'lastOpened':
+          return 'openCount';
+        case 'openCount':
+          return 'aZ';
+        case 'aZ':
+          return 'zA';
+        case 'zA':
+          return 'lastOpened';
+        default:
+          return 'lastOpened';
+      }
+    });
+  };
+
+  const getSortIcon = () => {
+    switch (sortMode) {
+      case 'lastOpened':
+        return 'time-outline';
+      case 'openCount':
+        return 'stats-chart-outline';
+      case 'aZ':
+        return 'arrow-down';
+      case 'zA':
+        return 'arrow-up';
+      default:
+        return 'time-outline';
+    }
   };
 
   const renderSong = ({ item }: { item: Song }) => (
@@ -170,6 +173,13 @@ export default function LyricsScreen() {
         ) : (
           <Text style={styles.title}>Saved Songs</Text>
         )}
+        <TouchableOpacity onPress={cycleSortMode} style={styles.searchButton}>
+          <Ionicons
+            name={getSortIcon()}
+            size={22}
+            color={Colors.textMuted}
+          />
+        </TouchableOpacity>
         <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
           <Ionicons
             name={showSearch ? 'close' : 'search'}
@@ -249,10 +259,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     marginRight: 8,
-  },
-  highlight: {
-    backgroundColor: '#F5C542',
-    color: '#1A1A1A',
   },
   list: {
     paddingBottom: 40,

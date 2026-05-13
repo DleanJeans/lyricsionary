@@ -8,6 +8,8 @@ export interface Song {
   translations: Translation[];
   createdAt: number;
   updatedAt: number;
+  lastOpenedAt?: number;
+  openCount?: number;
 }
 
 export interface Translation {

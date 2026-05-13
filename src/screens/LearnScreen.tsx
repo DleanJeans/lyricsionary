@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
+import WordLookupButtons from '../components/WordLookupButtons';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -59,26 +60,6 @@ export default function LearnScreen() {
     }
   };
 
-  const handleGoogleWord = () => {
-    if (!selectedWord || !song) return;
-    navigation.navigate('WordLookup', {
-      word: selectedWord,
-      songId: song.id,
-      songName: song.songName,
-      lyricsLine: selectedLine,
-    });
-  };
-
-  const handleWiktionaryWord = () => {
-    if (!selectedWord || !song) return;
-    navigation.navigate('WordLookup', {
-      word: selectedWord,
-      songId: song.id,
-      songName: song.songName,
-      lyricsLine: selectedLine,
-    });
-  };
-
   const renderPressableText = (text: string) => {
     const words = text.split(/(\s+)/);
     return (
@@ -116,16 +97,12 @@ export default function LearnScreen() {
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
-      <View style={styles.wordActions}>
-        <TouchableOpacity style={styles.wordBtn} onPress={handleGoogleWord}>
-          <Ionicons name="logo-google" size={18} color={Colors.white} />
-          <Text style={styles.wordBtnText}>Google</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.wordBtn} onPress={handleWiktionaryWord}>
-          <Ionicons name="book-outline" size={18} color={Colors.white} />
-          <Text style={styles.wordBtnText}>Wiktionary</Text>
-        </TouchableOpacity>
-      </View>
+      <WordLookupButtons
+        word={selectedWord}
+        songId={song.id}
+        songName={song.songName}
+        lyricsLine={selectedLine ?? undefined}
+      />
     </View>
   ) : null;
 
@@ -328,24 +305,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: Colors.text,
-  },
-  wordActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  wordBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  wordBtnText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600',
   },
   actionBar: {
     flexDirection: 'row',

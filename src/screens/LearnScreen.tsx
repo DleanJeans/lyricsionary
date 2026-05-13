@@ -23,6 +23,7 @@ export default function LearnScreen() {
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [selectedLine, setSelectedLine] = useState<string | null>(null);
 
   const lines = useMemo(() => {
     if (!song) return [];
@@ -50,11 +51,12 @@ export default function LearnScreen() {
     );
   }
 
-  const handleWordPress = (word: string) => {
+  const handleWordPress = (word: string, line: string) => {
     const cleaned = word.replace(/[^\p{L}\p{N}'-]/gu, '');
     if (cleaned) {
       setSelectedWord(cleaned);
-      addOrUpdateWord(cleaned, 'Original');
+      setSelectedLine(line);
+      addOrUpdateWord(cleaned, 'English');
     }
   };
 
@@ -66,7 +68,7 @@ export default function LearnScreen() {
           word.trim() ? (
             <Text
               key={i}
-              onPress={() => handleWordPress(word)}
+              onPress={() => handleWordPress(word, text)}
               style={{
                 color: selectedWord && word.replace(/[^\p{L}\p{N}'-]/gu, '') === selectedWord
                   ? Colors.primary
@@ -95,7 +97,13 @@ export default function LearnScreen() {
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
-      <WordLookupButtons word={selectedWord} />
+      <WordLookupButtons
+        word={selectedWord}
+        songId={song.id}
+        songName={song.songName}
+        artistName={song.artistName}
+        lyricsLine={selectedLine ?? undefined}
+      />
     </View>
   ) : null;
 

@@ -138,12 +138,19 @@ export default function WebScreen() {
             </TouchableOpacity>
           </>
         ) : (
-          <TouchableOpacity style={styles.titleButton} onPress={() => setShowUrlInput(true)}>
-            {getFaviconUrl(currentUrl) && (
-              <Image source={{ uri: getFaviconUrl(currentUrl)! }} style={styles.favicon} />
+          <>
+            {canGoBack && (
+              <TouchableOpacity onPress={() => webViewRef.current?.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+              </TouchableOpacity>
             )}
-            <Text style={styles.titleText} numberOfLines={1}>{pageTitle || addressText}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.titleButton} onPress={() => setShowUrlInput(true)}>
+              {getFaviconUrl(currentUrl) && (
+                <Image source={{ uri: getFaviconUrl(currentUrl)! }} style={styles.favicon} />
+              )}
+              <Text style={styles.titleText} numberOfLines={1}>{pageTitle || addressText}</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
       <WebView
@@ -191,6 +198,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: Colors.surfaceLight,
+  },
+  backButton: {
+    paddingRight: 8,
   },
   titleButton: {
     flex: 1,

@@ -2,36 +2,30 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
 interface WordLookupButtonsProps {
   word: string;
+  songId?: string;
+  songName?: string;
+  lyricsLine?: string;
+  artistName?: string;
 }
 
-export default function WordLookupButtons({ word }: WordLookupButtonsProps) {
+export default function WordLookupButtons({ word, songId, songName, artistName, lyricsLine }: WordLookupButtonsProps) {
   const navigation = useNavigation<any>();
-  const { setWebUrl } = useStore();
 
-  const handleGoogleWord = () => {
-    setWebUrl(`${GOOGLE_SEARCH_URL}&q=define+${encodeURIComponent(word)}`);
-    navigation.navigate('Web');
-  };
-
-  const handleWiktionaryWord = () => {
-    const url = `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
-    setWebUrl(url);
-    navigation.navigate('Web');
+  const handleLookup = () => {
+    navigation.navigate('WordLookup', { word, songId, songName, artistName, lyricsLine });
   };
 
   return (
     <View style={styles.wordActions}>
-      <TouchableOpacity style={styles.wordBtn} onPress={handleGoogleWord}>
+      <TouchableOpacity style={styles.wordBtn} onPress={handleLookup}>
         <Ionicons name="logo-google" size={18} color={Colors.white} />
         <Text style={styles.wordBtnText}>Google</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.wordBtn} onPress={handleWiktionaryWord}>
+      <TouchableOpacity style={styles.wordBtn} onPress={handleLookup}>
         <Ionicons name="book-outline" size={18} color={Colors.white} />
         <Text style={styles.wordBtnText}>Wiktionary</Text>
       </TouchableOpacity>

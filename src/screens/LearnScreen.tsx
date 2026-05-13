@@ -55,7 +55,7 @@ export default function LearnScreen() {
     if (cleaned) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
-      addOrUpdateWord(cleaned, 'Original');
+      addOrUpdateWord(cleaned, 'English');
     }
   };
 

@@ -82,7 +82,7 @@ export default function WordLookupScreen() {
   const [lookupSource, setLookupSource] = useState<'google' | 'wiktionary'>('google');
 
   // Word data fields
-  const [language, setLanguage] = useState('Original');
+  const [language, setLanguage] = useState('English');
   const [pronunciation, setPronunciation] = useState('');
   const [definition, setDefinition] = useState('');
 

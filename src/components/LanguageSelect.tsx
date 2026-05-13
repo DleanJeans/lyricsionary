@@ -10,10 +10,6 @@ interface LanguageSelectProps {
   placeholder?: string;
 }
 
-const ALL_LANGUAGES = [
-  { code: 'original', name: 'Original', flag: '🌐' },
-  ...LANGUAGES,
-];
 
 export default function LanguageSelect({ value, onValueChange, placeholder = 'Select Language' }: LanguageSelectProps) {
   const [showModal, setShowModal] = useState(false);
@@ -24,7 +20,7 @@ export default function LanguageSelect({ value, onValueChange, placeholder = 'Se
     setShowModal(false);
   };
 
-  const selectedLang = ALL_LANGUAGES.find(l => l.name === value);
+  const selectedLang = LANGUAGES.find(l => l.name === value);
   const displayText = selectedLang ? `${selectedLang.flag} ${selectedLang.name}` : value || placeholder;
 
   return (
@@ -41,7 +37,7 @@ export default function LanguageSelect({ value, onValueChange, placeholder = 'Se
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Language</Text>
             <FlatList
-              data={ALL_LANGUAGES}
+              data={LANGUAGES}
               keyExtractor={(item) => item.code}
               renderItem={({ item }) => (
                 <TouchableOpacity

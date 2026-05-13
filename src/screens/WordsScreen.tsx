@@ -17,9 +17,12 @@ import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import HighlightedText from '../components/HighlightedText';
+import { useNavigation } from '@react-navigation/native';
+import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
 export default function WordsScreen() {
-  const { words, deleteWord } = useStore();
+  const navigation = useNavigation<any>();
+  const { words, deleteWord, setWebUrl } = useStore();
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -27,6 +30,7 @@ export default function WordsScreen() {
   const [wordToDelete, setWordToDelete] = useState<WordEntry | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
   const filteredWords = searchQuery.trim()
     ? sortedWords.filter(
@@ -62,9 +66,23 @@ export default function WordsScreen() {
     setShowSearch((v) => !v);
   };
 
+  const handleGoogleWord = () => {
+    if (!selectedWord) return;
+    setWebUrl(`${GOOGLE_SEARCH_URL}&q=define+${encodeURIComponent(selectedWord)}`);
+    navigation.navigate('Web');
+  };
+
+  const handleWiktionaryWord = () => {
+    if (!selectedWord) return;
+    const url = `https://en.wiktionary.org/wiki/${encodeURIComponent(selectedWord)}`;
+    setWebUrl(url);
+    navigation.navigate('Web');
+  };
+
   const renderWord = ({ item }: { item: WordEntry }) => (
     <TouchableOpacity
       style={[styles.card, isWide && styles.cardWide]}
+      onPress={() => setSelectedWord(item.word)}
       onLongPress={() => handleDeleteWord(item)}
       activeOpacity={0.7}
     >
@@ -74,7 +92,7 @@ export default function WordsScreen() {
           <HighlightedText
             text={item.word}
             query={searchQuery}
-            style={styles.wordText}
+            style={styles.cardWordText}
           />
           {item.pronunciation ? (
             <HighlightedText
@@ -117,6 +135,26 @@ export default function WordsScreen() {
           />
         </TouchableOpacity>
       </View>
+      {selectedWord && (
+        <View style={styles.wordPanel}>
+          <View style={styles.wordHeader}>
+            <Text style={styles.wordText}>{selectedWord}</Text>
+            <TouchableOpacity onPress={() => setSelectedWord(null)}>
+              <Ionicons name="close" size={22} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.wordActions}>
+            <TouchableOpacity style={styles.wordBtn} onPress={handleGoogleWord}>
+              <Ionicons name="logo-google" size={18} color={Colors.white} />
+              <Text style={styles.wordBtnText}>Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.wordBtn} onPress={handleWiktionaryWord}>
+              <Ionicons name="book-outline" size={18} color={Colors.white} />
+              <Text style={styles.wordBtnText}>Wiktionary</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       {filteredWords.length === 0 ? (
         <View style={styles.empty}>
           {words.length === 0 ? (
@@ -218,7 +256,7 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
   },
-  wordText: {
+  cardWordText: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text,
@@ -259,5 +297,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 24,
+  },
+  wordPanel: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  wordHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  wordText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  wordActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  wordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  wordBtnText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

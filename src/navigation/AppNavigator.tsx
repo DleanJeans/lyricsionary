@@ -8,7 +8,7 @@ import LearnScreen from '../screens/LearnScreen';
 import LyricsScreen from '../screens/LyricsScreen';
 import WordsScreen from '../screens/WordsScreen';
 import CustomTabBar from './CustomTabBar';
-import DrawerContent from './DrawerContent';
+import SideDrawer from './SideDrawer';
 import { RootTabParamList } from '../types';
 import { WIDE_BREAKPOINT } from '../hooks/useLayout';
 
@@ -42,7 +42,7 @@ export default function AppNavigator() {
 
   return (
     <Drawer.Navigator
-      drawerContent={(props) => <DrawerContent {...props} />}
+      drawerContent={(props) => <SideDrawer {...props} />}
       screenOptions={{
         headerShown: false,
         drawerType: 'front',

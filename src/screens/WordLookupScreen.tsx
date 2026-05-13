@@ -21,6 +21,7 @@ import { RootTabParamList } from '../types';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
+import EmojiSelect from '../components/EmojiSelect';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -85,6 +86,7 @@ export default function WordLookupScreen() {
   const [language, setLanguage] = useState('English');
   const [pronunciation, setPronunciation] = useState('');
   const [definition, setDefinition] = useState('');
+  const [emoji, setEmoji] = useState('');
 
   // Load existing word data if available
   useEffect(() => {
@@ -95,6 +97,7 @@ export default function WordLookupScreen() {
       if (existingWord) {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation);
+        setEmoji(existingWord.emoji || '');
         // Load the most recent definition or one matching this song
         const relevantDef = existingWord.definitions.find(d => d.songId === songId)
           || existingWord.definitions[0];
@@ -143,7 +146,7 @@ export default function WordLookupScreen() {
     if (!word) return;
 
     // Update word with new data
-    await addOrUpdateWord(word, language, pronunciation, definition, songId, songName, lyricsLine);
+    await addOrUpdateWord(word, language, pronunciation, definition, songId, songName, lyricsLine, emoji);
 
     // Navigate back to Learn screen
     navigation.goBack();
@@ -232,6 +235,15 @@ export default function WordLookupScreen() {
               value={language}
               onValueChange={setLanguage}
               placeholder="Select language"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Emoji</Text>
+            <EmojiSelect
+              value={emoji}
+              onValueChange={setEmoji}
+              placeholder="Select emoji (optional)"
             />
           </View>
 

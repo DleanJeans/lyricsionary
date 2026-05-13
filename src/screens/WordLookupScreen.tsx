@@ -413,7 +413,6 @@ const styles = StyleSheet.create({
   contextLineUnderlined: {
     textDecorationLine: 'underline',
     fontWeight: '600',
-    color: Colors.primary,
   },
   fieldSection: {
     padding: 16,

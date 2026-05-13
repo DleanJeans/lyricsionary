@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -15,6 +16,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
+import HighlightedText from '../components/HighlightedText';
 
 export default function WordsScreen() {
   const { words, deleteWord } = useStore();
@@ -23,6 +25,17 @@ export default function WordsScreen() {
   const numColumns = isWide ? 2 : 1;
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
   const [wordToDelete, setWordToDelete] = useState<WordEntry | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredWords = searchQuery.trim()
+    ? sortedWords.filter(
+        (w) =>
+          w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          w.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (w.pronunciation && w.pronunciation.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : sortedWords;
 
   const formatDate = (ts: number) => {
     const d = new Date(ts);
@@ -44,6 +57,11 @@ export default function WordsScreen() {
     setWordToDelete(null);
   };
 
+  const toggleSearch = () => {
+    if (showSearch) setSearchQuery('');
+    setShowSearch((v) => !v);
+  };
+
   const renderWord = ({ item }: { item: WordEntry }) => (
     <TouchableOpacity
       style={[styles.card, isWide && styles.cardWide]}
@@ -53,9 +71,17 @@ export default function WordsScreen() {
       <View style={styles.cardRow}>
         <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
         <View style={styles.cardContent}>
-          <Text style={styles.wordText}>{item.word}</Text>
+          <HighlightedText
+            text={item.word}
+            query={searchQuery}
+            style={styles.wordText}
+          />
           {item.pronunciation ? (
-            <Text style={styles.pronunciation}>/{item.pronunciation}/</Text>
+            <HighlightedText
+              text={`/${item.pronunciation}/`}
+              query={searchQuery}
+              style={styles.pronunciation}
+            />
           ) : null}
         </View>
         <View style={styles.cardRight}>
@@ -71,18 +97,45 @@ export default function WordsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Saved Words</Text>
+        {showSearch ? (
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by word or language..."
+            placeholderTextColor={Colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+        ) : (
+          <Text style={styles.title}>Saved Words</Text>
+        )}
+        <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
+          <Ionicons
+            name={showSearch ? 'close' : 'search'}
+            size={22}
+            color={Colors.textMuted}
+          />
+        </TouchableOpacity>
       </View>
-      {sortedWords.length === 0 ? (
+      {filteredWords.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="book-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>No saved words yet.{'\n'}Tap words in Learn to look them up!</Text>
+          {words.length === 0 ? (
+            <>
+              <Ionicons name="book-outline" size={64} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No saved words yet.{'\n'}Tap words in Learn to look them up!</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="search-outline" size={64} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No words match your search.</Text>
+            </>
+          )}
         </View>
       ) : (
         <FlatList
           key={numColumns}
           numColumns={numColumns}
-          data={sortedWords}
+          data={filteredWords}
           keyExtractor={(item) => item.id}
           renderItem={renderWord}
           columnWrapperStyle={isWide ? styles.row : undefined}
@@ -120,6 +173,21 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
+  },
+  searchButton: {
+    padding: 4,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    color: Colors.text,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginRight: 8,
   },
   list: {
     paddingBottom: 40,

@@ -19,53 +19,7 @@ import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
-
-function HighlightedText({
-  text,
-  query,
-  style,
-  numberOfLines,
-}: {
-  text: string;
-  query: string;
-  style: any;
-  numberOfLines?: number;
-}) {
-  if (!query.trim()) {
-    return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
-  }
-
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-  const parts: { text: string; highlight: boolean }[] = [];
-  let lastIndex = 0;
-  let index = lowerText.indexOf(lowerQuery);
-
-  while (index !== -1) {
-    if (index > lastIndex) {
-      parts.push({ text: text.slice(lastIndex, index), highlight: false });
-    }
-    parts.push({ text: text.slice(index, index + query.length), highlight: true });
-    lastIndex = index + query.length;
-    index = lowerText.indexOf(lowerQuery, lastIndex);
-  }
-
-  if (lastIndex < text.length) {
-    parts.push({ text: text.slice(lastIndex), highlight: false });
-  }
-
-  return (
-    <Text style={style} numberOfLines={numberOfLines}>
-      {parts.map((part, i) =>
-        part.highlight ? (
-          <Text key={i} style={styles.highlight}>{part.text}</Text>
-        ) : (
-          <Text key={i}>{part.text}</Text>
-        )
-      )}
-    </Text>
-  );
-}
+import HighlightedText from '../components/HighlightedText';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
@@ -249,10 +203,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     marginRight: 8,
-  },
-  highlight: {
-    backgroundColor: '#F5C542',
-    color: '#1A1A1A',
   },
   list: {
     paddingBottom: 40,

@@ -23,24 +23,41 @@ import HighlightedText from '../components/HighlightedText';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
-  const { songs, setCurrentSongId, deleteSong } = useStore();
+  const { songs, setCurrentSongId, deleteSong, trackSongOpen } = useStore();
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
   const [songToDelete, setSongToDelete] = useState<Song | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
+
+  const sortedSongs = [...songs].sort((a, b) => {
+    switch (sortMode) {
+      case 'lastOpened':
+        return (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0);
+      case 'openCount':
+        return (b.openCount ?? 0) - (a.openCount ?? 0);
+      case 'aZ':
+        return a.songName.toLowerCase().localeCompare(b.songName.toLowerCase());
+      case 'zA':
+        return b.songName.toLowerCase().localeCompare(a.songName.toLowerCase());
+      default:
+        return 0;
+    }
+  });
 
   const filteredSongs = searchQuery.trim()
-    ? songs.filter(
+    ? sortedSongs.filter(
         (s) =>
           s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.artistName.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : songs;
+    : sortedSongs;
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
+    trackSongOpen(song.id);
     navigation.navigate('Learn');
   };
 
@@ -67,6 +84,38 @@ export default function LyricsScreen() {
   const toggleSearch = () => {
     if (showSearch) setSearchQuery('');
     setShowSearch((v) => !v);
+  };
+
+  const cycleSortMode = () => {
+    setSortMode((current) => {
+      switch (current) {
+        case 'lastOpened':
+          return 'openCount';
+        case 'openCount':
+          return 'aZ';
+        case 'aZ':
+          return 'zA';
+        case 'zA':
+          return 'lastOpened';
+        default:
+          return 'lastOpened';
+      }
+    });
+  };
+
+  const getSortIcon = () => {
+    switch (sortMode) {
+      case 'lastOpened':
+        return 'time-outline';
+      case 'openCount':
+        return 'stats-chart-outline';
+      case 'aZ':
+        return 'arrow-down';
+      case 'zA':
+        return 'arrow-up';
+      default:
+        return 'time-outline';
+    }
   };
 
   const renderSong = ({ item }: { item: Song }) => (
@@ -124,6 +173,13 @@ export default function LyricsScreen() {
         ) : (
           <Text style={styles.title}>Saved Songs</Text>
         )}
+        <TouchableOpacity onPress={cycleSortMode} style={styles.searchButton}>
+          <Ionicons
+            name={getSortIcon()}
+            size={22}
+            color={Colors.textMuted}
+          />
+        </TouchableOpacity>
         <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
           <Ionicons
             name={showSearch ? 'close' : 'search'}

@@ -27,7 +27,7 @@ type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
-  const { word, songId, songName, lyricsLine } = route.params || {};
+  const { word, songId, songName, artistName, lyricsLine } = route.params || {};
   const insets = useSafeAreaInsets();
 
   const { words, addOrUpdateWord } = useStore();
@@ -219,7 +219,7 @@ export default function WordLookupScreen() {
         {songName && (
           <View style={styles.contextSection}>
             <Text style={styles.contextLabel}>Context</Text>
-            <Text style={styles.contextSong}>{songName}</Text>
+            <Text style={styles.contextSong}>{songName} - {artistName}</Text>
             {lyricsLine && renderContextLine()}
           </View>
         )}

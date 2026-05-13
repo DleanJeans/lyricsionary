@@ -9,26 +9,23 @@ interface WordLookupButtonsProps {
   songId?: string;
   songName?: string;
   lyricsLine?: string;
+  artistName?: string;
 }
 
-export default function WordLookupButtons({ word, songId, songName, lyricsLine }: WordLookupButtonsProps) {
+export default function WordLookupButtons({ word, songId, songName, artistName, lyricsLine }: WordLookupButtonsProps) {
   const navigation = useNavigation<any>();
 
-  const handleGoogleWord = () => {
-    navigation.navigate('WordLookup', { word, songId, songName, lyricsLine });
-  };
-
-  const handleWiktionaryWord = () => {
-    navigation.navigate('WordLookup', { word, songId, songName, lyricsLine });
+  const handleLookup = () => {
+    navigation.navigate('WordLookup', { word, songId, songName, artistName, lyricsLine });
   };
 
   return (
     <View style={styles.wordActions}>
-      <TouchableOpacity style={styles.wordBtn} onPress={handleGoogleWord}>
+      <TouchableOpacity style={styles.wordBtn} onPress={handleLookup}>
         <Ionicons name="logo-google" size={18} color={Colors.white} />
         <Text style={styles.wordBtnText}>Google</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.wordBtn} onPress={handleWiktionaryWord}>
+      <TouchableOpacity style={styles.wordBtn} onPress={handleLookup}>
         <Ionicons name="book-outline" size={18} color={Colors.white} />
         <Text style={styles.wordBtnText}>Wiktionary</Text>
       </TouchableOpacity>

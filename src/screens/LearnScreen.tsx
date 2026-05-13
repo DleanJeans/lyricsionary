@@ -101,6 +101,7 @@ export default function LearnScreen() {
         word={selectedWord}
         songId={song.id}
         songName={song.songName}
+        artistName={song.artistName}
         lyricsLine={selectedLine ?? undefined}
       />
     </View>

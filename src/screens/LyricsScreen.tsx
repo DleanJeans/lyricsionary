@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  TextInput,
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,52 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 
+function HighlightedText({
+  text,
+  query,
+  style,
+  numberOfLines,
+}: {
+  text: string;
+  query: string;
+  style: any;
+  numberOfLines?: number;
+}) {
+  if (!query.trim()) {
+    return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
+  }
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const parts: { text: string; highlight: boolean }[] = [];
+  let lastIndex = 0;
+  let index = lowerText.indexOf(lowerQuery);
+
+  while (index !== -1) {
+    if (index > lastIndex) {
+      parts.push({ text: text.slice(lastIndex, index), highlight: false });
+    }
+    parts.push({ text: text.slice(index, index + query.length), highlight: true });
+    lastIndex = index + query.length;
+    index = lowerText.indexOf(lowerQuery, lastIndex);
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ text: text.slice(lastIndex), highlight: false });
+  }
+
+  return (
+    <Text style={style} numberOfLines={numberOfLines}>
+      {parts.map((part, i) =>
+        part.highlight ? (
+          <Text key={i} style={styles.highlight}>{part.text}</Text>
+        ) : (
+          <Text key={i}>{part.text}</Text>
+        )
+      )}
+    </Text>
+  );
+}
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
@@ -27,6 +74,16 @@ export default function LyricsScreen() {
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
   const [songToDelete, setSongToDelete] = useState<Song | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredSongs = searchQuery.trim()
+    ? songs.filter(
+        (s) =>
+          s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.artistName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : songs;
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
@@ -53,6 +110,11 @@ export default function LyricsScreen() {
     return words.length;
   };
 
+  const toggleSearch = () => {
+    if (showSearch) setSearchQuery('');
+    setShowSearch((v) => !v);
+  };
+
   const renderSong = ({ item }: { item: Song }) => (
     <TouchableOpacity
       style={[styles.card, isWide && styles.cardWide]}
@@ -62,12 +124,22 @@ export default function LyricsScreen() {
     >
       <View style={styles.cardLeft}>
         <View style={styles.songNameRow}>
-        <Text style={styles.songName} numberOfLines={1}>{item.songName}</Text>
-        {getFaviconUrl(item.sourceUrl ?? '') && (
-          <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
-        )}
-      </View>
-        <Text style={styles.artistName} numberOfLines={1}>{item.artistName || 'Unknown Artist'}</Text>
+          <HighlightedText
+            text={item.songName}
+            query={searchQuery}
+            style={styles.songName}
+            numberOfLines={1}
+          />
+          {getFaviconUrl(item.sourceUrl ?? '') && (
+            <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
+          )}
+        </View>
+        <HighlightedText
+          text={item.artistName || 'Unknown Artist'}
+          query={searchQuery}
+          style={styles.artistName}
+          numberOfLines={1}
+        />
         <View style={styles.meta}>
           <Text style={styles.metaText}>{getWordCount(item)} words</Text>
           <View style={styles.languages}>
@@ -86,18 +158,45 @@ export default function LyricsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Saved Lyrics</Text>
+        {showSearch ? (
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by title or artist..."
+            placeholderTextColor={Colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+        ) : (
+          <Text style={styles.title}>Saved Songs</Text>
+        )}
+        <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
+          <Ionicons
+            name={showSearch ? 'close' : 'search'}
+            size={22}
+            color={Colors.textMuted}
+          />
+        </TouchableOpacity>
       </View>
-      {songs.length === 0 ? (
+      {filteredSongs.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="library-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>No saved lyrics yet.{'\n'}Go to Editor to add some!</Text>
+          {songs.length === 0 ? (
+            <>
+              <Ionicons name="library-outline" size={64} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No saved songs yet.{'\n'}Go to Editor to add some!</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="search-outline" size={64} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No songs match your search.</Text>
+            </>
+          )}
         </View>
       ) : (
         <FlatList
           key={numColumns}
           numColumns={numColumns}
-          data={songs}
+          data={filteredSongs}
           keyExtractor={(item) => item.id}
           renderItem={renderSong}
           columnWrapperStyle={isWide ? styles.row : undefined}
@@ -135,6 +234,25 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
+  },
+  searchButton: {
+    padding: 4,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    color: Colors.text,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginRight: 8,
+  },
+  highlight: {
+    backgroundColor: '#F5C542',
+    color: '#1A1A1A',
   },
   list: {
     paddingBottom: 40,

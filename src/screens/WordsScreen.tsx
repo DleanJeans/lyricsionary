@@ -17,6 +17,7 @@ import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import HighlightedText from '../components/HighlightedText';
+import WordLookupButtons from '../components/WordLookupButtons';
 
 export default function WordsScreen() {
   const { words, deleteWord } = useStore();
@@ -27,6 +28,7 @@ export default function WordsScreen() {
   const [wordToDelete, setWordToDelete] = useState<WordEntry | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
   const filteredWords = searchQuery.trim()
     ? sortedWords.filter(
@@ -62,37 +64,47 @@ export default function WordsScreen() {
     setShowSearch((v) => !v);
   };
 
-  const renderWord = ({ item }: { item: WordEntry }) => (
-    <TouchableOpacity
-      style={[styles.card, isWide && styles.cardWide]}
-      onLongPress={() => handleDeleteWord(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardRow}>
-        <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
-        <View style={styles.cardContent}>
-          <HighlightedText
-            text={item.word}
-            query={searchQuery}
-            style={styles.wordText}
-          />
-          {item.pronunciation ? (
+  const renderWord = ({ item }: { item: WordEntry }) => {
+    const isSelected = selectedWord === item.word;
+
+    return (
+      <TouchableOpacity
+        style={[styles.card, isWide && styles.cardWide]}
+        onPress={() => setSelectedWord(isSelected ? null : item.word)}
+        onLongPress={() => handleDeleteWord(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardRow}>
+          <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
+          <View style={styles.cardContent}>
             <HighlightedText
-              text={`/${item.pronunciation}/`}
+              text={item.word}
               query={searchQuery}
-              style={styles.pronunciation}
+              style={styles.cardWordText}
             />
-          ) : null}
-        </View>
-        <View style={styles.cardRight}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.lookupCount}×</Text>
+            {item.pronunciation ? (
+              <HighlightedText
+                text={`/${item.pronunciation}/`}
+                query={searchQuery}
+                style={styles.pronunciation}
+              />
+            ) : null}
           </View>
-          <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
+          <View style={styles.cardRight}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.lookupCount}×</Text>
+            </View>
+            <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+        {isSelected && (
+          <View style={styles.buttonsContainer}>
+            <WordLookupButtons word={item.word} />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScreenWrapper>
@@ -218,7 +230,7 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
   },
-  wordText: {
+  cardWordText: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text,
@@ -259,5 +271,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 24,
+  },
+  buttonsContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
 });

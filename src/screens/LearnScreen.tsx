@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,28 +14,85 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import WordLookupButtons from '../components/WordLookupButtons';
+import MultiLanguageSelect from '../components/MultiLanguageSelect';
+import Toast from '../components/Toast';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, addOrUpdateWord } = useStore();
+  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, addOrUpdateWord, selectedTranslationLanguages, setSelectedTranslationLanguages } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+
+  // Initialize selected languages when song changes
+  useEffect(() => {
+    if (song && song.translations.length > 0 && selectedTranslationLanguages.length === 0) {
+      // Auto-select all available translation languages by default
+      const availableLanguages = song.translations.map(t => t.language);
+      setSelectedTranslationLanguages(availableLanguages);
+    }
+  }, [song, selectedTranslationLanguages.length, setSelectedTranslationLanguages]);
+
+  // Helper function to normalize text for comparison (remove punctuation, compare words only)
+  const normalizeText = (text: string): string => {
+    return text.replace(/[^\p{L}\p{N}\s]/gu, '').trim().toLowerCase();
+  };
 
   const lines = useMemo(() => {
     if (!song) return [];
     const originalLines = song.originalLyrics.split('\n');
     const translationLines = song.translations.map((t) => t.lyrics.split('\n'));
-    return originalLines.map((line, i) => ({
-      original: line,
-      translations: translationLines.map((tl) => tl[i] || ''),
-    }));
+    return originalLines.map((line, i) => {
+      const originalNormalized = normalizeText(line);
+      const translations = translationLines.map((tl, ti) => {
+        const translationText = tl[i] || '';
+        const translationNormalized = normalizeText(translationText);
+        // Only include translation if it's different from original (word-wise comparison)
+        const isDifferent = originalNormalized !== translationNormalized;
+        return {
+          language: song.translations[ti].language,
+          text: translationText,
+          show: isDifferent,
+        };
+      });
+      return {
+        original: line,
+        translations,
+      };
+    });
   }, [song]);
 
   const lineCount = lines.length;
+
+  const handleToggleTranslations = () => {
+    if (!song || song.translations.length === 0) {
+      setToastMessage('No translations available');
+      setShowToast(true);
+      return;
+    }
+    setShowDropdown(true);
+  };
+
+  const handleLanguageChange = (languages: string[]) => {
+    setSelectedTranslationLanguages(languages);
+    if (languages.length === 0) {
+      // If no languages selected, turn off translations
+      if (showTranslations) {
+        toggleTranslations();
+      }
+    } else {
+      // If languages selected, turn on translations
+      if (!showTranslations) {
+        toggleTranslations();
+      }
+    }
+  };
 
   if (!song) {
     return (
@@ -132,13 +189,15 @@ export default function LearnScreen() {
         <View key={i} style={styles.lineBlock}>
           {renderPressableText(line.original)}
           {showTranslations &&
-            line.translations.map((tl, ti) =>
-              tl ? (
-                <Text key={ti} style={[styles.translationLine, { fontSize: fontSize - 2 }]}>
-                  {tl}
-                </Text>
-              ) : null
-            )}
+            line.translations
+              .filter((tl) => tl.show && selectedTranslationLanguages.includes(tl.language))
+              .map((tl, ti) =>
+                tl.text ? (
+                  <Text key={ti} style={[styles.translationLine, { fontSize: fontSize - 2 }]}>
+                    {tl.text}
+                  </Text>
+                ) : null
+              )}
         </View>
       ))}
     </ScrollView>
@@ -152,7 +211,7 @@ export default function LearnScreen() {
           <Text style={styles.artistName}>{song.artistName}</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerBtn} onPress={toggleTranslations}>
+          <TouchableOpacity style={styles.headerBtn} onPress={handleToggleTranslations}>
             <Ionicons
               name={showTranslations ? 'language' : 'eye-off-outline'}
               size={22}
@@ -167,6 +226,25 @@ export default function LearnScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Translation language selector modal */}
+      {song && song.translations.length > 0 && (
+        <MultiLanguageSelect
+          value={selectedTranslationLanguages}
+          onValueChange={handleLanguageChange}
+          placeholder="Select translation languages"
+          availableLanguages={song.translations.map(t => t.language)}
+          showModal={showDropdown}
+          onClose={() => setShowDropdown(false)}
+        />
+      )}
+
+      {/* Toast notification */}
+      <Toast
+        message={toastMessage}
+        visible={showToast}
+        onHide={() => setShowToast(false)}
+      />
 
       {isWide ? (
         /* ── Wide: left lyrics panel + right word/controls panel ── */

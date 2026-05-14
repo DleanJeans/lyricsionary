@@ -14,7 +14,7 @@ const linking = {
       Editor: 'editor/:songId?',
       Web: 'web',
       Learn: 'learn/:songId?',
-      Lyrics: 'lyrics',
+      Songs: 'songs',
       Words: 'words',
     },
   },

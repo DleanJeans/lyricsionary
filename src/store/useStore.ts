@@ -15,10 +15,11 @@ interface AppState {
   scrapeTargetTab: number;
   fontSize: number;
   showTranslations: boolean;
+  selectedTranslationLanguages: string[];
 
   // Song actions
   loadSongs: () => Promise<void>;
-  saveSong: (songName: string, artistName: string, originalLyrics: string, translations: Translation[], sourceUrl?: string, sourceUrlTitle?: string) => Promise<Song>;
+  saveSong: (songName: string, artistName: string, originalLyrics: string, originalLanguages: string[], translations: Translation[], sourceUrl?: string, sourceUrlTitle?: string) => Promise<Song>;
   updateSong: (id: string, updates: Partial<Omit<Song, 'id' | 'createdAt'>>) => Promise<void>;
   deleteSong: (id: string) => Promise<void>;
   setCurrentSongId: (id: string | null) => void;
@@ -31,6 +32,7 @@ interface AppState {
   // Learn actions
   setFontSize: (size: number) => void;
   toggleTranslations: () => void;
+  setSelectedTranslationLanguages: (languages: string[]) => void;
 
   // Word actions
   loadWords: () => Promise<void>;
@@ -55,6 +57,7 @@ export const useStore = create<AppState>((set, get) => ({
   scrapeTargetTab: 0,
   fontSize: 18,
   showTranslations: true,
+  selectedTranslationLanguages: [],
 
   loadSongs: async () => {
     try {
@@ -74,12 +77,13 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  saveSong: async (songName, artistName, originalLyrics, translations, sourceUrl, sourceUrlTitle) => {
+  saveSong: async (songName, artistName, originalLyrics, originalLanguages, translations, sourceUrl, sourceUrlTitle) => {
     const song: Song = {
       id: uuidv4(),
       songName,
       artistName,
       originalLyrics,
+      originalLanguages,
       sourceUrl,
       sourceUrlTitle,
       translations,
@@ -127,6 +131,8 @@ export const useStore = create<AppState>((set, get) => ({
   setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
 
   toggleTranslations: () => set((s) => ({ showTranslations: !s.showTranslations })),
+
+  setSelectedTranslationLanguages: (languages) => set({ selectedTranslationLanguages: languages }),
 
   loadWords: async () => {
     try {

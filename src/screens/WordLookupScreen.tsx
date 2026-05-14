@@ -108,9 +108,18 @@ export default function WordLookupScreen() {
         if (relevantDef) {
           setDefinition(relevantDef.text);
         }
-      } else if (originalLanguages && originalLanguages.length > 0) {
-        // If no existing word, use first original language as default
-        setLanguage(originalLanguages[0]);
+      } else {
+        // For new words, reset fields to ensure clean state
+        setPronunciation('');
+        setDefinition('');
+        setEmoji('');
+        if (originalLanguages && originalLanguages.length > 0) {
+          // If no existing word, use first original language as default
+          setLanguage(originalLanguages[0]);
+        } else {
+          // Reset to default language if no original languages provided
+          setLanguage('English');
+        }
       }
     }
   }, [word, words, songId, originalLanguages]);

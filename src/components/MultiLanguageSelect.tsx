@@ -35,7 +35,7 @@ export default function MultiLanguageSelect({ value, onValueChange, placeholder 
       .map(langName => LANGUAGES.find(l => l.name === langName)?.flag)
       .filter(Boolean)
       .join(' ');
-    return `${flags} (${value.length})`;
+    return flags;
   };
 
   return (

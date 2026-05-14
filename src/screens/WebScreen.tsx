@@ -9,6 +9,7 @@ import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
+import Toast from '../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LYRICS_DOMAINS = ['genius.com', 'musixmatch.com', 'lyricstranslate.com'];
@@ -28,6 +29,7 @@ export default function WebScreen() {
   const [showFab, setShowFab] = useState(false);
   const [loading, setLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const backPressedOnce = useRef(false);
   const timeoutRef = useRef<number | null>(null);
 
@@ -65,6 +67,9 @@ export default function WebScreen() {
           lyrics = cleanGeniusLyrics(lyrics);
         }
         navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: scrapeTargetTab });
+      }
+      if (data.type === 'error') {
+        setToast(data.message || 'Failed to scrape lyrics');
       }
     } catch (e) {
       // ignore parse errors
@@ -175,6 +180,7 @@ export default function WebScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}
+      <Toast message={toast ?? ''} visible={!!toast} onHide={() => setToast(null)} />
       {true && (
         <TouchableOpacity style={styles.fab} onPress={handleScrapeLyrics} activeOpacity={0.8}>
           <Ionicons name="download-outline" size={26} color={Colors.white} />

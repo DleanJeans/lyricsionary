@@ -1,3 +1,63 @@
+// Edit scraping logic here freely — syntax errors will be caught and shown as a toast.
+// consoleLog and sendLyrics are available as parameters from the outer bootstrap.
+const _scrapeLyricsLogic = `
+  const url = window.location.href;
+  let lyrics = '';
+
+  // Google
+  if (url.includes('google.com')) {
+    const paragraphs = document.querySelectorAll('div[data-lyricid] div[class][jsname]');
+    if (paragraphs.length > 0) {
+      let lyricsJsname = '';
+      paragraphs.forEach(p => {
+        const pJsname = p.getAttribute('jsname');
+        if (!lyricsJsname) {
+          lyricsJsname = pJsname;
+        } else if (pJsname !== lyricsJsname) {
+          return;
+        }
+        lyrics += p.innerText + '\\n\\n';
+      });
+      sendLyrics(lyrics);
+      return;
+    }
+  }
+
+  // Genius
+  if (url.includes('genius.com')) {
+    const genius = document.querySelectorAll('[data-lyrics-container="true"]');
+    if (genius.length > 0) {
+      genius.forEach(el => { lyrics += el.innerText + '\\n'; });
+      sendLyrics(lyrics);
+      return;
+    }
+  }
+
+  // Musixmatch
+  if (url.includes('musixmatch.com')) {
+    const musix = document.querySelector('h2[style="color: var(--mxm-contentSecondary);"]:not([data-testid]) + div')?.innerText;
+    if (musix && musix.length > 0) {
+      sendLyrics(musix);
+      return;
+    }
+  }
+
+  // SongLyrics.com
+  if (url.includes('songlyrics.com')) {
+    const songLyricsEl = document.querySelector('#songLyricsDiv');
+    if (songLyricsEl) {
+      sendLyrics(songLyricsEl.innerText);
+      return;
+    }
+  }
+
+  // Generic fallback
+  consoleLog(window.location.hostname + ' - Using fallback, scraping entire page text');
+  const body = document.body.innerText;
+  sendLyrics(body.substring(0, 5000));
+`;
+
+// Bootstrap: defines helpers and runs the logic via new Function so syntax errors are catchable.
 export const scrapeLyricsJS = `
   (function() {
     const consoleLog = (log) => {
@@ -6,62 +66,14 @@ export const scrapeLyricsJS = `
     const sendLyrics = (text) => {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text, title: document.title }));
     };
-
-    const url = window.location.href;
-    let lyrics = '';
-
-    // Google
-    if (url.includes('google.com')) {
-      var paragraphs = document.querySelectorAll('div[data-lyricid] div[class][jsname]');
-      if (paragraphs.length > 0) {
-        let lyricsJsname = '';
-        paragraphs.forEach(p => {
-          const pJsname = p.getAttribute('jsname');
-          if (!lyricsJsname) {
-            lyricsJsname = pJsname;
-          } else if (pJsname !== lyricsJsname) {
-            return;
-          }
-          lyrics += p.innerText + '\\n\\n';
-        });
-        sendLyrics(lyrics);
-        return;
-      }
+    const sendError = (err) => {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: err && err.message ? err.message : String(err) }));
+    };
+    try {
+      (new Function('consoleLog', 'sendLyrics', ${JSON.stringify(_scrapeLyricsLogic)}))(consoleLog, sendLyrics);
+    } catch (e) {
+      sendError(e);
     }
-
-    // Genius
-    if (url.includes('genius.com')) {
-      var genius = document.querySelectorAll('[data-lyrics-container="true"]');
-      if (genius.length > 0) {
-        genius.forEach(el => { lyrics += el.innerText + '\\n'; });
-        sendLyrics(lyrics);
-        return;
-      }
-    }
-
-    // Musixmatch
-    if (url.includes('musixmatch.com')) {
-      var musix = document.querySelector('h2[style="color: var(--mxm-contentSecondary);"]:not([data-testid]) + div')?.innerText;
-      if (musix && musix.length > 0) {
-        sendLyrics(musix);
-        return;
-      }
-    }
-
-    // LyricsTranslate
-    if (url.includes('lyricstranslate.com')) {
-      const lt = document.querySelectorAll('.ltf, .song-node');
-      if (lt.length > 0) {
-        lt.forEach(el => { lyrics += el.innerText + '\\n'; });
-        sendLyrics(lyrics);
-        return;
-      }
-    }
-
-    // Generic fallback
-    consoleLog(window.location.hostname, 'Using fallback - scraping entire page text');
-    const body = document.body.innerText;
-    sendLyrics(body.substring(0, 5000));
   })();
   true;
 `;

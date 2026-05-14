@@ -285,7 +285,7 @@ export default function EditorScreen() {
       )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 0 && styles.tabActive]}
+          style={[styles.tab, styles.originalTab, activeTab === 0 && styles.tabActive]}
           onPress={() => {
             if (activeTab === 0) {
               setShowSourceUrl(!showSourceUrl);
@@ -301,23 +301,75 @@ export default function EditorScreen() {
           <Text style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}>Original</Text>
         </TouchableOpacity>
         {translations.map((t, i) => (
-          <TouchableOpacity
-            key={t.language}
-            style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
-            onPress={() => {
-              if (activeTab === i + 1) {
-                setShowSourceUrl(!showSourceUrl);
-              } else {
-                setActiveTab(i + 1);
-                setShowSourceUrl(true);
-              }
-            }}
-          >
-            {getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '') && (
-              <Image source={{ uri: getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
-            )}
-            <Text style={[styles.tabText, activeTab === i + 1 && styles.tabTextActive]}>{t.language}</Text>
-          </TouchableOpacity>
+          <View key={t.language} style={styles.tabWrapper}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
+              onPress={() => {
+                if (activeTab === i + 1) {
+                  setShowSourceUrl(!showSourceUrl);
+                } else {
+                  setActiveTab(i + 1);
+                  setShowSourceUrl(true);
+                }
+              }}
+            >
+              {getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '') && (
+                <Image source={{ uri: getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
+              )}
+              <Text style={[styles.tabText, activeTab === i + 1 && styles.tabTextActive]}>{t.language}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => {
+                Alert.alert(
+                  'Delete Translation',
+                  `Are you sure you want to delete the ${t.language} translation?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: () => {
+                        const newTranslations = translations.filter((_, idx) => idx !== i);
+                        setTranslations(newTranslations);
+                        // Clean up pending data for this tab
+                        const newPendingUrls = { ...pendingSourceUrls };
+                        const newPendingTitles = { ...pendingPageTitles };
+                        delete newPendingUrls[i + 1];
+                        delete newPendingTitles[i + 1];
+                        // Shift indices for tabs after the deleted one
+                        Object.keys(newPendingUrls).forEach((key) => {
+                          const idx = parseInt(key);
+                          if (idx > i + 1) {
+                            newPendingUrls[idx - 1] = newPendingUrls[idx];
+                            delete newPendingUrls[idx];
+                          }
+                        });
+                        Object.keys(newPendingTitles).forEach((key) => {
+                          const idx = parseInt(key);
+                          if (idx > i + 1) {
+                            newPendingTitles[idx - 1] = newPendingTitles[idx];
+                            delete newPendingTitles[idx];
+                          }
+                        });
+                        setPendingSourceUrls(newPendingUrls);
+                        setPendingPageTitles(newPendingTitles);
+                        // Switch to Original tab if we deleted the active tab
+                        if (activeTab === i + 1) {
+                          setActiveTab(0);
+                        } else if (activeTab > i + 1) {
+                          // Adjust active tab index if it's after the deleted tab
+                          setActiveTab(activeTab - 1);
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="close" size={14} color={activeTab === i + 1 ? Colors.white : Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         ))}
         <TouchableOpacity style={styles.addTab} onPress={() => setShowAddDialog(true)}>
           <Ionicons name="add" size={20} color={Colors.primary} />
@@ -580,6 +632,12 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     marginBottom: 10,
   },
+  tabWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+    position: 'relative',
+  },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -588,6 +646,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: Colors.surface,
+    paddingRight: 32,
+  },
+  originalTab: {
+    paddingRight: 16,
+    marginRight: 8,
+  },
+  deleteButton: {
+    marginLeft: -24,
     marginRight: 8,
   },
   tabFavicon: {

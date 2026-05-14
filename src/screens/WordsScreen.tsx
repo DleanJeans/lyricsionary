@@ -40,7 +40,7 @@ function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: 
   return (
     <ReanimatedSwipeable
       ref={swipeableRef}
-      renderRightActions={() => (
+      renderLeftActions={() => (
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => onDelete(item, () => swipeableRef.current?.close())}
@@ -50,12 +50,11 @@ function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: 
           <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       )}
-      overshootRight={false}
+      overshootLeft={false}
     >
       <TouchableOpacity
         style={[styles.card, isWide && styles.cardWide]}
         onPress={() => onSelect(isSelected ? null : item.word)}
-        activeOpacity={0.7}
       >
         <View style={styles.cardRow}>
           <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
@@ -266,7 +265,8 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     backgroundColor: Colors.surface,
-    borderRadius: 14,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
@@ -340,11 +340,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 100,
     marginBottom: 10,
-    marginLeft: -28,
-    borderTopRightRadius: 14,
-    borderBottomRightRadius: 14,
-    // paddingHorizontal: 12,
-    paddingLeft: 28,
+    marginRight: -28,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+    paddingRight: 28,
   },
   deleteButtonText: {
     color: Colors.white,

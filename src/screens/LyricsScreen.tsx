@@ -133,9 +133,6 @@ export default function LyricsScreen() {
             style={styles.songName}
             numberOfLines={1}
           />
-          {getFaviconUrl(item.sourceUrl ?? '') && (
-            <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
-          )}
         </View>
         <HighlightedText
           text={item.artistName || 'Unknown Artist'}
@@ -144,8 +141,19 @@ export default function LyricsScreen() {
           numberOfLines={1}
         />
         <View style={styles.meta}>
+          {getFaviconUrl(item.sourceUrl ?? '') && (
+            <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
+          )}
           <Text style={styles.metaText}>{getWordCount(item)} words</Text>
           <View style={styles.languages}>
+            {(item.originalLanguages ?? []).map((lang) => (
+              <Text key={`orig-${lang}`} style={styles.flag}>
+                {getFlagForLanguage(lang)}
+              </Text>
+            ))}
+            {item.translations.length > 0 && (
+              <Text style={styles.flagArrow}>→</Text>
+            )}
             {item.translations.map((t) => (
               <Text key={t.language} style={styles.flag}>
                 {getFlagForLanguage(t.language)}
@@ -298,6 +306,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 2,
+    marginTop: 2,
   },
   artistName: {
     fontSize: 14,
@@ -308,7 +317,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
-    gap: 12,
+    gap: 6,
   },
   metaText: {
     fontSize: 13,
@@ -320,6 +329,10 @@ const styles = StyleSheet.create({
   },
   flag: {
     fontSize: 16,
+  },
+  flagArrow: {
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   empty: {
     flex: 1,

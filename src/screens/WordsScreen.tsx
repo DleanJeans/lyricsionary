@@ -66,6 +66,7 @@ export default function WordsScreen() {
 
   const renderWord = ({ item }: { item: WordEntry }) => {
     const isSelected = selectedWord === item.word;
+    const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
 
     return (
       <TouchableOpacity
@@ -84,7 +85,7 @@ export default function WordsScreen() {
             />
             {item.pronunciation ? (
               <HighlightedText
-                text={`/${item.pronunciation}/`}
+                text={ipa}
                 query={searchQuery}
                 style={styles.pronunciation}
               />

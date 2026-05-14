@@ -21,7 +21,7 @@ import { RootTabParamList } from '../types';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
-import EmojiSelect from '../components/EmojiSelect';
+import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -87,6 +87,7 @@ export default function WordLookupScreen() {
   const [pronunciation, setPronunciation] = useState('');
   const [definition, setDefinition] = useState('');
   const [emoji, setEmoji] = useState('');
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   // Load existing word data if available
   useEffect(() => {
@@ -240,11 +241,15 @@ export default function WordLookupScreen() {
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Emoji</Text>
-            <EmojiSelect
-              value={emoji}
-              onValueChange={setEmoji}
-              placeholder="Select emoji (optional)"
-            />
+            <TouchableOpacity
+              style={styles.emojiButton}
+              onPress={() => setIsEmojiPickerOpen(true)}
+            >
+              <Text style={[styles.emojiButtonText, !emoji && styles.emojiButtonPlaceholder]}>
+                {emoji || 'Select emoji (optional)'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.field}>
@@ -354,6 +359,13 @@ export default function WordLookupScreen() {
           </View>
         </View>
       </ScrollView>
+      <EmojiPicker
+        onEmojiSelected={(emojiObject: EmojiType) => {
+          setEmoji(emojiObject.emoji);
+        }}
+        open={isEmojiPickerOpen}
+        onClose={() => setIsEmojiPickerOpen(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -447,6 +459,25 @@ const styles = StyleSheet.create({
     color: Colors.text,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  emojiButton: {
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emojiButtonText: {
+    fontSize: 24,
+    flex: 1,
+  },
+  emojiButtonPlaceholder: {
+    fontSize: 15,
+    color: Colors.textMuted,
   },
   definitionInput: {
     minHeight: 80,

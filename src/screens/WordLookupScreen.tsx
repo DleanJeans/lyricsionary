@@ -197,10 +197,11 @@ export default function WordLookupScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
@@ -230,26 +231,27 @@ export default function WordLookupScreen() {
 
         {/* Word Info Fields */}
         <View style={styles.fieldSection}>
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Language</Text>
-            <LanguageSelect
-              value={language}
-              onValueChange={setLanguage}
-              placeholder="Select language"
-            />
-          </View>
+          <View style={styles.languageEmojiRow}>
+            <View style={styles.emojiField}>
+              <Text style={styles.fieldLabel}>Emoji</Text>
+              <TouchableOpacity
+                style={styles.emojiButton}
+                onPress={() => setIsEmojiPickerOpen(true)}
+              >
+                <Text style={[styles.emojiButtonText, !emoji && styles.emojiButtonPlaceholder]}>
+                  {emoji || '😀'}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Emoji</Text>
-            <TouchableOpacity
-              style={styles.emojiButton}
-              onPress={() => setIsEmojiPickerOpen(true)}
-            >
-              <Text style={[styles.emojiButtonText, !emoji && styles.emojiButtonPlaceholder]}>
-                {emoji || 'Select emoji (optional)'}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={styles.languageField}>
+              <Text style={styles.fieldLabel}>Language</Text>
+              <LanguageSelect
+                value={language}
+                onValueChange={setLanguage}
+                placeholder="Select language"
+              />
+            </View>
           </View>
 
           <View style={styles.field}>
@@ -359,6 +361,7 @@ export default function WordLookupScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
       <EmojiPicker
         onEmojiSelected={(emojiObject: EmojiType) => {
           setEmoji(emojiObject.emoji);
@@ -389,7 +392,7 @@ export default function WordLookupScreen() {
           },
         }}
       />
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
@@ -465,6 +468,18 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
   },
+  languageEmojiRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  emojiField: {
+    flex: 0.2,
+    gap: 6,
+  },
+  languageField: {
+    flex: 0.8,
+    gap: 6,
+  },
   field: {
     gap: 6,
   },
@@ -486,20 +501,19 @@ const styles = StyleSheet.create({
   emojiButton: {
     backgroundColor: Colors.surface,
     borderRadius: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 8,
     height: 45,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
   },
   emojiButtonText: {
-    fontSize: 24,
-    flex: 1,
+    fontSize: 28,
+    textAlign: 'center',
   },
   emojiButtonPlaceholder: {
-    fontSize: 15,
+    fontSize: 24,
     color: Colors.textMuted,
   },
   definitionInput: {

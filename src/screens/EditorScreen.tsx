@@ -653,15 +653,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   deleteButton: {
-    position: 'absolute',
-    right: 8,
-    top: '50%',
-    transform: [{ translateY: -7 }],
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
+    marginLeft: -24,
+    marginRight: 8,
   },
   tabFavicon: {
     width: 14,

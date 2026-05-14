@@ -28,6 +28,7 @@ export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
   const { word, songId, songName, artistName, lyricsLine, originalLanguages } = route.params || {};
+  console.log('WordLookupScreen params:', { word, songId, songName, artistName, lyricsLine, originalLanguages });
   const insets = useSafeAreaInsets();
 
   const { words, addOrUpdateWord } = useStore();
@@ -86,6 +87,7 @@ export default function WordLookupScreen() {
   const [language, setLanguage] = useState(
     (originalLanguages && originalLanguages.length > 0) ? originalLanguages[0] : 'English'
   );
+  console.log('Initial language state:', language, 'from originalLanguages:', originalLanguages);
   const [pronunciation, setPronunciation] = useState('');
   const [definition, setDefinition] = useState('');
 

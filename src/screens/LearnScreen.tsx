@@ -22,6 +22,7 @@ export default function LearnScreen() {
   const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, addOrUpdateWord } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
+  console.log('LearnScreen song:', { id: song?.id, name: song?.songName, originalLanguages: song?.originalLanguages });
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
 

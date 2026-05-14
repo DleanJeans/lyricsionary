@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { Colors } from '../constants/theme';
 
 interface ToastProps {
@@ -7,9 +7,10 @@ interface ToastProps {
   visible: boolean;
   onHide: () => void;
   duration?: number;
+  onUndo?: () => void;
 }
 
-export default function Toast({ message, visible, onHide, duration = 2000 }: ToastProps) {
+export default function Toast({ message, visible, onHide, duration = 2000, onUndo }: ToastProps) {
   const opacity = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -37,6 +38,11 @@ export default function Toast({ message, visible, onHide, duration = 2000 }: Toa
   return (
     <Animated.View style={[styles.container, { opacity }]}>
       <Text style={styles.text}>{message}</Text>
+      {onUndo && (
+        <TouchableOpacity onPress={onUndo} style={styles.undoButton}>
+          <Text style={styles.undoText}>UNDO</Text>
+        </TouchableOpacity>
+      )}
     </Animated.View>
   );
 }
@@ -51,8 +57,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: Colors.border,
     zIndex: 1000,
@@ -60,6 +67,16 @@ const styles = StyleSheet.create({
   text: {
     color: Colors.text,
     fontSize: 14,
-    textAlign: 'center',
+    flex: 1,
+  },
+  undoButton: {
+    marginLeft: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  undoText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

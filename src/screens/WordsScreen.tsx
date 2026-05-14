@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import HighlightedText from '../components/HighlightedText';
 import WordLookupButtons from '../components/WordLookupButtons';
+import Toast from '../components/Toast';
 
 export default function WordsScreen() {
   const { words, deleteWord } = useStore();
@@ -28,15 +29,23 @@ export default function WordsScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [deletedWord, setDeletedWord] = useState<WordEntry | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const openSwipeableRef = useRef<Swipeable | null>(null);
 
-  const filteredWords = searchQuery.trim()
-    ? sortedWords.filter(
+  const filteredWords = deletedWord
+    ? sortedWords.filter(w => w.id !== deletedWord.id)
+    : sortedWords;
+
+  const searchedWords = searchQuery.trim()
+    ? filteredWords.filter(
         (w) =>
           w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
           w.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (w.pronunciation && w.pronunciation.toLowerCase().includes(searchQuery.toLowerCase()))
       )
-    : sortedWords;
+    : filteredWords;
 
   const formatDate = (ts: number) => {
     const d = new Date(ts);
@@ -48,14 +57,50 @@ export default function WordsScreen() {
     setShowSearch((v) => !v);
   };
 
+  const handleDelete = (item: WordEntry) => {
+    // Clear any existing undo timeout
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
+
+    // Store the deleted word for potential undo
+    setDeletedWord(item);
+    setSelectedWord(null);
+    setShowToast(true);
+
+    // Close the swipeable
+    if (openSwipeableRef.current) {
+      openSwipeableRef.current.close();
+    }
+
+    // Set timeout to permanently delete after 5 seconds
+    undoTimeoutRef.current = setTimeout(() => {
+      deleteWord(item.id);
+      setDeletedWord(null);
+    }, 5000);
+  };
+
+  const handleUndo = () => {
+    // Clear the delete timeout
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+      undoTimeoutRef.current = null;
+    }
+
+    // Restore the word
+    setDeletedWord(null);
+    setShowToast(false);
+  };
+
+  const handleToastHide = () => {
+    setShowToast(false);
+  };
+
   const renderRightActions = (item: WordEntry) => {
     return (
       <TouchableOpacity
         style={styles.deleteButton}
-        onPress={() => {
-          deleteWord(item.id);
-          setSelectedWord(null);
-        }}
+        onPress={() => handleDelete(item)}
         activeOpacity={0.7}
       >
         <Ionicons name="trash" size={24} color={Colors.white} />
@@ -70,6 +115,11 @@ export default function WordsScreen() {
 
     return (
       <Swipeable
+        ref={(ref) => {
+          if (ref && isSelected) {
+            openSwipeableRef.current = ref;
+          }
+        }}
         renderRightActions={() => renderRightActions(item)}
         overshootRight={false}
       >
@@ -134,7 +184,7 @@ export default function WordsScreen() {
           />
         </TouchableOpacity>
       </View>
-      {filteredWords.length === 0 ? (
+      {searchedWords.length === 0 ? (
         <View style={styles.empty}>
           {words.length === 0 ? (
             <>
@@ -152,7 +202,7 @@ export default function WordsScreen() {
         <FlatList
           key={numColumns}
           numColumns={numColumns}
-          data={filteredWords}
+          data={searchedWords}
           keyExtractor={(item) => item.id}
           renderItem={renderWord}
           columnWrapperStyle={isWide ? styles.row : undefined}
@@ -160,6 +210,13 @@ export default function WordsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      <Toast
+        visible={showToast}
+        message={`Deleted "${deletedWord?.word}"`}
+        onHide={handleToastHide}
+        duration={5000}
+        onUndo={handleUndo}
+      />
     </ScreenWrapper>
   );
 }
@@ -205,7 +262,8 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     backgroundColor: Colors.surface,
-    borderRadius: 14,
+    borderTopRightRadius: 14,
+    borderBottomRightRadius: 14,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
@@ -274,7 +332,7 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
   },
   deleteButton: {
-    backgroundColor: Colors.danger,
+    backgroundColor: Colors.dangerDark,
     justifyContent: 'center',
     alignItems: 'center',
     width: 90,

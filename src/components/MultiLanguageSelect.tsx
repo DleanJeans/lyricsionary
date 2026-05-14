@@ -51,7 +51,6 @@ export default function MultiLanguageSelect({ value, onValueChange, placeholder 
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Languages</Text>
-            <Text style={styles.modalSubtitle}>Choose one or more languages</Text>
             <FlatList
               data={LANGUAGES}
               keyExtractor={(item) => item.code}
@@ -75,7 +74,7 @@ export default function MultiLanguageSelect({ value, onValueChange, placeholder 
                       {item.name}
                     </Text>
                     {isSelected && (
-                      <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                      <Ionicons name="checkmark" size={18} color={Colors.primary} />
                     )}
                   </TouchableOpacity>
                 );
@@ -100,18 +99,13 @@ export default function MultiLanguageSelect({ value, onValueChange, placeholder 
 
 const styles = StyleSheet.create({
   selectButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    flex: 1,
   },
   selectText: {
-    fontSize: 15,
+    fontSize: 16,
     color: Colors.text,
     flex: 1,
   },
@@ -126,7 +120,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '85%',
-    maxWidth: 400,
+    maxWidth: 440,
     maxHeight: '70%',
     backgroundColor: Colors.surface,
     borderRadius: 16,
@@ -136,32 +130,24 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
     marginBottom: 16,
-    textAlign: 'center',
   },
   modalList: {
-    maxHeight: 400,
+    maxHeight: 300,
   },
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 10,
-    marginBottom: 6,
+    gap: 12,
   },
   modalItemSelected: {
     backgroundColor: Colors.surfaceLight,
   },
   modalItemEmoji: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: 22,
   },
   modalItemText: {
     flex: 1,
@@ -174,31 +160,29 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'flex-end',
+    gap: 12,
     marginTop: 16,
   },
   modalCancel: {
-    flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 10,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
   },
   modalCancelText: {
-    color: Colors.text,
-    fontSize: 16,
+    color: Colors.textSecondary,
+    fontSize: 15,
     fontWeight: '600',
   },
   modalAdd: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
     backgroundColor: Colors.primary,
-    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
   },
   modalAddText: {
     color: Colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

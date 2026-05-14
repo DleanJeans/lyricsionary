@@ -265,15 +265,13 @@ export default function EditorScreen() {
           onChangeText={setArtistName}
         />
       </View>
-      <View style={styles.languageRow}>
+      <View style={styles.inputRow}>
         <Ionicons name="language-outline" size={20} color={Colors.textSecondary} />
-        <View style={styles.languageSelectWrapper}>
-          <MultiLanguageSelect
-            value={originalLanguages}
-            onValueChange={setOriginalLanguages}
-            placeholder="Original Language(s)"
-          />
-        </View>
+        <MultiLanguageSelect
+          value={originalLanguages}
+          onValueChange={setOriginalLanguages}
+          placeholder="Original Language(s)"
+        />
       </View>
       {!currentLyrics && (
         <TouchableOpacity
@@ -552,21 +550,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.border,
-  },
-  languageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  languageSelectWrapper: {
-    flex: 1,
-    marginLeft: 10,
   },
   textInput: {
     flex: 1,

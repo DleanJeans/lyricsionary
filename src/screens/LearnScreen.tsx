@@ -22,7 +22,7 @@ export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, addOrUpdateWord, selectedTranslationLanguages, setSelectedTranslationLanguages } = useStore();
+  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -114,7 +114,6 @@ export default function LearnScreen() {
     if (cleaned) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
-      addOrUpdateWord(cleaned, 'English');
     }
   };
 

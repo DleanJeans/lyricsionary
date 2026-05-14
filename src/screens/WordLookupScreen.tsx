@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   webViewWrapper: {
-    height: 500,
+    height: 525,
   },
   webview: {
     flex: 1,

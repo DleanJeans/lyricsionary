@@ -365,6 +365,29 @@ export default function WordLookupScreen() {
         }}
         open={isEmojiPickerOpen}
         onClose={() => setIsEmojiPickerOpen(false)}
+        enableSearchBar={true}
+        theme={{
+          backdrop: 'rgba(0, 0, 0, 0.6)',
+          knob: Colors.textMuted,
+          container: Colors.surface,
+          header: Colors.text,
+          skinTonesContainer: Colors.surfaceLight,
+          category: {
+            icon: Colors.textSecondary,
+            iconActive: Colors.primary,
+            container: Colors.surface,
+            containerActive: Colors.surfaceLight,
+          },
+          search: {
+            background: Colors.surfaceLight,
+            text: Colors.text,
+            placeholder: Colors.textMuted,
+            icon: Colors.textSecondary,
+          },
+          emoji: {
+            selected: Colors.primary,
+          },
+        }}
       />
     </KeyboardAvoidingView>
   );

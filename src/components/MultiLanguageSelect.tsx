@@ -103,6 +103,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     flex: 1,
+    paddingVertical: 14,
   },
   selectText: {
     fontSize: 16,

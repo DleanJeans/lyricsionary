@@ -265,7 +265,7 @@ export default function EditorScreen() {
           onChangeText={setArtistName}
         />
       </View>
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, { gap: 14 }]}>
         <Ionicons name="language-outline" size={20} color={Colors.textSecondary} />
         <MultiLanguageSelect
           value={originalLanguages}

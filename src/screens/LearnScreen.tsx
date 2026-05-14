@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   songName: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
   },

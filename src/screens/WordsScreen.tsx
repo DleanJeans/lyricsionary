@@ -75,7 +75,7 @@ export default function WordsScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.cardRow}>
-          <Text style={styles.flag}>{getFlagForLanguage(item.language)}</Text>
+          <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
           <View style={styles.cardContent}>
             <HighlightedText
               text={item.word}

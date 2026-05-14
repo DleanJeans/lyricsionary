@@ -43,7 +43,8 @@ interface AppState {
     definition?: string,
     songId?: string,
     songName?: string,
-    lyricsLine?: string
+    lyricsLine?: string,
+    emoji?: string
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
 }
@@ -150,7 +151,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addOrUpdateWord: async (word, language, pronunciation = '', definition = '', songId, songName, lyricsLine) => {
+  addOrUpdateWord: async (word, language, pronunciation = '', definition = '', songId, songName, lyricsLine, emoji = '') => {
     const existing = get().words.find(
       (w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language
     );
@@ -183,6 +184,7 @@ export const useStore = create<AppState>((set, get) => ({
               lastLookedUp: Date.now(),
               pronunciation: pronunciation || w.pronunciation,
               definitions: updatedDefinitions,
+              emoji: emoji || w.emoji,
             }
           : w
       );
@@ -201,6 +203,7 @@ export const useStore = create<AppState>((set, get) => ({
         }] : [],
         lookupCount: 1,
         lastLookedUp: Date.now(),
+        emoji,
       };
       words = [...get().words, entry];
     }

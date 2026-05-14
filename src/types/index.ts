@@ -35,6 +35,7 @@ export interface WordEntry {
   definitions: WordDefinition[];
   lookupCount: number;
   lastLookedUp: number;
+  emoji?: string;
 }
 
 export type RootTabParamList = {

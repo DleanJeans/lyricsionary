@@ -21,6 +21,7 @@ import { RootTabParamList } from '../types';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
+import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -88,6 +89,8 @@ export default function WordLookupScreen() {
   );
   const [pronunciation, setPronunciation] = useState('');
   const [definition, setDefinition] = useState('');
+  const [emoji, setEmoji] = useState('');
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   // Load existing word data if available
   useEffect(() => {
@@ -98,6 +101,7 @@ export default function WordLookupScreen() {
       if (existingWord) {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation);
+        setEmoji(existingWord.emoji || '');
         // Load the most recent definition or one matching this song
         const relevantDef = existingWord.definitions.find(d => d.songId === songId)
           || existingWord.definitions[0];
@@ -149,7 +153,7 @@ export default function WordLookupScreen() {
     if (!word) return;
 
     // Update word with new data
-    await addOrUpdateWord(word, language, pronunciation, definition, songId, songName, lyricsLine);
+    await addOrUpdateWord(word, language, pronunciation, definition, songId, songName, lyricsLine, emoji);
 
     // Navigate back to Learn screen
     navigation.goBack();
@@ -199,10 +203,11 @@ export default function WordLookupScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
@@ -232,13 +237,29 @@ export default function WordLookupScreen() {
 
         {/* Word Info Fields */}
         <View style={styles.fieldSection}>
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Language</Text>
-            <LanguageSelect
-              value={language}
-              onValueChange={setLanguage}
-              placeholder="Select language"
-            />
+          <View style={styles.languageEmojiRow}>
+            <View style={styles.emojiField}>
+              <Text style={styles.fieldLabel}>Emoji</Text>
+              <TouchableOpacity
+                style={styles.emojiButton}
+                onPress={() => setIsEmojiPickerOpen(true)}
+              >
+                {emoji ? (
+                  <Text style={styles.emojiButtonText}>{emoji}</Text>
+                ) : (
+                  <Ionicons name="happy-outline" size={26} color={Colors.textMuted} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.languageField}>
+              <Text style={styles.fieldLabel}>Language</Text>
+              <LanguageSelect
+                value={language}
+                onValueChange={setLanguage}
+                placeholder="Select language"
+              />
+            </View>
           </View>
 
           <View style={styles.field}>
@@ -348,7 +369,38 @@ export default function WordLookupScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+      <EmojiPicker
+        onEmojiSelected={(emojiObject: EmojiType) => {
+          setEmoji(emojiObject.emoji);
+        }}
+        open={isEmojiPickerOpen}
+        onClose={() => setIsEmojiPickerOpen(false)}
+        enableSearchBar={true}
+        theme={{
+          backdrop: 'rgba(0, 0, 0, 0.6)',
+          knob: Colors.textMuted,
+          container: Colors.surface,
+          header: Colors.text,
+          skinTonesContainer: Colors.surfaceLight,
+          category: {
+            icon: Colors.textSecondary,
+            iconActive: Colors.primary,
+            container: Colors.surface,
+            containerActive: Colors.surfaceLight,
+          },
+          search: {
+            background: Colors.surfaceLight,
+            text: Colors.text,
+            placeholder: Colors.textMuted,
+            icon: Colors.textSecondary,
+          },
+          emoji: {
+            selected: Colors.primary,
+          },
+        }}
+      />
+    </>
   );
 }
 
@@ -424,6 +476,18 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
   },
+  languageEmojiRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  emojiField: {
+    flex: 0.2,
+    gap: 6,
+  },
+  languageField: {
+    flex: 0.8,
+    gap: 6,
+  },
   field: {
     gap: 6,
   },
@@ -441,6 +505,20 @@ const styles = StyleSheet.create({
     color: Colors.text,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  emojiButton: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emojiButtonText: {
+    fontSize: 28,
+    textAlign: 'center',
   },
   definitionInput: {
     minHeight: 80,
@@ -509,7 +587,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   webViewWrapper: {
-    height: 500,
+    height: 525,
   },
   webview: {
     flex: 1,

@@ -8,7 +8,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Swipeable } from 'react-native-gesture-handler';
+import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
@@ -19,6 +19,76 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import HighlightedText from '../components/HighlightedText';
 import WordLookupButtons from '../components/WordLookupButtons';
 import Toast from '../components/Toast';
+
+interface WordRowProps {
+  item: WordEntry;
+  isWide: boolean;
+  searchQuery: string;
+  isSelected: boolean;
+  onSelect: (word: string | null) => void;
+  onDelete: (item: WordEntry, close: () => void) => void;
+}
+
+function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: WordRowProps) {
+  const swipeableRef = useRef<SwipeableMethods>(null);
+  const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
+  const formatDate = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  return (
+    <ReanimatedSwipeable
+      ref={swipeableRef}
+      renderRightActions={() => (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => onDelete(item, () => swipeableRef.current?.close())}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash" size={24} color={Colors.white} />
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      )}
+      overshootRight={false}
+    >
+      <TouchableOpacity
+        style={[styles.card, isWide && styles.cardWide]}
+        onPress={() => onSelect(isSelected ? null : item.word)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardRow}>
+          <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
+          <View style={styles.cardContent}>
+            <HighlightedText
+              text={item.word}
+              query={searchQuery}
+              style={styles.cardWordText}
+            />
+            {item.pronunciation ? (
+              <HighlightedText
+                text={ipa}
+                query={searchQuery}
+                style={styles.pronunciation}
+              />
+            ) : null}
+          </View>
+          <View style={styles.cardRight}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.lookupCount}×</Text>
+            </View>
+            <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
+          </View>
+        </View>
+        {isSelected && (
+          <View style={styles.buttonsContainer}>
+            <WordLookupButtons word={item.word} />
+          </View>
+        )}
+      </TouchableOpacity>
+    </ReanimatedSwipeable>
+  );
+}
 
 export default function WordsScreen() {
   const { words, deleteWord } = useStore();
@@ -31,8 +101,7 @@ export default function WordsScreen() {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [deletedWord, setDeletedWord] = useState<WordEntry | null>(null);
   const [showToast, setShowToast] = useState(false);
-  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const openSwipeableRef = useRef<Swipeable | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredWords = deletedWord
     ? sortedWords.filter(w => w.id !== deletedWord.id)
@@ -57,23 +126,14 @@ export default function WordsScreen() {
     setShowSearch((v) => !v);
   };
 
-  const handleDelete = (item: WordEntry) => {
-    // Clear any existing undo timeout
+  const handleDelete = (item: WordEntry, closeSwipeable: () => void) => {
     if (undoTimeoutRef.current) {
       clearTimeout(undoTimeoutRef.current);
     }
-
-    // Store the deleted word for potential undo
     setDeletedWord(item);
     setSelectedWord(null);
     setShowToast(true);
-
-    // Close the swipeable
-    if (openSwipeableRef.current) {
-      openSwipeableRef.current.close();
-    }
-
-    // Set timeout to permanently delete after 5 seconds
+    closeSwipeable();
     undoTimeoutRef.current = setTimeout(() => {
       deleteWord(item.id);
       setDeletedWord(null);
@@ -94,71 +154,6 @@ export default function WordsScreen() {
 
   const handleToastHide = () => {
     setShowToast(false);
-  };
-
-  const renderRightActions = (item: WordEntry) => {
-    return (
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDelete(item)}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="trash" size={24} color={Colors.white} />
-        <Text style={styles.deleteButtonText}>Delete</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderWord = ({ item }: { item: WordEntry }) => {
-    const isSelected = selectedWord === item.word;
-    const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
-
-    return (
-      <Swipeable
-        ref={(ref) => {
-          if (ref && isSelected) {
-            openSwipeableRef.current = ref;
-          }
-        }}
-        renderRightActions={() => renderRightActions(item)}
-        overshootRight={false}
-      >
-        <TouchableOpacity
-          style={[styles.card, isWide && styles.cardWide]}
-          onPress={() => setSelectedWord(isSelected ? null : item.word)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.cardRow}>
-            <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
-            <View style={styles.cardContent}>
-              <HighlightedText
-                text={item.word}
-                query={searchQuery}
-                style={styles.cardWordText}
-              />
-              {item.pronunciation ? (
-                <HighlightedText
-                  text={ipa}
-                  query={searchQuery}
-                  style={styles.pronunciation}
-                />
-              ) : null}
-            </View>
-            <View style={styles.cardRight}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{item.lookupCount}×</Text>
-              </View>
-              <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
-            </View>
-          </View>
-          {isSelected && (
-            <View style={styles.buttonsContainer}>
-              <WordLookupButtons word={item.word} />
-            </View>
-          )}
-        </TouchableOpacity>
-      </Swipeable>
-    );
   };
 
   return (
@@ -204,7 +199,16 @@ export default function WordsScreen() {
           numColumns={numColumns}
           data={searchedWords}
           keyExtractor={(item) => item.id}
-          renderItem={renderWord}
+          renderItem={({ item }) => (
+            <WordRow
+              item={item}
+              isWide={isWide}
+              searchQuery={searchQuery}
+              isSelected={selectedWord === item.word}
+              onSelect={setSelectedWord}
+              onDelete={handleDelete}
+            />
+          )}
           columnWrapperStyle={isWide ? styles.row : undefined}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -262,8 +266,7 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     backgroundColor: Colors.surface,
-    borderTopRightRadius: 14,
-    borderBottomRightRadius: 14,
+    borderRadius: 14,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
@@ -335,11 +338,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dangerDark,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 90,
+    width: 100,
     marginBottom: 10,
+    marginLeft: -28,
     borderTopRightRadius: 14,
     borderBottomRightRadius: 14,
-    paddingHorizontal: 12,
+    // paddingHorizontal: 12,
+    paddingLeft: 28,
   },
   deleteButtonText: {
     color: Colors.white,

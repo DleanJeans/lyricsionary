@@ -235,6 +235,7 @@ export default function LearnScreen() {
           placeholder="Select translation languages"
           availableLanguages={song.translations.map(t => t.language)}
           showModal={showDropdown}
+          hideInput
           onClose={() => setShowDropdown(false)}
         />
       )}

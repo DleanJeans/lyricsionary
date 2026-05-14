@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
+import { getFlagForLanguage } from '../constants/languages';
 import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
@@ -207,7 +208,14 @@ export default function LearnScreen() {
     <ScreenWrapper noPadding>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.songName} numberOfLines={1}>{song.songName}</Text>
+          <View style={styles.songNameRow}>
+            <Text style={styles.songName} numberOfLines={1}>{song.songName}</Text>
+            <View style={styles.headerFlags}>
+              {(song.originalLanguages ?? []).map((lang) => (
+                <Text key={`orig-${lang}`} style={styles.flag}>{getFlagForLanguage(lang)}</Text>
+              ))}
+            </View>
+          </View>
           <Text style={styles.artistName}>{song.artistName}</Text>
         </View>
         <View style={styles.headerRight}>
@@ -343,6 +351,20 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
     marginRight: 12,
+  },
+  songNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  headerFlags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  flag: {
+    fontSize: 14,
   },
   songName: {
     fontSize: 16,

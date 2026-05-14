@@ -8,20 +8,58 @@ interface MultiLanguageSelectProps {
   value: string[];
   onValueChange: (languages: string[]) => void;
   placeholder?: string;
+  availableLanguages?: string[];
+  showModal?: boolean;
+  hideInput?: boolean;
+  onClose?: () => void;
 }
 
-export default function MultiLanguageSelect({ value, onValueChange, placeholder = 'Select Languages' }: MultiLanguageSelectProps) {
-  const [showModal, setShowModal] = useState(false);
+export default function MultiLanguageSelect({
+  value,
+  onValueChange,
+  placeholder = 'Select Languages',
+  availableLanguages,
+  showModal: externalShowModal,
+  hideInput,
+  onClose,
+}: MultiLanguageSelectProps) {
+  const [internalShowModal, setInternalShowModal] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(value);
+
+  // Use external control if provided, otherwise use internal state
+  const showModal = externalShowModal !== undefined ? externalShowModal : internalShowModal;
+
+  // Update selectedLanguages when value prop changes
+  React.useEffect(() => {
+    setSelectedLanguages(value);
+  }, [value]);
+
+  // Filter languages based on availableLanguages prop
+  const languagesToShow = availableLanguages
+    ? LANGUAGES.filter((lang) => availableLanguages.includes(lang.name))
+    : LANGUAGES;
 
   const handleSelect = () => {
     onValueChange(selectedLanguages);
-    setShowModal(false);
+    if (onClose) {
+      onClose();
+    } else {
+      setInternalShowModal(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setSelectedLanguages(value); // Reset to original value
+    if (onClose) {
+      onClose();
+    } else {
+      setInternalShowModal(false);
+    }
   };
 
   const toggleLanguage = (langName: string) => {
     if (selectedLanguages.includes(langName)) {
-      setSelectedLanguages(selectedLanguages.filter(l => l !== langName));
+      setSelectedLanguages(selectedLanguages.filter((l) => l !== langName));
     } else {
       setSelectedLanguages([...selectedLanguages, langName]);
     }
@@ -32,7 +70,7 @@ export default function MultiLanguageSelect({ value, onValueChange, placeholder 
       return placeholder;
     }
     const flags = value
-      .map(langName => LANGUAGES.find(l => l.name === langName)?.flag)
+      .map((langName) => LANGUAGES.find((l) => l.name === langName)?.flag)
       .filter(Boolean)
       .join(' ');
     return flags;
@@ -40,42 +78,36 @@ export default function MultiLanguageSelect({ value, onValueChange, placeholder 
 
   return (
     <>
-      <TouchableOpacity style={styles.selectButton} onPress={() => { setSelectedLanguages(value); setShowModal(true); }}>
-        <Text style={[styles.selectText, value.length === 0 && styles.selectPlaceholder]}>
-          {getDisplayText()}
-        </Text>
-        <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
-      </TouchableOpacity>
+      {!hideInput && (
+        <TouchableOpacity
+          style={styles.selectButton}
+          onPress={() => {
+            setSelectedLanguages(value);
+            setInternalShowModal(true);
+          }}
+        >
+          <Text style={[styles.selectText, value.length === 0 && styles.selectPlaceholder]}>{getDisplayText()}</Text>
+          <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
+        </TouchableOpacity>
+      )}
 
       <Modal visible={showModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Languages</Text>
+            <Text style={styles.modalTitle}>Select Translation Languages</Text>
             <FlatList
-              data={LANGUAGES}
+              data={languagesToShow}
               keyExtractor={(item) => item.code}
               renderItem={({ item }) => {
                 const isSelected = selectedLanguages.includes(item.name);
                 return (
                   <TouchableOpacity
-                    style={[
-                      styles.modalItem,
-                      isSelected && styles.modalItemSelected,
-                    ]}
+                    style={[styles.modalItem, isSelected && styles.modalItemSelected]}
                     onPress={() => toggleLanguage(item.name)}
                   >
                     <Text style={styles.modalItemEmoji}>{item.flag}</Text>
-                    <Text
-                      style={[
-                        styles.modalItemText,
-                        isSelected && styles.modalItemTextSelected,
-                      ]}
-                    >
-                      {item.name}
-                    </Text>
-                    {isSelected && (
-                      <Ionicons name="checkmark" size={18} color={Colors.primary} />
-                    )}
+                    <Text style={[styles.modalItemText, isSelected && styles.modalItemTextSelected]}>{item.name}</Text>
+                    {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
                   </TouchableOpacity>
                 );
               }}
@@ -83,7 +115,7 @@ export default function MultiLanguageSelect({ value, onValueChange, placeholder 
               showsVerticalScrollIndicator={false}
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowModal(false)}>
+              <TouchableOpacity style={styles.modalCancel} onPress={handleCancel}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalAdd} onPress={handleSelect}>

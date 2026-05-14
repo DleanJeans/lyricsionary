@@ -15,6 +15,7 @@ interface AppState {
   scrapeTargetTab: number;
   fontSize: number;
   showTranslations: boolean;
+  selectedTranslationLanguages: string[];
 
   // Song actions
   loadSongs: () => Promise<void>;
@@ -31,6 +32,7 @@ interface AppState {
   // Learn actions
   setFontSize: (size: number) => void;
   toggleTranslations: () => void;
+  setSelectedTranslationLanguages: (languages: string[]) => void;
 
   // Word actions
   loadWords: () => Promise<void>;
@@ -54,6 +56,7 @@ export const useStore = create<AppState>((set, get) => ({
   scrapeTargetTab: 0,
   fontSize: 18,
   showTranslations: true,
+  selectedTranslationLanguages: [],
 
   loadSongs: async () => {
     try {
@@ -127,6 +130,8 @@ export const useStore = create<AppState>((set, get) => ({
   setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
 
   toggleTranslations: () => set((s) => ({ showTranslations: !s.showTranslations })),
+
+  setSelectedTranslationLanguages: (languages) => set({ selectedTranslationLanguages: languages }),
 
   loadWords: async () => {
     try {

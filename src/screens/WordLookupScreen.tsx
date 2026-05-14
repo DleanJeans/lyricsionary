@@ -505,10 +505,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   emojiButton: {
+    flex: 1,
     backgroundColor: Colors.surface,
     borderRadius: 10,
     paddingHorizontal: 8,
-    height: 45,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -517,10 +517,6 @@ const styles = StyleSheet.create({
   emojiButtonText: {
     fontSize: 28,
     textAlign: 'center',
-  },
-  emojiButtonPlaceholder: {
-    fontSize: 24,
-    color: Colors.textMuted,
   },
   definitionInput: {
     minHeight: 80,

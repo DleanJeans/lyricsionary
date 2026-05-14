@@ -44,7 +44,7 @@
     "typescript": "~5.9.2"
   },
   "private": true,
-  "packageManager": "pnpm@10.33.2",
+  "packageManager": "pnpm@11.1.1",
   "pnpm": {
     "patchedDependencies": {
       "expo@55.0.19": "patches/expo@55.0.19.patch"

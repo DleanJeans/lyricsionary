@@ -26,6 +26,7 @@ export default function WordsScreen() {
   const [wordToDelete, setWordToDelete] = useState<WordEntry | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedWordId, setExpandedWordId] = useState<string | null>(null);
 
   const filteredWords = searchQuery.trim()
     ? sortedWords.filter(
@@ -57,12 +58,16 @@ export default function WordsScreen() {
   };
 
   const renderWord = ({ item }: { item: WordEntry }) => {
+    const isExpanded = expandedWordId === item.id;
+
     return (
       <View style={isWide && styles.cardWide}>
         <WordCard
           word={item}
-          onPress={() => {}}
+          onPress={() => setExpandedWordId(isExpanded ? null : item.id)}
           onLongPress={() => handleDeleteWord(item)}
+          showCloseButton={isExpanded}
+          onClose={() => setExpandedWordId(null)}
           source="Words"
         />
       </View>

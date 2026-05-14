@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
-import WordLookupButtons from '../components/WordLookupButtons';
+import WordCard from '../components/WordCard';
 import MultiLanguageSelect from '../components/MultiLanguageSelect';
 import Toast from '../components/Toast';
 
@@ -22,7 +22,7 @@ export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages } = useStore();
+  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages, words } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -146,16 +146,14 @@ export default function LearnScreen() {
   };
 
   /* ─── Word panel ──────────────────────────────────────── */
-  const wordPanel = selectedWord ? (
-    <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
-      <View style={styles.wordHeader}>
-        <Text style={styles.wordText}>{selectedWord}</Text>
-        <TouchableOpacity onPress={() => setSelectedWord(null)}>
-          <Ionicons name="close" size={22} color={Colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
-      <WordLookupButtons
-        word={selectedWord}
+  const wordEntry = selectedWord ? words.find((w) => w.word === selectedWord) : null;
+
+  const wordPanel = selectedWord && wordEntry ? (
+    <View style={[styles.wordPanelContainer, isWide && styles.wordPanelWide]}>
+      <WordCard
+        word={wordEntry}
+        showCloseButton
+        onClose={() => setSelectedWord(null)}
         songId={song.id}
         songName={song.songName}
         artistName={song.artistName}
@@ -163,6 +161,31 @@ export default function LearnScreen() {
         originalLanguages={song.originalLanguages}
         source="Learn"
       />
+    </View>
+  ) : selectedWord ? (
+    // Show basic panel for words not yet saved
+    <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
+      <View style={styles.wordHeader}>
+        <Text style={styles.wordText}>{selectedWord}</Text>
+        <TouchableOpacity onPress={() => setSelectedWord(null)}>
+          <Ionicons name="close" size={22} color={Colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity
+        style={styles.lookupButton}
+        onPress={() => navigation.navigate('WordLookup', {
+          word: selectedWord,
+          songId: song.id,
+          songName: song.songName,
+          artistName: song.artistName,
+          lyricsLine: selectedLine ?? undefined,
+          originalLanguages: song.originalLanguages,
+          source: 'Learn',
+        })}
+      >
+        <Ionicons name="search-outline" size={18} color={Colors.white} />
+        <Text style={styles.lookupButtonText}>Look up word</Text>
+      </TouchableOpacity>
     </View>
   ) : null;
 
@@ -394,6 +417,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  wordPanelContainer: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
   wordPanelWide: {
     marginHorizontal: 0,
     marginBottom: 0,
@@ -408,6 +435,21 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: Colors.text,
+  },
+  lookupButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  lookupButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionBar: {
     flexDirection: 'row',

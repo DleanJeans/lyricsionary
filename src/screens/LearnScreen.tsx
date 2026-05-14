@@ -103,6 +103,7 @@ export default function LearnScreen() {
         songName={song.songName}
         artistName={song.artistName}
         lyricsLine={selectedLine ?? undefined}
+        originalLanguages={song.originalLanguages}
       />
     </View>
   ) : null;
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   songName: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
   },

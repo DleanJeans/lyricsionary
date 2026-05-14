@@ -19,7 +19,7 @@ const TAB_META: Record<string, { icon: IoniconName; iconFocused: IoniconName; la
   Editor:  { icon: 'create-outline',         iconFocused: 'create',         label: 'Editor'  },
   Web:     { icon: 'globe-outline',           iconFocused: 'globe',          label: 'Web'     },
   Learn:   { icon: 'school-outline',          iconFocused: 'school',         label: 'Learn'   },
-  Lyrics:  { icon: 'musical-notes-outline',   iconFocused: 'musical-notes',  label: 'Songs'   },
+  Songs:  { icon: 'musical-notes-outline',   iconFocused: 'musical-notes',  label: 'Songs'   },
   Words:   { icon: 'book-outline',            iconFocused: 'book',           label: 'Words'   },
 };
 

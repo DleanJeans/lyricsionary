@@ -5,7 +5,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import EditorScreen from '../screens/EditorScreen';
 import WebScreen from '../screens/WebScreen';
 import LearnScreen from '../screens/LearnScreen';
-import LyricsScreen from '../screens/LyricsScreen';
+import SongsScreen from '../screens/SongsScreen';
 import WordsScreen from '../screens/WordsScreen';
 import WordLookupScreen from '../screens/WordLookupScreen';
 import CustomTabBar from './CustomTabBar';
@@ -25,7 +25,7 @@ function TabNavigator() {
       <Tab.Screen name="Editor" component={EditorScreen} />
       <Tab.Screen name="Web" component={WebScreen} />
       <Tab.Screen name="Learn" component={LearnScreen} />
-      <Tab.Screen name="Lyrics" component={LyricsScreen} />
+      <Tab.Screen name="Songs" component={SongsScreen} />
       <Tab.Screen name="Words" component={WordsScreen} />
       <Tab.Screen
         name="WordLookup"

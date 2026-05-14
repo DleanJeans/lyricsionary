@@ -27,7 +27,7 @@ type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
-  const { word, songId, songName, artistName, lyricsLine } = route.params || {};
+  const { word, songId, songName, artistName, lyricsLine, originalLanguages } = route.params || {};
   const insets = useSafeAreaInsets();
 
   const { words, addOrUpdateWord } = useStore();
@@ -82,7 +82,10 @@ export default function WordLookupScreen() {
   const [lookupSource, setLookupSource] = useState<'google' | 'wiktionary'>('google');
 
   // Word data fields
-  const [language, setLanguage] = useState('English');
+  // Use first original language as default, fallback to English
+  const [language, setLanguage] = useState(
+    (originalLanguages && originalLanguages.length > 0) ? originalLanguages[0] : 'English'
+  );
   const [pronunciation, setPronunciation] = useState('');
   const [definition, setDefinition] = useState('');
 
@@ -101,9 +104,12 @@ export default function WordLookupScreen() {
         if (relevantDef) {
           setDefinition(relevantDef.text);
         }
+      } else if (originalLanguages && originalLanguages.length > 0) {
+        // If no existing word, use first original language as default
+        setLanguage(originalLanguages[0]);
       }
     }
-  }, [word, words, songId]);
+  }, [word, words, songId, originalLanguages]);
 
   // Set initial URL based on lookup source
   useEffect(() => {

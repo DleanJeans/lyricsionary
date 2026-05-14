@@ -55,6 +55,7 @@ function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: 
       <TouchableOpacity
         style={[styles.card, isWide && styles.cardWide]}
         onPress={() => onSelect(isSelected ? null : item.word)}
+        activeOpacity={1}
       >
         <View style={styles.cardRow}>
           <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
@@ -265,8 +266,7 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
+    borderRadius: 14,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,

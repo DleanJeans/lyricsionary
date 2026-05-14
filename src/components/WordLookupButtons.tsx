@@ -11,13 +11,14 @@ interface WordLookupButtonsProps {
   lyricsLine?: string;
   artistName?: string;
   originalLanguages?: string[];
+  source?: 'Learn' | 'Words';
 }
 
-export default function WordLookupButtons({ word, songId, songName, artistName, lyricsLine, originalLanguages }: WordLookupButtonsProps) {
+export default function WordLookupButtons({ word, songId, songName, artistName, lyricsLine, originalLanguages, source }: WordLookupButtonsProps) {
   const navigation = useNavigation<any>();
 
   const handleLookup = () => {
-    navigation.navigate('WordLookup', { word, songId, songName, artistName, lyricsLine, originalLanguages });
+    navigation.navigate('WordLookup', { word, songId, songName, artistName, lyricsLine, originalLanguages, source });
   };
 
   return (

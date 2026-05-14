@@ -100,7 +100,7 @@ export default function WordsScreen() {
         </View>
         {isSelected && (
           <View style={styles.buttonsContainer}>
-            <WordLookupButtons word={item.word} />
+            <WordLookupButtons word={item.word} source="Words" />
           </View>
         )}
       </TouchableOpacity>

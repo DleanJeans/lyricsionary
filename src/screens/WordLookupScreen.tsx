@@ -28,7 +28,7 @@ type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
-  const { word, songId, songName, artistName, lyricsLine, originalLanguages } = route.params || {};
+  const { word, songId, songName, artistName, lyricsLine, originalLanguages, source } = route.params || {};
   const insets = useSafeAreaInsets();
 
   const { words, addOrUpdateWord } = useStore();
@@ -139,15 +139,21 @@ export default function WordLookupScreen() {
         return true; // Prevent default behavior
       }
 
-      // No WebView history - go back to previous screen
-      navigation.goBack();
+      // No WebView history - navigate back to source screen
+      if (source === 'Words') {
+        navigation.navigate('Words');
+      } else if (source === 'Learn' && songId) {
+        navigation.navigate('Learn', { songId });
+      } else {
+        navigation.goBack();
+      }
       return true; // Prevent default behavior
     });
 
     return () => {
       backHandler.remove();
     };
-  }, [canGoBackInWebView, navigation]);
+  }, [canGoBackInWebView, navigation, source, songId]);
 
   const handleSave = async () => {
     if (!word) return;
@@ -155,12 +161,27 @@ export default function WordLookupScreen() {
     // Update word with new data
     await addOrUpdateWord(word, language, pronunciation, definition, songId, songName, lyricsLine, emoji);
 
-    // Navigate back to Learn screen
-    navigation.goBack();
+    // Navigate back to the source screen
+    if (source === 'Words') {
+      navigation.navigate('Words');
+    } else if (source === 'Learn' && songId) {
+      navigation.navigate('Learn', { songId });
+    } else {
+      // Fallback to goBack if source is not specified
+      navigation.goBack();
+    }
   };
 
   const handleCancel = () => {
-    navigation.goBack();
+    // Navigate back to the source screen
+    if (source === 'Words') {
+      navigation.navigate('Words');
+    } else if (source === 'Learn' && songId) {
+      navigation.navigate('Learn', { songId });
+    } else {
+      // Fallback to goBack if source is not specified
+      navigation.goBack();
+    }
   };
 
   const switchToGoogle = () => {

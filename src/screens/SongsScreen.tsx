@@ -21,7 +21,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
 
-export default function LyricsScreen() {
+export default function SongsScreen() {
   const navigation = useNavigation<any>();
   const { songs, setCurrentSongId, deleteSong, trackSongOpen } = useStore();
   const isWide = useIsWide();

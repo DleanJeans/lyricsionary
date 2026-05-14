@@ -244,9 +244,11 @@ export default function WordLookupScreen() {
                 style={styles.emojiButton}
                 onPress={() => setIsEmojiPickerOpen(true)}
               >
-                <Text style={[styles.emojiButtonText, !emoji && styles.emojiButtonPlaceholder]}>
-                  {emoji || '😀'}
-                </Text>
+                {emoji ? (
+                  <Text style={styles.emojiButtonText}>{emoji}</Text>
+                ) : (
+                  <Ionicons name="happy-outline" size={26} color={Colors.textMuted} />
+                )}
               </TouchableOpacity>
             </View>
 

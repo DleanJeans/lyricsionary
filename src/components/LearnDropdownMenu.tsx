@@ -120,7 +120,7 @@ export default function LearnDropdownMenu({
             onPress={() => onEnableAnnotationsChange(!enableAnnotations)}
           >
             <View style={styles.masterToggleLeft}>
-              <Text style={styles.masterToggleText}>Enable Annotations</Text>
+              <Text style={styles.masterToggleText}>Enable</Text>
             </View>
             <View style={[styles.switch, enableAnnotations && styles.switchActive]}>
               <View style={[styles.switchThumb, enableAnnotations && styles.switchThumbActive]} />
@@ -272,6 +272,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
     borderRadius: 10,
     marginBottom: 12,
+    marginHorizontal: 12,
   },
   masterToggleLeft: {
     flexDirection: 'row',
@@ -343,7 +344,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   radioGroup: {
-    gap: 12,
     marginBottom: 16,
   },
   radioItem: {
@@ -351,6 +351,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   radioButton: {
     width: 20,

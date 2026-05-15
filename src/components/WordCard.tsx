@@ -79,12 +79,12 @@ export default function WordCard({
         onPress={handleCardPress}
         activeOpacity={1}
       >
+        {showClose && (
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={22} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
         <View style={styles.cardRow}>
-          {showClose && (
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={22} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          )}
           <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
           <View style={styles.cardContent}>
             <HighlightedText
@@ -104,7 +104,7 @@ export default function WordCard({
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{item.lookupCount}×</Text>
             </View>
-            <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
+            {/* <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text> */}
           </View>
         </View>
       </TouchableOpacity>
@@ -130,7 +130,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeButton: {
-    marginRight: 8,
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 1,
   },
   flag: {
     fontSize: 24,
@@ -148,17 +151,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 2,
-    fontStyle: 'italic',
   },
   cardRight: {
-    alignItems: 'flex-end',
+    display: 'flex',
+    flexDirection: 'row',
+    
   },
   badge: {
     backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    marginBottom: 4,
+    marginTop: 20,
   },
   badgeText: {
     color: Colors.white,

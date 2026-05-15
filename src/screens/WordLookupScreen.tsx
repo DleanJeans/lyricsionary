@@ -81,7 +81,7 @@ export default function WordLookupScreen() {
   const [currentUrl, setCurrentUrl] = useState('');
   const [pageTitle, setPageTitle] = useState('');
   const [loading, setLoading] = useState(false);
-  const [lookupSource, setLookupSource] = useState<'google' | 'wiktionary'>('google');
+  const [lookupSource, setLookupSource] = useState<'google' | 'wiktionary'>('wiktionary');
 
   // Word data fields
   // Use first original language as default, fallback to English
@@ -133,7 +133,7 @@ export default function WordLookupScreen() {
     if (word) {
       const url = lookupSource === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(word)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}#${language}`;
       setCurrentUrl(url);
       setWebViewAtTop(true); // reset on navigation
     }
@@ -324,23 +324,6 @@ export default function WordLookupScreen() {
         {/* Source Selector */}
         <View style={styles.sourceSelector}>
           <TouchableOpacity
-            style={[styles.sourceButton, lookupSource === 'google' && styles.sourceButtonActive]}
-            onPress={switchToGoogle}
-          >
-            <Ionicons
-              name="logo-google"
-              size={18}
-              color={lookupSource === 'google' ? Colors.white : Colors.text}
-            />
-            <Text style={[
-              styles.sourceButtonText,
-              lookupSource === 'google' && styles.sourceButtonTextActive
-            ]}>
-              Google
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.sourceButton, lookupSource === 'wiktionary' && styles.sourceButtonActive]}
             onPress={switchToWiktionary}
           >
@@ -356,7 +339,25 @@ export default function WordLookupScreen() {
               Wiktionary
             </Text>
           </TouchableOpacity>
+
+        <TouchableOpacity
+            style={[styles.sourceButton, lookupSource === 'google' && styles.sourceButtonActive]}
+            onPress={switchToGoogle}
+          >
+            <Ionicons
+              name="logo-google"
+              size={18}
+              color={lookupSource === 'google' ? Colors.white : Colors.text}
+            />
+            <Text style={[
+              styles.sourceButtonText,
+              lookupSource === 'google' && styles.sourceButtonTextActive
+            ]}>
+              Google
+            </Text>
+          </TouchableOpacity>
         </View>
+
 
         {/* WebView Section */}
         <View style={styles.webViewContainer}>

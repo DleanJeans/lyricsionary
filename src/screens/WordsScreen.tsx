@@ -131,9 +131,8 @@ export default function WordsScreen() {
   };
 
   const handleDelete = (item: WordEntry, closeSwipeable: () => void) => {
-    setPendingDeletions(prev =>
-      prev.some(d => d.id === item.id) ? prev : [...prev, { id: item.id, item }]
-    );
+    if (deleteTimeoutsRef.current[item.id]) return;
+    setPendingDeletions(prev => [...prev, { id: item.id, item }]);
     setSelectedWord(null);
     closeSwipeable();
     deleteTimeoutsRef.current[item.id] = setTimeout(() => {
@@ -148,10 +147,6 @@ export default function WordsScreen() {
       clearTimeout(deleteTimeoutsRef.current[itemId]);
       delete deleteTimeoutsRef.current[itemId];
     }
-    setPendingDeletions(prev => prev.filter(d => d.id !== itemId));
-  };
-
-  const handleToastHide = (itemId: string) => {
     setPendingDeletions(prev => prev.filter(d => d.id !== itemId));
   };
 
@@ -209,22 +204,20 @@ export default function WordsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-      {pendingDeletions.map((d, i) => (
-        <Toast
-          key={d.id}
-          visible
-          message={
-            <>
-              Delete
-              <Text style={{ fontWeight: 'bold' }}> {d.item.word}</Text>
-            </>
-          }
-          onHide={() => handleToastHide(d.id)}
-          duration={5000}
-          onUndo={() => handleUndo(d.id)}
-          bottom={50 + i * 70}
-        />
-      ))}
+      <View style={styles.toastStack} pointerEvents="box-none">
+        {pendingDeletions.map((d) => (
+          <Toast
+            key={d.id}
+            message={
+              <>
+                Delete
+                <Text style={{ fontWeight: 'bold' }}> {d.item.word}</Text>
+              </>
+            }
+            onUndo={() => handleUndo(d.id)}
+          />
+        ))}
+      </View>
     </ScreenWrapper>
   );
 }
@@ -337,6 +330,14 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+  },
+  toastStack: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    gap: 8,
+    zIndex: 1000,
   },
   deleteButton: {
     backgroundColor: Colors.dangerDark,

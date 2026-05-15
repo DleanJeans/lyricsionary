@@ -1,43 +1,25 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Animated, {
+  SlideInDown,
+  SlideOutDown,
+  LinearTransition,
+} from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
 
 interface ToastProps {
   message: string | React.ReactNode;
-  visible: boolean;
-  onHide: () => void;
-  duration?: number;
   onUndo?: () => void;
-  bottom?: number;
 }
 
-export default function Toast({ message, visible, onHide, duration = 2000, onUndo, bottom = 50 }: ToastProps) {
-  const opacity = React.useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.delay(duration),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        onHide();
-      });
-    }
-  }, [visible, duration, onHide, opacity]);
-
-  if (!visible) return null;
-
+export default function Toast({ message, onUndo }: ToastProps) {
   return (
-    <Animated.View style={[styles.container, { opacity, bottom }]}>
+    <Animated.View
+      entering={SlideInDown.duration(500)}
+      exiting={SlideOutDown.duration(500)}
+      layout={LinearTransition.duration(250)}
+      style={styles.container}
+    >
       <Text style={styles.text}>{message}</Text>
       {onUndo && (
         <TouchableOpacity onPress={onUndo} style={styles.undoButton}>
@@ -50,10 +32,6 @@ export default function Toast({ message, visible, onHide, duration = 2000, onUnd
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 50,
-    left: 20,
-    right: 20,
     backgroundColor: Colors.surfaceLight,
     borderRadius: 12,
     paddingHorizontal: 16,
@@ -63,7 +41,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: Colors.border,
-    zIndex: 1000,
   },
   text: {
     color: Colors.text,

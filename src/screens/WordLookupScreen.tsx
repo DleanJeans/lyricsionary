@@ -17,13 +17,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { RootTabParamList } from '../types';
+import { RootStackParamList } from '../types';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 
-type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
+type WordLookupRouteProp = RouteProp<RootStackParamList, 'WordLookup'>;
 
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
@@ -151,14 +151,7 @@ export default function WordLookupScreen() {
         return true; // Prevent default behavior
       }
 
-      // No WebView history - navigate back to source screen
-      if (source === 'Words') {
-        navigation.navigate('Words');
-      } else if (source === 'Learn' && songId) {
-        navigation.navigate('Learn', { songId });
-      } else {
-        navigation.goBack();
-      }
+      navigation.goBack();
       return true; // Prevent default behavior
     });
 
@@ -173,27 +166,11 @@ export default function WordLookupScreen() {
     // Update word with new data
     await addOrUpdateWord(word, language, pronunciation, definition, songId, songName, lyricsLine, emoji);
 
-    // Navigate back to the source screen
-    if (source === 'Words') {
-      navigation.navigate('Words');
-    } else if (source === 'Learn' && songId) {
-      navigation.navigate('Learn', { songId });
-    } else {
-      // Fallback to goBack if source is not specified
-      navigation.goBack();
-    }
+    navigation.goBack();
   };
 
   const handleCancel = () => {
-    // Navigate back to the source screen
-    if (source === 'Words') {
-      navigation.navigate('Words');
-    } else if (source === 'Learn' && songId) {
-      navigation.navigate('Learn', { songId });
-    } else {
-      // Fallback to goBack if source is not specified
-      navigation.goBack();
-    }
+    navigation.goBack();
   };
 
   const switchToGoogle = () => {

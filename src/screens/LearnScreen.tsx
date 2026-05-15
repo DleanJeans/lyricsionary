@@ -30,7 +30,7 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [unblurredLines, setUnblurredLines] = useState<Set<number>>(new Set());
+  const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
 
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -41,10 +41,10 @@ export default function LearnScreen() {
     }
   }, [song, selectedTranslationLanguages.length, setSelectedTranslationLanguages]);
 
-  // Reset unblurred lines when blur is toggled off or song changes
+  // Reset unblurred translations when blur is toggled off or song changes
   useEffect(() => {
     if (!blurTranslations) {
-      setUnblurredLines(new Set());
+      setUnblurredTranslations(new Set());
     }
   }, [blurTranslations, currentSongId]);
   
@@ -135,9 +135,10 @@ export default function LearnScreen() {
     }
   };
 
-  const handleLinePress = (lineIndex: number) => {
-    if (blurTranslations && !unblurredLines.has(lineIndex)) {
-      setUnblurredLines(prev => new Set(prev).add(lineIndex));
+  const handleTranslationPress = (lineIndex: number, translationIndex: number) => {
+    const key = `${lineIndex}-${translationIndex}`;
+    if (blurTranslations && !unblurredTranslations.has(key)) {
+      setUnblurredTranslations(prev => new Set(prev).add(key));
     }
   };
 
@@ -242,23 +243,22 @@ export default function LearnScreen() {
   /* ─── Lyrics scroll ────────────────────────────────────── */
   const lyricsView = (
     <ScrollView style={styles.lyricsScroll} contentContainerStyle={styles.lyricsContent}>
-      {lines.map((line, i) => {
-        const isBlurred = blurTranslations && !unblurredLines.has(i);
-        return (
-          <TouchableOpacity
-            key={i}
-            style={styles.lineBlock}
-            onPress={() => handleLinePress(i)}
-            activeOpacity={blurTranslations ? 0.7 : 1}
-          >
-            {renderPressableText(line.original)}
-            {showTranslations &&
-              line.translations
-                .filter((tl) => tl.show && selectedTranslationLanguages.includes(tl.language))
-                .map((tl, ti) =>
-                  tl.text ? (
+      {lines.map((line, i) => (
+        <View key={i} style={styles.lineBlock}>
+          {renderPressableText(line.original)}
+          {showTranslations &&
+            line.translations
+              .filter((tl) => tl.show && selectedTranslationLanguages.includes(tl.language))
+              .map((tl, ti) => {
+                const translationKey = `${i}-${ti}`;
+                const isBlurred = blurTranslations && !unblurredTranslations.has(translationKey);
+                return tl.text ? (
+                  <TouchableOpacity
+                    key={ti}
+                    onPress={() => handleTranslationPress(i, ti)}
+                    activeOpacity={blurTranslations ? 0.7 : 1}
+                  >
                     <Text
-                      key={ti}
                       style={[
                         styles.translationLine,
                         { fontSize: fontSize - 2 },
@@ -267,11 +267,11 @@ export default function LearnScreen() {
                     >
                       {tl.text}
                     </Text>
-                  ) : null
-                )}
-          </TouchableOpacity>
-        );
-      })}
+                  </TouchableOpacity>
+                ) : null;
+              })}
+        </View>
+      ))}
     </ScrollView>
   );
 

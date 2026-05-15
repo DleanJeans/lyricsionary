@@ -50,18 +50,6 @@ export default function WordCard({
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const handleLookup = () => {
-    navigation.navigate('WordLookup', {
-      word: item.word,
-      songId,
-      songName,
-      artistName,
-      lyricsLine,
-      originalLanguages,
-      source,
-    });
-  };
-
   const handleEdit = () => {
     if (onEdit) {
       onEdit(item);
@@ -113,8 +101,6 @@ export default function WordCard({
     );
   };
 
-  const isNewWord = item.lookupCount === 1;
-
   return (
     <Swipeable
       ref={swipeableRef}
@@ -136,18 +122,11 @@ export default function WordCard({
           )}
           <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
           <View style={styles.cardContent}>
-            <View style={styles.wordRow}>
-              <HighlightedText
-                text={item.word}
-                query={searchQuery}
-                style={styles.cardWordText}
-              />
-              {isNewWord && (
-                <View style={styles.newBadge}>
-                  <Text style={styles.newBadgeText}>NEW</Text>
-                </View>
-              )}
-            </View>
+            <HighlightedText
+              text={item.word}
+              query={searchQuery}
+              style={styles.cardWordText}
+            />
             {item.pronunciation ? (
               <HighlightedText
                 text={ipa}
@@ -162,12 +141,6 @@ export default function WordCard({
             </View>
             <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
           </View>
-        </View>
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity style={styles.lookupButton} onPress={handleLookup}>
-            <Ionicons name="search" size={18} color={Colors.white} />
-            <Text style={styles.lookupButtonText}>Look up</Text>
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     </Swipeable>
@@ -201,26 +174,10 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
   },
-  wordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   cardWordText: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text,
-  },
-  newBadge: {
-    backgroundColor: Colors.success,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  newBadgeText: {
-    color: Colors.white,
-    fontSize: 10,
-    fontWeight: '700',
   },
   pronunciation: {
     fontSize: 14,
@@ -246,27 +203,6 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 12,
     color: Colors.textMuted,
-  },
-  buttonsContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  lookupButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  lookupButtonText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600',
   },
   deleteButton: {
     backgroundColor: Colors.dangerDark,

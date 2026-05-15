@@ -40,6 +40,16 @@ export default function LearnScreen() {
     }
   }, [song, selectedTranslationLanguages.length, setSelectedTranslationLanguages]);
 
+  // Auto-hide toast after 2 seconds
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
+
   // Helper function to normalize text for comparison (remove punctuation, compare words only)
   const normalizeText = (text: string): string => {
     return text.replace(/[^\p{L}\p{N}\s]/gu, '').trim().toLowerCase();
@@ -150,6 +160,8 @@ export default function LearnScreen() {
     ? words.find((w) => w.word.toLowerCase() === selectedWord.toLowerCase())
     : null;
 
+  const isNewWord = selectedWordEntry && selectedWordEntry.lookupCount === 1;
+
   const wordPanel = selectedWord && selectedWordEntry ? (
     <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
       <WordCard
@@ -166,14 +178,20 @@ export default function LearnScreen() {
       />
     </View>
   ) : selectedWord ? (
-    <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
+    <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
       <View style={styles.wordHeader}>
-        <Text style={styles.wordText}>{selectedWord}</Text>
+        <View style={styles.wordTitleRow}>
+          <Text style={styles.wordText}>{selectedWord}</Text>
+          {isNewWord && (
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>NEW</Text>
+            </View>
+          )}
+        </View>
         <TouchableOpacity onPress={() => setSelectedWord(null)}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
-      <Text style={styles.wordNotSaved}>This word hasn't been saved yet.</Text>
       <TouchableOpacity
         style={styles.lookupNewButton}
         onPress={() => {
@@ -277,11 +295,11 @@ export default function LearnScreen() {
       )}
 
       {/* Toast notification */}
-      <Toast
-        message={toastMessage}
-        visible={showToast}
-        onHide={() => setShowToast(false)}
-      />
+      {showToast && (
+        <View style={styles.toastContainer}>
+          <Toast message={toastMessage} />
+        </View>
+      )}
 
       {isWide ? (
         /* ── Wide: left lyrics panel + right word/controls panel ── */
@@ -417,10 +435,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     marginHorizontal: 16,
     borderRadius: 14,
-    padding: 16,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  wordPanelPadded: {
+    padding: 16,
   },
   wordPanelWide: {
     marginHorizontal: 0,
@@ -432,15 +452,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  wordTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   wordText: {
     fontSize: 24,
     fontWeight: '700',
     color: Colors.text,
   },
-  wordNotSaved: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginBottom: 12,
+  newBadge: {
+    backgroundColor: Colors.success,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  newBadgeText: {
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: '700',
   },
   lookupNewButton: {
     flexDirection: 'row',
@@ -503,5 +534,12 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 22,
     marginTop: 2,
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
   },
 });

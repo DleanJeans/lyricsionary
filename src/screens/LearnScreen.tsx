@@ -327,13 +327,6 @@ export default function LearnScreen() {
               color={Colors.primary}
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn} onPress={toggleTranslations}>
-            <Ionicons
-              name={showTranslations ? 'language' : 'eye-off-outline'}
-              size={22}
-              color={Colors.primary}
-            />
-          </TouchableOpacity>
         </View>
       </View>
 

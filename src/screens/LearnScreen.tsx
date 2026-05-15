@@ -10,7 +10,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import LearnDropdownMenu from '../components/LearnDropdownMenu';
+import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
@@ -357,9 +357,9 @@ export default function LearnScreen() {
         </View>
       </View>
 
-      {/* Dropdown Menu */}
+      {/* Settings Menu */}
       {song && (
-        <LearnDropdownMenu
+        <LearnSettingsMenu
           visible={showDropdown}
           onClose={() => setShowDropdown(false)}
           onEdit={() => navigation.navigate('Editor', { songId: song.id })}

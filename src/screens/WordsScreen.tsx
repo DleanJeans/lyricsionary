@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,66 +14,48 @@ import { getFlagForLanguage } from '../constants/languages';
 import { WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
-import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import HighlightedText from '../components/HighlightedText';
 import WordLookupButtons from '../components/WordLookupButtons';
+import Toast from '../components/Toast';
+import { Swipeable } from 'react-native-gesture-handler';
 
-export default function WordsScreen() {
-  const { words, deleteWord } = useStore();
-  const isWide = useIsWide();
-  useBackToQuit();
-  const numColumns = isWide ? 2 : 1;
-  const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
-  const [wordToDelete, setWordToDelete] = useState<WordEntry | null>(null);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+interface WordRowProps {
+  item: WordEntry;
+  isWide: boolean;
+  searchQuery: string;
+  isSelected: boolean;
+  onSelect: (word: string | null) => void;
+  onDelete: (item: WordEntry, close: () => void) => void;
+}
 
-  const filteredWords = searchQuery.trim()
-    ? sortedWords.filter(
-        (w) =>
-          w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          w.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (w.pronunciation && w.pronunciation.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : sortedWords;
-
+function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: WordRowProps) {
+  const swipeableRef = useRef<Swipeable>(null);
+  const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
   const formatDate = (ts: number) => {
     const d = new Date(ts);
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const handleDeleteWord = (word: WordEntry) => {
-    setWordToDelete(word);
-  };
-
-  const confirmDelete = () => {
-    if (wordToDelete) {
-      deleteWord(wordToDelete.id);
-      setWordToDelete(null);
-    }
-  };
-
-  const cancelDelete = () => {
-    setWordToDelete(null);
-  };
-
-  const toggleSearch = () => {
-    if (showSearch) setSearchQuery('');
-    setShowSearch((v) => !v);
-  };
-
-  const renderWord = ({ item }: { item: WordEntry }) => {
-    const isSelected = selectedWord === item.word;
-    const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
-
-    return (
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderLeftActions={() => (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => onDelete(item, () => swipeableRef.current?.close())}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash" size={24} color={Colors.white} />
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      )}
+      overshootLeft={false}
+    >
       <TouchableOpacity
         style={[styles.card, isWide && styles.cardWide]}
-        onPress={() => setSelectedWord(isSelected ? null : item.word)}
-        onLongPress={() => handleDeleteWord(item)}
-        activeOpacity={0.7}
+        onPress={() => onSelect(isSelected ? null : item.word)}
+        activeOpacity={1}
       >
         <View style={styles.cardRow}>
           <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
@@ -104,7 +86,68 @@ export default function WordsScreen() {
           </View>
         )}
       </TouchableOpacity>
-    );
+    </Swipeable>
+  );
+}
+
+interface PendingDeletion {
+  id: string;
+  item: WordEntry;
+}
+
+export default function WordsScreen() {
+  const { words, deleteWord } = useStore();
+  const isWide = useIsWide();
+  useBackToQuit();
+  const numColumns = isWide ? 2 : 1;
+  const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+
+  const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
+  const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const pendingIds = new Set(pendingDeletions.map(d => d.id));
+  const filteredWords = sortedWords.filter(w => !pendingIds.has(w.id));
+
+  const searchedWords = searchQuery.trim()
+    ? filteredWords.filter(
+        (w) =>
+          w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          w.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (w.pronunciation && w.pronunciation.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : filteredWords;
+
+  const formatDate = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const toggleSearch = () => {
+    if (showSearch) setSearchQuery('');
+    setShowSearch((v) => !v);
+  };
+
+  const handleDelete = (item: WordEntry, closeSwipeable: () => void) => {
+    if (deleteTimeoutsRef.current[item.id]) return;
+    setPendingDeletions(prev => [...prev, { id: item.id, item }]);
+    setSelectedWord(null);
+    closeSwipeable();
+    deleteTimeoutsRef.current[item.id] = setTimeout(() => {
+      deleteWord(item.id);
+      setPendingDeletions(prev => prev.filter(d => d.id !== item.id));
+      delete deleteTimeoutsRef.current[item.id];
+    }, 5000);
+  };
+
+  const handleUndo = (itemId: string) => {
+    if (deleteTimeoutsRef.current[itemId]) {
+      clearTimeout(deleteTimeoutsRef.current[itemId]);
+      delete deleteTimeoutsRef.current[itemId];
+    }
+    setPendingDeletions(prev => prev.filter(d => d.id !== itemId));
   };
 
   return (
@@ -123,14 +166,10 @@ export default function WordsScreen() {
           <Text style={styles.title}>Saved Words</Text>
         )}
         <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
-          <Ionicons
-            name={showSearch ? 'close' : 'search'}
-            size={22}
-            color={Colors.textMuted}
-          />
+          <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
         </TouchableOpacity>
       </View>
-      {filteredWords.length === 0 ? (
+      {searchedWords.length === 0 ? (
         <View style={styles.empty}>
           {words.length === 0 ? (
             <>
@@ -148,24 +187,37 @@ export default function WordsScreen() {
         <FlatList
           key={numColumns}
           numColumns={numColumns}
-          data={filteredWords}
+          data={searchedWords}
           keyExtractor={(item) => item.id}
-          renderItem={renderWord}
+          renderItem={({ item }) => (
+            <WordRow
+              item={item}
+              isWide={isWide}
+              searchQuery={searchQuery}
+              isSelected={selectedWord === item.word}
+              onSelect={setSelectedWord}
+              onDelete={handleDelete}
+            />
+          )}
           columnWrapperStyle={isWide ? styles.row : undefined}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
       )}
-      <ConfirmDialog
-        visible={wordToDelete !== null}
-        title={`Delete Word: ${wordToDelete?.word}`}
-        message={`This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={confirmDelete}
-        onCancel={cancelDelete}
-        destructive
-      />
+      <View style={styles.toastStack} pointerEvents="box-none">
+        {pendingDeletions.map((d) => (
+          <Toast
+            key={d.id}
+            message={
+              <>
+                Deleted
+                <Text style={{ fontWeight: 'bold' }}> {d.item.word}</Text>
+              </>
+            }
+            onUndo={() => handleUndo(d.id)}
+          />
+        ))}
+      </View>
     </ScreenWrapper>
   );
 }
@@ -278,5 +330,30 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+  },
+  toastStack: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    gap: 8,
+    zIndex: 1000,
+  },
+  deleteButton: {
+    backgroundColor: Colors.dangerDark,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    marginBottom: 10,
+    marginRight: -28,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+    paddingRight: 28,
+  },
+  deleteButtonText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });

@@ -8,7 +8,6 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
@@ -19,6 +18,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import HighlightedText from '../components/HighlightedText';
 import WordLookupButtons from '../components/WordLookupButtons';
 import Toast from '../components/Toast';
+import { Swipeable } from 'react-native-gesture-handler';
 
 interface WordRowProps {
   item: WordEntry;
@@ -30,7 +30,7 @@ interface WordRowProps {
 }
 
 function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: WordRowProps) {
-  const swipeableRef = useRef<SwipeableMethods>(null);
+  const swipeableRef = useRef<Swipeable>(null);
   const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
   const formatDate = (ts: number) => {
     const d = new Date(ts);
@@ -38,7 +38,7 @@ function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: 
   };
 
   return (
-    <ReanimatedSwipeable
+    <Swipeable
       ref={swipeableRef}
       renderLeftActions={() => (
         <TouchableOpacity
@@ -86,7 +86,7 @@ function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: 
           </View>
         )}
       </TouchableOpacity>
-    </ReanimatedSwipeable>
+    </Swipeable>
   );
 }
 

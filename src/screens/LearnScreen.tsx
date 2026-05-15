@@ -161,10 +161,10 @@ export default function LearnScreen() {
   };
 
   const renderPressableText = (text: string) => {
-    const words = text.split(/(\s+)/);
+    const textWords = text.split(/(\s+)/);
     return (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {words.map((word, i) => {
+        {textWords.map((word, i) => {
           if (!word.trim()) {
             return <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6 }}>{word}</Text>;
           }

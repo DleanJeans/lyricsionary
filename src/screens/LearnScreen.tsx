@@ -11,8 +11,9 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
 import LearnDropdownMenu from '../components/LearnDropdownMenu';
-import { DisplayMode } from '../components/WordCard';
 import { removeSpecialChars } from '../utils/cleanLyrics';
+
+export type DisplayMode = 'emoji' | 'ipa' | 'definition';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -162,31 +163,55 @@ export default function LearnScreen() {
   const renderPressableText = (text: string) => {
     const words = text.split(/(\s+)/);
     return (
-      <Text style={{ fontSize, lineHeight: fontSize * 1.6, color: Colors.text }}>
-        {words.map((word, i) =>
-          word.trim() ? (
-            <Text
-              key={i}
-              onPress={() => handleWordPress(word, text)}
-              style={
-                selectedWord && removeSpecialChars(word) === selectedWord
-                  ? {
-                      color: Colors.primary,
-                      fontWeight: '700',
-                    }
-                  : {
-                      color: Colors.text,
-                      fontWeight: '400',
-                    }
-              }
-            >
-              {word}
-            </Text>
-          ) : (
-            <Text key={i}>{word}</Text>
-          ),
-        )}
-      </Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        {words.map((word, i) => {
+          if (!word.trim()) {
+            return <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6 }}>{word}</Text>;
+          }
+
+          const cleanedWord = removeSpecialChars(word);
+          const wordEntry = cleanedWord ? words.find((w) => w.word.toLowerCase() === cleanedWord.toLowerCase()) : null;
+          const isSelected = selectedWord && cleanedWord === selectedWord;
+
+          // Get display content based on mode
+          let displayContent = '';
+          if (wordEntry && displayMode !== 'emoji') {
+            if (displayMode === 'ipa' && wordEntry.pronunciation) {
+              displayContent = wordEntry.pronunciation.includes('/')
+                ? wordEntry.pronunciation
+                : `/${wordEntry.pronunciation}/`;
+            } else if (displayMode === 'definition' && wordEntry.definitions && wordEntry.definitions.length > 0) {
+              displayContent = wordEntry.definitions[0].text;
+            }
+          }
+
+          return (
+            <View key={i} style={{ alignItems: 'center' }}>
+              {wordEntry && displayMode === 'emoji' && (wordEntry.emoji || wordEntry.language) && (
+                <Text style={styles.wordAnnotation}>
+                  {wordEntry.emoji || getFlagForLanguage(wordEntry.language)}
+                </Text>
+              )}
+              {displayContent && (
+                <Text style={styles.wordAnnotation} numberOfLines={1}>
+                  {displayContent}
+                </Text>
+              )}
+              <Text
+                onPress={() => handleWordPress(word, text)}
+                style={{
+                  fontSize,
+                  lineHeight: fontSize * 1.6,
+                  color: isSelected ? Colors.primary : Colors.text,
+                  fontWeight: isSelected ? '700' : '400',
+                }}
+              >
+                {word}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
     );
   };
 
@@ -300,11 +325,6 @@ export default function LearnScreen() {
     <ScreenWrapper noPadding>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => setShowDropdown(true)}>
-            <Ionicons name="ellipsis-horizontal" size={22} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.headerCenter}>
           <View style={styles.songNameRow}>
             <Text style={styles.songName} numberOfLines={1}>
               {song.songName}
@@ -320,12 +340,8 @@ export default function LearnScreen() {
           <Text style={styles.artistName}>{song.artistName}</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerBtn} onPress={toggleBlurTranslations}>
-            <Ionicons
-              name={blurTranslations ? 'eye-outline' : 'eye-off'}
-              size={22}
-              color={Colors.primary}
-            />
+          <TouchableOpacity style={styles.headerBtn} onPress={() => setShowDropdown(true)}>
+            <Ionicons name="ellipsis-horizontal" size={22} color={Colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -341,6 +357,8 @@ export default function LearnScreen() {
           availableLanguages={song.translations.map(t => t.language)}
           displayMode={displayMode}
           onDisplayModeChange={setDisplayMode}
+          blurTranslations={blurTranslations}
+          onToggleBlur={toggleBlurTranslations}
         />
       )}
 
@@ -445,19 +463,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerLeft: {
-    width: 40,
-  },
-  headerCenter: {
     flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 8,
+    marginRight: 12,
   },
   songNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 4,
-    justifyContent: 'center',
   },
   headerFlags: {
     flexDirection: 'row',
@@ -471,13 +484,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
-    textAlign: 'center',
   },
   artistName: {
     fontSize: 15,
     color: Colors.textSecondary,
     marginTop: 2,
-    textAlign: 'center',
   },
   headerRight: {
     flexDirection: 'row',
@@ -588,6 +599,12 @@ const styles = StyleSheet.create({
   },
   lineBlock: {
     marginBottom: 6,
+  },
+  wordAnnotation: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+    maxWidth: 100,
   },
   translationLine: {
     color: Colors.primaryLight,

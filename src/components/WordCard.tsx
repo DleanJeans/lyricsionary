@@ -9,8 +9,6 @@ import HighlightedText from './HighlightedText';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
 
-export type DisplayMode = 'emoji' | 'ipa' | 'definition';
-
 interface WordCardProps {
   item: WordEntry;
   isWide?: boolean;
@@ -25,7 +23,6 @@ interface WordCardProps {
   artistName?: string;
   lyricsLine?: string;
   originalLanguages?: string[];
-  displayMode?: DisplayMode;
 }
 
 export default function WordCard({
@@ -37,7 +34,6 @@ export default function WordCard({
   onClose,
   onDelete,
   source,
-  displayMode = 'emoji',
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const swipeableRef = useRef<Swipeable>(null);
@@ -72,23 +68,6 @@ export default function WordCard({
     );
   };
 
-  // Determine what to show based on display mode
-  const getDisplayContent = () => {
-    switch (displayMode) {
-      case 'emoji':
-        return item.emoji || getFlagForLanguage(item.language);
-      case 'ipa':
-        return item.pronunciation ? ipa : '';
-      case 'definition':
-        // Show the first definition text if available
-        return item.definitions && item.definitions.length > 0 ? item.definitions[0].text : '';
-      default:
-        return item.emoji || getFlagForLanguage(item.language);
-    }
-  };
-
-  const displayContent = getDisplayContent();
-
   return (
     <Swipeable
       ref={swipeableRef}
@@ -106,25 +85,19 @@ export default function WordCard({
           </TouchableOpacity>
         )}
         <View style={styles.cardRow}>
-          {displayMode === 'emoji' && (
-            <Text style={styles.flag}>{displayContent}</Text>
-          )}
+          <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
           <View style={styles.cardContent}>
             <HighlightedText
               text={item.word}
               query={searchQuery}
               style={styles.cardWordText}
             />
-            {displayMode === 'ipa' && displayContent ? (
+            {item.pronunciation ? (
               <HighlightedText
-                text={displayContent}
+                text={ipa}
                 query={searchQuery}
                 style={styles.pronunciation}
               />
-            ) : displayMode === 'definition' && displayContent ? (
-              <Text style={styles.definition} numberOfLines={2}>
-                {displayContent}
-              </Text>
             ) : null}
           </View>
           <View style={styles.cardRight}>
@@ -178,12 +151,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 2,
-  },
-  definition: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    fontStyle: 'italic',
   },
   cardRight: {
     display: 'flex',

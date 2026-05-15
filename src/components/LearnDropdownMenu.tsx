@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { LANGUAGES } from '../constants/languages';
-import { DisplayMode } from './WordCard';
+import { DisplayMode } from '../screens/LearnScreen';
 
 interface LearnDropdownMenuProps {
   visible: boolean;
@@ -14,6 +14,8 @@ interface LearnDropdownMenuProps {
   availableLanguages: string[];
   displayMode: DisplayMode;
   onDisplayModeChange: (mode: DisplayMode) => void;
+  blurTranslations: boolean;
+  onToggleBlur: () => void;
 }
 
 export default function LearnDropdownMenu({
@@ -25,6 +27,8 @@ export default function LearnDropdownMenu({
   availableLanguages,
   displayMode,
   onDisplayModeChange,
+  blurTranslations,
+  onToggleBlur,
 }: LearnDropdownMenuProps) {
   const languagesToShow = LANGUAGES.filter((lang) =>
     availableLanguages.includes(lang.name)
@@ -54,6 +58,24 @@ export default function LearnDropdownMenu({
             <Text style={styles.editButtonText}>Edit Song</Text>
           </TouchableOpacity>
 
+          {/* Blur Toggle */}
+          <TouchableOpacity
+            style={styles.blurToggle}
+            onPress={onToggleBlur}
+          >
+            <View style={styles.blurToggleLeft}>
+              <Ionicons
+                name={blurTranslations ? 'eye-outline' : 'eye-off'}
+                size={20}
+                color={Colors.text}
+              />
+              <Text style={styles.blurToggleText}>Blur Translations</Text>
+            </View>
+            <View style={[styles.switch, blurTranslations && styles.switchActive]}>
+              <View style={[styles.switchThumb, blurTranslations && styles.switchThumbActive]} />
+            </View>
+          </TouchableOpacity>
+
           {/* Translation Languages Section */}
           {languagesToShow.length > 0 && (
             <>
@@ -64,14 +86,16 @@ export default function LearnDropdownMenu({
                   return (
                     <TouchableOpacity
                       key={lang.code}
-                      style={[styles.languageItem, isSelected && styles.languageItemSelected]}
+                      style={styles.languageItem}
                       onPress={() => toggleLanguage(lang.name)}
                     >
+                      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                        {isSelected && <Ionicons name="checkmark" size={16} color={Colors.white} />}
+                      </View>
                       <Text style={styles.languageItemEmoji}>{lang.flag}</Text>
-                      <Text style={[styles.languageItemText, isSelected && styles.languageItemTextSelected]}>
+                      <Text style={styles.languageItemText}>
                         {lang.name}
                       </Text>
-                      {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
                     </TouchableOpacity>
                   );
                 })}
@@ -80,7 +104,7 @@ export default function LearnDropdownMenu({
           )}
 
           {/* Display Mode Section */}
-          <Text style={styles.sectionTitle}>Display Above Saved Words</Text>
+          <Text style={styles.sectionTitle}>Display Above Original Words</Text>
           <View style={styles.radioGroup}>
             <TouchableOpacity
               style={styles.radioItem}
@@ -161,6 +185,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primary,
   },
+  blurToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  blurToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  blurToggleText: {
+    fontSize: 16,
+    color: Colors.text,
+  },
+  switch: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.border,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  switchActive: {
+    backgroundColor: Colors.primary,
+  },
+  switchThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.white,
+    alignSelf: 'flex-start',
+  },
+  switchThumbActive: {
+    alignSelf: 'flex-end',
+  },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '600',
@@ -175,13 +239,23 @@ const styles = StyleSheet.create({
   languageItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 10,
     gap: 12,
   },
-  languageItemSelected: {
-    backgroundColor: Colors.surfaceLight,
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   languageItemEmoji: {
     fontSize: 22,
@@ -190,10 +264,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: Colors.text,
-  },
-  languageItemTextSelected: {
-    fontWeight: '600',
-    color: Colors.primary,
   },
   radioGroup: {
     gap: 12,

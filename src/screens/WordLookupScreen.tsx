@@ -133,7 +133,7 @@ export default function WordLookupScreen() {
     if (word) {
       const url = lookupSource === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(word)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}#${language}`;
       setCurrentUrl(url);
       setWebViewAtTop(true); // reset on navigation
     }
@@ -339,7 +339,7 @@ export default function WordLookupScreen() {
               Wiktionary
             </Text>
           </TouchableOpacity>
-          
+
         <TouchableOpacity
             style={[styles.sourceButton, lookupSource === 'google' && styles.sourceButtonActive]}
             onPress={switchToGoogle}

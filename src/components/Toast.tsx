@@ -8,9 +8,10 @@ interface ToastProps {
   onHide: () => void;
   duration?: number;
   onUndo?: () => void;
+  bottom?: number;
 }
 
-export default function Toast({ message, visible, onHide, duration = 2000, onUndo }: ToastProps) {
+export default function Toast({ message, visible, onHide, duration = 2000, onUndo, bottom = 50 }: ToastProps) {
   const opacity = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function Toast({ message, visible, onHide, duration = 2000, onUnd
   if (!visible) return null;
 
   return (
-    <Animated.View style={[styles.container, { opacity }]}>
+    <Animated.View style={[styles.container, { opacity, bottom }]}>
       <Text style={styles.text}>{message}</Text>
       {onUndo && (
         <TouchableOpacity onPress={onUndo} style={styles.undoButton}>

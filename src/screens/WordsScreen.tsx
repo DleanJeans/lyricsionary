@@ -90,6 +90,11 @@ function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: 
   );
 }
 
+interface PendingDeletion {
+  id: string;
+  item: WordEntry;
+}
+
 export default function WordsScreen() {
   const { words, deleteWord } = useStore();
   const isWide = useIsWide();
@@ -99,13 +104,12 @@ export default function WordsScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
-  const [deletedWord, setDeletedWord] = useState<WordEntry | null>(null);
-  const [showToast, setShowToast] = useState(false);
-  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filteredWords = deletedWord
-    ? sortedWords.filter(w => w.id !== deletedWord.id)
-    : sortedWords;
+  const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
+  const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const pendingIds = new Set(pendingDeletions.map(d => d.id));
+  const filteredWords = sortedWords.filter(w => !pendingIds.has(w.id));
 
   const searchedWords = searchQuery.trim()
     ? filteredWords.filter(
@@ -127,33 +131,28 @@ export default function WordsScreen() {
   };
 
   const handleDelete = (item: WordEntry, closeSwipeable: () => void) => {
-    if (undoTimeoutRef.current) {
-      clearTimeout(undoTimeoutRef.current);
-    }
-    setDeletedWord(item);
+    setPendingDeletions(prev =>
+      prev.some(d => d.id === item.id) ? prev : [...prev, { id: item.id, item }]
+    );
     setSelectedWord(null);
-    setShowToast(true);
     closeSwipeable();
-    undoTimeoutRef.current = setTimeout(() => {
+    deleteTimeoutsRef.current[item.id] = setTimeout(() => {
       deleteWord(item.id);
-      setDeletedWord(null);
+      setPendingDeletions(prev => prev.filter(d => d.id !== item.id));
+      delete deleteTimeoutsRef.current[item.id];
     }, 5000);
   };
 
-  const handleUndo = () => {
-    // Clear the delete timeout
-    if (undoTimeoutRef.current) {
-      clearTimeout(undoTimeoutRef.current);
-      undoTimeoutRef.current = null;
+  const handleUndo = (itemId: string) => {
+    if (deleteTimeoutsRef.current[itemId]) {
+      clearTimeout(deleteTimeoutsRef.current[itemId]);
+      delete deleteTimeoutsRef.current[itemId];
     }
-
-    // Restore the word
-    setDeletedWord(null);
-    setShowToast(false);
+    setPendingDeletions(prev => prev.filter(d => d.id !== itemId));
   };
 
-  const handleToastHide = () => {
-    setShowToast(false);
+  const handleToastHide = (itemId: string) => {
+    setPendingDeletions(prev => prev.filter(d => d.id !== itemId));
   };
 
   return (
@@ -210,18 +209,22 @@ export default function WordsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-      <Toast
-        visible={showToast}
-        message={
-          <>
-            Delete
-            <Text style={{ fontWeight: 'bold' }}> {deletedWord?.word}</Text>
-          </>
-        }
-        onHide={handleToastHide}
-        duration={5000}
-        onUndo={handleUndo}
-      />
+      {pendingDeletions.map((d, i) => (
+        <Toast
+          key={d.id}
+          visible
+          message={
+            <>
+              Delete
+              <Text style={{ fontWeight: 'bold' }}> {d.item.word}</Text>
+            </>
+          }
+          onHide={() => handleToastHide(d.id)}
+          duration={5000}
+          onUndo={() => handleUndo(d.id)}
+          bottom={50 + i * 70}
+        />
+      ))}
     </ScreenWrapper>
   );
 }

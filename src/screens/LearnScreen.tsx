@@ -160,8 +160,6 @@ export default function LearnScreen() {
     ? words.find((w) => w.word.toLowerCase() === selectedWord.toLowerCase())
     : null;
 
-  const isNewWord = selectedWordEntry && selectedWordEntry.lookupCount === 1;
-
   const wordPanel = selectedWord && selectedWordEntry ? (
     <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
       <WordCard
@@ -182,11 +180,9 @@ export default function LearnScreen() {
       <View style={styles.wordHeader}>
         <View style={styles.wordTitleRow}>
           <Text style={styles.wordText}>{selectedWord}</Text>
-          {isNewWord && (
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>NEW</Text>
-            </View>
-          )}
+          <View style={styles.newBadge}>
+            <Text style={styles.newBadgeText}>NEW</Text>
+          </View>
         </View>
         <TouchableOpacity onPress={() => setSelectedWord(null)}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />

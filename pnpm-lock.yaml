@@ -8,6 +8,9 @@ patchedDependencies:
   expo@55.0.19:
     hash: 7fe86fc55d45f27720ff0ec76fc0c3667f9efe01186cec2f8ed1add239c54c67
     path: patches/expo@55.0.19.patch
+  rn-emoji-keyboard@1.7.0:
+    hash: c39960100f20af8d8b0875110119024297093047d70633d8693e10c16a3ebddb
+    path: patches/rn-emoji-keyboard@1.7.0.patch
 
 importers:
 
@@ -93,7 +96,7 @@ importers:
         version: 0.7.4(@babel/core@7.29.0)(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       rn-emoji-keyboard:
         specifier: ^1.7.0
-        version: 1.7.0(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
+        version: 1.7.0(patch_hash=c39960100f20af8d8b0875110119024297093047d70633d8693e10c16a3ebddb)(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -6271,7 +6274,7 @@ snapshots:
     dependencies:
       glob: 7.2.3
 
-  rn-emoji-keyboard@1.7.0(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0):
+  rn-emoji-keyboard@1.7.0(patch_hash=c39960100f20af8d8b0875110119024297093047d70633d8693e10c16a3ebddb)(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0):
     dependencies:
       react: 19.2.0
       react-native: 0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0)

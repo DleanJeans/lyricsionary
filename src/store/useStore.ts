@@ -16,6 +16,7 @@ interface AppState {
   fontSize: number;
   showTranslations: boolean;
   selectedTranslationLanguages: string[];
+  blurTranslations: boolean;
 
   // Song actions
   loadSongs: () => Promise<void>;
@@ -33,6 +34,7 @@ interface AppState {
   setFontSize: (size: number) => void;
   toggleTranslations: () => void;
   setSelectedTranslationLanguages: (languages: string[]) => void;
+  toggleBlurTranslations: () => void;
 
   // Word actions
   loadWords: () => Promise<void>;
@@ -47,6 +49,7 @@ interface AppState {
     emoji?: string
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
+  incrementWordLookupCount: (id: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -58,6 +61,7 @@ export const useStore = create<AppState>((set, get) => ({
   fontSize: 18,
   showTranslations: true,
   selectedTranslationLanguages: [],
+  blurTranslations: false,
 
   loadSongs: async () => {
     try {
@@ -133,6 +137,8 @@ export const useStore = create<AppState>((set, get) => ({
   toggleTranslations: () => set((s) => ({ showTranslations: !s.showTranslations })),
 
   setSelectedTranslationLanguages: (languages) => set({ selectedTranslationLanguages: languages }),
+
+  toggleBlurTranslations: () => set((s) => ({ blurTranslations: !s.blurTranslations })),
 
   loadWords: async () => {
     try {
@@ -213,6 +219,14 @@ export const useStore = create<AppState>((set, get) => ({
 
   deleteWord: async (id) => {
     const words = get().words.filter((w) => w.id !== id);
+    set({ words });
+    await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
+  },
+
+  incrementWordLookupCount: async (id) => {
+    const words = get().words.map((w) =>
+      w.id === id ? { ...w, lookupCount: w.lookupCount + 1, lastLookedUp: Date.now() } : w
+    );
     set({ words });
     await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
   },

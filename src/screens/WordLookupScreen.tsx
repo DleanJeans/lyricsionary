@@ -22,6 +22,7 @@ import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
+import { removeSpecialChars } from '../utils/cleanLyrics';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -80,7 +81,7 @@ export default function WordLookupScreen() {
   const [currentUrl, setCurrentUrl] = useState('');
   const [pageTitle, setPageTitle] = useState('');
   const [loading, setLoading] = useState(false);
-  const [lookupSource, setLookupSource] = useState<'google' | 'wiktionary'>('google');
+  const [lookupSource, setLookupSource] = useState<'google' | 'wiktionary'>('wiktionary');
 
   // Word data fields
   // Use first original language as default, fallback to English
@@ -124,12 +125,15 @@ export default function WordLookupScreen() {
     }
   }, [word, words, songId, originalLanguages]);
 
+  // Determine if word exists in saved words
+  const isNewWord = word && !words.find((w) => w.word.toLowerCase() === word.toLowerCase());
+
   // Set initial URL based on lookup source
   useEffect(() => {
     if (word) {
       const url = lookupSource === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(word)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}#${language}`;
       setCurrentUrl(url);
       setWebViewAtTop(true); // reset on navigation
     }
@@ -211,7 +215,7 @@ export default function WordLookupScreen() {
   const renderContextLine = () => {
     if (!lyricsLine || !word) return null;
 
-    const cleanWord = word.replace(/[^\p{L}\p{N}'-]/gu, '').toLowerCase();
+    const cleanWord = removeSpecialChars(word).toLowerCase();
     const parts = lyricsLine.split(new RegExp(`(\\b${cleanWord}\\b)`, 'gi'));
 
     return (
@@ -233,11 +237,12 @@ export default function WordLookupScreen() {
   };
 
   return (
-    <>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
+      <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
@@ -245,7 +250,7 @@ export default function WordLookupScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{word}</Text>
         <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save</Text>
+          <Text style={styles.saveButtonText}>{isNewWord ? 'Add' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -320,23 +325,6 @@ export default function WordLookupScreen() {
         {/* Source Selector */}
         <View style={styles.sourceSelector}>
           <TouchableOpacity
-            style={[styles.sourceButton, lookupSource === 'google' && styles.sourceButtonActive]}
-            onPress={switchToGoogle}
-          >
-            <Ionicons
-              name="logo-google"
-              size={18}
-              color={lookupSource === 'google' ? Colors.white : Colors.text}
-            />
-            <Text style={[
-              styles.sourceButtonText,
-              lookupSource === 'google' && styles.sourceButtonTextActive
-            ]}>
-              Google
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.sourceButton, lookupSource === 'wiktionary' && styles.sourceButtonActive]}
             onPress={switchToWiktionary}
           >
@@ -352,7 +340,25 @@ export default function WordLookupScreen() {
               Wiktionary
             </Text>
           </TouchableOpacity>
+
+        <TouchableOpacity
+            style={[styles.sourceButton, lookupSource === 'google' && styles.sourceButtonActive]}
+            onPress={switchToGoogle}
+          >
+            <Ionicons
+              name="logo-google"
+              size={18}
+              color={lookupSource === 'google' ? Colors.white : Colors.text}
+            />
+            <Text style={[
+              styles.sourceButtonText,
+              lookupSource === 'google' && styles.sourceButtonTextActive
+            ]}>
+              Google
+            </Text>
+          </TouchableOpacity>
         </View>
+
 
         {/* WebView Section */}
         <View style={styles.webViewContainer}>
@@ -399,7 +405,6 @@ export default function WordLookupScreen() {
           </View>
         </View>
       </ScrollView>
-      </KeyboardAvoidingView>
       <EmojiPicker
         onEmojiSelected={(emojiObject: EmojiType) => {
           setEmoji(emojiObject.emoji);
@@ -430,7 +435,8 @@ export default function WordLookupScreen() {
           },
         }}
       />
-    </>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

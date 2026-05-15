@@ -16,6 +16,7 @@ interface AppState {
   fontSize: number;
   showTranslations: boolean;
   selectedTranslationLanguages: string[];
+  blurTranslations: boolean;
 
   // Song actions
   loadSongs: () => Promise<void>;
@@ -33,6 +34,7 @@ interface AppState {
   setFontSize: (size: number) => void;
   toggleTranslations: () => void;
   setSelectedTranslationLanguages: (languages: string[]) => void;
+  toggleBlurTranslations: () => void;
 
   // Word actions
   loadWords: () => Promise<void>;
@@ -59,6 +61,7 @@ export const useStore = create<AppState>((set, get) => ({
   fontSize: 18,
   showTranslations: true,
   selectedTranslationLanguages: [],
+  blurTranslations: false,
 
   loadSongs: async () => {
     try {
@@ -134,6 +137,8 @@ export const useStore = create<AppState>((set, get) => ({
   toggleTranslations: () => set((s) => ({ showTranslations: !s.showTranslations })),
 
   setSelectedTranslationLanguages: (languages) => set({ selectedTranslationLanguages: languages }),
+
+  toggleBlurTranslations: () => set((s) => ({ blurTranslations: !s.blurTranslations })),
 
   loadWords: async () => {
     try {

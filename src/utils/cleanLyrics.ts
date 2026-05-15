@@ -51,3 +51,7 @@ export function cleanGeniusLyrics(lyrics: string): string {
 
   return cleaned;
 }
+
+export const removeSpecialChars = (word: string) => {
+  return word.replace(/[^\p{L}\p{N}'-]/gu, '');
+}

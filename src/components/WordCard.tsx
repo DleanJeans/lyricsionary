@@ -7,6 +7,7 @@ import { getFlagForLanguage } from '../constants/languages';
 import { WordEntry } from '../types';
 import HighlightedText from './HighlightedText';
 import { useNavigation } from '@react-navigation/native';
+import { useStore } from '../store/useStore';
 
 interface WordCardProps {
   item: WordEntry;
@@ -16,7 +17,6 @@ interface WordCardProps {
   showClose?: boolean;
   onClose?: () => void;
   onDelete?: (item: WordEntry, close: () => void) => void;
-  onEdit?: (item: WordEntry) => void;
   source?: 'Learn' | 'Words';
   songId?: string;
   songName?: string;
@@ -33,16 +33,11 @@ export default function WordCard({
   showClose = false,
   onClose,
   onDelete,
-  onEdit,
   source,
-  songId,
-  songName,
-  artistName,
-  lyricsLine,
-  originalLanguages,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const swipeableRef = useRef<Swipeable>(null);
+  const { incrementWordLookupCount } = useStore();
   const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
 
   const formatDate = (ts: number) => {
@@ -50,23 +45,12 @@ export default function WordCard({
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const handleEdit = () => {
-    if (onEdit) {
-      onEdit(item);
-    } else {
-      // Default edit behavior - navigate to WordLookup screen
-      navigation.navigate('WordLookup', {
-        word: item.word,
-        source,
-      });
-    }
-  };
-
   const handleCardPress = () => {
-    // Animate showing renderRightActions
-    if (swipeableRef.current) {
-      swipeableRef.current.openRight();
-    }
+    incrementWordLookupCount(item.id);
+    navigation.navigate('WordLookup', {
+      word: item.word,
+      source,
+    });
   };
 
   const renderLeftActions = () => {
@@ -84,22 +68,11 @@ export default function WordCard({
     );
   };
 
-  const renderRightActions = () => {
-    return (
-      <TouchableOpacity style={styles.editButton} onPress={handleEdit} activeOpacity={0.7}>
-        <Ionicons name="create-outline" size={24} color={Colors.white} />
-        <Text style={styles.editButtonText}>Edit</Text>
-      </TouchableOpacity>
-    );
-  };
-
   return (
     <Swipeable
       ref={swipeableRef}
       renderLeftActions={renderLeftActions}
-      renderRightActions={renderRightActions}
       overshootLeft={false}
-      overshootRight={false}
     >
       <TouchableOpacity
         style={[styles.card, isWide && styles.cardWide]}
@@ -208,23 +181,6 @@ const styles = StyleSheet.create({
     paddingRight: 28,
   },
   deleteButtonText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  editButton: {
-    backgroundColor: Colors.blue,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 100,
-    marginBottom: 10,
-    marginLeft: -28,
-    borderTopRightRadius: 14,
-    borderBottomRightRadius: 14,
-    paddingLeft: 28,
-  },
-  editButtonText: {
     color: Colors.white,
     fontSize: 12,
     fontWeight: '600',

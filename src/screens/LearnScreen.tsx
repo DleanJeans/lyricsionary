@@ -22,7 +22,7 @@ export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages, blurTranslations, toggleBlurTranslations } = useStore();
+  const { songs, words, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages, blurTranslations, toggleBlurTranslations } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);

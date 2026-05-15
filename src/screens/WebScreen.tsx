@@ -9,10 +9,9 @@ import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
+import { detectLyricsJS } from '../utils/detectLyricsJS';
 import Toast from '../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const LYRICS_DOMAINS = ['genius.com', 'musixmatch.com', 'lyricstranslate.com'];
 
 
 export default function WebScreen() {
@@ -44,12 +43,6 @@ export default function WebScreen() {
     }
   };
 
-  const checkForLyrics = (url: string) => {
-    const hasLyrics = LYRICS_DOMAINS.some((d) => url.includes(d)) ||
-      url.includes('google.com/search') && url.includes('lyrics');
-    setShowFab(hasLyrics);
-  };
-
   const handleScrapeLyrics = () => {
     webViewRef.current?.injectJavaScript(scrapeLyricsJS);
   };
@@ -59,6 +52,10 @@ export default function WebScreen() {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'debug') {
         console.log('[WebView]', typeof data.log === 'object' ? JSON.stringify(data.log) : data.log);
+        return;
+      }
+      if (data.type === 'lyricsDetected') {
+        setShowFab(data.hasLyrics === true);
         return;
       }
       if (data.type === 'lyrics' && data.text) {
@@ -168,10 +165,14 @@ export default function WebScreen() {
           setPageTitle(navState.title ?? '');
           setShowUrlInput(false);
           setCanGoBack(navState.canGoBack);
-          checkForLyrics(navState.url);
+          setShowFab(false); // Reset button when navigating to new page
         }}
         onLoadStart={() => setLoading(true)}
-        onLoadEnd={() => setLoading(false)}
+        onLoadEnd={() => {
+          setLoading(false);
+          // Inject detection script when page finishes loading
+          webViewRef.current?.injectJavaScript(detectLyricsJS);
+        }}
         onMessage={handleMessage}
         javaScriptEnabled
       />
@@ -181,7 +182,7 @@ export default function WebScreen() {
         </View>
       )}
       <Toast message={toast ?? ''} visible={!!toast} onHide={() => setToast(null)} />
-      {true && (
+      {showFab && (
         <TouchableOpacity style={styles.fab} onPress={handleScrapeLyrics} activeOpacity={0.8}>
           <Ionicons name="download-outline" size={26} color={Colors.white} />
           <Text style={styles.fabText}>Get Lyrics</Text>

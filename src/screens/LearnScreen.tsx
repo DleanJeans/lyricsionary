@@ -352,7 +352,7 @@ export default function LearnScreen() {
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => setShowDropdown(true)}>
-            <Ionicons name="ellipsis-horizontal" size={22} color={Colors.primary} />
+            <Ionicons name="language-outline" size={22} color={Colors.primary} />
           </TouchableOpacity>
         </View>
       </View>

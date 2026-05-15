@@ -11,7 +11,6 @@ import {
   Platform,
   Image,
   BackHandler,
-  Keyboard,
 } from 'react-native';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
@@ -169,19 +168,6 @@ export default function WordLookupScreen() {
     };
   }, [canGoBackInWebView, navigation, source, songId]);
 
-  // Auto-dismiss emoji picker when native keyboard appears to prevent overlap
-  useEffect(() => {
-    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
-      if (isEmojiPickerOpen) {
-        setIsEmojiPickerOpen(false);
-      }
-    });
-
-    return () => {
-      keyboardDidShow.remove();
-    };
-  }, [isEmojiPickerOpen]);
-
   const handleSave = async () => {
     if (!word) return;
 
@@ -251,11 +237,12 @@ export default function WordLookupScreen() {
   };
 
   return (
-    <>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
+      <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
@@ -290,10 +277,7 @@ export default function WordLookupScreen() {
               <Text style={styles.fieldLabel}>Emoji</Text>
               <TouchableOpacity
                 style={styles.emojiButton}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setIsEmojiPickerOpen(true);
-                }}
+                onPress={() => setIsEmojiPickerOpen(true)}
               >
                 {emoji ? (
                   <Text style={styles.emojiButtonText}>{emoji}</Text>
@@ -420,7 +404,6 @@ export default function WordLookupScreen() {
           </View>
         </View>
       </ScrollView>
-      </KeyboardAvoidingView>
       <EmojiPicker
         onEmojiSelected={(emojiObject: EmojiType) => {
           setEmoji(emojiObject.emoji);
@@ -451,7 +434,8 @@ export default function WordLookupScreen() {
           },
         }}
       />
-    </>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

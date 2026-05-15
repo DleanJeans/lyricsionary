@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   blurredText: {
-    opacity: 0.1,
+    filter: 'blur(5px)',
   },
   toastContainer: {
     position: 'absolute',

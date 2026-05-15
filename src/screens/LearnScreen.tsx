@@ -13,7 +13,7 @@ import WordCard from '../components/WordCard';
 import LearnDropdownMenu from '../components/LearnDropdownMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 
-export type DisplayMode = 'emoji' | 'ipa' | 'definition';
+export type DisplayMode = 'ipa' | 'definition' | 'none';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -39,7 +39,9 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('emoji');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('none');
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [enableAnnotations, setEnableAnnotations] = useState(true);
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [languagesInitialized, setLanguagesInitialized] = useState(false);
@@ -177,7 +179,7 @@ export default function LearnScreen() {
 
           // Get display content based on mode
           let displayContent = '';
-          if (wordEntry && displayMode !== 'emoji') {
+          if (enableAnnotations && wordEntry && displayMode !== 'none') {
             if (displayMode === 'ipa' && wordEntry.pronunciation) {
               displayContent = wordEntry.pronunciation.includes('/')
                 ? wordEntry.pronunciation
@@ -188,7 +190,7 @@ export default function LearnScreen() {
           }
 
           // Check if emoji is just the default flag for the language
-          const shouldShowEmoji = wordEntry && displayMode === 'emoji' && wordEntry.emoji &&
+          const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && wordEntry.emoji &&
             wordEntry.emoji !== getFlagForLanguage(wordEntry.language);
 
           return (
@@ -303,7 +305,7 @@ export default function LearnScreen() {
           {renderPressableText(line.original)}
           {showTranslations &&
             line.translations
-              .filter((tl) => tl.show && selectedTranslationLanguages.includes(tl.language))
+              .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
               .map((tl, ti) => {
                 const translationKey = `${i}-${ti}`;
                 const isBlurred = blurTranslations && !unblurredTranslations.has(translationKey);
@@ -366,6 +368,10 @@ export default function LearnScreen() {
           availableLanguages={song.translations.map(t => t.language)}
           displayMode={displayMode}
           onDisplayModeChange={setDisplayMode}
+          showEmoji={showEmoji}
+          onShowEmojiChange={setShowEmoji}
+          enableAnnotations={enableAnnotations}
+          onEnableAnnotationsChange={setEnableAnnotations}
           blurTranslations={blurTranslations}
           onToggleBlur={toggleBlurTranslations}
         />

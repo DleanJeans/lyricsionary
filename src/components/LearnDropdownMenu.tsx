@@ -14,6 +14,10 @@ interface LearnDropdownMenuProps {
   availableLanguages: string[];
   displayMode: DisplayMode;
   onDisplayModeChange: (mode: DisplayMode) => void;
+  showEmoji: boolean;
+  onShowEmojiChange: (show: boolean) => void;
+  enableAnnotations: boolean;
+  onEnableAnnotationsChange: (enable: boolean) => void;
   blurTranslations: boolean;
   onToggleBlur: () => void;
 }
@@ -27,6 +31,10 @@ export default function LearnDropdownMenu({
   availableLanguages,
   displayMode,
   onDisplayModeChange,
+  showEmoji,
+  onShowEmojiChange,
+  enableAnnotations,
+  onEnableAnnotationsChange,
   blurTranslations,
   onToggleBlur,
 }: LearnDropdownMenuProps) {
@@ -105,35 +113,65 @@ export default function LearnDropdownMenu({
 
           {/* Display Mode Section */}
           <Text style={styles.sectionTitle}>Display Above Original Words</Text>
+
+          {/* Master Toggle */}
+          <TouchableOpacity
+            style={styles.masterToggle}
+            onPress={() => onEnableAnnotationsChange(!enableAnnotations)}
+          >
+            <View style={styles.masterToggleLeft}>
+              <Text style={styles.masterToggleText}>Enable Annotations</Text>
+            </View>
+            <View style={[styles.switch, enableAnnotations && styles.switchActive]}>
+              <View style={[styles.switchThumb, enableAnnotations && styles.switchThumbActive]} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Emoji Checkbox */}
+          <TouchableOpacity
+            style={styles.checkboxItem}
+            onPress={() => onShowEmojiChange(!showEmoji)}
+            disabled={!enableAnnotations}
+          >
+            <View style={[styles.checkbox, showEmoji && styles.checkboxSelected, !enableAnnotations && styles.checkboxDisabled]}>
+              {showEmoji && <Ionicons name="checkmark" size={16} color={Colors.white} />}
+            </View>
+            <Text style={[styles.checkboxText, !enableAnnotations && styles.disabledText]}>Emoji</Text>
+          </TouchableOpacity>
+
+          {/* IPA and Definition Radios */}
           <View style={styles.radioGroup}>
             <TouchableOpacity
               style={styles.radioItem}
-              onPress={() => onDisplayModeChange('emoji')}
-            >
-              <View style={styles.radioButton}>
-                {displayMode === 'emoji' && <View style={styles.radioButtonInner} />}
-              </View>
-              <Text style={styles.radioText}>Emoji</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.radioItem}
               onPress={() => onDisplayModeChange('ipa')}
+              disabled={!enableAnnotations}
             >
-              <View style={styles.radioButton}>
+              <View style={[styles.radioButton, !enableAnnotations && styles.radioButtonDisabled]}>
                 {displayMode === 'ipa' && <View style={styles.radioButtonInner} />}
               </View>
-              <Text style={styles.radioText}>IPA</Text>
+              <Text style={[styles.radioText, !enableAnnotations && styles.disabledText]}>IPA</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.radioItem}
               onPress={() => onDisplayModeChange('definition')}
+              disabled={!enableAnnotations}
             >
-              <View style={styles.radioButton}>
+              <View style={[styles.radioButton, !enableAnnotations && styles.radioButtonDisabled]}>
                 {displayMode === 'definition' && <View style={styles.radioButtonInner} />}
               </View>
-              <Text style={styles.radioText}>Definition</Text>
+              <Text style={[styles.radioText, !enableAnnotations && styles.disabledText]}>Definition</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.radioItem}
+              onPress={() => onDisplayModeChange('none')}
+              disabled={!enableAnnotations}
+            >
+              <View style={[styles.radioButton, !enableAnnotations && styles.radioButtonDisabled]}>
+                {displayMode === 'none' && <View style={styles.radioButtonInner} />}
+              </View>
+              <Text style={[styles.radioText, !enableAnnotations && styles.disabledText]}>None</Text>
             </TouchableOpacity>
           </View>
 
@@ -224,6 +262,45 @@ const styles = StyleSheet.create({
   },
   switchThumbActive: {
     alignSelf: 'flex-end',
+  },
+  masterToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  masterToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  masterToggleText: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  checkboxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  checkboxText: {
+    fontSize: 16,
+    color: Colors.text,
+  },
+  checkboxDisabled: {
+    opacity: 0.4,
+  },
+  radioButtonDisabled: {
+    opacity: 0.4,
+  },
+  disabledText: {
+    opacity: 0.4,
   },
   sectionTitle: {
     fontSize: 15,

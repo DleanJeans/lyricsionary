@@ -73,31 +73,23 @@ export default function WordCard({
     if (!showDelete) return null;
 
     return (
-      <View style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => onDelete?.(item, () => swipeableRef.current?.close())}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="trash" size={24} color={Colors.white} />
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => onDelete?.(item, () => swipeableRef.current?.close())}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="trash" size={24} color={Colors.white} />
+        <Text style={styles.deleteButtonText}>Delete</Text>
+      </TouchableOpacity>
     );
   };
 
   const renderRightActions = () => {
     return (
-      <View style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={handleEdit}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="create-outline" size={24} color={Colors.white} />
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.editButton} onPress={handleEdit} activeOpacity={0.7}>
+        <Ionicons name="create-outline" size={24} color={Colors.white} />
+        <Text style={styles.editButtonText}>Edit</Text>
+      </TouchableOpacity>
     );
   };
 
@@ -214,7 +206,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 14,
     borderBottomLeftRadius: 14,
     paddingRight: 28,
-    height: '100%',
   },
   deleteButtonText: {
     color: Colors.white,
@@ -232,7 +223,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 14,
     borderBottomRightRadius: 14,
     paddingLeft: 28,
-    height: '100%',
   },
   editButtonText: {
     color: Colors.white,

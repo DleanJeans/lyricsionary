@@ -1,11 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
@@ -17,12 +11,25 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import MultiLanguageSelect from '../components/MultiLanguageSelect';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
+import { removeSpecialChars } from '../utils/cleanLyrics';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, words, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages, blurTranslations, toggleBlurTranslations } = useStore();
+  const {
+    songs,
+    words,
+    currentSongId,
+    fontSize,
+    setFontSize,
+    showTranslations,
+    toggleTranslations,
+    selectedTranslationLanguages,
+    setSelectedTranslationLanguages,
+    blurTranslations,
+    toggleBlurTranslations,
+  } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -36,7 +43,7 @@ export default function LearnScreen() {
   useEffect(() => {
     if (song && song.translations.length > 0 && selectedTranslationLanguages.length === 0) {
       // Auto-select all available translation languages by default
-      const availableLanguages = song.translations.map(t => t.language);
+      const availableLanguages = song.translations.map((t) => t.language);
       setSelectedTranslationLanguages(availableLanguages);
     }
   }, [song, selectedTranslationLanguages.length, setSelectedTranslationLanguages]);
@@ -47,7 +54,7 @@ export default function LearnScreen() {
       setUnblurredTranslations(new Set());
     }
   }, [blurTranslations, currentSongId]);
-  
+
   // Auto-hide toast after 2 seconds
   useEffect(() => {
     if (showToast) {
@@ -60,7 +67,10 @@ export default function LearnScreen() {
 
   // Helper function to normalize text for comparison (remove punctuation, compare words only)
   const normalizeText = (text: string): string => {
-    return text.replace(/[^\p{L}\p{N}\s]/gu, '').trim().toLowerCase();
+    return text
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .trim()
+      .toLowerCase();
   };
 
   const lines = useMemo(() => {
@@ -118,7 +128,9 @@ export default function LearnScreen() {
       <ScreenWrapper>
         <View style={styles.emptyInner}>
           <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>No lyrics to display.{'\n'}Go to Editor to add lyrics.</Text>
+          <Text style={styles.emptyText}>
+            No lyrics to display.{'\n'}Go to Editor to add lyrics.
+          </Text>
           <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
             <Text style={styles.goButtonText}>Go to Editor</Text>
           </TouchableOpacity>
@@ -127,8 +139,10 @@ export default function LearnScreen() {
     );
   }
 
+
+
   const handleWordPress = (word: string, line: string) => {
-    const cleaned = word.replace(/[^\p{L}\p{N}'-]/gu, '');
+    const cleaned = removeSpecialChars(word);
     if (cleaned) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
@@ -138,7 +152,7 @@ export default function LearnScreen() {
   const handleTranslationPress = (lineIndex: number, translationIndex: number) => {
     const key = `${lineIndex}-${translationIndex}`;
     if (blurTranslations && !unblurredTranslations.has(key)) {
-      setUnblurredTranslations(prev => new Set(prev).add(key));
+      setUnblurredTranslations((prev) => new Set(prev).add(key));
     }
   };
 
@@ -151,20 +165,23 @@ export default function LearnScreen() {
             <Text
               key={i}
               onPress={() => handleWordPress(word, text)}
-              style={{
-                color: selectedWord && word.replace(/[^\p{L}\p{N}'-]/gu, '') === selectedWord
-                  ? Colors.primary
-                  : Colors.text,
-                fontWeight: selectedWord && word.replace(/[^\p{L}\p{N}'-]/gu, '') === selectedWord
-                  ? '700'
-                  : '400',
-              }}
+              style={
+                selectedWord && removeSpecialChars(word) === selectedWord
+                  ? {
+                      color: Colors.primary,
+                      fontWeight: '700',
+                    }
+                  : {
+                      color: Colors.text,
+                      fontWeight: '400',
+                    }
+              }
             >
               {word}
             </Text>
           ) : (
             <Text key={i}>{word}</Text>
-          )
+          ),
         )}
       </Text>
     );
@@ -175,53 +192,54 @@ export default function LearnScreen() {
     ? words.find((w) => w.word.toLowerCase() === selectedWord.toLowerCase())
     : null;
 
-  const wordPanel = selectedWord && selectedWordEntry ? (
-    <View style={[styles.wordCardContainer]}>
-      <WordCard
-        item={selectedWordEntry}
-        showDelete={false}
-        showClose={true}
-        onClose={() => setSelectedWord(null)}
-        source="Learn"
-        songId={song.id}
-        songName={song.songName}
-        artistName={song.artistName}
-        lyricsLine={selectedLine ?? undefined}
-        originalLanguages={song.originalLanguages}
-      />
-    </View>
-  ) : selectedWord ? (
-    <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
-      <View style={styles.wordHeader}>
-        <View style={styles.wordTitleRow}>
-          <Text style={styles.wordText}>{selectedWord}</Text>
-          <View style={styles.newBadge}>
-            <Text style={styles.newBadgeText}>NEW</Text>
+  const wordPanel =
+    selectedWord && selectedWordEntry ? (
+      <View style={[styles.wordCardContainer]}>
+        <WordCard
+          item={selectedWordEntry}
+          showDelete={false}
+          showClose={true}
+          onClose={() => setSelectedWord(null)}
+          source="Learn"
+          songId={song.id}
+          songName={song.songName}
+          artistName={song.artistName}
+          lyricsLine={selectedLine ?? undefined}
+          originalLanguages={song.originalLanguages}
+        />
+      </View>
+    ) : selectedWord ? (
+      <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
+        <View style={styles.wordHeader}>
+          <View style={styles.wordTitleRow}>
+            <Text style={styles.wordText}>{selectedWord}</Text>
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>NEW</Text>
+            </View>
           </View>
+          <TouchableOpacity onPress={() => setSelectedWord(null)}>
+            <Ionicons name="close" size={22} color={Colors.textSecondary} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={() => setSelectedWord(null)}>
-          <Ionicons name="close" size={22} color={Colors.textSecondary} />
+        <TouchableOpacity
+          style={styles.lookupNewButton}
+          onPress={() => {
+            navigation.navigate('WordLookup', {
+              word: selectedWord,
+              songId: song.id,
+              songName: song.songName,
+              artistName: song.artistName,
+              lyricsLine: selectedLine ?? undefined,
+              originalLanguages: song.originalLanguages,
+              source: 'Learn',
+            });
+          }}
+        >
+          <Ionicons name="search" size={18} color={Colors.white} />
+          <Text style={styles.lookupNewButtonText}>Look up</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={styles.lookupNewButton}
-        onPress={() => {
-          navigation.navigate('WordLookup', {
-            word: selectedWord,
-            songId: song.id,
-            songName: song.songName,
-            artistName: song.artistName,
-            lyricsLine: selectedLine ?? undefined,
-            originalLanguages: song.originalLanguages,
-            source: 'Learn',
-          });
-        }}
-      >
-        <Ionicons name="search" size={18} color={Colors.white} />
-        <Text style={styles.lookupNewButtonText}>Look up</Text>
-      </TouchableOpacity>
-    </View>
-  ) : null;
+    ) : null;
 
   /* ─── Action bar ──────────────────────────────────────── */
   const actionBar = (
@@ -280,10 +298,14 @@ export default function LearnScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.songNameRow}>
-            <Text style={styles.songName} numberOfLines={1}>{song.songName}</Text>
+            <Text style={styles.songName} numberOfLines={1}>
+              {song.songName}
+            </Text>
             <View style={styles.headerFlags}>
               {(song.originalLanguages ?? []).map((lang) => (
-                <Text key={`orig-${lang}`} style={styles.flag}>{getFlagForLanguage(lang)}</Text>
+                <Text key={`orig-${lang}`} style={styles.flag}>
+                  {getFlagForLanguage(lang)}
+                </Text>
               ))}
             </View>
           </View>
@@ -297,10 +319,7 @@ export default function LearnScreen() {
               color={Colors.primary}
             />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={toggleBlurTranslations}
-          >
+          <TouchableOpacity style={styles.headerBtn} onPress={toggleBlurTranslations}>
             <Ionicons
               name={blurTranslations ? 'eye-outline' : 'eye-off'}
               size={22}
@@ -322,7 +341,7 @@ export default function LearnScreen() {
           value={selectedTranslationLanguages}
           onValueChange={handleLanguageChange}
           placeholder="Select translation languages"
-          availableLanguages={song.translations.map(t => t.language)}
+          availableLanguages={song.translations.map((t) => t.language)}
           showModal={showDropdown}
           hideInput
           onClose={() => setShowDropdown(false)}

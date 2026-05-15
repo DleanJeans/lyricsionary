@@ -229,11 +229,14 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 16,
   },
   title: {
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
     textAlign: 'center',
     fontSize: 26,
     fontWeight: '700',

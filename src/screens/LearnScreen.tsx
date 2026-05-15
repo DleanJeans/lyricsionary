@@ -14,15 +14,16 @@ import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
-import MultiLanguageSelect from '../components/MultiLanguageSelect';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
+import LearnDropdownMenu from '../components/LearnDropdownMenu';
+import { DisplayMode } from '../components/WordCard';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages, words } = useStore();
+  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, words } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -30,15 +31,17 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('emoji');
+  const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
 
   // Initialize selected languages when song changes
   useEffect(() => {
-    if (song && song.translations.length > 0 && selectedTranslationLanguages.length === 0) {
+    if (song && song.translations.length > 0 && localSelectedLanguages.length === 0) {
       // Auto-select all available translation languages by default
       const availableLanguages = song.translations.map(t => t.language);
-      setSelectedTranslationLanguages(availableLanguages);
+      setLocalSelectedLanguages(availableLanguages);
     }
-  }, [song, selectedTranslationLanguages.length, setSelectedTranslationLanguages]);
+  }, [song, localSelectedLanguages.length]);
 
   // Auto-hide toast after 2 seconds
   useEffect(() => {
@@ -81,17 +84,8 @@ export default function LearnScreen() {
 
   const lineCount = lines.length;
 
-  const handleToggleTranslations = () => {
-    if (!song || song.translations.length === 0) {
-      setToastMessage('No translations available');
-      setShowToast(true);
-      return;
-    }
-    setShowDropdown(true);
-  };
-
   const handleLanguageChange = (languages: string[]) => {
-    setSelectedTranslationLanguages(languages);
+    setLocalSelectedLanguages(languages);
     if (languages.length === 0) {
       // If no languages selected, turn off translations
       if (showTranslations) {
@@ -173,6 +167,7 @@ export default function LearnScreen() {
         artistName={song.artistName}
         lyricsLine={selectedLine ?? undefined}
         originalLanguages={song.originalLanguages}
+        displayMode={displayMode}
       />
     </View>
   ) : selectedWord ? (
@@ -233,7 +228,7 @@ export default function LearnScreen() {
           {renderPressableText(line.original)}
           {showTranslations &&
             line.translations
-              .filter((tl) => tl.show && selectedTranslationLanguages.includes(tl.language))
+              .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
               .map((tl, ti) =>
                 tl.text ? (
                   <Text key={ti} style={[styles.translationLine, { fontSize: fontSize - 2 }]}>
@@ -250,6 +245,11 @@ export default function LearnScreen() {
     <ScreenWrapper noPadding>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => setShowDropdown(true)}>
+            <Ionicons name="ellipsis-horizontal" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerCenter}>
           <View style={styles.songNameRow}>
             <Text style={styles.songName} numberOfLines={1}>{song.songName}</Text>
             <View style={styles.headerFlags}>
@@ -261,32 +261,27 @@ export default function LearnScreen() {
           <Text style={styles.artistName}>{song.artistName}</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerBtn} onPress={handleToggleTranslations}>
+          <TouchableOpacity style={styles.headerBtn} onPress={toggleTranslations}>
             <Ionicons
               name={showTranslations ? 'language' : 'eye-off-outline'}
               size={22}
               color={Colors.primary}
             />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => navigation.navigate('Editor', { songId: song.id })}
-          >
-            <Ionicons name="create-outline" size={22} color={Colors.primary} />
-          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Translation language selector modal */}
-      {song && song.translations.length > 0 && (
-        <MultiLanguageSelect
-          value={selectedTranslationLanguages}
-          onValueChange={handleLanguageChange}
-          placeholder="Select translation languages"
-          availableLanguages={song.translations.map(t => t.language)}
-          showModal={showDropdown}
-          hideInput
+      {/* Dropdown Menu */}
+      {song && (
+        <LearnDropdownMenu
+          visible={showDropdown}
           onClose={() => setShowDropdown(false)}
+          onEdit={() => navigation.navigate('Editor', { songId: song.id })}
+          selectedLanguages={localSelectedLanguages}
+          onLanguagesChange={handleLanguageChange}
+          availableLanguages={song.translations.map(t => t.language)}
+          displayMode={displayMode}
+          onDisplayModeChange={setDisplayMode}
         />
       )}
 
@@ -391,14 +386,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerLeft: {
+    width: 40,
+  },
+  headerCenter: {
     flex: 1,
-    marginRight: 12,
+    alignItems: 'center',
+    marginHorizontal: 8,
   },
   songNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 4,
+    justifyContent: 'center',
   },
   headerFlags: {
     flexDirection: 'row',
@@ -412,15 +412,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
+    textAlign: 'center',
   },
   artistName: {
     fontSize: 15,
     color: Colors.textSecondary,
     marginTop: 2,
+    textAlign: 'center',
   },
   headerRight: {
-    flexDirection: 'row',
-    gap: 8,
+    width: 40,
+    alignItems: 'flex-end',
   },
   headerBtn: {
     padding: 8,

@@ -151,8 +151,16 @@ export default function LearnScreen() {
 
   const handleTranslationPress = (lineIndex: number, translationIndex: number) => {
     const key = `${lineIndex}-${translationIndex}`;
-    if (blurTranslations && !unblurredTranslations.has(key)) {
-      setUnblurredTranslations((prev) => new Set(prev).add(key));
+    if (blurTranslations) {
+      if (!unblurredTranslations.has(key)) {
+        setUnblurredTranslations((prev) => new Set(prev).add(key));
+      } else {
+        setUnblurredTranslations((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(key);
+          return newSet;
+        });
+      }
     }
   };
 

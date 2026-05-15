@@ -172,11 +172,7 @@ export default function WordsScreen() {
           <Text style={styles.title}>Saved Words</Text>
         )}
         <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
-          <Ionicons
-            name={showSearch ? 'close' : 'search'}
-            size={22}
-            color={Colors.textMuted}
-          />
+          <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
         </TouchableOpacity>
       </View>
       {searchedWords.length === 0 ? (
@@ -216,7 +212,12 @@ export default function WordsScreen() {
       )}
       <Toast
         visible={showToast}
-        message={`Deleted "${deletedWord?.word}"`}
+        message={
+          <>
+            Delete
+            <Text style={{ fontWeight: 'bold' }}> {deletedWord?.word}</Text>
+          </>
+        }
         onHide={handleToastHide}
         duration={5000}
         onUndo={handleUndo}

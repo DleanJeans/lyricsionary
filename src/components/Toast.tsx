@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native
 import { Colors } from '../constants/theme';
 
 interface ToastProps {
-  message: string;
+  message: string | React.ReactNode;
   visible: boolean;
   onHide: () => void;
   duration?: number;
@@ -50,7 +50,7 @@ export default function Toast({ message, visible, onHide, duration = 2000, onUnd
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 50,
     left: 20,
     right: 20,
     backgroundColor: Colors.surfaceLight,
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   undoText: {
-    color: Colors.primary,
+    color: Colors.danger,
     fontSize: 14,
     fontWeight: '700',
   },

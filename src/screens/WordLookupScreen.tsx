@@ -22,6 +22,7 @@ import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
+import { removeSpecialChars } from '../utils/cleanLyrics';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -214,7 +215,7 @@ export default function WordLookupScreen() {
   const renderContextLine = () => {
     if (!lyricsLine || !word) return null;
 
-    const cleanWord = word.replace(/[^\p{L}\p{N}'-]/gu, '').toLowerCase();
+    const cleanWord = removeSpecialChars(word).toLowerCase();
     const parts = lyricsLine.split(new RegExp(`(\\b${cleanWord}\\b)`, 'gi'));
 
     return (

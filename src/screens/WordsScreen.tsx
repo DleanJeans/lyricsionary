@@ -210,7 +210,7 @@ export default function WordsScreen() {
             key={d.id}
             message={
               <>
-                Delete
+                Deleted
                 <Text style={{ fontWeight: 'bold' }}> {d.item.word}</Text>
               </>
             }

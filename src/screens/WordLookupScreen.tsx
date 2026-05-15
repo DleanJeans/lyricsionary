@@ -237,11 +237,12 @@ export default function WordLookupScreen() {
   };
 
   return (
-    <>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
+      <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
@@ -404,7 +405,6 @@ export default function WordLookupScreen() {
           </View>
         </View>
       </ScrollView>
-      </KeyboardAvoidingView>
       <EmojiPicker
         onEmojiSelected={(emojiObject: EmojiType) => {
           setEmoji(emojiObject.emoji);
@@ -435,7 +435,8 @@ export default function WordLookupScreen() {
           },
         }}
       />
-    </>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

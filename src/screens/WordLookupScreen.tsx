@@ -11,6 +11,7 @@ import {
   Platform,
   Image,
   BackHandler,
+  Keyboard,
 } from 'react-native';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
@@ -168,6 +169,19 @@ export default function WordLookupScreen() {
     };
   }, [canGoBackInWebView, navigation, source, songId]);
 
+  // Auto-dismiss emoji picker when native keyboard appears to prevent overlap
+  useEffect(() => {
+    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
+      if (isEmojiPickerOpen) {
+        setIsEmojiPickerOpen(false);
+      }
+    });
+
+    return () => {
+      keyboardDidShow.remove();
+    };
+  }, [isEmojiPickerOpen]);
+
   const handleSave = async () => {
     if (!word) return;
 
@@ -276,7 +290,10 @@ export default function WordLookupScreen() {
               <Text style={styles.fieldLabel}>Emoji</Text>
               <TouchableOpacity
                 style={styles.emojiButton}
-                onPress={() => setIsEmojiPickerOpen(true)}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setIsEmojiPickerOpen(true);
+                }}
               >
                 {emoji ? (
                   <Text style={styles.emojiButtonText}>{emoji}</Text>

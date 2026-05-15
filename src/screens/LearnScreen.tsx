@@ -161,7 +161,7 @@ export default function LearnScreen() {
     : null;
 
   const wordPanel = selectedWord && selectedWordEntry ? (
-    <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
+    <View style={[styles.wordCardContainer]}>
       <WordCard
         item={selectedWordEntry}
         showDelete={false}
@@ -426,6 +426,9 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: Colors.surface,
     borderRadius: 10,
+  },
+  wordCardContainer: {
+    marginHorizontal: 16,
   },
   wordPanel: {
     backgroundColor: Colors.surface,

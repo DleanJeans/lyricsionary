@@ -114,7 +114,7 @@ export default function WordCard({
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
+    alignSelf: 'stretch',
     backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 16,

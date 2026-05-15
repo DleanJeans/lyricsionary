@@ -124,6 +124,9 @@ export default function WordLookupScreen() {
     }
   }, [word, words, songId, originalLanguages]);
 
+  // Determine if word exists in saved words
+  const isNewWord = word && !words.find((w) => w.word.toLowerCase() === word.toLowerCase());
+
   // Set initial URL based on lookup source
   useEffect(() => {
     if (word) {
@@ -245,7 +248,7 @@ export default function WordLookupScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{word}</Text>
         <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save</Text>
+          <Text style={styles.saveButtonText}>{isNewWord ? 'Add' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
 

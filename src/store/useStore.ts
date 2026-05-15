@@ -49,6 +49,7 @@ interface AppState {
     emoji?: string
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
+  incrementWordLookupCount: (id: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -218,6 +219,14 @@ export const useStore = create<AppState>((set, get) => ({
 
   deleteWord: async (id) => {
     const words = get().words.filter((w) => w.id !== id);
+    set({ words });
+    await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
+  },
+
+  incrementWordLookupCount: async (id) => {
+    const words = get().words.map((w) =>
+      w.id === id ? { ...w, lookupCount: w.lookupCount + 1, lastLookedUp: Date.now() } : w
+    );
     set({ words });
     await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
   },

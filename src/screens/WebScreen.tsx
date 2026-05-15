@@ -181,7 +181,9 @@ export default function WebScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}
-      <Toast message={toast ?? ''} visible={!!toast} onHide={() => setToast(null)} />
+
+      {!!toast && <Toast message={toast ?? ''} />}
+      
       {showFab && (
         <TouchableOpacity style={styles.fab} onPress={handleScrapeLyrics} activeOpacity={0.8}>
           <Ionicons name="download-outline" size={26} color={Colors.white} />

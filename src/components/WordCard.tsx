@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
 import { WordEntry } from '../types';
@@ -38,7 +39,7 @@ export default function WordCard({
   children,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
-  const translateX = useRef(new Animated.Value(0)).current;
+  const swipeableRef = useRef<Swipeable>(null);
 
   const formatDate = (ts: number) => {
     const d = new Date(ts);
@@ -48,24 +49,13 @@ export default function WordCard({
   const handlePress = () => {
     if (onPress) {
       onPress();
-      // Animate swipe left to reveal edit button
-      Animated.spring(translateX, {
-        toValue: -80,
-        useNativeDriver: true,
-        tension: 40,
-        friction: 7,
-      }).start(() => {
-        // Auto-hide after 2 seconds
-        setTimeout(() => {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 40,
-            friction: 7,
-          }).start();
-        }, 2000);
-      });
     }
+    // Animate swipe left to reveal edit button
+    swipeableRef.current?.openRight();
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+      swipeableRef.current?.close();
+    }, 2000);
   };
 
   const handleEditPress = () => {
@@ -82,83 +72,80 @@ export default function WordCard({
 
   const ipa = word.pronunciation.includes('/') ? word.pronunciation : `/${word.pronunciation}/`;
 
-  return (
-    <View style={styles.container}>
-      {/* Edit button background (revealed on swipe left) */}
-      <View style={styles.editBackground}>
-        <TouchableOpacity style={styles.editButton} onPress={handleEditPress}>
+  const renderRightActions = () => {
+    return (
+      <View style={styles.editContainer}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={handleEditPress}
+          activeOpacity={0.7}
+        >
           <Ionicons name="create-outline" size={24} color={Colors.white} />
         </TouchableOpacity>
       </View>
+    );
+  };
 
-      {/* Main card content */}
-      <Animated.View
-        style={[
-          styles.cardWrapper,
-          {
-            transform: [{ translateX }],
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.card}
-          onPress={handlePress}
-          onLongPress={onLongPress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.cardRow}>
-            <Text style={styles.flag}>{word.emoji || getFlagForLanguage(word.language)}</Text>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardWordText}>{word.word}</Text>
-              {word.pronunciation ? (
-                <Text style={styles.pronunciation}>{ipa}</Text>
-              ) : null}
-            </View>
-            <View style={styles.cardRight}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{word.lookupCount}×</Text>
-              </View>
-              <Text style={styles.date}>{formatDate(word.lastLookedUp)}</Text>
-            </View>
-            {showCloseButton && onClose && (
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={22} color={Colors.textSecondary} />
-              </TouchableOpacity>
-            )}
+  const cardContent = (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={handlePress}
+      onLongPress={onLongPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.cardRow}>
+        <Text style={styles.flag}>{word.emoji || getFlagForLanguage(word.language)}</Text>
+        <View style={styles.cardContent}>
+          <Text style={styles.cardWordText}>{word.word}</Text>
+          {word.pronunciation ? (
+            <Text style={styles.pronunciation}>{ipa}</Text>
+          ) : null}
+        </View>
+        <View style={styles.cardRight}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{word.lookupCount}×</Text>
           </View>
-          {isExpanded && children && (
-            <View style={styles.expandedContent}>{children}</View>
-          )}
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+          <Text style={styles.date}>{formatDate(word.lastLookedUp)}</Text>
+        </View>
+        {showCloseButton && onClose && (
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={22} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+      {isExpanded && children && (
+        <View style={styles.expandedContent}>{children}</View>
+      )}
+    </TouchableOpacity>
+  );
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+      enableTrackpadTwoFingerGesture
+    >
+      {cardContent}
+    </Swipeable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
+  editContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
     marginBottom: 10,
   },
-  editBackground: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 80,
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   editButton: {
-    width: '100%',
+    backgroundColor: Colors.primary,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
     height: '100%',
+    width: 80,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  cardWrapper: {
-    flex: 1,
   },
   card: {
     backgroundColor: Colors.surface,
@@ -166,6 +153,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: Colors.border,
+    marginBottom: 10,
   },
   cardRow: {
     flexDirection: 'row',

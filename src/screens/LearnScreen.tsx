@@ -42,16 +42,18 @@ export default function LearnScreen() {
   const [displayMode, setDisplayMode] = useState<DisplayMode>('emoji');
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
+  const [languagesInitialized, setLanguagesInitialized] = useState(false);
 
   // Initialize selected languages when song changes
   useEffect(() => {
-    if (song && song.translations.length > 0 && localSelectedLanguages.length === 0) {
+    if (song && song.translations.length > 0 && !languagesInitialized) {
       // Auto-select all available translation languages by default
       const availableLanguages = song.translations.map(t => t.language);
       setLocalSelectedLanguages(availableLanguages);
       setSelectedTranslationLanguages(availableLanguages);
+      setLanguagesInitialized(true);
     }
-  }, [song, localSelectedLanguages.length]);
+  }, [song, languagesInitialized]);
 
   // Reset unblurred translations when blur is toggled off or song changes
   useEffect(() => {
@@ -185,18 +187,27 @@ export default function LearnScreen() {
             }
           }
 
+          // Check if emoji is just the default flag for the language
+          const shouldShowEmoji = wordEntry && displayMode === 'emoji' && wordEntry.emoji &&
+            wordEntry.emoji !== getFlagForLanguage(wordEntry.language);
+
+          const hasAnnotation = shouldShowEmoji || displayContent;
+
           return (
             <View key={i} style={{ alignItems: 'center' }}>
-              {wordEntry && displayMode === 'emoji' && (wordEntry.emoji || wordEntry.language) && (
-                <Text style={styles.wordAnnotation}>
-                  {wordEntry.emoji || getFlagForLanguage(wordEntry.language)}
-                </Text>
-              )}
-              {displayContent && (
-                <Text style={styles.wordAnnotation} numberOfLines={1}>
-                  {displayContent}
-                </Text>
-              )}
+              {/* Always render annotation space to keep all words aligned */}
+              <View style={styles.annotationSpace}>
+                {shouldShowEmoji && (
+                  <Text style={styles.wordAnnotation}>
+                    {wordEntry.emoji}
+                  </Text>
+                )}
+                {displayContent && (
+                  <Text style={styles.wordAnnotation} numberOfLines={1}>
+                    {displayContent}
+                  </Text>
+                )}
+              </View>
               <Text
                 onPress={() => handleWordPress(word, text)}
                 style={{
@@ -600,10 +611,13 @@ const styles = StyleSheet.create({
   lineBlock: {
     marginBottom: 6,
   },
+  annotationSpace: {
+    minHeight: 14,
+    marginBottom: 2,
+  },
   wordAnnotation: {
     fontSize: 10,
     color: Colors.textSecondary,
-    marginBottom: 2,
     maxWidth: 100,
   },
   translationLine: {

@@ -61,7 +61,7 @@ export const useStore = create<AppState>((set, get) => ({
   fontSize: 18,
   showTranslations: true,
   selectedTranslationLanguages: [],
-  blurTranslations: false,
+  blurTranslations: true,
 
   loadSongs: async () => {
     try {

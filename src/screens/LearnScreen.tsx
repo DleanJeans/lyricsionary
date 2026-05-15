@@ -191,8 +191,6 @@ export default function LearnScreen() {
           const shouldShowEmoji = wordEntry && displayMode === 'emoji' && wordEntry.emoji &&
             wordEntry.emoji !== getFlagForLanguage(wordEntry.language);
 
-          const hasAnnotation = shouldShowEmoji || displayContent;
-
           return (
             <View key={i} style={{ alignItems: 'center' }}>
               {/* Always render annotation space to keep all words aligned */}
@@ -613,7 +611,7 @@ const styles = StyleSheet.create({
   },
   annotationSpace: {
     minHeight: 14,
-    marginBottom: 2,
+    marginBottom: -6,
   },
   wordAnnotation: {
     fontSize: 10,

@@ -22,7 +22,7 @@ export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages } = useStore();
+  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages, blurTranslations, toggleBlurTranslations } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -30,6 +30,7 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [unblurredLines, setUnblurredLines] = useState<Set<number>>(new Set());
 
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -39,6 +40,13 @@ export default function LearnScreen() {
       setSelectedTranslationLanguages(availableLanguages);
     }
   }, [song, selectedTranslationLanguages.length, setSelectedTranslationLanguages]);
+
+  // Reset unblurred lines when blur is toggled off or song changes
+  useEffect(() => {
+    if (!blurTranslations) {
+      setUnblurredLines(new Set());
+    }
+  }, [blurTranslations, currentSongId]);
 
   // Helper function to normalize text for comparison (remove punctuation, compare words only)
   const normalizeText = (text: string): string => {
@@ -117,6 +125,12 @@ export default function LearnScreen() {
     }
   };
 
+  const handleLinePress = (lineIndex: number) => {
+    if (blurTranslations && !unblurredLines.has(lineIndex)) {
+      setUnblurredLines(prev => new Set(prev).add(lineIndex));
+    }
+  };
+
   const renderPressableText = (text: string) => {
     const words = text.split(/(\s+)/);
     return (
@@ -186,21 +200,36 @@ export default function LearnScreen() {
   /* ─── Lyrics scroll ────────────────────────────────────── */
   const lyricsView = (
     <ScrollView style={styles.lyricsScroll} contentContainerStyle={styles.lyricsContent}>
-      {lines.map((line, i) => (
-        <View key={i} style={styles.lineBlock}>
-          {renderPressableText(line.original)}
-          {showTranslations &&
-            line.translations
-              .filter((tl) => tl.show && selectedTranslationLanguages.includes(tl.language))
-              .map((tl, ti) =>
-                tl.text ? (
-                  <Text key={ti} style={[styles.translationLine, { fontSize: fontSize - 2 }]}>
-                    {tl.text}
-                  </Text>
-                ) : null
-              )}
-        </View>
-      ))}
+      {lines.map((line, i) => {
+        const isBlurred = blurTranslations && !unblurredLines.has(i);
+        return (
+          <TouchableOpacity
+            key={i}
+            style={styles.lineBlock}
+            onPress={() => handleLinePress(i)}
+            activeOpacity={blurTranslations ? 0.7 : 1}
+          >
+            {renderPressableText(line.original)}
+            {showTranslations &&
+              line.translations
+                .filter((tl) => tl.show && selectedTranslationLanguages.includes(tl.language))
+                .map((tl, ti) =>
+                  tl.text ? (
+                    <Text
+                      key={ti}
+                      style={[
+                        styles.translationLine,
+                        { fontSize: fontSize - 2 },
+                        isBlurred && styles.blurredText,
+                      ]}
+                    >
+                      {tl.text}
+                    </Text>
+                  ) : null
+                )}
+          </TouchableOpacity>
+        );
+      })}
     </ScrollView>
   );
 
@@ -222,6 +251,16 @@ export default function LearnScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={handleToggleTranslations}>
             <Ionicons
               name={showTranslations ? 'language' : 'eye-off-outline'}
+              size={22}
+              color={Colors.primary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={toggleBlurTranslations}
+          >
+            <Ionicons
+              name={blurTranslations ? 'eye-outline' : 'eye-off'}
               size={22}
               color={Colors.primary}
             />
@@ -455,5 +494,8 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 22,
     marginTop: 2,
+  },
+  blurredText: {
+    opacity: 0.1,
   },
 });

@@ -14,15 +14,15 @@ import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
-import WordLookupButtons from '../components/WordLookupButtons';
 import MultiLanguageSelect from '../components/MultiLanguageSelect';
 import Toast from '../components/Toast';
+import WordCard from '../components/WordCard';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages } = useStore();
+  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages, words } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -146,7 +146,26 @@ export default function LearnScreen() {
   };
 
   /* ─── Word panel ──────────────────────────────────────── */
-  const wordPanel = selectedWord ? (
+  const selectedWordEntry = selectedWord
+    ? words.find((w) => w.word.toLowerCase() === selectedWord.toLowerCase())
+    : null;
+
+  const wordPanel = selectedWord && selectedWordEntry ? (
+    <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
+      <WordCard
+        item={selectedWordEntry}
+        showDelete={false}
+        showClose={true}
+        onClose={() => setSelectedWord(null)}
+        source="Learn"
+        songId={song.id}
+        songName={song.songName}
+        artistName={song.artistName}
+        lyricsLine={selectedLine ?? undefined}
+        originalLanguages={song.originalLanguages}
+      />
+    </View>
+  ) : selectedWord ? (
     <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
       <View style={styles.wordHeader}>
         <Text style={styles.wordText}>{selectedWord}</Text>
@@ -154,15 +173,24 @@ export default function LearnScreen() {
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
-      <WordLookupButtons
-        word={selectedWord}
-        songId={song.id}
-        songName={song.songName}
-        artistName={song.artistName}
-        lyricsLine={selectedLine ?? undefined}
-        originalLanguages={song.originalLanguages}
-        source="Learn"
-      />
+      <Text style={styles.wordNotSaved}>This word hasn't been saved yet.</Text>
+      <TouchableOpacity
+        style={styles.lookupNewButton}
+        onPress={() => {
+          navigation.navigate('WordLookup', {
+            word: selectedWord,
+            songId: song.id,
+            songName: song.songName,
+            artistName: song.artistName,
+            lyricsLine: selectedLine ?? undefined,
+            originalLanguages: song.originalLanguages,
+            source: 'Learn',
+          });
+        }}
+      >
+        <Ionicons name="search" size={18} color={Colors.white} />
+        <Text style={styles.lookupNewButtonText}>Look up</Text>
+      </TouchableOpacity>
     </View>
   ) : null;
 
@@ -408,6 +436,26 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: Colors.text,
+  },
+  wordNotSaved: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 12,
+  },
+  lookupNewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  lookupNewButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionBar: {
     flexDirection: 'row',

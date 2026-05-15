@@ -618,6 +618,8 @@ const styles = StyleSheet.create({
   annotationSpace: {
     minHeight: 14,
     marginBottom: -6,
+    flexDirection: 'row',
+    gap: 4,
   },
   wordAnnotation: {
     fontSize: 10,

@@ -10,85 +10,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { getFlagForLanguage } from '../constants/languages';
 import { WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
-import HighlightedText from '../components/HighlightedText';
-import WordLookupButtons from '../components/WordLookupButtons';
 import Toast from '../components/Toast';
-import { Swipeable } from 'react-native-gesture-handler';
-
-interface WordRowProps {
-  item: WordEntry;
-  isWide: boolean;
-  searchQuery: string;
-  isSelected: boolean;
-  onSelect: (word: string | null) => void;
-  onDelete: (item: WordEntry, close: () => void) => void;
-}
-
-function WordRow({ item, isWide, searchQuery, isSelected, onSelect, onDelete }: WordRowProps) {
-  const swipeableRef = useRef<Swipeable>(null);
-  const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
-  const formatDate = (ts: number) => {
-    const d = new Date(ts);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  return (
-    <Swipeable
-      ref={swipeableRef}
-      renderLeftActions={() => (
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => onDelete(item, () => swipeableRef.current?.close())}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="trash" size={24} color={Colors.white} />
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </TouchableOpacity>
-      )}
-      overshootLeft={false}
-    >
-      <TouchableOpacity
-        style={[styles.card, isWide && styles.cardWide]}
-        onPress={() => onSelect(isSelected ? null : item.word)}
-        activeOpacity={1}
-      >
-        <View style={styles.cardRow}>
-          <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
-          <View style={styles.cardContent}>
-            <HighlightedText
-              text={item.word}
-              query={searchQuery}
-              style={styles.cardWordText}
-            />
-            {item.pronunciation ? (
-              <HighlightedText
-                text={ipa}
-                query={searchQuery}
-                style={styles.pronunciation}
-              />
-            ) : null}
-          </View>
-          <View style={styles.cardRight}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{item.lookupCount}×</Text>
-            </View>
-            <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text>
-          </View>
-        </View>
-        {isSelected && (
-          <View style={styles.buttonsContainer}>
-            <WordLookupButtons word={item.word} source="Words" />
-          </View>
-        )}
-      </TouchableOpacity>
-    </Swipeable>
-  );
-}
+import WordCard from '../components/WordCard';
 
 interface PendingDeletion {
   id: string;
@@ -103,7 +30,6 @@ export default function WordsScreen() {
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
   const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -133,7 +59,6 @@ export default function WordsScreen() {
   const handleDelete = (item: WordEntry, closeSwipeable: () => void) => {
     if (deleteTimeoutsRef.current[item.id]) return;
     setPendingDeletions(prev => [...prev, { id: item.id, item }]);
-    setSelectedWord(null);
     closeSwipeable();
     deleteTimeoutsRef.current[item.id] = setTimeout(() => {
       deleteWord(item.id);
@@ -190,13 +115,14 @@ export default function WordsScreen() {
           data={searchedWords}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <WordRow
+            <WordCard
               item={item}
               isWide={isWide}
               searchQuery={searchQuery}
-              isSelected={selectedWord === item.word}
-              onSelect={setSelectedWord}
+              showDelete={true}
+              showClose={false}
               onDelete={handleDelete}
+              source="Words"
             />
           )}
           columnWrapperStyle={isWide ? styles.row : undefined}
@@ -223,10 +149,6 @@ export default function WordsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -263,59 +185,6 @@ const styles = StyleSheet.create({
   row: {
     gap: 10,
   },
-  card: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  cardWide: {
-    flex: 1,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  flag: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  cardWordText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  pronunciation: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    fontStyle: 'italic',
-  },
-  cardRight: {
-    alignItems: 'flex-end',
-  },
-  badge: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginBottom: 4,
-  },
-  badgeText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  date: {
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
   empty: {
     flex: 1,
     justifyContent: 'center',
@@ -328,12 +197,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     lineHeight: 24,
   },
-  buttonsContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
   toastStack: {
     position: 'absolute',
     bottom: 50,
@@ -341,22 +204,5 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 8,
     zIndex: 1000,
-  },
-  deleteButton: {
-    backgroundColor: Colors.dangerDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 100,
-    marginBottom: 10,
-    marginRight: -28,
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
-    paddingRight: 28,
-  },
-  deleteButtonText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
   },
 });

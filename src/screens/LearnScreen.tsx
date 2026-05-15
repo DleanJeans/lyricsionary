@@ -14,15 +14,15 @@ import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
-import WordLookupButtons from '../components/WordLookupButtons';
 import MultiLanguageSelect from '../components/MultiLanguageSelect';
 import Toast from '../components/Toast';
+import WordCard from '../components/WordCard';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
   useBackToQuit();
-  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages } = useStore();
+  const { songs, currentSongId, fontSize, setFontSize, showTranslations, toggleTranslations, selectedTranslationLanguages, setSelectedTranslationLanguages, words } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -39,6 +39,16 @@ export default function LearnScreen() {
       setSelectedTranslationLanguages(availableLanguages);
     }
   }, [song, selectedTranslationLanguages.length, setSelectedTranslationLanguages]);
+
+  // Auto-hide toast after 2 seconds
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
 
   // Helper function to normalize text for comparison (remove punctuation, compare words only)
   const normalizeText = (text: string): string => {
@@ -146,23 +156,55 @@ export default function LearnScreen() {
   };
 
   /* ─── Word panel ──────────────────────────────────────── */
-  const wordPanel = selectedWord ? (
-    <View style={[styles.wordPanel, isWide && styles.wordPanelWide]}>
-      <View style={styles.wordHeader}>
-        <Text style={styles.wordText}>{selectedWord}</Text>
-        <TouchableOpacity onPress={() => setSelectedWord(null)}>
-          <Ionicons name="close" size={22} color={Colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
-      <WordLookupButtons
-        word={selectedWord}
+  const selectedWordEntry = selectedWord
+    ? words.find((w) => w.word.toLowerCase() === selectedWord.toLowerCase())
+    : null;
+
+  const wordPanel = selectedWord && selectedWordEntry ? (
+    <View style={[styles.wordCardContainer]}>
+      <WordCard
+        item={selectedWordEntry}
+        showDelete={false}
+        showClose={true}
+        onClose={() => setSelectedWord(null)}
+        source="Learn"
         songId={song.id}
         songName={song.songName}
         artistName={song.artistName}
         lyricsLine={selectedLine ?? undefined}
         originalLanguages={song.originalLanguages}
-        source="Learn"
       />
+    </View>
+  ) : selectedWord ? (
+    <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
+      <View style={styles.wordHeader}>
+        <View style={styles.wordTitleRow}>
+          <Text style={styles.wordText}>{selectedWord}</Text>
+          <View style={styles.newBadge}>
+            <Text style={styles.newBadgeText}>NEW</Text>
+          </View>
+        </View>
+        <TouchableOpacity onPress={() => setSelectedWord(null)}>
+          <Ionicons name="close" size={22} color={Colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity
+        style={styles.lookupNewButton}
+        onPress={() => {
+          navigation.navigate('WordLookup', {
+            word: selectedWord,
+            songId: song.id,
+            songName: song.songName,
+            artistName: song.artistName,
+            lyricsLine: selectedLine ?? undefined,
+            originalLanguages: song.originalLanguages,
+            source: 'Learn',
+          });
+        }}
+      >
+        <Ionicons name="search" size={18} color={Colors.white} />
+        <Text style={styles.lookupNewButtonText}>Look up</Text>
+      </TouchableOpacity>
     </View>
   ) : null;
 
@@ -249,11 +291,11 @@ export default function LearnScreen() {
       )}
 
       {/* Toast notification */}
-      <Toast
-        message={toastMessage}
-        visible={showToast}
-        onHide={() => setShowToast(false)}
-      />
+      {showToast && (
+        <View style={styles.toastContainer}>
+          <Toast message={toastMessage} />
+        </View>
+      )}
 
       {isWide ? (
         /* ── Wide: left lyrics panel + right word/controls panel ── */
@@ -385,14 +427,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 10,
   },
+  wordCardContainer: {
+    marginHorizontal: 16,
+  },
   wordPanel: {
     backgroundColor: Colors.surface,
     marginHorizontal: 16,
     borderRadius: 14,
-    padding: 16,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  wordPanelPadded: {
+    padding: 16,
   },
   wordPanelWide: {
     marginHorizontal: 0,
@@ -404,10 +451,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  wordTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   wordText: {
     fontSize: 24,
     fontWeight: '700',
     color: Colors.text,
+  },
+  newBadge: {
+    backgroundColor: Colors.success,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  newBadgeText: {
+    color: Colors.white,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  lookupNewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  lookupNewButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionBar: {
     flexDirection: 'row',
@@ -455,5 +533,12 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 22,
     marginTop: 2,
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
   },
 });

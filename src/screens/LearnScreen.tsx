@@ -64,6 +64,12 @@ export default function LearnScreen() {
     }
   }, [blurTranslations, currentSongId]);
 
+  // Close word panel when switching songs
+  useEffect(() => {
+    setSelectedWord(null);
+    setSelectedLine(null);
+  }, [currentSongId]);
+
   // Auto-hide toast after 2 seconds
   useEffect(() => {
     if (showToast) {

@@ -8,10 +8,12 @@ import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
-import MultiLanguageSelect from '../components/MultiLanguageSelect';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
+import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
+
+export type DisplayMode = 'ipa' | 'definition' | 'none';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -37,16 +39,23 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('none');
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [enableAnnotations, setEnableAnnotations] = useState(true);
+  const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
+  const [languagesInitialized, setLanguagesInitialized] = useState(false);
 
   // Initialize selected languages when song changes
   useEffect(() => {
-    if (song && song.translations.length > 0 && selectedTranslationLanguages.length === 0) {
+    if (song && song.translations.length > 0 && !languagesInitialized) {
       // Auto-select all available translation languages by default
-      const availableLanguages = song.translations.map((t) => t.language);
+      const availableLanguages = song.translations.map(t => t.language);
+      setLocalSelectedLanguages(availableLanguages);
       setSelectedTranslationLanguages(availableLanguages);
+      setLanguagesInitialized(true);
     }
-  }, [song, selectedTranslationLanguages.length, setSelectedTranslationLanguages]);
+  }, [song, languagesInitialized]);
 
   // Reset unblurred translations when blur is toggled off or song changes
   useEffect(() => {
@@ -99,17 +108,8 @@ export default function LearnScreen() {
 
   const lineCount = lines.length;
 
-  const handleToggleTranslations = () => {
-    if (!song || song.translations.length === 0) {
-      setToastMessage('No translations available');
-      setShowToast(true);
-      return;
-    }
-    setShowDropdown(true);
-  };
-
   const handleLanguageChange = (languages: string[]) => {
-    setSelectedTranslationLanguages(languages);
+    setLocalSelectedLanguages(languages);
     if (languages.length === 0) {
       // If no languages selected, turn off translations
       if (showTranslations) {
@@ -165,33 +165,64 @@ export default function LearnScreen() {
   };
 
   const renderPressableText = (text: string) => {
-    const words = text.split(/(\s+)/);
+    const textWords = text.split(/(\s+)/);
     return (
-      <Text style={{ fontSize, lineHeight: fontSize * 1.6, color: Colors.text }}>
-        {words.map((word, i) =>
-          word.trim() ? (
-            <Text
-              key={i}
-              onPress={() => handleWordPress(word, text)}
-              style={
-                selectedWord && removeSpecialChars(word) === selectedWord
-                  ? {
-                      color: Colors.primary,
-                      fontWeight: '700',
-                    }
-                  : {
-                      color: Colors.text,
-                      fontWeight: '400',
-                    }
-              }
-            >
-              {word}
-            </Text>
-          ) : (
-            <Text key={i}>{word}</Text>
-          ),
-        )}
-      </Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        {textWords.map((word, i) => {
+          if (!word.trim()) {
+            return <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6 }}>{word}</Text>;
+          }
+
+          const cleanedWord = removeSpecialChars(word);
+          const wordEntry = cleanedWord ? words.find((w) => w.word.toLowerCase() === cleanedWord.toLowerCase()) : null;
+          const isSelected = selectedWord && cleanedWord === selectedWord;
+
+          // Get display content based on mode
+          let displayContent = '';
+          if (enableAnnotations && wordEntry && displayMode !== 'none') {
+            if (displayMode === 'ipa' && wordEntry.pronunciation) {
+              displayContent = wordEntry.pronunciation.includes('/')
+                ? wordEntry.pronunciation
+                : `/${wordEntry.pronunciation}/`;
+            } else if (displayMode === 'definition' && wordEntry.definitions && wordEntry.definitions.length > 0) {
+              displayContent = wordEntry.definitions[0].text;
+            }
+          }
+
+          // Check if emoji is just the default flag for the language
+          const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && wordEntry.emoji &&
+            wordEntry.emoji !== getFlagForLanguage(wordEntry.language);
+
+          return (
+            <View key={i} style={{ alignItems: 'center' }}>
+              {/* Always render annotation space to keep all words aligned */}
+              <View style={styles.annotationSpace}>
+                {shouldShowEmoji && (
+                  <Text style={styles.wordAnnotation}>
+                    {wordEntry.emoji}
+                  </Text>
+                )}
+                {displayContent && (
+                  <Text style={styles.wordAnnotation} numberOfLines={1}>
+                    {displayContent}
+                  </Text>
+                )}
+              </View>
+              <Text
+                onPress={() => handleWordPress(word, text)}
+                style={{
+                  fontSize,
+                  lineHeight: fontSize * 1.6,
+                  color: isSelected ? Colors.primary : Colors.text,
+                  fontWeight: isSelected ? '700' : '400',
+                }}
+              >
+                {word}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
     );
   };
 
@@ -274,7 +305,7 @@ export default function LearnScreen() {
           {renderPressableText(line.original)}
           {showTranslations &&
             line.translations
-              .filter((tl) => tl.show && selectedTranslationLanguages.includes(tl.language))
+              .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
               .map((tl, ti) => {
                 const translationKey = `${i}-${ti}`;
                 const isBlurred = blurTranslations && !unblurredTranslations.has(translationKey);
@@ -320,39 +351,29 @@ export default function LearnScreen() {
           <Text style={styles.artistName}>{song.artistName}</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerBtn} onPress={handleToggleTranslations}>
-            <Ionicons
-              name={showTranslations ? 'language' : 'eye-off-outline'}
-              size={22}
-              color={Colors.primary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn} onPress={toggleBlurTranslations}>
-            <Ionicons
-              name={blurTranslations ? 'eye-outline' : 'eye-off'}
-              size={22}
-              color={Colors.primary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => navigation.navigate('Editor', { songId: song.id })}
-          >
-            <Ionicons name="create-outline" size={22} color={Colors.primary} />
+          <TouchableOpacity style={styles.headerBtn} onPress={() => setShowDropdown(true)}>
+            <Ionicons name="language-outline" size={22} color={Colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Translation language selector modal */}
-      {song && song.translations.length > 0 && (
-        <MultiLanguageSelect
-          value={selectedTranslationLanguages}
-          onValueChange={handleLanguageChange}
-          placeholder="Select translation languages"
-          availableLanguages={song.translations.map((t) => t.language)}
-          showModal={showDropdown}
-          hideInput
+      {/* Settings Menu */}
+      {song && (
+        <LearnSettingsMenu
+          visible={showDropdown}
           onClose={() => setShowDropdown(false)}
+          onEdit={() => navigation.navigate('Editor', { songId: song.id })}
+          selectedLanguages={localSelectedLanguages}
+          onLanguagesChange={handleLanguageChange}
+          availableLanguages={song.translations.map(t => t.language)}
+          displayMode={displayMode}
+          onDisplayModeChange={setDisplayMode}
+          showEmoji={showEmoji}
+          onShowEmojiChange={setShowEmoji}
+          enableAnnotations={enableAnnotations}
+          onEnableAnnotationsChange={setEnableAnnotations}
+          blurTranslations={blurTranslations}
+          onToggleBlur={toggleBlurTranslations}
         />
       )}
 
@@ -593,6 +614,17 @@ const styles = StyleSheet.create({
   },
   lineBlock: {
     marginBottom: 6,
+  },
+  annotationSpace: {
+    minHeight: 14,
+    marginBottom: -6,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  wordAnnotation: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    maxWidth: 100,
   },
   translationLine: {
     color: Colors.primaryLight,

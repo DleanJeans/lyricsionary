@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     marginLeft: -24,
-    marginRight: 8,
+    marginRight: 10,
   },
   tabFavicon: {
     width: 14,

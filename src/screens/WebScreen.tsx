@@ -259,8 +259,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 10,
-    left: 16,
+    bottom: 0,
+    left: 10,
     alignItems: 'flex-start',
   },
   fabBubble: {
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
     borderTopColor: Colors.primary,
-    marginLeft: 16,
+    marginLeft: 18,
   },
   fabText: {
     color: Colors.white,

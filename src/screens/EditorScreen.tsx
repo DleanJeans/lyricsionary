@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   Modal,
   FlatList,
   Image,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -29,7 +28,6 @@ import {
 } from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
-import MultiLanguageSelect from '../components/MultiLanguageSelect';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 
 
@@ -61,7 +59,6 @@ export default function EditorScreen() {
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
-  const metadataContainerRef = useRef<View>(null);
 
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
@@ -319,49 +316,55 @@ export default function EditorScreen() {
   /* ─── Shared Controls ─────────────────────────────────────── */
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
-      <View style={[styles.header, { justifyContent: isEditMode ? 'flex-start' : (currentSongId ? 'space-between' : 'flex-end') }]}>
-        {isEditMode && (
-          <TouchableOpacity style={styles.iconButton} onPress={handleNew}>
-            <Ionicons name="add" size={22} color={Colors.primary} />
-          </TouchableOpacity>
-        )}
+      <View style={styles.header}>
         {!isEditMode && currentSongId && (
           <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
         )}
-        <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
-        {!isEditMode && (
-          <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
-            <Ionicons name="musical-note" size={22} color={Colors.primary} />
-          </TouchableOpacity>
+        {isEditingMetadata && <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>}
+        {!isEditingMetadata && (
+          <View style={styles.titleReplacement}>
+            <SongMetadataHeader
+              songName={songName}
+              artistName={artistName}
+              originalLanguages={originalLanguages}
+              isEditing={false}
+              onPress={() => setIsEditingMetadata(true)}
+            />
+          </View>
         )}
-      </View>
-      <TouchableWithoutFeedback onPress={() => setIsEditingMetadata(false)}>
-        <View>
-          <TouchableWithoutFeedback>
-            <View ref={metadataContainerRef}>
-              <SongMetadataHeader
-                songName={songName}
-                artistName={artistName}
-                originalLanguages={originalLanguages}
-                isEditing={isEditingMetadata}
-                onPress={() => setIsEditingMetadata(true)}
-                onSongNameChange={setSongName}
-                onArtistNameChange={setArtistName}
-              />
-            </View>
-          </TouchableWithoutFeedback>
+        <View style={styles.headerRight}>
+          {isEditMode && (
+            <TouchableOpacity style={styles.iconButton} onPress={handleNew}>
+              <Ionicons name="add" size={22} color={Colors.primary} />
+            </TouchableOpacity>
+          )}
+          {!isEditMode && (
+            <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
+              <Ionicons name="musical-note" size={22} color={Colors.primary} />
+            </TouchableOpacity>
+          )}
         </View>
-      </TouchableWithoutFeedback>
-      <View style={[styles.inputRow, { gap: 14 }]}>
-        <Ionicons name="language-outline" size={20} color={Colors.textSecondary} />
-        <MultiLanguageSelect
-          value={originalLanguages}
-          onValueChange={setOriginalLanguages}
-          placeholder="Original Language(s)"
-        />
       </View>
+      {isEditingMetadata && (
+        <SongMetadataHeader
+          songName={songName}
+          artistName={artistName}
+          originalLanguages={originalLanguages}
+          isEditing={true}
+          onSongNameChange={setSongName}
+          onArtistNameChange={setArtistName}
+          onLanguagesChange={setOriginalLanguages}
+          onBlur={() => {
+            // Only close if both fields have values
+            if (songName.trim() && artistName.trim()) {
+              setIsEditingMetadata(false);
+            }
+          }}
+          showLanguageSelect={true}
+        />
+      )}
       {!currentLyrics && (
         <TouchableOpacity
           style={[styles.searchButton, searchDisabled && styles.disabled]}
@@ -694,9 +697,14 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 8,
+    zIndex: 1,
   },
   title: {
     position: 'absolute',
@@ -706,6 +714,10 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
+  },
+  titleReplacement: {
+    flex: 1,
+    marginHorizontal: 8,
   },
   iconButton: {
     padding: 8,

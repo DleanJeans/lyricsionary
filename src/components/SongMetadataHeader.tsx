@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
+import MultiLanguageSelect from './MultiLanguageSelect';
 
 interface SongMetadataHeaderProps {
   songName: string;
@@ -12,6 +13,9 @@ interface SongMetadataHeaderProps {
   onPress?: () => void;
   onSongNameChange?: (text: string) => void;
   onArtistNameChange?: (text: string) => void;
+  onLanguagesChange?: (languages: string[]) => void;
+  onBlur?: () => void;
+  showLanguageSelect?: boolean;
 }
 
 export default function SongMetadataHeader({
@@ -22,6 +26,9 @@ export default function SongMetadataHeader({
   onPress,
   onSongNameChange,
   onArtistNameChange,
+  onLanguagesChange,
+  onBlur,
+  showLanguageSelect = false,
 }: SongMetadataHeaderProps) {
   if (isEditing) {
     return (
@@ -34,6 +41,7 @@ export default function SongMetadataHeader({
             placeholderTextColor={Colors.textMuted}
             value={songName}
             onChangeText={onSongNameChange}
+            onBlur={onBlur}
           />
         </View>
         <View style={styles.inputRow}>
@@ -44,8 +52,19 @@ export default function SongMetadataHeader({
             placeholderTextColor={Colors.textMuted}
             value={artistName}
             onChangeText={onArtistNameChange}
+            onBlur={onBlur}
           />
         </View>
+        {showLanguageSelect && (
+          <View style={[styles.inputRow, { gap: 14 }]}>
+            <Ionicons name="language-outline" size={20} color={Colors.textSecondary} />
+            <MultiLanguageSelect
+              value={originalLanguages}
+              onValueChange={onLanguagesChange}
+              placeholder="Original Language(s)"
+            />
+          </View>
+        )}
       </>
     );
   }

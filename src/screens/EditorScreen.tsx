@@ -216,11 +216,15 @@ export default function EditorScreen() {
     }
     const resolvedSourceUrl = (pendingSourceUrls[0] ?? songSourceUrl).trim() || undefined;
     const resolvedSourceUrlTitle = resolvedSourceUrl ? (pendingPageTitles[0] || undefined) : undefined;
-    const resolvedTranslations = translations.map((t, i) =>
-      pendingSourceUrls[i + 1] !== undefined
-        ? { ...t, sourceUrl: pendingSourceUrls[i + 1], sourceUrlTitle: pendingPageTitles[i + 1] || undefined }
-        : t
-    );
+    const resolvedTranslations = translations.map((t, i) => {
+      // If there's a pending URL for this translation, use it; otherwise keep existing URL
+      const hasPendingUrl = pendingSourceUrls[i + 1] !== undefined;
+      return {
+        ...t,
+        sourceUrl: hasPendingUrl ? pendingSourceUrls[i + 1] : t.sourceUrl,
+        sourceUrlTitle: hasPendingUrl ? (pendingPageTitles[i + 1] || undefined) : t.sourceUrlTitle,
+      };
+    });
     if (isEditMode && editSong) {
       await updateSong(editSong.id, {
         songName: songName.trim(),

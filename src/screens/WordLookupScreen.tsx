@@ -307,7 +307,7 @@ export default function WordLookupScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{displayWord}</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+        <TouchableOpacity onPress={handleSave} style={[styles.saveButton, isNewWord && { backgroundColor: Colors.success }]}>
           <Text style={styles.saveButtonText}>{isNewWord ? 'Add' : 'Save'}</Text>
         </TouchableOpacity>
       </View>

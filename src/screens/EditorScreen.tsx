@@ -37,7 +37,7 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
+  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
@@ -179,8 +179,23 @@ export default function EditorScreen() {
         translations: resolvedTranslations,
       });
       setCurrentSongId(editSong.id);
-      handleClear();
-      navigation.navigate('Learn');
+      // Update the original state to reflect the new saved state
+      setOriginalState({
+        songName: songName.trim(),
+        artistName: artistName.trim(),
+        originalLyrics,
+        originalLanguages: [...originalLanguages],
+        songSourceUrl: resolvedSourceUrl ?? '',
+        translations: resolvedTranslations.map((t) => ({ ...t })),
+      });
+      // Clear pending URLs since they are now saved
+      setPendingSourceUrls({});
+      const titles: Record<number, string> = {};
+      if (resolvedSourceUrlTitle) titles[0] = resolvedSourceUrlTitle;
+      resolvedTranslations.forEach((t, i) => {
+        if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
+      });
+      setPendingPageTitles(titles);
     } else {
       const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, originalLanguages, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
       setCurrentSongId(song.id);
@@ -219,6 +234,13 @@ export default function EditorScreen() {
 
   const handleNew = () => {
     handleClear();
+  };
+
+  const handleBack = () => {
+    if (currentSongId) {
+      setEditSongId(currentSongId);
+      navigation.setParams({ songId: currentSongId });
+    }
   };
 
   const handleGoogleSearch = () => {
@@ -292,6 +314,11 @@ export default function EditorScreen() {
         {isEditMode && (
           <TouchableOpacity style={styles.newButton} onPress={handleNew}>
             <Ionicons name="add" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
+        {!isEditMode && currentSongId && (
+          <TouchableOpacity style={styles.newButton} onPress={handleBack}>
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
         )}
         <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
@@ -450,7 +477,11 @@ export default function EditorScreen() {
               <Text style={styles.actionButtonText}>Paste</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.saveButton, isEditMode && !hasChanges && styles.disabled]}
+              disabled={isEditMode && !hasChanges}
+              onPress={handleSave}
+            >
               <Ionicons name="checkmark" size={20} color={Colors.white} />
               <Text style={styles.actionButtonText}>Save</Text>
             </TouchableOpacity>
@@ -562,7 +593,11 @@ export default function EditorScreen() {
                 <Text style={styles.actionButtonText}>Paste</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.saveButton, isEditMode && !hasChanges && styles.disabled]}
+                disabled={isEditMode && !hasChanges}
+                onPress={handleSave}
+              >
                 <Ionicons name="checkmark" size={20} color={Colors.white} />
                 <Text style={styles.actionButtonText}>Save</Text>
               </TouchableOpacity>

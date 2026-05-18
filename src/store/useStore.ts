@@ -18,6 +18,8 @@ interface AppState {
   showTranslations: boolean;
   selectedTranslationLanguages: string[];
   blurTranslations: boolean;
+  matchedSongsSearchQuery: string | null;
+  matchedSongsCount: number;
 
   // Song actions
   loadSongs: () => Promise<void>;
@@ -26,6 +28,7 @@ interface AppState {
   deleteSong: (id: string) => Promise<void>;
   setCurrentSongId: (id: string | null) => void;
   trackSongOpen: (id: string) => Promise<void>;
+  setMatchedSongs: (searchQuery: string | null, count: number) => void;
 
   // Web actions
   setWebUrl: (url: string) => void;
@@ -65,6 +68,8 @@ export const useStore = create<AppState>((set, get) => ({
   showTranslations: true,
   selectedTranslationLanguages: [],
   blurTranslations: true,
+  matchedSongsSearchQuery: null,
+  matchedSongsCount: 0,
 
   loadSongs: async () => {
     try {
@@ -131,6 +136,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({ songs });
     await AsyncStorage.setItem(SONGS_KEY, JSON.stringify(songs));
   },
+
+  setMatchedSongs: (searchQuery, count) => set({ matchedSongsSearchQuery: searchQuery, matchedSongsCount: count }),
 
   setWebUrl: (url) => set({ webUrl: url }),
   setScrapeTargetTab: (tab) => set({ scrapeTargetTab: tab }),

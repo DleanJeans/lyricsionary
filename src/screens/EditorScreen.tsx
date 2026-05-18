@@ -28,9 +28,9 @@ import {
 } from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
+import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines } from '../utils/deeplTranslation';
-import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
 
 
 export default function EditorScreen() {
@@ -39,7 +39,19 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab, setDeeplLineMap } = useStore();
+  const {
+    songs,
+    saveSong,
+    updateSong,
+    currentSongId,
+    setCurrentSongId,
+    setWebUrl,
+    setScrapeTargetTab,
+    setMatchedSongs,
+    matchedSongsSearchQuery,
+    matchedSongsCount,
+    setDeeplLineMap,
+  } = useStore();
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
@@ -47,6 +59,7 @@ export default function EditorScreen() {
     if (paramSongId !== undefined) setEditSongId(paramSongId);
   }, [paramSongId]);
   const editSong = editSongId ? songs.find((s) => s.id === editSongId) : null;
+  const isEditMode = !!editSong;
 
   const [songName, setSongName] = useState('');
   const [artistName, setArtistName] = useState('');
@@ -103,6 +116,44 @@ export default function EditorScreen() {
 
   useEffect(() => { setScrapeTargetTab(activeTab); }, [activeTab]);
 
+  // Search for matching songs when song name or artist name changes
+  useEffect(() => {
+    // Only search for new lyrics (not when editing existing song)
+    if (isEditMode) {
+      setMatchedSongs(null, 0);
+      return;
+    }
+
+    const trimmedSongName = songName.trim();
+    const trimmedArtistName = artistName.trim();
+
+    // Need at least song name or artist name to search
+    if (!trimmedSongName && !trimmedArtistName) {
+      setMatchedSongs(null, 0);
+      return;
+    }
+
+    // Search for matching songs
+    const searchQuery = trimmedSongName || trimmedArtistName;
+    const matchedSongs = songs.filter((s) => {
+      if (trimmedSongName && trimmedArtistName) {
+        // If both are provided, match on both
+        return (
+          s.songName.toLowerCase().includes(trimmedSongName.toLowerCase()) &&
+          s.artistName.toLowerCase().includes(trimmedArtistName.toLowerCase())
+        );
+      } else if (trimmedSongName) {
+        // Match on song name
+        return s.songName.toLowerCase().includes(trimmedSongName.toLowerCase());
+      } else {
+        // Match on artist name
+        return s.artistName.toLowerCase().includes(trimmedArtistName.toLowerCase());
+      }
+    });
+
+    setMatchedSongs(searchQuery, matchedSongs.length);
+  }, [songName, artistName, isEditMode, songs]);
+
   // Handle all scraped data from Web screen in one effect to avoid param-clearing races
   useEffect(() => {
     const scraped = route.params?.scrapedLyrics as string | undefined;
@@ -126,7 +177,6 @@ export default function EditorScreen() {
     navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined });
   }, [route.params?.scrapedLyrics]);
 
-  const isEditMode = !!editSong;
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
   const searchDisabled = !songName.trim() && !artistName.trim();
 
@@ -328,6 +378,13 @@ export default function EditorScreen() {
         'Error',
         'Failed to read currently playing media. Please make sure notification access is enabled in Settings.'
       );
+    }
+  };
+
+  const handleMatchedSongsFabPress = () => {
+    const { matchedSongsSearchQuery } = useStore.getState();
+    if (matchedSongsSearchQuery) {
+      navigation.navigate('Songs', { searchQuery: matchedSongsSearchQuery });
     }
   };
 
@@ -699,6 +756,19 @@ export default function EditorScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* FAB for matched songs */}
+      {!isEditMode && matchedSongsSearchQuery && matchedSongsCount > 0 && (
+        <FabBubble
+          icon="musical-notes"
+          text={matchedSongsCount === 1 ? 'Already Saved!' : `Found ${matchedSongsCount} songs`}
+          onPress={handleMatchedSongsFabPress}
+          right={40}
+          bottom={0}
+          tailPosition="right"
+          tailOffset={20}
+        />
+      )}
     </ScreenWrapper>
   );
 }

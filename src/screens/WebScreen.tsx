@@ -16,6 +16,7 @@ import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
 import { remapTranslation } from '../utils/deeplTranslation';
 import Toast from '../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FabBubble from '../components/FabBubble';
 
 
 export default function WebScreen() {
@@ -223,13 +224,14 @@ export default function WebScreen() {
       {!!toast && <Toast message={toast ?? ''} />}
 
       {showFab && (
-        <View style={styles.fab} pointerEvents="box-none">
-          <TouchableOpacity style={styles.fabBubble} onPress={handleScrapeLyrics} activeOpacity={0.8}>
-            <Ionicons name="download-outline" size={22} color={Colors.white} />
-            <Text style={styles.fabText}>Get Lyrics</Text>
-          </TouchableOpacity>
-          <View style={styles.fabTail} />
-        </View>
+        <FabBubble
+          icon="download-outline"
+          text="Get Lyrics"
+          onPress={handleScrapeLyrics}
+          tailPosition="left"
+          left={10}
+          bottom={0}
+        />
       )}
 
       {showTranslationFab && (

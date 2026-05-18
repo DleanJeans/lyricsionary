@@ -99,11 +99,6 @@ export default function EditorScreen() {
     }
   }, [editSong?.id]);
 
-  // Auto-show editing mode when both song name and artist name are empty
-  useEffect(() => {
-    setIsEditingMetadata(!songName.trim() && !artistName.trim());
-  }, [songName, artistName]);
-
   useEffect(() => { setScrapeTargetTab(activeTab); }, [activeTab]);
 
   // Handle all scraped data from Web screen in one effect to avoid param-clearing races
@@ -222,6 +217,7 @@ export default function EditorScreen() {
     setPendingPageTitles({});
     setEditSongId(undefined);
     navigation.setParams({ songId: undefined });
+    setIsEditingMetadata(true);
   };
 
   const handleReset = () => {
@@ -246,6 +242,7 @@ export default function EditorScreen() {
     if (currentSongId) {
       setEditSongId(currentSongId);
       navigation.setParams({ songId: currentSongId });
+      setIsEditingMetadata(false);
     }
   };
 
@@ -356,12 +353,6 @@ export default function EditorScreen() {
           onSongNameChange={setSongName}
           onArtistNameChange={setArtistName}
           onLanguagesChange={setOriginalLanguages}
-          onBlur={() => {
-            // Only close if both fields have values
-            if (songName.trim() && artistName.trim()) {
-              setIsEditingMetadata(false);
-            }
-          }}
           showLanguageSelect={true}
         />
       )}
@@ -571,6 +562,12 @@ export default function EditorScreen() {
               value={currentLyrics}
               onChangeText={setCurrentLyrics}
               textAlignVertical="top"
+              onPress={() => {
+                // Only close if both fields have values
+                if (songName.trim() && artistName.trim()) {
+                  setIsEditingMetadata(false);
+                }
+              }}
             />
             <View style={styles.lyricsInputMeasureContainer} pointerEvents="none">
               <Text style={styles.lyricsInputMeasure} onTextLayout={handleTextLayout}>

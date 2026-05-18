@@ -14,7 +14,6 @@ interface SongMetadataHeaderProps {
   onSongNameChange?: (text: string) => void;
   onArtistNameChange?: (text: string) => void;
   onLanguagesChange?: (languages: string[]) => void;
-  onBlur?: () => void;
   showLanguageSelect?: boolean;
 }
 
@@ -27,7 +26,6 @@ export default function SongMetadataHeader({
   onSongNameChange,
   onArtistNameChange,
   onLanguagesChange,
-  onBlur,
   showLanguageSelect = false,
 }: SongMetadataHeaderProps) {
   if (isEditing) {
@@ -41,7 +39,6 @@ export default function SongMetadataHeader({
             placeholderTextColor={Colors.textMuted}
             value={songName}
             onChangeText={onSongNameChange}
-            onBlur={onBlur}
           />
         </View>
         <View style={styles.inputRow}>
@@ -52,7 +49,6 @@ export default function SongMetadataHeader({
             placeholderTextColor={Colors.textMuted}
             value={artistName}
             onChangeText={onArtistNameChange}
-            onBlur={onBlur}
           />
         </View>
         {showLanguageSelect && (

@@ -1,15 +1,43 @@
 // Script to detect if DeepL translation is complete
 // This is injected on page load to determine if the Get Translation button should be shown
 const _detectTranslationLogic = `
-  const url = window.location.href;
-  let hasTranslation = false;
+  let lastSentState = false;
 
+  const checkTranslation = () => {
+    const targetTextarea = document.querySelector('[name=target]');
+    const hasTranslation = targetTextarea && targetTextarea.value && targetTextarea.value.trim().length > 0;
+
+    // Only send update if state changed
+    if (hasTranslation !== lastSentState) {
+      lastSentState = hasTranslation;
+      sendDetectionResult(hasTranslation);
+    }
+  };
+
+  // Initial check
+  checkTranslation();
+
+  // Set up MutationObserver to watch for changes
   const targetTextarea = document.querySelector('[name=target]');
-  if (targetTextarea && targetTextarea.value && targetTextarea.value.trim().length > 0) {
-    hasTranslation = true;
-  }
+  if (targetTextarea) {
+    // Watch for changes to the textarea's value attribute
+    const observer = new MutationObserver(() => {
+      checkTranslation();
+    });
 
-  sendDetectionResult(hasTranslation);
+    observer.observe(targetTextarea, {
+      attributes: true,
+      attributeFilter: ['value'],
+      characterData: true,
+      subtree: true
+    });
+
+    // Also listen to input events which are more reliable for textarea changes
+    targetTextarea.addEventListener('input', checkTranslation);
+
+    // Periodically check as a fallback (every 2 seconds)
+    setInterval(checkTranslation, 2000);
+  }
 `;
 
 // Bootstrap: defines helpers and runs the logic

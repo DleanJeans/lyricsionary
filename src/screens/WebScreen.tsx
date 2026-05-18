@@ -215,17 +215,12 @@ export default function WebScreen() {
           setLoading(false);
           // Inject both detection scripts when page finishes loading
           webViewRef.current?.injectJavaScript(detectLyricsJS);
+          webViewRef.current?.injectJavaScript(detectTranslationJS);
 
           // If we have pending text to paste, inject it now that page is loaded
-          if (!webUrl.includes('deepl.com')) return;
-
           if (pendingPasteText.current) {
             webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
             pendingPasteText.current = null;
-          } else {
-            setTimeout(() => {
-              webViewRef.current?.injectJavaScript(detectTranslationJS);
-            }, 10000)
           }
         }}
         onMessage={handleMessage}

@@ -488,7 +488,7 @@ export default function EditorScreen() {
           )}
           {isEditMode ? (
             <TouchableOpacity
-              style={[styles.actionButton, styles.resetButton, !hasChanges && styles.disabled]}
+              style={[styles.actionButton, styles.dangerButton, !hasChanges && styles.disabled]}
               disabled={!hasChanges}
               onPress={handleReset}
             >
@@ -497,7 +497,7 @@ export default function EditorScreen() {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
+              style={[styles.actionButton, styles.dangerButton, allEmpty && styles.disabled]}
               disabled={allEmpty}
               onPress={handleClear}
             >
@@ -604,7 +604,7 @@ export default function EditorScreen() {
             )}
             {isEditMode ? (
               <TouchableOpacity
-                style={[styles.actionButton, styles.resetButton, !hasChanges && styles.disabled]}
+                style={[styles.actionButton, styles.dangerButton, !hasChanges && styles.disabled]}
                 disabled={!hasChanges}
                 onPress={handleReset}
               >
@@ -613,7 +613,7 @@ export default function EditorScreen() {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
+                style={[styles.actionButton, styles.dangerButton, allEmpty && styles.disabled]}
                 disabled={allEmpty}
                 onPress={handleClear}
               >
@@ -885,7 +885,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   actionButton: {
-    flex: 1,
+    flex: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -897,10 +897,8 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: Colors.success,
   },
-  clearButton: {
-    backgroundColor: Colors.danger,
-  },
-  resetButton: {
+  dangerButton: {
+    flex: 4,
     backgroundColor: Colors.danger,
   },
   actionButtonText: {

@@ -185,7 +185,10 @@ export default function LearnScreen() {
           // Helper function to check if word has contracted prefix (e.g., j'viens)
           const hasContractedPrefix = (w: string) => /^[a-zA-Z]'/.test(w);
 
-          // For French words with contracted prefixes, also try matching without the prefix
+          // Helper function to check if word has hyphenated prefix (e.g., mélan-mélanger)
+          const hasHyphenatedPrefix = (w: string) => /^[a-zA-Z]+-/.test(w);
+
+          // For French words with prefixes, also try matching without the prefix
           // Check if original languages include French
           const hasFrenchLanguage = song?.originalLanguages?.some(
             lang => lang.toLowerCase() === 'french' || lang.toLowerCase() === 'fr'
@@ -196,6 +199,13 @@ export default function LearnScreen() {
           // If no match found and the word has a contracted prefix and song has French, try without prefix
           if (!wordEntry && cleanedWord && hasContractedPrefix(cleanedWord) && hasFrenchLanguage) {
             const withoutPrefix = cleanedWord.slice(2); // Remove first letter and apostrophe
+            wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
+          }
+
+          // If no match found and the word has a hyphenated prefix and song has French, try without prefix
+          if (!wordEntry && cleanedWord && hasHyphenatedPrefix(cleanedWord) && hasFrenchLanguage) {
+            const hyphenIndex = cleanedWord.indexOf('-');
+            const withoutPrefix = cleanedWord.slice(hyphenIndex + 1); // Remove everything up to and including the hyphen
             wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
           }
 

@@ -230,21 +230,35 @@ export default function WordLookupScreen() {
     return /^[a-zA-Z]'/.test(word);
   };
 
+  const hasHyphenatedPrefix = (word: string) => {
+    if (!word || word.length < 2) return false;
+    return /^[a-zA-Z]+-/.test(word);
+  };
+
   const getLowercaseVersion = (word: string) => {
     return word.charAt(0).toLowerCase() + word.slice(1);
   };
 
-  const getWithoutPrefix = (word: string) => {
+  const getWithoutContractedPrefix = (word: string) => {
     if (hasContractedPrefix(word)) {
       return word.slice(2); // Remove first letter and apostrophe
     }
     return word;
   };
 
+  const getWithoutHyphenatedPrefix = (word: string) => {
+    if (hasHyphenatedPrefix(word)) {
+      const hyphenIndex = word.indexOf('-');
+      return word.slice(hyphenIndex + 1); // Remove everything up to and including the hyphen
+    }
+    return word;
+  };
+
   // Determine which buttons to show
   const showCapitalizeButton = word && isCapitalized(word);
-  const showPrefixButton = word && hasContractedPrefix(word);
-  const showManipulationButtons = showCapitalizeButton || showPrefixButton;
+  const showContractedPrefixButton = word && hasContractedPrefix(word);
+  const showHyphenatedPrefixButton = word && hasHyphenatedPrefix(word);
+  const showManipulationButtons = showCapitalizeButton || showContractedPrefixButton || showHyphenatedPrefixButton;
 
   // Render context line with underlined word
   const renderContextLine = () => {
@@ -325,19 +339,35 @@ export default function WordLookupScreen() {
                 </Text>
               </TouchableOpacity>
             )}
-            {showPrefixButton && (
+            {showContractedPrefixButton && (
               <TouchableOpacity
                 style={styles.manipulationButton}
                 onPress={() => {
                   if (displayWord === word) {
-                    setDisplayWord(getWithoutPrefix(word!));
+                    setDisplayWord(getWithoutContractedPrefix(word!));
                   } else {
                     setDisplayWord(word!);
                   }
                 }}
               >
                 <Text style={styles.manipulationButtonText}>
-                  {displayWord === word ? getWithoutPrefix(word!) : word}
+                  {displayWord === word ? getWithoutContractedPrefix(word!) : word}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {showHyphenatedPrefixButton && (
+              <TouchableOpacity
+                style={styles.manipulationButton}
+                onPress={() => {
+                  if (displayWord === word) {
+                    setDisplayWord(getWithoutHyphenatedPrefix(word!));
+                  } else {
+                    setDisplayWord(word!);
+                  }
+                }}
+              >
+                <Text style={styles.manipulationButtonText}>
+                  {displayWord === word ? getWithoutHyphenatedPrefix(word!) : word}
                 </Text>
               </TouchableOpacity>
             )}

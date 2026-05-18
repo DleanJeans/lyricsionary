@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { removeSpecialChars } from '../utils/cleanLyrics';
+import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -227,12 +228,12 @@ export default function WordLookupScreen() {
 
   const hasContractedPrefix = (word: string) => {
     if (!word || word.length < 2) return false;
-    return /^[a-zA-Z]'/.test(word);
+    return contractedPrefixRegex.test(word);
   };
 
   const hasHyphenatedPrefix = (word: string) => {
     if (!word || word.length < 2) return false;
-    return /^[a-zA-Z]+-/.test(word);
+    return hyphenatedPrefixRegex.test(word);
   };
 
   const getLowercaseVersion = (word: string) => {

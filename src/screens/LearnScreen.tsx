@@ -13,6 +13,7 @@ import WordCard from '../components/WordCard';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import SongMetadataHeader from '../components/SongMetadataHeader';
+import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
 
@@ -183,10 +184,10 @@ export default function LearnScreen() {
           const cleanedWord = removeSpecialChars(word);
 
           // Helper function to check if word has contracted prefix (e.g., j'viens)
-          const hasContractedPrefix = (w: string) => /^[a-zA-Z]'/.test(w);
+          const hasContractedPrefix = (w: string) => contractedPrefixRegex.test(w);
 
           // Helper function to check if word has hyphenated prefix (e.g., mélan-mélanger)
-          const hasHyphenatedPrefix = (w: string) => /^[a-zA-Z]+-/.test(w);
+          const hasHyphenatedPrefix = (w: string) => hyphenatedPrefixRegex.test(w);
 
           // For French words with prefixes, also try matching without the prefix
           // Check if original languages include French
@@ -233,7 +234,7 @@ export default function LearnScreen() {
               <View style={styles.annotationSpace}>
                 {shouldShowEmoji && (
                   <Text style={styles.wordAnnotation}>
-                    {wordEntry.emoji}
+                    {wordEntry?.emoji}
                   </Text>
                 )}
                 {displayContent && (

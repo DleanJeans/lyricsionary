@@ -10,6 +10,7 @@ interface LanguageFilterModalProps {
   selectedLanguages: string[];
   onLanguagesChange: (languages: string[]) => void;
   availableLanguages: string[];
+  languageCounts?: Record<string, number>; // Optional count per language
 }
 
 export default function LanguageFilterModal({
@@ -18,6 +19,7 @@ export default function LanguageFilterModal({
   selectedLanguages,
   onLanguagesChange,
   availableLanguages,
+  languageCounts = {},
 }: LanguageFilterModalProps) {
   const [tempSelected, setTempSelected] = useState<string[]>(selectedLanguages);
 
@@ -29,7 +31,12 @@ export default function LanguageFilterModal({
 
   const languagesToShow = LANGUAGES.filter((lang) =>
     availableLanguages.includes(lang.name)
-  );
+  ).sort((a, b) => {
+    // Sort by count (most to least)
+    const countA = languageCounts[a.name] ?? 0;
+    const countB = languageCounts[b.name] ?? 0;
+    return countB - countA;
+  });
 
   const toggleLanguage = (langName: string) => {
     if (tempSelected.includes(langName)) {
@@ -82,6 +89,7 @@ export default function LanguageFilterModal({
             keyExtractor={(item) => item.code}
             renderItem={({ item }) => {
               const isSelected = tempSelected.includes(item.name);
+              const count = languageCounts[item.name] ?? 0;
               return (
                 <TouchableOpacity
                   style={styles.languageRow}
@@ -94,6 +102,11 @@ export default function LanguageFilterModal({
                     <Text style={styles.languageEmoji}>{item.flag}</Text>
                     <Text style={styles.languageText}>{item.name}</Text>
                   </View>
+                  {count > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{count}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             }}
@@ -231,6 +244,20 @@ const styles = StyleSheet.create({
   modalDoneText: {
     color: Colors.white,
     fontSize: 15,
+    fontWeight: '600',
+  },
+  badge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    minWidth: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: Colors.white,
+    fontSize: 12,
     fontWeight: '600',
   },
 });

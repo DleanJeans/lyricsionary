@@ -35,13 +35,18 @@ export default function SongsScreen() {
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
 
-  // Get all unique languages from songs
-  const availableLanguages = React.useMemo(() => {
-    const languageSet = new Set<string>();
+  // Get all unique languages from songs and count occurrences
+  const { availableLanguages, languageCounts } = React.useMemo(() => {
+    const counts: Record<string, number> = {};
     songs.forEach((song) => {
-      (song.originalLanguages ?? []).forEach((lang) => languageSet.add(lang));
+      (song.originalLanguages ?? []).forEach((lang) => {
+        counts[lang] = (counts[lang] ?? 0) + 1;
+      });
     });
-    return Array.from(languageSet).sort();
+    return {
+      availableLanguages: Object.keys(counts).sort(),
+      languageCounts: counts,
+    };
   }, [songs]);
 
   const sortedSongs = [...songs].sort((a, b) => {
@@ -190,6 +195,13 @@ export default function SongsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
+        <TouchableOpacity onPress={cycleSortMode} style={styles.searchButton}>
+          <Ionicons
+            name={getSortIcon()}
+            size={22}
+            color={Colors.textMuted}
+          />
+        </TouchableOpacity>
         {showSearch ? (
           <TextInput
             style={styles.searchInput}
@@ -210,13 +222,6 @@ export default function SongsScreen() {
             name="funnel-outline"
             size={22}
             color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={cycleSortMode} style={styles.searchButton}>
-          <Ionicons
-            name={getSortIcon()}
-            size={22}
-            color={Colors.textMuted}
           />
         </TouchableOpacity>
         <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
@@ -273,6 +278,7 @@ export default function SongsScreen() {
         selectedLanguages={selectedLanguages}
         onLanguagesChange={setSelectedLanguages}
         availableLanguages={availableLanguages}
+        languageCounts={languageCounts}
       />
     </ScreenWrapper>
   );

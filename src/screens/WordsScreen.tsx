@@ -37,13 +37,16 @@ export default function WordsScreen() {
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
   const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  // Get all unique languages from words
-  const availableLanguages = React.useMemo(() => {
-    const languageSet = new Set<string>();
+  // Get all unique languages from words and count occurrences
+  const { availableLanguages, languageCounts } = React.useMemo(() => {
+    const counts: Record<string, number> = {};
     words.forEach((word) => {
-      languageSet.add(word.language);
+      counts[word.language] = (counts[word.language] ?? 0) + 1;
     });
-    return Array.from(languageSet).sort();
+    return {
+      availableLanguages: Object.keys(counts).sort(),
+      languageCounts: counts,
+    };
   }, [words]);
 
   const pendingIds = new Set(pendingDeletions.map(d => d.id));
@@ -183,6 +186,7 @@ export default function WordsScreen() {
         selectedLanguages={selectedLanguages}
         onLanguagesChange={setSelectedLanguages}
         availableLanguages={availableLanguages}
+        languageCounts={languageCounts}
       />
     </ScreenWrapper>
   );

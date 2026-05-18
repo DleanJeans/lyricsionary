@@ -14,6 +14,7 @@ interface FabBubbleProps {
   left?: number;
   right?: number;
   tailOffset?: number;
+  color?: string;
 }
 
 export default function FabBubble({
@@ -25,7 +26,9 @@ export default function FabBubble({
   left,
   right,
   tailOffset = 0,
+  color,
 }: FabBubbleProps) {
+  const backgroundColor = color ?? Colors.primary;
   return (
     <View
       style={[
@@ -36,7 +39,7 @@ export default function FabBubble({
       ]}
       pointerEvents="box-none"
     >
-      <TouchableOpacity style={styles.fabBubble} onPress={onPress} activeOpacity={0.8}>
+      <TouchableOpacity style={[styles.fabBubble, { backgroundColor }]} onPress={onPress} activeOpacity={0.8}>
         <Ionicons name={icon} size={22} color={Colors.white} />
         <Text style={styles.fabText}>{text}</Text>
       </TouchableOpacity>
@@ -45,6 +48,7 @@ export default function FabBubble({
           styles.fabTail,
           tailPosition === 'right' && styles.fabTailRight,
           tailPosition === 'right' ? { marginRight: 18 + tailOffset } : { marginLeft: 18 + tailOffset },
+          { borderTopColor: backgroundColor }
         ]}
       />
     </View>
@@ -57,7 +61,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   fabBubble: {
-    backgroundColor: Colors.primary,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -79,7 +82,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 12,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: Colors.primary,
     marginLeft: 18,
   },
   fabTailRight: {

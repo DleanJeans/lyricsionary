@@ -74,7 +74,7 @@ export default function EditorScreen() {
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
   const [isEditingMetadata, setIsEditingMetadata] = useState(true);
-
+  
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
     songName: string;
@@ -388,9 +388,10 @@ export default function EditorScreen() {
   };
 
   /* ─── Shared Controls ─────────────────────────────────────── */
+  const buttonDisplayPositions = isEditMode ? 'flex-end' : (currentSongId ? 'space-between' : 'flex-end');
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { justifyContent: buttonDisplayPositions }]}>
         {!isEditMode && currentSongId && (
           <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />

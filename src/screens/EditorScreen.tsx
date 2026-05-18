@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Modal,
   FlatList,
   Image,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -29,6 +30,7 @@ import {
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
 import MultiLanguageSelect from '../components/MultiLanguageSelect';
+import SongMetadataHeader from '../components/SongMetadataHeader';
 
 
 export default function EditorScreen() {
@@ -58,6 +60,8 @@ export default function EditorScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].name);
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
+  const metadataContainerRef = useRef<View>(null);
 
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
@@ -97,6 +101,11 @@ export default function EditorScreen() {
       setOriginalState(null);
     }
   }, [editSong?.id]);
+
+  // Auto-show editing mode when both song name and artist name are empty
+  useEffect(() => {
+    setIsEditingMetadata(!songName.trim() && !artistName.trim());
+  }, [songName, artistName]);
 
   useEffect(() => { setScrapeTargetTab(activeTab); }, [activeTab]);
 
@@ -328,26 +337,23 @@ export default function EditorScreen() {
           </TouchableOpacity>
         )}
       </View>
-      <View style={styles.inputRow}>
-        <Ionicons name="musical-note-outline" size={20} color={Colors.textSecondary} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Song Name"
-          placeholderTextColor={Colors.textMuted}
-          value={songName}
-          onChangeText={setSongName}
-        />
-      </View>
-      <View style={styles.inputRow}>
-        <Ionicons name="person-outline" size={20} color={Colors.textSecondary} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Artist Name"
-          placeholderTextColor={Colors.textMuted}
-          value={artistName}
-          onChangeText={setArtistName}
-        />
-      </View>
+      <TouchableWithoutFeedback onPress={() => setIsEditingMetadata(false)}>
+        <View>
+          <TouchableWithoutFeedback>
+            <View ref={metadataContainerRef}>
+              <SongMetadataHeader
+                songName={songName}
+                artistName={artistName}
+                originalLanguages={originalLanguages}
+                isEditing={isEditingMetadata}
+                onPress={() => setIsEditingMetadata(true)}
+                onSongNameChange={setSongName}
+                onArtistNameChange={setArtistName}
+              />
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
       <View style={[styles.inputRow, { gap: 14 }]}>
         <Ionicons name="language-outline" size={20} color={Colors.textSecondary} />
         <MultiLanguageSelect

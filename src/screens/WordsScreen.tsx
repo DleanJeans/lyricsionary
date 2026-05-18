@@ -16,6 +16,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
+import LanguageFilterModal from '../components/LanguageFilterModal';
 
 interface PendingDeletion {
   id: string;
@@ -30,21 +31,42 @@ export default function WordsScreen() {
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showLanguageFilter, setShowLanguageFilter] = useState(false);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
   const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // Get all unique languages from words and count occurrences
+  const { availableLanguages, languageCounts } = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    words.forEach((word) => {
+      counts[word.language] = (counts[word.language] ?? 0) + 1;
+    });
+    return {
+      availableLanguages: Object.keys(counts).sort(),
+      languageCounts: counts,
+    };
+  }, [words]);
+
   const pendingIds = new Set(pendingDeletions.map(d => d.id));
   const filteredWords = sortedWords.filter(w => !pendingIds.has(w.id));
 
+  // Apply language filter
+  const languageFilteredWords =
+    selectedLanguages.length > 0
+      ? filteredWords.filter((w) => selectedLanguages.includes(w.language))
+      : filteredWords;
+
+  // Apply search filter
   const searchedWords = searchQuery.trim()
-    ? filteredWords.filter(
+    ? languageFilteredWords.filter(
         (w) =>
           w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
           w.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (w.pronunciation && w.pronunciation.toLowerCase().includes(searchQuery.toLowerCase()))
       )
-    : filteredWords;
+    : languageFilteredWords;
 
   const formatDate = (ts: number) => {
     const d = new Date(ts);
@@ -90,6 +112,16 @@ export default function WordsScreen() {
         ) : (
           <Text style={styles.title}>Saved Words</Text>
         )}
+        <TouchableOpacity
+          onPress={() => setShowLanguageFilter(true)}
+          style={styles.searchButton}
+        >
+          <Ionicons
+            name="funnel-outline"
+            size={22}
+            color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
+          />
+        </TouchableOpacity>
         <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
           <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
         </TouchableOpacity>
@@ -104,7 +136,11 @@ export default function WordsScreen() {
           ) : (
             <>
               <Ionicons name="search-outline" size={64} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No words match your search.</Text>
+              <Text style={styles.emptyText}>
+                {selectedLanguages.length > 0 || searchQuery.trim()
+                  ? 'No words match your filters.'
+                  : 'No words match your search.'}
+              </Text>
             </>
           )}
         </View>
@@ -144,6 +180,14 @@ export default function WordsScreen() {
           />
         ))}
       </View>
+      <LanguageFilterModal
+        visible={showLanguageFilter}
+        onClose={() => setShowLanguageFilter(false)}
+        selectedLanguages={selectedLanguages}
+        onLanguagesChange={setSelectedLanguages}
+        availableLanguages={availableLanguages}
+        languageCounts={languageCounts}
+      />
     </ScreenWrapper>
   );
 }

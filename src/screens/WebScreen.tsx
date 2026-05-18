@@ -38,8 +38,8 @@ export default function WebScreen() {
   const [toast, setToast] = useState<string | null>(null);
   const backPressedOnce = useRef(false);
   const timeoutRef = useRef<number | null>(null);
-  const [webViewKey, setWebViewKey] = useState(0);
   const pendingPasteText = useRef<string | null>(null);
+  const lastNavigatedUrl = useRef<string>(webUrl);
 
   const handleNavigate = () => {
     let url = addressText.trim();
@@ -151,9 +151,13 @@ export default function WebScreen() {
     }
   }, [route.params?.pasteIntoDeepL]);
 
-  // Force WebView to reload when URL changes, even if it's the same URL
+  // Handle navigation to same URL by forcing reload
   useEffect(() => {
-    setWebViewKey((prev) => prev + 1);
+    if (webUrl && webUrl === lastNavigatedUrl.current && currentUrl !== webUrl) {
+      // Same URL as last navigation but WebView hasn't navigated yet - force reload
+      webViewRef.current?.reload();
+    }
+    lastNavigatedUrl.current = webUrl;
   }, [webUrl]);
 
   return (
@@ -197,7 +201,6 @@ export default function WebScreen() {
         )}
       </View>
       <WebView
-        key={webViewKey}
         ref={webViewRef}
         source={{ uri: webUrl }}
         style={styles.webview}

@@ -73,7 +73,7 @@ export default function EditorScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].name);
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
-  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
+  const [isEditingMetadata, setIsEditingMetadata] = useState(true);
 
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{

@@ -37,7 +37,7 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
+  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab, setMatchedSongs } = useStore();
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
@@ -99,6 +99,44 @@ export default function EditorScreen() {
   }, [editSong?.id]);
 
   useEffect(() => { setScrapeTargetTab(activeTab); }, [activeTab]);
+
+  // Search for matching songs when song name or artist name changes
+  useEffect(() => {
+    // Only search for new lyrics (not when editing existing song)
+    if (isEditMode) {
+      setMatchedSongs(null, 0);
+      return;
+    }
+
+    const trimmedSongName = songName.trim();
+    const trimmedArtistName = artistName.trim();
+
+    // Need at least song name or artist name to search
+    if (!trimmedSongName && !trimmedArtistName) {
+      setMatchedSongs(null, 0);
+      return;
+    }
+
+    // Search for matching songs
+    const searchQuery = trimmedSongName || trimmedArtistName;
+    const matchedSongs = songs.filter((s) => {
+      if (trimmedSongName && trimmedArtistName) {
+        // If both are provided, match on both
+        return (
+          s.songName.toLowerCase().includes(trimmedSongName.toLowerCase()) &&
+          s.artistName.toLowerCase().includes(trimmedArtistName.toLowerCase())
+        );
+      } else if (trimmedSongName) {
+        // Match on song name
+        return s.songName.toLowerCase().includes(trimmedSongName.toLowerCase());
+      } else {
+        // Match on artist name
+        return s.artistName.toLowerCase().includes(trimmedArtistName.toLowerCase());
+      }
+    });
+
+    setMatchedSongs(searchQuery, matchedSongs.length);
+  }, [songName, artistName, isEditMode, songs]);
 
   // Handle all scraped data from Web screen in one effect to avoid param-clearing races
   useEffect(() => {

@@ -12,6 +12,7 @@ import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
 import { detectLyricsJS } from '../utils/detectLyricsJS';
 import Toast from '../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FabBubble from '../components/FabBubble';
 
 
 export default function WebScreen() {
@@ -183,15 +184,16 @@ export default function WebScreen() {
       )}
 
       {!!toast && <Toast message={toast ?? ''} />}
-      
+
       {showFab && (
-        <View style={styles.fab} pointerEvents="box-none">
-          <TouchableOpacity style={styles.fabBubble} onPress={handleScrapeLyrics} activeOpacity={0.8}>
-            <Ionicons name="download-outline" size={22} color={Colors.white} />
-            <Text style={styles.fabText}>Get Lyrics</Text>
-          </TouchableOpacity>
-          <View style={styles.fabTail} />
-        </View>
+        <FabBubble
+          icon="download-outline"
+          text="Get Lyrics"
+          onPress={handleScrapeLyrics}
+          tailPosition="left"
+          left={10}
+          bottom={0}
+        />
       )}
     </View>
   );
@@ -256,42 +258,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 0,
-    left: 10,
-    alignItems: 'flex-start',
-  },
-  fabBubble: {
-    backgroundColor: Colors.primary,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  fabTail: {
-    width: 0,
-    height: 0,
-    borderStyle: 'solid',
-    borderLeftWidth: 10,
-    borderRightWidth: 10,
-    borderTopWidth: 12,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: Colors.primary,
-    marginLeft: 18,
-  },
-  fabText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: '600',
   },
 });

@@ -58,7 +58,7 @@ export default function SongsScreen() {
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
     trackSongOpen(song.id);
-    navigation.navigate('Learn');
+    navigation.navigate('Editor', { songId: song.id });
   };
 
   const handleDeleteSong = (song: Song) => {

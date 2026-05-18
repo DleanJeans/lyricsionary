@@ -59,6 +59,16 @@ export default function EditorScreen() {
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
 
+  // Track original state for Reset button
+  const [originalState, setOriginalState] = useState<{
+    songName: string;
+    artistName: string;
+    originalLyrics: string;
+    originalLanguages: string[];
+    songSourceUrl: string;
+    translations: Translation[];
+  } | null>(null);
+
   useEffect(() => {
     if (editSong) {
       setSongName(editSong.songName);
@@ -74,6 +84,17 @@ export default function EditorScreen() {
         if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
       });
       setPendingPageTitles(titles);
+      // Save original state for Reset functionality
+      setOriginalState({
+        songName: editSong.songName,
+        artistName: editSong.artistName,
+        originalLyrics: editSong.originalLyrics,
+        originalLanguages: editSong.originalLanguages ?? [],
+        songSourceUrl: editSong.sourceUrl ?? '',
+        translations: editSong.translations.map((t) => ({ ...t })),
+      });
+    } else {
+      setOriginalState(null);
     }
   }, [editSong?.id]);
 
@@ -105,6 +126,16 @@ export default function EditorScreen() {
   const isEditMode = !!editSong;
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
   const searchDisabled = !songName.trim() && !artistName.trim();
+
+  // Check if current state differs from original (for Reset button)
+  const hasChanges = originalState ? (
+    songName !== originalState.songName ||
+    artistName !== originalState.artistName ||
+    originalLyrics !== originalState.originalLyrics ||
+    JSON.stringify(originalLanguages) !== JSON.stringify(originalState.originalLanguages) ||
+    songSourceUrl !== originalState.songSourceUrl ||
+    JSON.stringify(translations) !== JSON.stringify(originalState.translations)
+  ) : false;
 
   const currentLyrics = activeTab === 0 ? originalLyrics : translations[activeTab - 1]?.lyrics ?? '';
   const setCurrentLyrics = (text: string) => {
@@ -170,6 +201,24 @@ export default function EditorScreen() {
     setPendingPageTitles({});
     setEditSongId(undefined);
     navigation.setParams({ songId: undefined });
+  };
+
+  const handleReset = () => {
+    if (originalState) {
+      setSongName(originalState.songName);
+      setArtistName(originalState.artistName);
+      setOriginalLyrics(originalState.originalLyrics);
+      setOriginalLanguages([...originalState.originalLanguages]);
+      setSongSourceUrl(originalState.songSourceUrl);
+      setTranslations(originalState.translations.map((t) => ({ ...t })));
+      setActiveTab(0);
+      setPendingSourceUrls({});
+      setPendingPageTitles({});
+    }
+  };
+
+  const handleNew = () => {
+    handleClear();
   };
 
   const handleGoogleSearch = () => {
@@ -240,10 +289,17 @@ export default function EditorScreen() {
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
       <View style={styles.header}>
+        {isEditMode && (
+          <TouchableOpacity style={styles.newButton} onPress={handleNew}>
+            <Ionicons name="add" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
         <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
-        <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
-          <Ionicons name="musical-note" size={22} color={Colors.primary} />
-        </TouchableOpacity>
+        {!isEditMode && (
+          <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
+            <Ionicons name="musical-note" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
       <View style={styles.inputRow}>
         <Ionicons name="musical-note-outline" size={20} color={Colors.textSecondary} />
@@ -399,14 +455,25 @@ export default function EditorScreen() {
               <Text style={styles.actionButtonText}>Save</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
-            disabled={allEmpty}
-            onPress={handleClear}
-          >
-            <Ionicons name="close" size={20} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Clear</Text>
-          </TouchableOpacity>
+          {isEditMode ? (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.resetButton, !hasChanges && styles.disabled]}
+              disabled={!hasChanges}
+              onPress={handleReset}
+            >
+              <Ionicons name="refresh" size={20} color={Colors.white} />
+              <Text style={styles.actionButtonText}>Reset</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
+              disabled={allEmpty}
+              onPress={handleClear}
+            >
+              <Ionicons name="close" size={20} color={Colors.white} />
+              <Text style={styles.actionButtonText}>Clear</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -500,14 +567,25 @@ export default function EditorScreen() {
                 <Text style={styles.actionButtonText}>Save</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
-              disabled={allEmpty}
-              onPress={handleClear}
-            >
-              <Ionicons name="close" size={20} color={Colors.white} />
-              <Text style={styles.actionButtonText}>Clear</Text>
-            </TouchableOpacity>
+            {isEditMode ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.resetButton, !hasChanges && styles.disabled]}
+                disabled={!hasChanges}
+                onPress={handleReset}
+              >
+                <Ionicons name="refresh" size={20} color={Colors.white} />
+                <Text style={styles.actionButtonText}>Reset</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
+                disabled={allEmpty}
+                onPress={handleClear}
+              >
+                <Ionicons name="close" size={20} color={Colors.white} />
+                <Text style={styles.actionButtonText}>Clear</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -587,6 +665,12 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
+  },
+  newButton: {
+    padding: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    zIndex: 1,
   },
   iconButton: {
     padding: 8,
@@ -780,6 +864,9 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     backgroundColor: Colors.danger,
+  },
+  resetButton: {
+    backgroundColor: Colors.primary,
   },
   actionButtonText: {
     color: Colors.white,

@@ -13,6 +13,7 @@ import WordCard from '../components/WordCard';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import SongMetadataHeader from '../components/SongMetadataHeader';
+import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
 
@@ -183,9 +184,12 @@ export default function LearnScreen() {
           const cleanedWord = removeSpecialChars(word);
 
           // Helper function to check if word has contracted prefix (e.g., j'viens)
-          const hasContractedPrefix = (w: string) => /^[a-zA-Z]'/.test(w);
+          const hasContractedPrefix = (w: string) => contractedPrefixRegex.test(w);
 
-          // For French words with contracted prefixes, also try matching without the prefix
+          // Helper function to check if word has hyphenated prefix (e.g., mélan-mélanger)
+          const hasHyphenatedPrefix = (w: string) => hyphenatedPrefixRegex.test(w);
+
+          // For French words with prefixes, also try matching without the prefix
           // Check if original languages include French
           const hasFrenchLanguage = song?.originalLanguages?.some(
             lang => lang.toLowerCase() === 'french' || lang.toLowerCase() === 'fr'
@@ -196,6 +200,13 @@ export default function LearnScreen() {
           // If no match found and the word has a contracted prefix and song has French, try without prefix
           if (!wordEntry && cleanedWord && hasContractedPrefix(cleanedWord) && hasFrenchLanguage) {
             const withoutPrefix = cleanedWord.slice(2); // Remove first letter and apostrophe
+            wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
+          }
+
+          // If no match found and the word has a hyphenated prefix and song has French, try without prefix
+          if (!wordEntry && cleanedWord && hasHyphenatedPrefix(cleanedWord) && hasFrenchLanguage) {
+            const hyphenIndex = cleanedWord.indexOf('-');
+            const withoutPrefix = cleanedWord.slice(hyphenIndex + 1); // Remove everything up to and including the hyphen
             wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
           }
 
@@ -223,7 +234,7 @@ export default function LearnScreen() {
               <View style={styles.annotationSpace}>
                 {shouldShowEmoji && (
                   <Text style={styles.wordAnnotation}>
-                    {wordEntry.emoji}
+                    {wordEntry?.emoji}
                   </Text>
                 )}
                 {displayContent && (

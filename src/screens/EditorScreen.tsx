@@ -19,7 +19,7 @@ import { LANGUAGES } from '../constants/languages';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
-import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import { GOOGLE_SEARCH_URL, DEEPL_URL } from '../constants/urls';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import {
   hasNotificationPermission,
@@ -30,6 +30,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
 import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
+import { deduplicateLines } from '../utils/deeplTranslation';
 
 
 export default function EditorScreen() {
@@ -38,7 +39,19 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab, setMatchedSongs, matchedSongsSearchQuery, matchedSongsCount } = useStore();
+  const {
+    songs,
+    saveSong,
+    updateSong,
+    currentSongId,
+    setCurrentSongId,
+    setWebUrl,
+    setScrapeTargetTab,
+    setMatchedSongs,
+    matchedSongsSearchQuery,
+    matchedSongsCount,
+    setDeeplLineMap,
+  } = useStore();
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
@@ -46,6 +59,7 @@ export default function EditorScreen() {
     if (paramSongId !== undefined) setEditSongId(paramSongId);
   }, [paramSongId]);
   const editSong = editSongId ? songs.find((s) => s.id === editSongId) : null;
+  const isEditMode = !!editSong;
 
   const [songName, setSongName] = useState('');
   const [artistName, setArtistName] = useState('');
@@ -163,7 +177,6 @@ export default function EditorScreen() {
     navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined });
   }, [route.params?.scrapedLyrics]);
 
-  const isEditMode = !!editSong;
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
   const searchDisabled = !songName.trim() && !artistName.trim();
 
@@ -203,11 +216,15 @@ export default function EditorScreen() {
     }
     const resolvedSourceUrl = (pendingSourceUrls[0] ?? songSourceUrl).trim() || undefined;
     const resolvedSourceUrlTitle = resolvedSourceUrl ? (pendingPageTitles[0] || undefined) : undefined;
-    const resolvedTranslations = translations.map((t, i) =>
-      pendingSourceUrls[i + 1] !== undefined
-        ? { ...t, sourceUrl: pendingSourceUrls[i + 1], sourceUrlTitle: pendingPageTitles[i + 1] || undefined }
-        : t
-    );
+    const resolvedTranslations = translations.map((t, i) => {
+      // If there's a pending URL for this translation, use it; otherwise keep existing URL
+      const hasPendingUrl = pendingSourceUrls[i + 1] !== undefined;
+      return {
+        ...t,
+        sourceUrl: hasPendingUrl ? pendingSourceUrls[i + 1] : t.sourceUrl,
+        sourceUrlTitle: hasPendingUrl ? (pendingPageTitles[i + 1] || undefined) : t.sourceUrlTitle,
+      };
+    });
     if (isEditMode && editSong) {
       await updateSong(editSong.id, {
         songName: songName.trim(),
@@ -289,6 +306,20 @@ export default function EditorScreen() {
     const query = encodeURIComponent(`${songName} ${artistName} lyrics`);
     setWebUrl(`${GOOGLE_SEARCH_URL}&q=${query}`);
     navigation.navigate('Web');
+  };
+
+  const handleGetTranslation = () => {
+    if (activeTab === 0 || !originalLyrics) return; // Only works for translation tabs
+
+    // Deduplicate lines to fit within DeepL's 1500 character limit
+    const { deduplicated, lineMap } = deduplicateLines(originalLyrics);
+
+    // Store the line map in the store so WebScreen can remap the translation
+    setDeeplLineMap(lineMap);
+
+    // Navigate to DeepL
+    setWebUrl(DEEPL_URL);
+    navigation.navigate('Web', { pasteIntoDeepL: deduplicated });
   };
 
   const handleAddTranslation = () => {
@@ -403,14 +434,25 @@ export default function EditorScreen() {
         />
       )}
       {!currentLyrics && (
-        <TouchableOpacity
-          style={[styles.searchButton, searchDisabled && styles.disabled]}
-          disabled={searchDisabled}
-          onPress={handleGoogleSearch}
-        >
-          <Ionicons name="search" size={18} color={Colors.white} />
-          <Text style={styles.searchButtonText}>Google Search</Text>
-        </TouchableOpacity>
+        <View style={styles.searchButtonRow}>
+          <TouchableOpacity
+            style={[styles.searchButton, searchDisabled && styles.disabled]}
+            disabled={searchDisabled}
+            onPress={handleGoogleSearch}
+          >
+            <Ionicons name="search" size={18} color={Colors.white} />
+            <Text style={styles.searchButtonText}>Google Search</Text>
+          </TouchableOpacity>
+          {activeTab > 0 && originalLyrics && (
+            <TouchableOpacity
+              style={[styles.searchButton, styles.deeplButton]}
+              onPress={handleGetTranslation}
+            >
+              <Ionicons name="language" size={18} color={Colors.white} />
+              <Text style={styles.searchButtonText}>Get Translation</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
         <TouchableOpacity
@@ -798,7 +840,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginLeft: 10,
   },
+  searchButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
   searchButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -806,7 +854,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     gap: 8,
-    marginBottom: 16,
+  },
+  deeplButton: {
+    backgroundColor: Colors.success,
   },
   searchButtonText: {
     color: Colors.white,

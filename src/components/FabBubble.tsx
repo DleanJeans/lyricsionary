@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
+import { opacity } from 'react-native-reanimated/lib/typescript/Colors';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -15,6 +16,7 @@ interface FabBubbleProps {
   right?: number;
   tailOffset?: number;
   color?: string;
+  disabled?: boolean;
 }
 
 export default function FabBubble({
@@ -27,28 +29,40 @@ export default function FabBubble({
   right,
   tailOffset = 0,
   color,
+  disabled = false,
 }: FabBubbleProps) {
   const backgroundColor = color ?? Colors.primary;
   return (
     <View
       style={[
         styles.fab,
-        { bottom },
+        { bottom, opacity: disabled ? 0.8 : 1 },
         left !== undefined && { left },
         right !== undefined && { right },
       ]}
       pointerEvents="box-none"
     >
-      <TouchableOpacity style={[styles.fabBubble, { backgroundColor }]} onPress={onPress} activeOpacity={0.8}>
-        <Ionicons name={icon} size={22} color={Colors.white} />
+      <TouchableOpacity
+        style={[styles.fabBubble, { backgroundColor }]}
+        onPress={onPress}
+        activeOpacity={0.8}
+        disabled={disabled}
+      >
+        <Ionicons
+          name={icon}
+          size={22}
+          color={Colors.white}
+        />
         <Text style={styles.fabText}>{text}</Text>
       </TouchableOpacity>
       <View
         style={[
           styles.fabTail,
           tailPosition === 'right' && styles.fabTailRight,
-          tailPosition === 'right' ? { marginRight: 18 + tailOffset } : { marginLeft: 18 + tailOffset },
-          { borderTopColor: backgroundColor }
+          tailPosition === 'right'
+            ? { marginRight: 18 + tailOffset }
+            : { marginLeft: 18 + tailOffset },
+          { borderTopColor: backgroundColor },
         ]}
       />
     </View>

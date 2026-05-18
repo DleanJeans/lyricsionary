@@ -33,6 +33,7 @@ export default function WebScreen() {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [showFab, setShowFab] = useState(false);
   const [showTranslationFab, setShowTranslationFab] = useState(false);
+  const [waitingForTranslation, setWaitingForTranslation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -72,7 +73,7 @@ export default function WebScreen() {
         return;
       }
       if (data.type === 'translationDetected') {
-        setShowTranslationFab(data.hasTranslation === true);
+        setWaitingForTranslation(!data.hasTranslation);
         return;
       }
       if (data.type === 'lyrics' && data.text) {
@@ -210,8 +211,10 @@ export default function WebScreen() {
           setPageTitle(navState.title ?? '');
           setShowUrlInput(false);
           setCanGoBack(navState.canGoBack);
-          setShowFab(false); // Reset lyrics button when navigating to new page
-          setShowTranslationFab(false); // Reset translation button when navigating to new page
+          setShowFab(false);
+          if (navState.url !== webUrl) {
+            setShowTranslationFab(false);
+          }
         }}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => {
@@ -226,6 +229,8 @@ export default function WebScreen() {
           if (pendingPasteText.current) {
             webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
             pendingPasteText.current = null;
+            setShowTranslationFab(true);
+            setWaitingForTranslation(true);
           }
         }}
         onMessage={handleMessage}
@@ -253,12 +258,13 @@ export default function WebScreen() {
       {showTranslationFab && (
         <FabBubble
           icon="download-outline"
-          text="Get Translation"
+          text={waitingForTranslation ? "Waiting for Translation..." : "Get Translation"}
           onPress={handleScrapeTranslation}
           tailPosition="left"
           left={10}
           bottom={0}
           color={Colors.success}
+          disabled={waitingForTranslation}
         />
       )}
     </View>

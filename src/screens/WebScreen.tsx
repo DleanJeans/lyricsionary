@@ -4,12 +4,16 @@ import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
 import { detectLyricsJS } from '../utils/detectLyricsJS';
+import { detectTranslationJS } from '../utils/detectTranslationJS';
+import { scrapeTranslationJS } from '../utils/scrapeTranslationJS';
+import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
+import { remapTranslation } from '../utils/deeplTranslation';
 import Toast from '../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FabBubble from '../components/FabBubble';
@@ -17,7 +21,8 @@ import FabBubble from '../components/FabBubble';
 
 export default function WebScreen() {
   const navigation = useNavigation<any>();
-  const { webUrl, setWebUrl, scrapeTargetTab } = useStore();
+  const route = useRoute<any>();
+  const { webUrl, setWebUrl, scrapeTargetTab, deeplLineMap, setDeeplLineMap } = useStore();
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
   const insets = useSafeAreaInsets();
@@ -27,11 +32,15 @@ export default function WebScreen() {
   const [pageTitle, setPageTitle] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [showFab, setShowFab] = useState(false);
+  const [showTranslationFab, setShowTranslationFab] = useState(false);
+  const [waitingForTranslation, setWaitingForTranslation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const backPressedOnce = useRef(false);
   const timeoutRef = useRef<number | null>(null);
+  const [webViewKey, setWebViewKey] = useState(0);
+  const pendingPasteText = useRef<string | null>(null);
 
   const handleNavigate = () => {
     let url = addressText.trim();
@@ -48,6 +57,10 @@ export default function WebScreen() {
     webViewRef.current?.injectJavaScript(scrapeLyricsJS);
   };
 
+  const handleScrapeTranslation = () => {
+    webViewRef.current?.injectJavaScript(scrapeTranslationJS);
+  };
+
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -59,12 +72,25 @@ export default function WebScreen() {
         setShowFab(data.hasLyrics === true);
         return;
       }
+      if (data.type === 'translationDetected') {
+        setWaitingForTranslation(!data.hasTranslation);
+        return;
+      }
       if (data.type === 'lyrics' && data.text) {
         let lyrics = data.text.trim();
         if (currentUrl.includes('genius.com')) {
           lyrics = cleanGeniusLyrics(lyrics);
         }
         navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: scrapeTargetTab });
+      }
+      if (data.type === 'translation' && data.text) {
+        let translation = data.text.trim();
+        // Remap translation using the line map if available
+        if (deeplLineMap) {
+          translation = remapTranslation(translation, deeplLineMap);
+          setDeeplLineMap(null); // Clear the line map after use
+        }
+        navigation.navigate('Editor', { scrapedLyrics: translation, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: scrapeTargetTab });
       }
       if (data.type === 'error') {
         setToast(data.message || 'Failed to scrape lyrics');
@@ -116,6 +142,21 @@ export default function WebScreen() {
     };
   }, [canGoBack]);
 
+  // Handle pasting into DeepL
+  useEffect(() => {
+    const pasteText = route.params?.pasteIntoDeepL as string | undefined;
+    if (pasteText) {
+      // Store the text to paste, will be injected after page loads
+      pendingPasteText.current = pasteText;
+      navigation.setParams({ pasteIntoDeepL: undefined });
+    }
+  }, [route.params?.pasteIntoDeepL]);
+
+  // Force WebView to reload when URL changes, even if it's the same URL
+  useEffect(() => {
+    setWebViewKey((prev) => prev + 1);
+  }, [webUrl]);
+
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
       <View style={[styles.addressBar, { paddingTop: insets.top || 6 }]}>
@@ -157,6 +198,7 @@ export default function WebScreen() {
         )}
       </View>
       <WebView
+        key={webViewKey}
         ref={webViewRef}
         source={{ uri: webUrl }}
         style={styles.webview}
@@ -166,13 +208,27 @@ export default function WebScreen() {
           setPageTitle(navState.title ?? '');
           setShowUrlInput(false);
           setCanGoBack(navState.canGoBack);
-          setShowFab(false); // Reset button when navigating to new page
+          setShowFab(false);
+          if (navState.url !== webUrl) {
+            setShowTranslationFab(false);
+          }
         }}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => {
           setLoading(false);
-          // Inject detection script when page finishes loading
+          // Inject both detection scripts when page finishes loading
           webViewRef.current?.injectJavaScript(detectLyricsJS);
+
+          if (!webUrl.includes('deepl.com')) return;
+          webViewRef.current?.injectJavaScript(detectTranslationJS);
+
+          // If we have pending text to paste, inject it now that page is loaded
+          if (pendingPasteText.current) {
+            webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
+            pendingPasteText.current = null;
+            setShowTranslationFab(true);
+            setWaitingForTranslation(true);
+          }
         }}
         onMessage={handleMessage}
         javaScriptEnabled
@@ -193,6 +249,19 @@ export default function WebScreen() {
           tailPosition="left"
           left={10}
           bottom={0}
+        />
+      )}
+
+      {showTranslationFab && (
+        <FabBubble
+          icon="download-outline"
+          text={waitingForTranslation ? "Waiting for Translation..." : "Get Translation"}
+          onPress={handleScrapeTranslation}
+          tailPosition="left"
+          left={10}
+          bottom={0}
+          color={Colors.success}
+          disabled={waitingForTranslation}
         />
       )}
     </View>

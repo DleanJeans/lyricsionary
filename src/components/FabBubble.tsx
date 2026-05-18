@@ -13,6 +13,7 @@ interface FabBubbleProps {
   bottom?: number;
   left?: number;
   right?: number;
+  tailOffset?: number;
 }
 
 export default function FabBubble({
@@ -23,6 +24,7 @@ export default function FabBubble({
   bottom = 0,
   left,
   right,
+  tailOffset = 0,
 }: FabBubbleProps) {
   return (
     <View
@@ -42,6 +44,7 @@ export default function FabBubble({
         style={[
           styles.fabTail,
           tailPosition === 'right' && styles.fabTailRight,
+          tailPosition === 'right' ? { marginRight: 18 + tailOffset } : { marginLeft: 18 + tailOffset },
         ]}
       />
     </View>

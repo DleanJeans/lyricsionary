@@ -714,9 +714,10 @@ export default function EditorScreen() {
           icon="musical-notes"
           text={matchedSongsCount === 1 ? 'Already Saved!' : `Found ${matchedSongsCount} songs`}
           onPress={handleMatchedSongsFabPress}
-          tailPosition="right"
-          right={10}
+          right={40}
           bottom={0}
+          tailPosition="right"
+          tailOffset={20}
         />
       )}
     </ScreenWrapper>

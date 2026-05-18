@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
-import { useNavigation } from '@react-navigation/native';
-import { Song } from '../types';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { Song, RootTabParamList } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -24,7 +24,8 @@ import LanguageFilterModal from '../components/LanguageFilterModal';
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
-  const { songs, setCurrentSongId, deleteSong, trackSongOpen } = useStore();
+  const route = useRoute<RouteProp<RootTabParamList, 'Songs'>>();
+  const { songs, setCurrentSongId, deleteSong, trackSongOpen, setMatchedSongs } = useStore();
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -35,6 +36,24 @@ export default function SongsScreen() {
   const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+
+  // Handle search query from route params
+  useEffect(() => {
+    const paramSearchQuery = route.params?.searchQuery;
+    if (paramSearchQuery) {
+      setShowSearch(true);
+      setSearchQuery(paramSearchQuery);
+      // Clear the param after reading it
+      navigation.setParams({ searchQuery: undefined });
+    }
+  }, [route.params?.searchQuery]);
+
+  // Clear matched songs when component unmounts or search changes
+  useEffect(() => {
+    return () => {
+      setMatchedSongs(null, 0);
+    };
+  }, []);
 
   // Get all unique languages from songs and count occurrences
   const { availableLanguages, languageCounts } = React.useMemo(() => {

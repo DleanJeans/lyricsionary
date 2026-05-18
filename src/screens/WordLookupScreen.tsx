@@ -303,42 +303,43 @@ export default function WordLookupScreen() {
             <Text style={styles.contextSong}>{songName} - {artistName}</Text>
             {lyricsLine && renderContextLine()}
 
-            {/* Word Manipulation Buttons */}
-            {showManipulationButtons && (
-              <View style={styles.manipulationButtons}>
-                {showCapitalizeButton && (
-                  <TouchableOpacity
-                    style={styles.manipulationButton}
-                    onPress={() => {
-                      if (displayWord === word) {
-                        setDisplayWord(getLowercaseVersion(word!));
-                      } else {
-                        setDisplayWord(word!);
-                      }
-                    }}
-                  >
-                    <Text style={styles.manipulationButtonText}>
-                      {displayWord === word ? getLowercaseVersion(word!) : word}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {showPrefixButton && (
-                  <TouchableOpacity
-                    style={styles.manipulationButton}
-                    onPress={() => {
-                      if (displayWord === word) {
-                        setDisplayWord(getWithoutPrefix(word!));
-                      } else {
-                        setDisplayWord(word!);
-                      }
-                    }}
-                  >
-                    <Text style={styles.manipulationButtonText}>
-                      {displayWord === word ? getWithoutPrefix(word!) : word}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+          </View>
+        )}
+
+        {/* Word Manipulation Buttons */}
+        {showManipulationButtons && (
+          <View style={styles.manipulationButtons}>
+            {showCapitalizeButton && (
+              <TouchableOpacity
+                style={styles.manipulationButton}
+                onPress={() => {
+                  if (displayWord === word) {
+                    setDisplayWord(getLowercaseVersion(word!));
+                  } else {
+                    setDisplayWord(word!);
+                  }
+                }}
+              >
+                <Text style={styles.manipulationButtonText}>
+                  {displayWord === word ? getLowercaseVersion(word!) : word}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {showPrefixButton && (
+              <TouchableOpacity
+                style={styles.manipulationButton}
+                onPress={() => {
+                  if (displayWord === word) {
+                    setDisplayWord(getWithoutPrefix(word!));
+                  } else {
+                    setDisplayWord(word!);
+                  }
+                }}
+              >
+                <Text style={styles.manipulationButtonText}>
+                  {displayWord === word ? getWithoutPrefix(word!) : word}
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -585,6 +586,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginTop: 12,
+    marginLeft: 16,
     flexWrap: 'wrap',
   },
   manipulationButton: {

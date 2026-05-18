@@ -38,6 +38,8 @@ export default function WebScreen() {
   const [toast, setToast] = useState<string | null>(null);
   const backPressedOnce = useRef(false);
   const timeoutRef = useRef<number | null>(null);
+  const [webViewKey, setWebViewKey] = useState(0);
+  const pendingPasteText = useRef<string | null>(null);
 
   const handleNavigate = () => {
     let url = addressText.trim();
@@ -142,15 +144,17 @@ export default function WebScreen() {
   // Handle pasting into DeepL
   useEffect(() => {
     const pasteText = route.params?.pasteIntoDeepL as string | undefined;
-    if (pasteText && webViewRef.current) {
-      // Wait a bit for the page to be ready, then inject the paste script
-      const timer = setTimeout(() => {
-        webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pasteText));
-        navigation.setParams({ pasteIntoDeepL: undefined });
-      }, 1500);
-      return () => clearTimeout(timer);
+    if (pasteText) {
+      // Store the text to paste, will be injected after page loads
+      pendingPasteText.current = pasteText;
+      navigation.setParams({ pasteIntoDeepL: undefined });
     }
   }, [route.params?.pasteIntoDeepL]);
+
+  // Force WebView to reload when URL changes, even if it's the same URL
+  useEffect(() => {
+    setWebViewKey((prev) => prev + 1);
+  }, [webUrl]);
 
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
@@ -193,6 +197,7 @@ export default function WebScreen() {
         )}
       </View>
       <WebView
+        key={webViewKey}
         ref={webViewRef}
         source={{ uri: webUrl }}
         style={styles.webview}
@@ -211,6 +216,12 @@ export default function WebScreen() {
           // Inject both detection scripts when page finishes loading
           webViewRef.current?.injectJavaScript(detectLyricsJS);
           webViewRef.current?.injectJavaScript(detectTranslationJS);
+
+          // If we have pending text to paste, inject it now that page is loaded
+          if (pendingPasteText.current) {
+            webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
+            pendingPasteText.current = null;
+          }
         }}
         onMessage={handleMessage}
         javaScriptEnabled

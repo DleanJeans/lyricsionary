@@ -31,6 +31,7 @@ export default function SongsScreen() {
   const [songToDelete, setSongToDelete] = useState<Song | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInLyrics, setSearchInLyrics] = useState(false);
   const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
@@ -64,6 +65,19 @@ export default function SongsScreen() {
     }
   });
 
+  // Helper function to find matched line in lyrics
+  const findMatchedLine = (song: Song, query: string): string | null => {
+    if (!query.trim()) return null;
+    const lines = song.originalLyrics.split('\n');
+    const lowerQuery = query.toLowerCase();
+    for (const line of lines) {
+      if (line.toLowerCase().includes(lowerQuery)) {
+        return line.trim();
+      }
+    }
+    return null;
+  };
+
   // Apply language filter
   const languageFilteredSongs =
     selectedLanguages.length > 0
@@ -74,11 +88,18 @@ export default function SongsScreen() {
 
   // Apply search filter
   const filteredSongs = searchQuery.trim()
-    ? languageFilteredSongs.filter(
-        (s) =>
-          s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.artistName.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? languageFilteredSongs.filter((s) => {
+        if (searchInLyrics) {
+          // Search in lyrics
+          return findMatchedLine(s, searchQuery) !== null;
+        } else {
+          // Search in song name and artist
+          return (
+            s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            s.artistName.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        }
+      })
     : languageFilteredSongs;
 
   const handlePressSong = (song: Song) => {
@@ -109,7 +130,10 @@ export default function SongsScreen() {
   };
 
   const toggleSearch = () => {
-    if (showSearch) setSearchQuery('');
+    if (showSearch) {
+      setSearchQuery('');
+      setSearchInLyrics(false);
+    }
     setShowSearch((v) => !v);
   };
 
@@ -145,53 +169,67 @@ export default function SongsScreen() {
     }
   };
 
-  const renderSong = ({ item }: { item: Song }) => (
-    <TouchableOpacity
-      style={[styles.card, isWide && styles.cardWide]}
-      onPress={() => handlePressSong(item)}
-      onLongPress={() => handleDeleteSong(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardLeft}>
-        <View style={styles.songNameRow}>
+  const renderSong = ({ item }: { item: Song }) => {
+    const matchedLine = searchInLyrics && searchQuery.trim() ? findMatchedLine(item, searchQuery) : null;
+
+    return (
+      <TouchableOpacity
+        style={[styles.card, isWide && styles.cardWide]}
+        onPress={() => handlePressSong(item)}
+        onLongPress={() => handleDeleteSong(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardLeft}>
+          <View style={styles.songNameRow}>
+            <HighlightedText
+              text={item.songName}
+              query={searchInLyrics ? '' : searchQuery}
+              style={styles.songName}
+              numberOfLines={1}
+            />
+          </View>
           <HighlightedText
-            text={item.songName}
-            query={searchQuery}
-            style={styles.songName}
+            text={item.artistName || 'Unknown Artist'}
+            query={searchInLyrics ? '' : searchQuery}
+            style={styles.artistName}
             numberOfLines={1}
           />
-        </View>
-        <HighlightedText
-          text={item.artistName || 'Unknown Artist'}
-          query={searchQuery}
-          style={styles.artistName}
-          numberOfLines={1}
-        />
-        <View style={styles.meta}>
-          {getFaviconUrl(item.sourceUrl ?? '') && (
-            <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
-          )}
-          <Text style={styles.metaText}>{getWordCount(item)} words</Text>
-          <View style={styles.languages}>
-            {(item.originalLanguages ?? []).map((lang) => (
-              <Text key={`orig-${lang}`} style={styles.flag}>
-                {getFlagForLanguage(lang)}
-              </Text>
-            ))}
-            {item.translations.length > 0 && (
-              <Text style={styles.flagArrow}>→</Text>
+          <View style={styles.meta}>
+            {getFaviconUrl(item.sourceUrl ?? '') && (
+              <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
             )}
-            {item.translations.map((t) => (
-              <Text key={t.language} style={styles.flag}>
-                {getFlagForLanguage(t.language)}
-              </Text>
-            ))}
+            <Text style={styles.metaText}>{getWordCount(item)} words</Text>
+            <View style={styles.languages}>
+              {(item.originalLanguages ?? []).map((lang) => (
+                <Text key={`orig-${lang}`} style={styles.flag}>
+                  {getFlagForLanguage(lang)}
+                </Text>
+              ))}
+              {item.translations.length > 0 && (
+                <Text style={styles.flagArrow}>→</Text>
+              )}
+              {item.translations.map((t) => (
+                <Text key={t.language} style={styles.flag}>
+                  {getFlagForLanguage(t.language)}
+                </Text>
+              ))}
+            </View>
           </View>
+          {matchedLine && (
+            <View style={styles.matchedLineContainer}>
+              <HighlightedText
+                text={matchedLine}
+                query={searchQuery}
+                style={styles.matchedLine}
+                numberOfLines={1}
+              />
+            </View>
+          )}
         </View>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-    </TouchableOpacity>
-  );
+        <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScreenWrapper>
@@ -204,35 +242,47 @@ export default function SongsScreen() {
           />
         </TouchableOpacity>
         {showSearch ? (
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by title or artist..."
-            placeholderTextColor={Colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus
-          />
+          <>
+            <TextInput
+              style={styles.searchInput}
+              placeholder={searchInLyrics ? "Search in lyrics..." : "Search by title or artist..."}
+              placeholderTextColor={Colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+            <TouchableOpacity
+              onPress={() => setSearchInLyrics(!searchInLyrics)}
+              style={styles.lyricsToggle}
+            >
+              <Ionicons
+                name={searchInLyrics ? "musical-notes" : "musical-notes-outline"}
+                size={22}
+                color={searchInLyrics ? Colors.primary : Colors.textMuted}
+              />
+            </TouchableOpacity>
+          </>
         ) : (
           <Text style={styles.title}>Saved Songs</Text>
         )}
         <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
+            <Ionicons
+              name={showSearch ? 'close' : 'search'}
+              size={22}
+              color={Colors.textMuted}
+            />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowLanguageFilter(true)}
             style={styles.searchButton}
           >
-          <Ionicons
-            name="funnel-outline"
-            size={22}
-            color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
-          <Ionicons
-            name={showSearch ? 'close' : 'search'}
-            size={22}
-            color={Colors.textMuted}
-          />
-        </TouchableOpacity>
+            <Ionicons
+              name="funnel-outline"
+              size={22}
+              color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -312,6 +362,11 @@ const styles = StyleSheet.create({
     padding: 4,
     zIndex: 1,
   },
+  lyricsToggle: {
+    padding: 4,
+    marginLeft: 8,
+    zIndex: 1,
+  },
   searchInput: {
     flex: 1,
     backgroundColor: Colors.surface,
@@ -322,7 +377,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginRight: 8,
   },
   list: {
     paddingBottom: 40,
@@ -389,6 +443,17 @@ const styles = StyleSheet.create({
   flagArrow: {
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  matchedLineContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  matchedLine: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
   },
   empty: {
     flex: 1,

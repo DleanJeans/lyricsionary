@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { removeSpecialChars } from '../utils/cleanLyrics';
-import { scrapeIpaJS } from '../utils/scrapeIpaJS';
+import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -227,12 +227,6 @@ export default function WordLookupScreen() {
     }
   };
 
-  const handleScrapeIpa = () => {
-    if (webViewRef.current) {
-      webViewRef.current.injectJavaScript(scrapeIpaJS);
-    }
-  };
-
   // Helper functions for word manipulation
   const isCapitalized = (word: string) => {
     if (!word || word.length === 0) return false;
@@ -394,29 +388,18 @@ export default function WordLookupScreen() {
               placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
               placeholderTextColor={Colors.textMuted}
             />
-            {lookupSource === 'wiktionary' && (
-              <>
-                <TouchableOpacity
-                  style={styles.scrapeIpaButton}
-                  onPress={handleScrapeIpa}
-                >
-                  <Ionicons name="download-outline" size={16} color={Colors.primary} />
-                  <Text style={styles.scrapeIpaButtonText}>Auto-scrape from Wiktionary</Text>
-                </TouchableOpacity>
-                {scrapedIpaResults.length > 0 && (
-                  <View style={styles.ipaResultsRow}>
-                    {scrapedIpaResults.map((ipa, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.ipaResultButton}
-                        onPress={() => setPronunciation(ipa)}
-                      >
-                        <Text style={styles.ipaResultButtonText}>{ipa}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </>
+            {lookupSource === 'wiktionary' && scrapedIpaResults.length > 0 && (
+              <View style={styles.ipaResultsRow}>
+                {scrapedIpaResults.map((ipa, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.ipaResultButton}
+                    onPress={() => setPronunciation(ipa)}
+                  >
+                    <Text style={styles.ipaResultButtonText}>{ipa}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             )}
           </View>
 
@@ -502,7 +485,13 @@ export default function WordLookupScreen() {
                   setCanGoBackInWebView(navState.canGoBack);
                 }}
                 onLoadStart={() => setLoading(true)}
-                onLoadEnd={() => setLoading(false)}
+                onLoadEnd={() => {
+                  setLoading(false);
+                  // Auto-inject IPA scraping script when on Wiktionary
+                  if (lookupSource === 'wiktionary' && webViewRef.current) {
+                    webViewRef.current.injectJavaScript(getScrapeIpaJS(language));
+                  }
+                }}
                 javaScriptEnabled
                 nestedScrollEnabled={webViewScrollEnabled}
                 injectedJavaScript={injectedJavaScript}
@@ -691,24 +680,6 @@ const styles = StyleSheet.create({
   definitionInput: {
     minHeight: 80,
     textAlignVertical: 'top',
-  },
-  scrapeIpaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  scrapeIpaButtonText: {
-    color: Colors.primary,
-    fontSize: 13,
-    fontWeight: '600',
   },
   ipaResultsRow: {
     flexDirection: 'row',

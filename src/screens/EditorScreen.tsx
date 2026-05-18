@@ -315,12 +315,7 @@ export default function EditorScreen() {
 
     // Navigate to DeepL
     setWebUrl(DEEPL_URL);
-    navigation.navigate('Web');
-
-    // Wait a bit for the page to load, then paste the deduplicated lyrics
-    setTimeout(() => {
-      navigation.setParams({ pasteIntoDeepL: deduplicated });
-    }, 100);
+    navigation.navigate('Web', { pasteIntoDeepL: deduplicated });
   };
 
   const handleAddTranslation = () => {

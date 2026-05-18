@@ -4,12 +4,9 @@ const _detectTranslationLogic = `
   const url = window.location.href;
   let hasTranslation = false;
 
-  // DeepL
-  if (url.includes('deepl.com')) {
-    const targetTextarea = document.querySelector('[name=target]');
-    if (targetTextarea && targetTextarea.value && targetTextarea.value.trim().length > 0) {
-      hasTranslation = true;
-    }
+  const targetTextarea = document.querySelector('[name=target]');
+  if (targetTextarea && targetTextarea.value && targetTextarea.value.trim().length > 0) {
+    hasTranslation = true;
   }
 
   sendDetectionResult(hasTranslation);

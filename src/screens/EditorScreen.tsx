@@ -37,7 +37,7 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
+  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
@@ -59,6 +59,16 @@ export default function EditorScreen() {
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
 
+  // Track original state for Reset button
+  const [originalState, setOriginalState] = useState<{
+    songName: string;
+    artistName: string;
+    originalLyrics: string;
+    originalLanguages: string[];
+    songSourceUrl: string;
+    translations: Translation[];
+  } | null>(null);
+
   useEffect(() => {
     if (editSong) {
       setSongName(editSong.songName);
@@ -74,6 +84,17 @@ export default function EditorScreen() {
         if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
       });
       setPendingPageTitles(titles);
+      // Save original state for Reset functionality
+      setOriginalState({
+        songName: editSong.songName,
+        artistName: editSong.artistName,
+        originalLyrics: editSong.originalLyrics,
+        originalLanguages: editSong.originalLanguages ?? [],
+        songSourceUrl: editSong.sourceUrl ?? '',
+        translations: editSong.translations.map((t) => ({ ...t })),
+      });
+    } else {
+      setOriginalState(null);
     }
   }, [editSong?.id]);
 
@@ -105,6 +126,16 @@ export default function EditorScreen() {
   const isEditMode = !!editSong;
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
   const searchDisabled = !songName.trim() && !artistName.trim();
+
+  // Check if current state differs from original (for Reset button)
+  const hasChanges = originalState ? (
+    songName !== originalState.songName ||
+    artistName !== originalState.artistName ||
+    originalLyrics !== originalState.originalLyrics ||
+    JSON.stringify(originalLanguages) !== JSON.stringify(originalState.originalLanguages) ||
+    songSourceUrl !== originalState.songSourceUrl ||
+    JSON.stringify(translations) !== JSON.stringify(originalState.translations)
+  ) : false;
 
   const currentLyrics = activeTab === 0 ? originalLyrics : translations[activeTab - 1]?.lyrics ?? '';
   const setCurrentLyrics = (text: string) => {
@@ -148,8 +179,23 @@ export default function EditorScreen() {
         translations: resolvedTranslations,
       });
       setCurrentSongId(editSong.id);
-      handleClear();
-      navigation.navigate('Learn');
+      // Update the original state to reflect the new saved state
+      setOriginalState({
+        songName: songName.trim(),
+        artistName: artistName.trim(),
+        originalLyrics,
+        originalLanguages: [...originalLanguages],
+        songSourceUrl: resolvedSourceUrl ?? '',
+        translations: resolvedTranslations.map((t) => ({ ...t })),
+      });
+      // Clear pending URLs since they are now saved
+      setPendingSourceUrls({});
+      const titles: Record<number, string> = {};
+      if (resolvedSourceUrlTitle) titles[0] = resolvedSourceUrlTitle;
+      resolvedTranslations.forEach((t, i) => {
+        if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
+      });
+      setPendingPageTitles(titles);
     } else {
       const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, originalLanguages, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
       setCurrentSongId(song.id);
@@ -170,6 +216,31 @@ export default function EditorScreen() {
     setPendingPageTitles({});
     setEditSongId(undefined);
     navigation.setParams({ songId: undefined });
+  };
+
+  const handleReset = () => {
+    if (originalState) {
+      setSongName(originalState.songName);
+      setArtistName(originalState.artistName);
+      setOriginalLyrics(originalState.originalLyrics);
+      setOriginalLanguages([...originalState.originalLanguages]);
+      setSongSourceUrl(originalState.songSourceUrl);
+      setTranslations(originalState.translations.map((t) => ({ ...t })));
+      setActiveTab(0);
+      setPendingSourceUrls({});
+      setPendingPageTitles({});
+    }
+  };
+
+  const handleNew = () => {
+    handleClear();
+  };
+
+  const handleBack = () => {
+    if (currentSongId) {
+      setEditSongId(currentSongId);
+      navigation.setParams({ songId: currentSongId });
+    }
   };
 
   const handleGoogleSearch = () => {
@@ -239,11 +310,23 @@ export default function EditorScreen() {
   /* ─── Shared Controls ─────────────────────────────────────── */
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { justifyContent: isEditMode ? 'flex-start' : (currentSongId ? 'space-between' : 'flex-end') }]}>
+        {isEditMode && (
+          <TouchableOpacity style={styles.iconButton} onPress={handleNew}>
+            <Ionicons name="add" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
+        {!isEditMode && currentSongId && (
+          <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
         <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
-        <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
-          <Ionicons name="musical-note" size={22} color={Colors.primary} />
-        </TouchableOpacity>
+        {!isEditMode && (
+          <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
+            <Ionicons name="musical-note" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
       <View style={styles.inputRow}>
         <Ionicons name="musical-note-outline" size={20} color={Colors.textSecondary} />
@@ -394,19 +477,34 @@ export default function EditorScreen() {
               <Text style={styles.actionButtonText}>Paste</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.saveButton, isEditMode && !hasChanges && styles.disabled]}
+              disabled={isEditMode && !hasChanges}
+              onPress={handleSave}
+            >
               <Ionicons name="checkmark" size={20} color={Colors.white} />
               <Text style={styles.actionButtonText}>Save</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
-            disabled={allEmpty}
-            onPress={handleClear}
-          >
-            <Ionicons name="close" size={20} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Clear</Text>
-          </TouchableOpacity>
+          {isEditMode ? (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.dangerButton, !hasChanges && styles.disabled]}
+              disabled={!hasChanges}
+              onPress={handleReset}
+            >
+              <Ionicons name="refresh" size={20} color={Colors.white} />
+              <Text style={styles.actionButtonText}>Reset</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.dangerButton, allEmpty && styles.disabled]}
+              disabled={allEmpty}
+              onPress={handleClear}
+            >
+              <Ionicons name="close" size={20} color={Colors.white} />
+              <Text style={styles.actionButtonText}>Clear</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -495,19 +593,34 @@ export default function EditorScreen() {
                 <Text style={styles.actionButtonText}>Paste</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.saveButton, isEditMode && !hasChanges && styles.disabled]}
+                disabled={isEditMode && !hasChanges}
+                onPress={handleSave}
+              >
                 <Ionicons name="checkmark" size={20} color={Colors.white} />
                 <Text style={styles.actionButtonText}>Save</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={[styles.actionButton, styles.clearButton, allEmpty && styles.disabled]}
-              disabled={allEmpty}
-              onPress={handleClear}
-            >
-              <Ionicons name="close" size={20} color={Colors.white} />
-              <Text style={styles.actionButtonText}>Clear</Text>
-            </TouchableOpacity>
+            {isEditMode ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.dangerButton, !hasChanges && styles.disabled]}
+                disabled={!hasChanges}
+                onPress={handleReset}
+              >
+                <Ionicons name="refresh" size={20} color={Colors.white} />
+                <Text style={styles.actionButtonText}>Reset</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.dangerButton, allEmpty && styles.disabled]}
+                disabled={allEmpty}
+                onPress={handleClear}
+              >
+                <Ionicons name="close" size={20} color={Colors.white} />
+                <Text style={styles.actionButtonText}>Clear</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -592,6 +705,7 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: Colors.surface,
     borderRadius: 10,
+    zIndex: 1,
   },
   inputRow: {
     flexDirection: 'row',
@@ -766,7 +880,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   actionButton: {
-    flex: 1,
+    flex: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -778,7 +892,8 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: Colors.success,
   },
-  clearButton: {
+  dangerButton: {
+    flex: 4,
     backgroundColor: Colors.danger,
   },
   actionButtonText: {

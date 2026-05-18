@@ -288,7 +288,7 @@ export default function EditorScreen() {
   /* ─── Shared Controls ─────────────────────────────────────── */
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { justifyContent: isEditMode ? 'flex-start' : 'flex-end' }]}>
         {isEditMode && (
           <TouchableOpacity style={styles.newButton} onPress={handleNew}>
             <Ionicons name="add" size={22} color={Colors.primary} />

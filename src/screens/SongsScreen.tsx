@@ -25,7 +25,7 @@ import LanguageFilterModal from '../components/LanguageFilterModal';
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RootTabParamList, 'Songs'>>();
-  const { songs, setCurrentSongId, deleteSong, trackSongOpen, setMatchedSongs } = useStore();
+  const { songs, setCurrentSongId, deleteSong, trackSongOpen, setMatchedSongs, setIsLoadingSong } = useStore();
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -122,6 +122,7 @@ export default function SongsScreen() {
     : languageFilteredSongs;
 
   const handlePressSong = (song: Song) => {
+    setIsLoadingSong(true);
     setCurrentSongId(song.id);
     trackSongOpen(song.id);
     navigation.navigate('Editor', { songId: song.id });

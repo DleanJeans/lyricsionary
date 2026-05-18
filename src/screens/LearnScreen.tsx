@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
@@ -33,6 +33,8 @@ export default function LearnScreen() {
     setSelectedTranslationLanguages,
     blurTranslations,
     toggleBlurTranslations,
+    isLoadingSong,
+    setIsLoadingSong,
   } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
@@ -47,6 +49,7 @@ export default function LearnScreen() {
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [languagesInitialized, setLanguagesInitialized] = useState(false);
+  const [isRendering, setIsRendering] = useState(true);
 
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -58,6 +61,26 @@ export default function LearnScreen() {
       setLanguagesInitialized(true);
     }
   }, [song, languagesInitialized]);
+
+  // Turn off loading state once content is ready
+  useEffect(() => {
+    if (song && isLoadingSong) {
+      // Use requestAnimationFrame to ensure the UI has time to render
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          setIsLoadingSong(false);
+          setIsRendering(false);
+        }, 100);
+      });
+    }
+  }, [song, isLoadingSong]);
+
+  // Reset rendering state when song changes
+  useEffect(() => {
+    if (currentSongId) {
+      setIsRendering(true);
+    }
+  }, [currentSongId]);
 
   // Reset unblurred translations when blur is toggled off or song changes
   useEffect(() => {
@@ -172,7 +195,7 @@ export default function LearnScreen() {
     }
   };
 
-  const renderPressableText = (text: string) => {
+  const renderPressableText = useCallback((text: string) => {
     const textWords = text.split(/(\s+)/);
     return (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -259,7 +282,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  };
+  }, [words, song?.originalLanguages, selectedWord, displayMode, enableAnnotations, showEmoji, fontSize]);
 
   /* ─── Word panel ──────────────────────────────────────── */
   const selectedWordEntry = selectedWord
@@ -369,6 +392,14 @@ export default function LearnScreen() {
 
   return (
     <ScreenWrapper noPadding>
+      {/* Loading overlay */}
+      {(isLoadingSong || isRendering) && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading song...</Text>
+        </View>
+      )}
+
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <SongMetadataHeader
@@ -442,6 +473,23 @@ export default function LearnScreen() {
 
 const styles = StyleSheet.create({
   /* Layout */
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginTop: 8,
+  },
   wideMain: {
     flex: 1,
     flexDirection: 'row',

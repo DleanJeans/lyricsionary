@@ -233,8 +233,11 @@ export default function SongsScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.titleRow}>
-        <TouchableOpacity onPress={cycleSortMode} style={styles.searchButton}>
+      <View style={[styles.titleRow, showSearch ? { marginBottom: 12 } : { marginTop: 6.5, marginBottom: 25 - 6.5 }]}>
+        <TouchableOpacity
+          onPress={cycleSortMode}
+          style={styles.searchButton}
+        >
           <Ionicons
             name={getSortIcon()}
             size={22}
@@ -245,34 +248,50 @@ export default function SongsScreen() {
           <>
             <TextInput
               style={styles.searchInput}
-              placeholder={searchInLyrics ? "Search in lyrics..." : "Search by title or artist..."}
+              placeholder={searchInLyrics ? 'Search lyrics' : 'Search title or artist'}
               placeholderTextColor={Colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
             />
-            <TouchableOpacity
-              onPress={() => setSearchInLyrics(!searchInLyrics)}
-              style={styles.lyricsToggle}
-            >
-              <Ionicons
-                name={searchInLyrics ? "musical-notes" : "musical-notes-outline"}
-                size={22}
-                color={searchInLyrics ? Colors.primary : Colors.textMuted}
-              />
-            </TouchableOpacity>
+            <View style={styles.searchButtons}>
+              <TouchableOpacity
+                onPress={() => setSearchInLyrics(!searchInLyrics)}
+                style={styles.lyricsToggle}
+              >
+                <Ionicons
+                  name={searchInLyrics ? 'musical-notes' : 'musical-notes-outline'}
+                  size={22}
+                  color={searchInLyrics ? Colors.primary : Colors.textMuted}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={toggleSearch}
+              >
+                <Ionicons
+                  name={'close'}
+                  size={22}
+                  color={Colors.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
           </>
         ) : (
           <Text style={styles.title}>Saved Songs</Text>
         )}
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
-            <Ionicons
-              name={showSearch ? 'close' : 'search'}
-              size={22}
-              color={Colors.textMuted}
-            />
-          </TouchableOpacity>
+          {!showSearch && (
+            <TouchableOpacity
+              onPress={toggleSearch}
+              style={styles.searchButton}
+            >
+              <Ionicons
+                name={'search'}
+                size={22}
+                color={Colors.textMuted}
+              />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() => setShowLanguageFilter(true)}
             style={styles.searchButton}
@@ -290,12 +309,22 @@ export default function SongsScreen() {
         <View style={styles.empty}>
           {songs.length === 0 ? (
             <>
-              <Ionicons name="library-outline" size={64} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No saved songs yet.{'\n'}Go to Editor to add some!</Text>
+              <Ionicons
+                name="library-outline"
+                size={64}
+                color={Colors.textMuted}
+              />
+              <Text style={styles.emptyText}>
+                No saved songs yet.{'\n'}Go to Editor to add some!
+              </Text>
             </>
           ) : (
             <>
-              <Ionicons name="search-outline" size={64} color={Colors.textMuted} />
+              <Ionicons
+                name="search-outline"
+                size={64}
+                color={Colors.textMuted}
+              />
               <Text style={styles.emptyText}>
                 {selectedLanguages.length > 0 || searchQuery.trim()
                   ? 'No songs match your filters.'
@@ -347,7 +376,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
   },
   title: {
     position: 'absolute',
@@ -362,10 +390,13 @@ const styles = StyleSheet.create({
     padding: 4,
     zIndex: 1,
   },
+  searchButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginRight: 16,
+    marginLeft: -60,
+  },
   lyricsToggle: {
-    padding: 4,
-    marginLeft: 8,
-    zIndex: 1,
   },
   searchInput: {
     flex: 1,
@@ -377,6 +408,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: Colors.border,
+    marginLeft: 8,
   },
   list: {
     paddingBottom: 40,

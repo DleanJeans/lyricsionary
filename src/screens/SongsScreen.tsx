@@ -214,10 +214,11 @@ export default function SongsScreen() {
         ) : (
           <Text style={styles.title}>Saved Songs</Text>
         )}
-        <TouchableOpacity
-          onPress={() => setShowLanguageFilter(true)}
-          style={styles.searchButton}
-        >
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            onPress={() => setShowLanguageFilter(true)}
+            style={styles.searchButton}
+          >
           <Ionicons
             name="funnel-outline"
             size={22}
@@ -231,7 +232,9 @@ export default function SongsScreen() {
             color={Colors.textMuted}
           />
         </TouchableOpacity>
+        </View>
       </View>
+
       {filteredSongs.length === 0 ? (
         <View style={styles.empty}>
           {songs.length === 0 ? (
@@ -291,7 +294,7 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
@@ -306,6 +309,7 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     padding: 4,
+    zIndex: 1,
   },
   searchInput: {
     flex: 1,

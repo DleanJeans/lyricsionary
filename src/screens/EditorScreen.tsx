@@ -29,6 +29,7 @@ import {
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
 import MultiLanguageSelect from '../components/MultiLanguageSelect';
+import FabBubble from '../components/FabBubble';
 
 
 export default function EditorScreen() {
@@ -37,7 +38,7 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab, setMatchedSongs } = useStore();
+  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab, setMatchedSongs, matchedSongsSearchQuery, matchedSongsCount } = useStore();
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
@@ -342,6 +343,13 @@ export default function EditorScreen() {
         'Error',
         'Failed to read currently playing media. Please make sure notification access is enabled in Settings.'
       );
+    }
+  };
+
+  const handleMatchedSongsFabPress = () => {
+    const { matchedSongsSearchQuery } = useStore.getState();
+    if (matchedSongsSearchQuery) {
+      navigation.navigate('Songs', { searchQuery: matchedSongsSearchQuery });
     }
   };
 
@@ -699,6 +707,18 @@ export default function EditorScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* FAB for matched songs */}
+      {!isEditMode && matchedSongsSearchQuery && matchedSongsCount > 0 && (
+        <FabBubble
+          icon="musical-notes"
+          text={matchedSongsCount === 1 ? 'Already Saved!' : `Found ${matchedSongsCount} songs`}
+          onPress={handleMatchedSongsFabPress}
+          tailPosition="right"
+          right={10}
+          bottom={0}
+        />
+      )}
     </ScreenWrapper>
   );
 }

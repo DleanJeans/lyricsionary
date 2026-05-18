@@ -12,8 +12,6 @@ import { Colors } from '../constants/theme';
 import { WIDE_BREAKPOINT, SIDE_NAV_WIDTH } from '../hooks/useLayout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import VersionInfo from '../components/VersionInfo';
-import FabBubble from '../components/FabBubble';
-import { useStore } from '../store/useStore';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -29,9 +27,6 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isWide = width >= WIDE_BREAKPOINT;
-  const { matchedSongsSearchQuery, matchedSongsCount } = useStore();
-
-  const showMatchedSongsFab = matchedSongsSearchQuery && matchedSongsCount > 0;
 
   const handlePress = (routeName: string, routeKey: string, focused: boolean) => {
     const event = navigation.emit({
@@ -44,15 +39,8 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     }
   };
 
-  const handleMatchedSongsFabPress = () => {
-    navigation.navigate('Songs', { searchQuery: matchedSongsSearchQuery });
-  };
-
   /* ─── Wide: left sidebar ─────────────────────────────────────── */
   if (isWide) {
-    // Find the Songs tab position
-    const songsRouteIndex = state.routes.findIndex(r => r.name === 'Songs');
-
     return (
       <View style={styles.sidebar}>
         {/* Logo */}
@@ -68,36 +56,22 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
           const meta = TAB_META[route.name];
           if (!meta) return null;
           const focused = index === state.index;
-          const isSongsTab = route.name === 'Songs';
-
           return (
-            <View key={route.key} style={{ position: 'relative' }}>
-              <TouchableOpacity
-                style={[styles.sideItem, focused && styles.sideItemActive]}
-                onPress={() => handlePress(route.name, route.key, focused)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={focused ? meta.iconFocused : meta.icon}
-                  size={20}
-                  color={focused ? Colors.primary : Colors.textMuted}
-                />
-                <Text style={[styles.sideLabel, focused && styles.sideLabelActive]}>
-                  {meta.label}
-                </Text>
-              </TouchableOpacity>
-              {/* FAB above Songs tab */}
-              {isSongsTab && showMatchedSongsFab && (
-                <FabBubble
-                  icon="musical-notes"
-                  text={matchedSongsCount === 1 ? 'Already Saved!' : `Found ${matchedSongsCount} songs`}
-                  onPress={handleMatchedSongsFabPress}
-                  tailPosition="right"
-                  bottom={-10}
-                  right={-200}
-                />
-              )}
-            </View>
+            <TouchableOpacity
+              key={route.key}
+              style={[styles.sideItem, focused && styles.sideItemActive]}
+              onPress={() => handlePress(route.name, route.key, focused)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={focused ? meta.iconFocused : meta.icon}
+                size={20}
+                color={focused ? Colors.primary : Colors.textMuted}
+              />
+              <Text style={[styles.sideLabel, focused && styles.sideLabelActive]}>
+                {meta.label}
+              </Text>
+            </TouchableOpacity>
           );
         })}
 
@@ -117,36 +91,22 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         const meta = TAB_META[route.name];
         if (!meta) return null;
         const focused = index === state.index;
-        const isSongsTab = route.name === 'Songs';
-
         return (
-          <View key={route.key} style={{ flex: 1, position: 'relative' }}>
-            <TouchableOpacity
-              style={styles.bottomItem}
-              onPress={() => handlePress(route.name, route.key, focused)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={focused ? meta.iconFocused : meta.icon}
-                size={22}
-                color={focused ? Colors.primary : Colors.textMuted}
-              />
-              <Text style={[styles.bottomLabel, focused && styles.bottomLabelActive]}>
-                {meta.label}
-              </Text>
-            </TouchableOpacity>
-            {/* FAB above Songs tab */}
-            {isSongsTab && showMatchedSongsFab && (
-              <FabBubble
-                icon="musical-notes"
-                text={matchedSongsCount === 1 ? 'Already Saved!' : `Found ${matchedSongsCount} songs`}
-                onPress={handleMatchedSongsFabPress}
-                tailPosition="right"
-                bottom={60}
-                right={10}
-              />
-            )}
-          </View>
+          <TouchableOpacity
+            key={route.key}
+            style={styles.bottomItem}
+            onPress={() => handlePress(route.name, route.key, focused)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={focused ? meta.iconFocused : meta.icon}
+              size={22}
+              color={focused ? Colors.primary : Colors.textMuted}
+            />
+            <Text style={[styles.bottomLabel, focused && styles.bottomLabelActive]}>
+              {meta.label}
+            </Text>
+          </TouchableOpacity>
         );
       })}
     </View>

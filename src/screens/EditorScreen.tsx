@@ -310,14 +310,14 @@ export default function EditorScreen() {
   /* ─── Shared Controls ─────────────────────────────────────── */
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
-      <View style={[styles.header, { justifyContent: isEditMode ? 'flex-start' : 'flex-end' }]}>
+      <View style={[styles.header, { justifyContent: isEditMode ? 'flex-start' : (currentSongId ? 'space-between' : 'flex-end') }]}>
         {isEditMode && (
-          <TouchableOpacity style={styles.newButton} onPress={handleNew}>
+          <TouchableOpacity style={styles.iconButton} onPress={handleNew}>
             <Ionicons name="add" size={22} color={Colors.primary} />
           </TouchableOpacity>
         )}
         {!isEditMode && currentSongId && (
-          <TouchableOpacity style={styles.newButton} onPress={handleBack}>
+          <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
         )}
@@ -701,16 +701,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  newButton: {
-    padding: 8,
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    zIndex: 1,
-  },
   iconButton: {
     padding: 8,
     backgroundColor: Colors.surface,
     borderRadius: 10,
+    zIndex: 1,
   },
   inputRow: {
     flexDirection: 'row',

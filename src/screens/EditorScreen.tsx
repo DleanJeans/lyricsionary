@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.danger,
   },
   resetButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.danger,
   },
   actionButtonText: {
     color: Colors.white,

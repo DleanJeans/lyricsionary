@@ -12,6 +12,7 @@ import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
+import SongMetadataHeader from '../components/SongMetadataHeader';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
 
@@ -359,19 +360,11 @@ export default function LearnScreen() {
     <ScreenWrapper noPadding>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.songNameRow}>
-            <Text style={styles.songName} numberOfLines={1}>
-              {song.songName}
-            </Text>
-            <View style={styles.headerFlags}>
-              {(song.originalLanguages ?? []).map((lang) => (
-                <Text key={`orig-${lang}`} style={styles.flag}>
-                  {getFlagForLanguage(lang)}
-                </Text>
-              ))}
-            </View>
-          </View>
-          <Text style={styles.artistName}>{song.artistName}</Text>
+          <SongMetadataHeader
+            songName={song.songName}
+            artistName={song.artistName}
+            originalLanguages={song.originalLanguages ?? []}
+          />
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => setShowDropdown(true)}>
@@ -503,30 +496,6 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
     marginRight: 12,
-  },
-  songNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  headerFlags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  flag: {
-    fontSize: 14,
-  },
-  songName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  artistName: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-    marginTop: 2,
   },
   headerRight: {
     flexDirection: 'row',

@@ -28,7 +28,7 @@ import {
 } from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
-import MultiLanguageSelect from '../components/MultiLanguageSelect';
+import SongMetadataHeader from '../components/SongMetadataHeader';
 
 
 export default function EditorScreen() {
@@ -58,6 +58,7 @@ export default function EditorScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].name);
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
 
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
@@ -216,6 +217,7 @@ export default function EditorScreen() {
     setPendingPageTitles({});
     setEditSongId(undefined);
     navigation.setParams({ songId: undefined });
+    setIsEditingMetadata(true);
   };
 
   const handleReset = () => {
@@ -240,6 +242,7 @@ export default function EditorScreen() {
     if (currentSongId) {
       setEditSongId(currentSongId);
       navigation.setParams({ songId: currentSongId });
+      setIsEditingMetadata(false);
     }
   };
 
@@ -310,52 +313,49 @@ export default function EditorScreen() {
   /* ─── Shared Controls ─────────────────────────────────────── */
   const infoPanel = (
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
-      <View style={[styles.header, { justifyContent: isEditMode ? 'flex-start' : (currentSongId ? 'space-between' : 'flex-end') }]}>
-        {isEditMode && (
-          <TouchableOpacity style={styles.iconButton} onPress={handleNew}>
-            <Ionicons name="add" size={22} color={Colors.primary} />
-          </TouchableOpacity>
-        )}
+      <View style={styles.header}>
         {!isEditMode && currentSongId && (
           <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
         )}
-        <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>
-        {!isEditMode && (
-          <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
-            <Ionicons name="musical-note" size={22} color={Colors.primary} />
-          </TouchableOpacity>
+        {isEditingMetadata && <Text style={styles.title}>{isEditMode ? 'Edit Lyrics' : 'New Lyrics'}</Text>}
+        {!isEditingMetadata && (
+          <View style={styles.titleReplacement}>
+            <SongMetadataHeader
+              songName={songName}
+              artistName={artistName}
+              originalLanguages={originalLanguages}
+              isEditing={false}
+              onPress={() => setIsEditingMetadata(true)}
+            />
+          </View>
         )}
+        <View style={styles.headerRight}>
+          {isEditMode && (
+            <TouchableOpacity style={styles.iconButton} onPress={handleNew}>
+              <Ionicons name="add" size={22} color={Colors.primary} />
+            </TouchableOpacity>
+          )}
+          {!isEditMode && (
+            <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
+              <Ionicons name="musical-note" size={22} color={Colors.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-      <View style={styles.inputRow}>
-        <Ionicons name="musical-note-outline" size={20} color={Colors.textSecondary} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Song Name"
-          placeholderTextColor={Colors.textMuted}
-          value={songName}
-          onChangeText={setSongName}
+      {isEditingMetadata && (
+        <SongMetadataHeader
+          songName={songName}
+          artistName={artistName}
+          originalLanguages={originalLanguages}
+          isEditing={true}
+          onSongNameChange={setSongName}
+          onArtistNameChange={setArtistName}
+          onLanguagesChange={setOriginalLanguages}
+          showLanguageSelect={true}
         />
-      </View>
-      <View style={styles.inputRow}>
-        <Ionicons name="person-outline" size={20} color={Colors.textSecondary} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Artist Name"
-          placeholderTextColor={Colors.textMuted}
-          value={artistName}
-          onChangeText={setArtistName}
-        />
-      </View>
-      <View style={[styles.inputRow, { gap: 14 }]}>
-        <Ionicons name="language-outline" size={20} color={Colors.textSecondary} />
-        <MultiLanguageSelect
-          value={originalLanguages}
-          onValueChange={setOriginalLanguages}
-          placeholder="Original Language(s)"
-        />
-      </View>
+      )}
       {!currentLyrics && (
         <TouchableOpacity
           style={[styles.searchButton, searchDisabled && styles.disabled]}
@@ -562,6 +562,12 @@ export default function EditorScreen() {
               value={currentLyrics}
               onChangeText={setCurrentLyrics}
               textAlignVertical="top"
+              onPress={() => {
+                // Only close if both fields have values
+                if (songName.trim() && artistName.trim()) {
+                  setIsEditingMetadata(false);
+                }
+              }}
             />
             <View style={styles.lyricsInputMeasureContainer} pointerEvents="none">
               <Text style={styles.lyricsInputMeasure} onTextLayout={handleTextLayout}>
@@ -688,9 +694,14 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 8,
+    zIndex: 1,
   },
   title: {
     position: 'absolute',
@@ -700,6 +711,10 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
+  },
+  titleReplacement: {
+    flex: 1,
+    marginHorizontal: 8,
   },
   iconButton: {
     padding: 8,

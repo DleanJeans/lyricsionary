@@ -4,19 +4,24 @@ import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
 import { detectLyricsJS } from '../utils/detectLyricsJS';
+import { detectTranslationJS } from '../utils/detectTranslationJS';
+import { scrapeTranslationJS } from '../utils/scrapeTranslationJS';
+import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
+import { remapTranslation } from '../utils/deeplTranslation';
 import Toast from '../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 export default function WebScreen() {
   const navigation = useNavigation<any>();
-  const { webUrl, setWebUrl, scrapeTargetTab } = useStore();
+  const route = useRoute<any>();
+  const { webUrl, setWebUrl, scrapeTargetTab, deeplLineMap, setDeeplLineMap } = useStore();
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
   const insets = useSafeAreaInsets();
@@ -26,6 +31,7 @@ export default function WebScreen() {
   const [pageTitle, setPageTitle] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [showFab, setShowFab] = useState(false);
+  const [showTranslationFab, setShowTranslationFab] = useState(false);
   const [loading, setLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -47,6 +53,10 @@ export default function WebScreen() {
     webViewRef.current?.injectJavaScript(scrapeLyricsJS);
   };
 
+  const handleScrapeTranslation = () => {
+    webViewRef.current?.injectJavaScript(scrapeTranslationJS);
+  };
+
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -58,12 +68,25 @@ export default function WebScreen() {
         setShowFab(data.hasLyrics === true);
         return;
       }
+      if (data.type === 'translationDetected') {
+        setShowTranslationFab(data.hasTranslation === true);
+        return;
+      }
       if (data.type === 'lyrics' && data.text) {
         let lyrics = data.text.trim();
         if (currentUrl.includes('genius.com')) {
           lyrics = cleanGeniusLyrics(lyrics);
         }
         navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: scrapeTargetTab });
+      }
+      if (data.type === 'translation' && data.text) {
+        let translation = data.text.trim();
+        // Remap translation using the line map if available
+        if (deeplLineMap) {
+          translation = remapTranslation(translation, deeplLineMap);
+          setDeeplLineMap(null); // Clear the line map after use
+        }
+        navigation.navigate('Editor', { scrapedLyrics: translation, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: scrapeTargetTab });
       }
       if (data.type === 'error') {
         setToast(data.message || 'Failed to scrape lyrics');
@@ -115,6 +138,19 @@ export default function WebScreen() {
     };
   }, [canGoBack]);
 
+  // Handle pasting into DeepL
+  useEffect(() => {
+    const pasteText = route.params?.pasteIntoDeepL as string | undefined;
+    if (pasteText && webViewRef.current) {
+      // Wait a bit for the page to be ready, then inject the paste script
+      const timer = setTimeout(() => {
+        webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pasteText));
+        navigation.setParams({ pasteIntoDeepL: undefined });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [route.params?.pasteIntoDeepL]);
+
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
       <View style={[styles.addressBar, { paddingTop: insets.top || 6 }]}>
@@ -165,13 +201,15 @@ export default function WebScreen() {
           setPageTitle(navState.title ?? '');
           setShowUrlInput(false);
           setCanGoBack(navState.canGoBack);
-          setShowFab(false); // Reset button when navigating to new page
+          setShowFab(false); // Reset lyrics button when navigating to new page
+          setShowTranslationFab(false); // Reset translation button when navigating to new page
         }}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => {
           setLoading(false);
-          // Inject detection script when page finishes loading
+          // Inject both detection scripts when page finishes loading
           webViewRef.current?.injectJavaScript(detectLyricsJS);
+          webViewRef.current?.injectJavaScript(detectTranslationJS);
         }}
         onMessage={handleMessage}
         javaScriptEnabled
@@ -183,7 +221,7 @@ export default function WebScreen() {
       )}
 
       {!!toast && <Toast message={toast ?? ''} />}
-      
+
       {showFab && (
         <View style={styles.fab} pointerEvents="box-none">
           <TouchableOpacity style={styles.fabBubble} onPress={handleScrapeLyrics} activeOpacity={0.8}>
@@ -191,6 +229,16 @@ export default function WebScreen() {
             <Text style={styles.fabText}>Get Lyrics</Text>
           </TouchableOpacity>
           <View style={styles.fabTail} />
+        </View>
+      )}
+
+      {showTranslationFab && (
+        <View style={[styles.fab, styles.translationFab]} pointerEvents="box-none">
+          <TouchableOpacity style={[styles.fabBubble, styles.translationFabBubble]} onPress={handleScrapeTranslation} activeOpacity={0.8}>
+            <Ionicons name="download-outline" size={22} color={Colors.white} />
+            <Text style={styles.fabText}>Get Translation</Text>
+          </TouchableOpacity>
+          <View style={[styles.fabTail, styles.translationFabTail]} />
         </View>
       )}
     </View>
@@ -263,6 +311,11 @@ const styles = StyleSheet.create({
     left: 10,
     alignItems: 'flex-start',
   },
+  translationFab: {
+    left: undefined,
+    right: 10,
+    alignItems: 'flex-end',
+  },
   fabBubble: {
     backgroundColor: Colors.primary,
     borderRadius: 20,
@@ -277,6 +330,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
+  translationFabBubble: {
+    backgroundColor: Colors.success,
+  },
   fabTail: {
     width: 0,
     height: 0,
@@ -288,6 +344,11 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
     borderTopColor: Colors.primary,
     marginLeft: 18,
+  },
+  translationFabTail: {
+    borderTopColor: Colors.success,
+    marginLeft: undefined,
+    marginRight: 18,
   },
   fabText: {
     color: Colors.white,

@@ -13,6 +13,7 @@ interface AppState {
   currentSongId: string | null;
   webUrl: string;
   scrapeTargetTab: number;
+  deeplLineMap: number[] | null;  // Stores line mapping for DeepL translation
   fontSize: number;
   showTranslations: boolean;
   selectedTranslationLanguages: string[];
@@ -29,6 +30,7 @@ interface AppState {
   // Web actions
   setWebUrl: (url: string) => void;
   setScrapeTargetTab: (tab: number) => void;
+  setDeeplLineMap: (lineMap: number[] | null) => void;
 
   // Learn actions
   setFontSize: (size: number) => void;
@@ -58,6 +60,7 @@ export const useStore = create<AppState>((set, get) => ({
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
   scrapeTargetTab: 0,
+  deeplLineMap: null,
   fontSize: 18,
   showTranslations: true,
   selectedTranslationLanguages: [],
@@ -131,6 +134,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setWebUrl: (url) => set({ webUrl: url }),
   setScrapeTargetTab: (tab) => set({ scrapeTargetTab: tab }),
+  setDeeplLineMap: (lineMap) => set({ deeplLineMap: lineMap }),
 
   setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
 

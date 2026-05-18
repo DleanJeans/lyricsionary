@@ -19,7 +19,7 @@ import { LANGUAGES } from '../constants/languages';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
-import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import { GOOGLE_SEARCH_URL, DEEPL_URL } from '../constants/urls';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import {
   hasNotificationPermission,
@@ -29,6 +29,8 @@ import {
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
 import SongMetadataHeader from '../components/SongMetadataHeader';
+import { deduplicateLines } from '../utils/deeplTranslation';
+import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
 
 
 export default function EditorScreen() {
@@ -37,7 +39,7 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab } = useStore();
+  const { songs, saveSong, updateSong, currentSongId, setCurrentSongId, setWebUrl, setScrapeTargetTab, setDeeplLineMap } = useStore();
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
@@ -252,6 +254,25 @@ export default function EditorScreen() {
     navigation.navigate('Web');
   };
 
+  const handleGetTranslation = () => {
+    if (activeTab === 0 || !originalLyrics) return; // Only works for translation tabs
+
+    // Deduplicate lines to fit within DeepL's 1500 character limit
+    const { deduplicated, lineMap } = deduplicateLines(originalLyrics);
+
+    // Store the line map in the store so WebScreen can remap the translation
+    setDeeplLineMap(lineMap);
+
+    // Navigate to DeepL
+    setWebUrl(DEEPL_URL);
+    navigation.navigate('Web');
+
+    // Wait a bit for the page to load, then paste the deduplicated lyrics
+    setTimeout(() => {
+      navigation.setParams({ pasteIntoDeepL: deduplicated });
+    }, 100);
+  };
+
   const handleAddTranslation = () => {
     const alreadyAdded = translations.some((t) => t.language === selectedLanguage);
     if (alreadyAdded) {
@@ -357,14 +378,25 @@ export default function EditorScreen() {
         />
       )}
       {!currentLyrics && (
-        <TouchableOpacity
-          style={[styles.searchButton, searchDisabled && styles.disabled]}
-          disabled={searchDisabled}
-          onPress={handleGoogleSearch}
-        >
-          <Ionicons name="search" size={18} color={Colors.white} />
-          <Text style={styles.searchButtonText}>Google Search</Text>
-        </TouchableOpacity>
+        <View style={styles.searchButtonRow}>
+          <TouchableOpacity
+            style={[styles.searchButton, searchDisabled && styles.disabled]}
+            disabled={searchDisabled}
+            onPress={handleGoogleSearch}
+          >
+            <Ionicons name="search" size={18} color={Colors.white} />
+            <Text style={styles.searchButtonText}>Google Search</Text>
+          </TouchableOpacity>
+          {activeTab > 0 && originalLyrics && (
+            <TouchableOpacity
+              style={[styles.searchButton, styles.deeplButton]}
+              onPress={handleGetTranslation}
+            >
+              <Ionicons name="language" size={18} color={Colors.white} />
+              <Text style={styles.searchButtonText}>Get Translation</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
         <TouchableOpacity
@@ -739,7 +771,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginLeft: 10,
   },
+  searchButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
   searchButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -747,7 +785,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     gap: 8,
-    marginBottom: 16,
+  },
+  deeplButton: {
+    backgroundColor: Colors.success,
   },
   searchButtonText: {
     color: Colors.white,

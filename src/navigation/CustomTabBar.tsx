@@ -90,11 +90,11 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               {isSongsTab && showMatchedSongsFab && (
                 <FabBubble
                   icon="musical-notes"
-                  text={matchedSongsCount > 1 ? `Found ${matchedSongsCount} song${matchedSongsCount > 1 ? 's' : ''}` : 'Already Saved!'}
+                  text={matchedSongsCount === 1 ? 'Already Saved!' : `Found ${matchedSongsCount} songs`}
                   onPress={handleMatchedSongsFabPress}
                   tailPosition="right"
-                  bottom={0}
-                  right={-250}
+                  bottom={-10}
+                  right={-200}
                 />
               )}
             </View>
@@ -139,7 +139,7 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             {isSongsTab && showMatchedSongsFab && (
               <FabBubble
                 icon="musical-notes"
-                text={matchedSongsCount > 1 ? `Found ${matchedSongsCount} song${matchedSongsCount > 1 ? 's' : ''}` : 'Already Saved!'}
+                text={matchedSongsCount === 1 ? 'Already Saved!' : `Found ${matchedSongsCount} songs`}
                 onPress={handleMatchedSongsFabPress}
                 tailPosition="right"
                 bottom={60}

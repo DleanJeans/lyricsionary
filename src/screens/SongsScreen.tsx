@@ -20,6 +20,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
+import LanguageFilterModal from '../components/LanguageFilterModal';
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
@@ -31,6 +32,17 @@ export default function SongsScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
+  const [showLanguageFilter, setShowLanguageFilter] = useState(false);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+
+  // Get all unique languages from songs
+  const availableLanguages = React.useMemo(() => {
+    const languageSet = new Set<string>();
+    songs.forEach((song) => {
+      (song.originalLanguages ?? []).forEach((lang) => languageSet.add(lang));
+    });
+    return Array.from(languageSet).sort();
+  }, [songs]);
 
   const sortedSongs = [...songs].sort((a, b) => {
     switch (sortMode) {
@@ -47,13 +59,22 @@ export default function SongsScreen() {
     }
   });
 
+  // Apply language filter
+  const languageFilteredSongs =
+    selectedLanguages.length > 0
+      ? sortedSongs.filter((s) =>
+          (s.originalLanguages ?? []).some((lang) => selectedLanguages.includes(lang))
+        )
+      : sortedSongs;
+
+  // Apply search filter
   const filteredSongs = searchQuery.trim()
-    ? sortedSongs.filter(
+    ? languageFilteredSongs.filter(
         (s) =>
           s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.artistName.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : sortedSongs;
+    : languageFilteredSongs;
 
   const handlePressSong = (song: Song) => {
     setCurrentSongId(song.id);
@@ -181,6 +202,16 @@ export default function SongsScreen() {
         ) : (
           <Text style={styles.title}>Saved Songs</Text>
         )}
+        <TouchableOpacity
+          onPress={() => setShowLanguageFilter(true)}
+          style={styles.searchButton}
+        >
+          <Ionicons
+            name="funnel-outline"
+            size={22}
+            color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
+          />
+        </TouchableOpacity>
         <TouchableOpacity onPress={cycleSortMode} style={styles.searchButton}>
           <Ionicons
             name={getSortIcon()}
@@ -206,7 +237,11 @@ export default function SongsScreen() {
           ) : (
             <>
               <Ionicons name="search-outline" size={64} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No songs match your search.</Text>
+              <Text style={styles.emptyText}>
+                {selectedLanguages.length > 0 || searchQuery.trim()
+                  ? 'No songs match your filters.'
+                  : 'No songs match your search.'}
+              </Text>
             </>
           )}
         </View>
@@ -231,6 +266,13 @@ export default function SongsScreen() {
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
         destructive
+      />
+      <LanguageFilterModal
+        visible={showLanguageFilter}
+        onClose={() => setShowLanguageFilter(false)}
+        selectedLanguages={selectedLanguages}
+        onLanguagesChange={setSelectedLanguages}
+        availableLanguages={availableLanguages}
       />
     </ScreenWrapper>
   );

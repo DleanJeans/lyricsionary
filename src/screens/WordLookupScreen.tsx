@@ -390,7 +390,7 @@ export default function WordLookupScreen() {
             />
             {lookupSource === 'wiktionary' && scrapedIpaResults.length > 0 && (
               <View style={styles.ipaResultsRow}>
-                {scrapedIpaResults.map((ipa, index) => (
+                {scrapedIpaResults.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
                   <TouchableOpacity
                     key={index}
                     style={styles.ipaResultButton}
@@ -698,7 +698,6 @@ const styles = StyleSheet.create({
   ipaResultButtonText: {
     color: Colors.text,
     fontSize: 14,
-    fontWeight: '500',
   },
   sourceSelector: {
     flexDirection: 'row',

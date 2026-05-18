@@ -180,7 +180,24 @@ export default function LearnScreen() {
           }
 
           const cleanedWord = removeSpecialChars(word);
-          const wordEntry = cleanedWord ? words.find((w) => w.word.toLowerCase() === cleanedWord.toLowerCase()) : null;
+
+          // Helper function to check if word has contracted prefix (e.g., j'viens)
+          const hasContractedPrefix = (w: string) => /^[a-zA-Z]'/.test(w);
+
+          // For French words with contracted prefixes, also try matching without the prefix
+          // Check if original languages include French
+          const hasFrenchLanguage = song?.originalLanguages?.some(
+            lang => lang.toLowerCase() === 'french' || lang.toLowerCase() === 'fr'
+          );
+
+          let wordEntry = cleanedWord ? words.find((w) => w.word.toLowerCase() === cleanedWord.toLowerCase()) : null;
+
+          // If no match found and the word has a contracted prefix and song has French, try without prefix
+          if (!wordEntry && cleanedWord && hasContractedPrefix(cleanedWord) && hasFrenchLanguage) {
+            const withoutPrefix = cleanedWord.slice(2); // Remove first letter and apostrophe
+            wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
+          }
+
           const isSelected = selectedWord && cleanedWord === selectedWord;
 
           // Get display content based on mode

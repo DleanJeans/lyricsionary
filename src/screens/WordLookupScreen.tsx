@@ -93,11 +93,19 @@ export default function WordLookupScreen() {
   const [emoji, setEmoji] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
+  // Track which version of the word we're currently displaying
+  const [displayWord, setDisplayWord] = useState(word);
+
+  // Update displayWord when word changes
+  useEffect(() => {
+    setDisplayWord(word);
+  }, [word]);
+
   // Load existing word data if available
   useEffect(() => {
-    if (word) {
+    if (displayWord) {
       const existingWord = words.find(
-        (w) => w.word.toLowerCase() === word.toLowerCase()
+        (w) => w.word.toLowerCase() === displayWord.toLowerCase()
       );
       if (existingWord) {
         setLanguage(existingWord.language);
@@ -123,21 +131,21 @@ export default function WordLookupScreen() {
         }
       }
     }
-  }, [word, words, songId, originalLanguages]);
+  }, [displayWord, words, songId, originalLanguages]);
 
-  // Determine if word exists in saved words
-  const isNewWord = word && !words.find((w) => w.word.toLowerCase() === word.toLowerCase());
+  // Determine if word exists in saved words (check against displayWord)
+  const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
 
   // Set initial URL based on lookup source
   useEffect(() => {
-    if (word) {
+    if (displayWord) {
       const url = lookupSource === 'google'
-        ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(word)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}#${language}`;
+        ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(displayWord)}#${language}`;
       setCurrentUrl(url);
       setWebViewAtTop(true); // reset on navigation
     }
-  }, [word, lookupSource]);
+  }, [displayWord, lookupSource]);
 
   // Handle Android back button
   useEffect(() => {
@@ -169,10 +177,10 @@ export default function WordLookupScreen() {
   }, [canGoBackInWebView, navigation, source, songId]);
 
   const handleSave = async () => {
-    if (!word) return;
+    if (!displayWord) return;
 
-    // Update word with new data
-    await addOrUpdateWord(word, language, pronunciation, definition, songId, songName, lyricsLine, emoji);
+    // Update word with new data - save the displayWord, not the original word
+    await addOrUpdateWord(displayWord, language, pronunciation, definition, songId, songName, lyricsLine, emoji);
 
     // Navigate back to the source screen
     if (source === 'Words') {
@@ -211,6 +219,33 @@ export default function WordLookupScreen() {
     }
   };
 
+  // Helper functions for word manipulation
+  const isCapitalized = (word: string) => {
+    if (!word || word.length === 0) return false;
+    return word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase();
+  };
+
+  const hasContractedPrefix = (word: string) => {
+    if (!word || word.length < 2) return false;
+    return /^[a-zA-Z]'/.test(word);
+  };
+
+  const getLowercaseVersion = (word: string) => {
+    return word.charAt(0).toLowerCase() + word.slice(1);
+  };
+
+  const getWithoutPrefix = (word: string) => {
+    if (hasContractedPrefix(word)) {
+      return word.slice(2); // Remove first letter and apostrophe
+    }
+    return word;
+  };
+
+  // Determine which buttons to show
+  const showCapitalizeButton = word && isCapitalized(word);
+  const showPrefixButton = word && hasContractedPrefix(word);
+  const showManipulationButtons = showCapitalizeButton || showPrefixButton;
+
   // Render context line with underlined word
   const renderContextLine = () => {
     if (!lyricsLine || !word) return null;
@@ -248,7 +283,7 @@ export default function WordLookupScreen() {
         <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{word}</Text>
+        <Text style={styles.headerTitle}>{displayWord}</Text>
         <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
           <Text style={styles.saveButtonText}>{isNewWord ? 'Add' : 'Save'}</Text>
         </TouchableOpacity>
@@ -267,6 +302,45 @@ export default function WordLookupScreen() {
             <Text style={styles.contextLabel}>Context</Text>
             <Text style={styles.contextSong}>{songName} - {artistName}</Text>
             {lyricsLine && renderContextLine()}
+
+          </View>
+        )}
+
+        {/* Word Manipulation Buttons */}
+        {showManipulationButtons && (
+          <View style={styles.manipulationButtons}>
+            {showCapitalizeButton && (
+              <TouchableOpacity
+                style={styles.manipulationButton}
+                onPress={() => {
+                  if (displayWord === word) {
+                    setDisplayWord(getLowercaseVersion(word!));
+                  } else {
+                    setDisplayWord(word!);
+                  }
+                }}
+              >
+                <Text style={styles.manipulationButtonText}>
+                  {displayWord === word ? getLowercaseVersion(word!) : word}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {showPrefixButton && (
+              <TouchableOpacity
+                style={styles.manipulationButton}
+                onPress={() => {
+                  if (displayWord === word) {
+                    setDisplayWord(getWithoutPrefix(word!));
+                  } else {
+                    setDisplayWord(word!);
+                  }
+                }}
+              >
+                <Text style={styles.manipulationButtonText}>
+                  {displayWord === word ? getWithoutPrefix(word!) : word}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -506,6 +580,26 @@ const styles = StyleSheet.create({
   },
   contextLineUnderlined: {
     textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  manipulationButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    marginLeft: 16,
+    flexWrap: 'wrap',
+  },
+  manipulationButton: {
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  manipulationButtonText: {
+    color: Colors.primary,
+    fontSize: 14,
     fontWeight: '600',
   },
   fieldSection: {

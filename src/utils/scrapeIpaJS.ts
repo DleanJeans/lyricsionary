@@ -2,7 +2,7 @@
 // Injects JavaScript to find all IPA elements within the specified language section
 export const getScrapeIpaJS = (language: string) => {
   const _scrapeIpaLogic = `
-    const ipaElements = Array.from(document.querySelectorAll('div:has(#${language}) + section .IPA'));
+    const ipaElements = Array.from(document.querySelectorAll('div:has(#${language}) + section li .IPA'));
     const ipaResults = ipaElements
       .map(ipa => ipa.textContent)
       .filter(text => text && text.includes('/'))

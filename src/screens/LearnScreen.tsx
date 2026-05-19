@@ -404,14 +404,6 @@ export default function LearnScreen() {
 
   return (
     <ScreenWrapper noPadding>
-      {/* Loading overlay */}
-      {(isLoadingSong || isRendering) && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading song...</Text>
-        </View>
-      )}
-
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <SongMetadataHeader
@@ -433,6 +425,14 @@ export default function LearnScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Loading overlay - positioned below header */}
+      {(isLoadingSong || isRendering) && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading song...</Text>
+        </View>
+      )}
 
       {/* Settings Menu */}
       {song && (
@@ -494,14 +494,14 @@ const styles = StyleSheet.create({
   /* Layout */
   loadingOverlay: {
     position: 'absolute',
-    top: 0,
+    top: 60,  // Position below the header
     left: 0,
     right: 0,
     bottom: 0,
     backgroundColor: Colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 999,  // Lower than header but above content
     gap: 12,
   },
   loadingText: {

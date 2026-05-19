@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TextInput,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -25,7 +26,7 @@ import LanguageFilterModal from '../components/LanguageFilterModal';
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RootTabParamList, 'Songs'>>();
-  const { songs, setCurrentSongId, deleteSong, trackSongOpen, setMatchedSongs, setIsLoadingSong } = useStore();
+  const { songs, setCurrentSongId, deleteSong, trackSongOpen, setMatchedSongs, setIsLoadingSong, isLoadingSong } = useStore();
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -257,6 +258,14 @@ export default function SongsScreen() {
 
   return (
     <ScreenWrapper>
+      {/* Loading overlay when navigating to song */}
+      {isLoadingSong && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading song...</Text>
+        </View>
+      )}
+
       <View style={[styles.titleRow, showSearch ? { marginBottom: 12 } : { marginTop: 6.5, marginBottom: 25 - 6.5 }]}>
         <TouchableOpacity
           onPress={cycleSortMode}
@@ -392,6 +401,23 @@ export default function SongsScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginTop: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,

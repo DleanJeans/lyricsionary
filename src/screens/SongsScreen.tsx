@@ -37,6 +37,7 @@ export default function SongsScreen() {
   const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [isLoadingSongLocal, setIsLoadingSongLocal] = useState(false);
 
   // Handle search query from route params
   useEffect(() => {
@@ -55,6 +56,12 @@ export default function SongsScreen() {
       setMatchedSongs(null, 0);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isLoadingSong) {
+      setIsLoadingSongLocal(false);
+    }
+  }, [isLoadingSong])
 
   // Get all unique languages from songs and count occurrences
   const { availableLanguages, languageCounts } = React.useMemo(() => {
@@ -121,14 +128,15 @@ export default function SongsScreen() {
         }
       })
     : languageFilteredSongs;
-
+  
   const handlePressSong = (song: Song) => {
     setIsLoadingSong(true);
-    // Navigate immediately so LearnScreen can show loading overlay
-    navigation.navigate('Editor', { songId: song.id });
-    navigation.navigate('Learn');
+    setIsLoadingSongLocal(true);
     // Defer expensive operations to next tick to avoid blocking navigation
     setTimeout(() => {
+      navigation.navigate('Editor', { songId: song.id });
+      navigation.navigate('Learn');
+
       setCurrentSongId(song.id);
       trackSongOpen(song.id);
     }, 0);
@@ -259,7 +267,7 @@ export default function SongsScreen() {
   return (
     <ScreenWrapper>
       {/* Loading overlay when navigating to song */}
-      {isLoadingSong && (
+      {(isLoadingSong || isLoadingSongLocal) && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Loading song...</Text>

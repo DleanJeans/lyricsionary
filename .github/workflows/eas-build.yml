@@ -4,8 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
-    types: [opened, synchronize, labeled, unlabeled]
+    types: labeled
   workflow_dispatch:
 
 jobs:

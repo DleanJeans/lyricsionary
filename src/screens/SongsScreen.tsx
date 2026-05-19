@@ -37,7 +37,7 @@ export default function SongsScreen() {
   const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-  const [isLoadingSongLocal, setIsLoadingSongLocal] = useState(false);
+  const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
 
   // Handle search query from route params
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function SongsScreen() {
 
   useEffect(() => {
     if (!isLoadingSong) {
-      setIsLoadingSongLocal(false);
+      setLoadingSongId(null);
     }
   }, [isLoadingSong])
 
@@ -131,7 +131,7 @@ export default function SongsScreen() {
   
   const handlePressSong = (song: Song) => {
     setIsLoadingSong(true);
-    setIsLoadingSongLocal(true);
+    setLoadingSongId(song.id);
     // Defer expensive operations to next tick to avoid blocking navigation
     setTimeout(() => {
       navigation.navigate('Editor', { songId: song.id });
@@ -204,6 +204,7 @@ export default function SongsScreen() {
 
   const renderSong = ({ item }: { item: Song }) => {
     const matchedLine = searchInLyrics && searchQuery.trim() ? findMatchedLine(item, searchQuery) : null;
+    const isLoadingThisSong = loadingSongId === item.id;
 
     return (
       <TouchableOpacity
@@ -211,6 +212,7 @@ export default function SongsScreen() {
         onPress={() => handlePressSong(item)}
         onLongPress={() => handleDeleteSong(item)}
         activeOpacity={0.7}
+        disabled={isLoadingThisSong}
       >
         <View style={styles.cardLeft}>
           <View style={styles.songNameRow}>
@@ -259,21 +261,17 @@ export default function SongsScreen() {
             </View>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+        {isLoadingThisSong ? (
+          <ActivityIndicator size="small" color={Colors.primary} />
+        ) : (
+          <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+        )}
       </TouchableOpacity>
     );
   };
 
   return (
     <ScreenWrapper>
-      {/* Loading overlay when navigating to song */}
-      {(isLoadingSong || isLoadingSongLocal) && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading song...</Text>
-        </View>
-      )}
-
       <View style={[styles.titleRow, showSearch ? { marginBottom: 12 } : { marginTop: 6.5, marginBottom: 25 - 6.5 }]}>
         <TouchableOpacity
           onPress={cycleSortMode}
@@ -409,23 +407,6 @@ export default function SongsScreen() {
 }
 
 const styles = StyleSheet.create({
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: Colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    marginTop: 8,
-  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,

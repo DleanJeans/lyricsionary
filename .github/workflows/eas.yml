@@ -3,19 +3,24 @@ name: EAS
 on:
   push:
     branches: [main]
-  pull_request:
-    types: labeled
+  issue_comment:
+    types: [created]
   workflow_dispatch:
 
 jobs:
-  check-labels:
-    name: Check labels
+  check-comments-and-labels:
+    name: Check comments and labels
     runs-on: ubuntu-latest
+    # Only run for PR comments or push to main
+    if: |
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request) ||
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch'
     outputs:
       should-build-apk: ${{ steps.check.outputs.should-build-apk }}
       should-ota-update: ${{ steps.check.outputs.should-ota-update }}
     steps:
-      - name: Check PR labels or merged PR labels
+      - name: Check PR comments or merged PR labels
         id: check
         uses: actions/github-script@v7
         with:
@@ -23,12 +28,43 @@ jobs:
             let shouldBuildApk = false;
             let shouldOtaUpdate = false;
 
-            if (context.eventName === 'pull_request') {
-              // For PR events, check current PR labels
-              const labels = context.payload.pull_request.labels.map(label => label.name);
-              shouldBuildApk = labels.includes('rebuild apk');
-              shouldOtaUpdate = labels.includes('expo ota');
-              console.log('PR labels:', labels);
+            if (context.eventName === 'issue_comment') {
+              // For PR comment events, check if comment contains /ota or /apk
+              const comment = context.payload.comment.body.trim();
+              const prNumber = context.payload.issue.number;
+
+              console.log('Comment:', comment);
+              console.log('PR number:', prNumber);
+
+              if (comment === '/ota') {
+                shouldOtaUpdate = true;
+                // Add 'expo ota' label to PR
+                try {
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    labels: ['expo ota']
+                  });
+                  console.log('Added "expo ota" label to PR');
+                } catch (error) {
+                  console.log('Failed to add label:', error.message);
+                }
+              } else if (comment === '/apk') {
+                shouldBuildApk = true;
+                // Add 'rebuild apk' label to PR
+                try {
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    labels: ['rebuild apk']
+                  });
+                  console.log('Added "rebuild apk" label to PR');
+                } catch (error) {
+                  console.log('Failed to add label:', error.message);
+                }
+              }
             } else if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
               // For push to main, check if the merged PR had the labels
               const commits = context.payload.commits || [];
@@ -71,8 +107,8 @@ jobs:
 
   ota-update:
     name: Send OTA Update
-    needs: check-labels
-    if: needs.check-labels.outputs.should-ota-update == 'true'
+    needs: check-comments-and-labels
+    if: needs.check-comments-and-labels.outputs.should-ota-update == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -80,7 +116,25 @@ jobs:
     env:
       npm_config_user_agent: pnpm
     steps:
+      - name: Get PR info for issue_comment event
+        if: github.event_name == 'issue_comment'
+        id: pr-info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number
+            });
+            core.setOutput('pr-number', pr.number);
+            core.setOutput('pr-title', pr.title);
+            core.setOutput('pr-head-ref', pr.head.ref);
+            core.setOutput('pr-head-sha', pr.head.sha);
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && steps.pr-info.outputs.pr-head-sha || github.sha }}
 
       - name: Setup environment
         uses: ./.github/actions/setup
@@ -93,15 +147,17 @@ jobs:
           eas update --branch production --message "Production update from commit ${{ github.sha }}"
 
       - name: Send OTA Update (Development)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
         id: ota-update
         run: |
-          OUTPUT=$(eas update --branch development --platform android --message "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" --json)
+          PR_NUMBER=${{ github.event_name == 'issue_comment' && steps.pr-info.outputs.pr-number || github.event.pull_request.number }}
+          PR_TITLE="${{ github.event_name == 'issue_comment' && steps.pr-info.outputs.pr-title || github.event.pull_request.title }}"
+          OUTPUT=$(eas update --branch development --platform android --message "PR #${PR_NUMBER}: ${PR_TITLE}" --json)
           GROUP_ID=$(echo "$OUTPUT" | jq -r '.[0].group')
           echo "group-id=$GROUP_ID" >> $GITHUB_OUTPUT
 
       - name: Comment PR with EAS Dashboard Link
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
         uses: actions/github-script@v7
         with:
           script: |
@@ -120,8 +176,8 @@ jobs:
 
   build-apk:
     name: Build APK
-    needs: check-labels
-    if: github.event_name == 'workflow_dispatch' || needs.check-labels.outputs.should-build-apk == 'true'
+    needs: check-comments-and-labels
+    if: github.event_name == 'workflow_dispatch' || needs.check-comments-and-labels.outputs.should-build-apk == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
@@ -130,7 +186,25 @@ jobs:
     env:
       npm_config_user_agent: pnpm
     steps:
+      - name: Get PR info for issue_comment event
+        if: github.event_name == 'issue_comment'
+        id: pr-info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number
+            });
+            core.setOutput('pr-number', pr.number);
+            core.setOutput('pr-title', pr.title);
+            core.setOutput('pr-head-ref', pr.head.ref);
+            core.setOutput('pr-head-sha', pr.head.sha);
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && steps.pr-info.outputs.pr-head-sha || github.sha }}
 
       - name: Setup environment
         uses: ./.github/actions/setup
@@ -148,7 +222,7 @@ jobs:
         run: eas build --platform android --profile development --local --non-interactive --output ./lyricsionary-${{ steps.datetime.outputs.datetime }}.apk
 
       - name: Upload APK artifact
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
         id: upload-artifact
         uses: actions/upload-artifact@v7
         with:
@@ -156,24 +230,27 @@ jobs:
           path: ./lyricsionary-${{ steps.datetime.outputs.datetime }}.apk
 
       - name: Comment PR with APK download link
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
         uses: actions/github-script@v9
         with:
           script: |
+            const prNumber = context.eventName === 'issue_comment'
+              ? context.payload.issue.number
+              : context.issue.number;
             github.rest.issues.createComment({
-              issue_number: context.issue.number,
+              issue_number: prNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `### 📦 [APK Ready!](${{ steps.upload-artifact.outputs.artifact-url }})\nCommit: \`${{ github.sha }}\``
             });
 
       - name: Get version from package.json
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'issue_comment'
         id: package-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'issue_comment'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.package-version.outputs.version }}-build.${{ github.run_number }}

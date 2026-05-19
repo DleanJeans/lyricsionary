@@ -36,7 +36,7 @@ jobs:
               console.log('Comment:', comment);
               console.log('PR number:', prNumber);
 
-              if (comment === '/ota') {
+              if (comment.startsWith('/ota')) {
                 shouldOtaUpdate = true;
                 // Add 'expo ota' label to PR
                 try {
@@ -50,7 +50,7 @@ jobs:
                 } catch (error) {
                   console.log('Failed to add label:', error.message);
                 }
-              } else if (comment === '/apk') {
+              } else if (comment.startsWith('/apk')) {
                 shouldBuildApk = true;
                 // Add 'rebuild apk' label to PR
                 try {

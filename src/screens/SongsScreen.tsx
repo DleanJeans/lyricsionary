@@ -123,10 +123,14 @@ export default function SongsScreen() {
 
   const handlePressSong = (song: Song) => {
     setIsLoadingSong(true);
-    setCurrentSongId(song.id);
-    trackSongOpen(song.id);
+    // Navigate immediately so LearnScreen can show loading overlay
     navigation.navigate('Editor', { songId: song.id });
     navigation.navigate('Learn');
+    // Defer expensive operations to next tick to avoid blocking navigation
+    setTimeout(() => {
+      setCurrentSongId(song.id);
+      trackSongOpen(song.id);
+    }, 0);
   };
 
   const handleDeleteSong = (song: Song) => {

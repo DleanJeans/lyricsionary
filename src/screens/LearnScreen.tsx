@@ -50,6 +50,7 @@ export default function LearnScreen() {
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [languagesInitialized, setLanguagesInitialized] = useState(false);
   const [isRendering, setIsRendering] = useState(true);
+  const [computedLines, setComputedLines] = useState<any[]>([]);
 
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -62,18 +63,65 @@ export default function LearnScreen() {
     }
   }, [song, languagesInitialized]);
 
-  // Turn off loading state once content is ready
+  // Helper function to normalize text for comparison (remove punctuation, compare words only)
+  const normalizeText = (text: string): string => {
+    return text
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .trim()
+      .toLowerCase();
+  };
+
+  // Compute lines asynchronously to avoid blocking initial render
   useEffect(() => {
-    if (song && isLoadingSong) {
+    if (!song) {
+      setComputedLines([]);
+      return;
+    }
+
+    // Use setTimeout to defer computation to next tick, allowing UI to render first
+    const timer = setTimeout(() => {
+      const originalLines = song.originalLyrics.split('\n');
+      const translationLines = song.translations.map((t) => t.lyrics.split('\n'));
+      const newLines = originalLines.map((line, i) => {
+        const originalNormalized = normalizeText(line);
+        const translations = translationLines.map((tl, ti) => {
+          const translationText = tl[i] || '';
+          const translationNormalized = normalizeText(translationText);
+          // Only include translation if it's different from original (word-wise comparison)
+          const isDifferent = originalNormalized !== translationNormalized;
+          return {
+            language: song.translations[ti].language,
+            text: translationText,
+            show: isDifferent,
+          };
+        });
+        return {
+          original: line,
+          translations,
+        };
+      });
+      setComputedLines(newLines);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [song]);
+
+  const lines = computedLines;
+
+  const lineCount = lines.length;
+
+  // Turn off loading state once lines are computed
+  useEffect(() => {
+    if (song && computedLines.length > 0 && isLoadingSong) {
       // Use requestAnimationFrame to ensure the UI has time to render
       requestAnimationFrame(() => {
         setTimeout(() => {
           setIsLoadingSong(false);
           setIsRendering(false);
-        }, 100);
+        }, 50);
       });
     }
-  }, [song, isLoadingSong]);
+  }, [song, computedLines, isLoadingSong]);
 
   // Reset rendering state when song changes
   useEffect(() => {
@@ -104,40 +152,6 @@ export default function LearnScreen() {
       return () => clearTimeout(timer);
     }
   }, [showToast]);
-
-  // Helper function to normalize text for comparison (remove punctuation, compare words only)
-  const normalizeText = (text: string): string => {
-    return text
-      .replace(/[^\p{L}\p{N}\s]/gu, '')
-      .trim()
-      .toLowerCase();
-  };
-
-  const lines = useMemo(() => {
-    if (!song) return [];
-    const originalLines = song.originalLyrics.split('\n');
-    const translationLines = song.translations.map((t) => t.lyrics.split('\n'));
-    return originalLines.map((line, i) => {
-      const originalNormalized = normalizeText(line);
-      const translations = translationLines.map((tl, ti) => {
-        const translationText = tl[i] || '';
-        const translationNormalized = normalizeText(translationText);
-        // Only include translation if it's different from original (word-wise comparison)
-        const isDifferent = originalNormalized !== translationNormalized;
-        return {
-          language: song.translations[ti].language,
-          text: translationText,
-          show: isDifferent,
-        };
-      });
-      return {
-        original: line,
-        translations,
-      };
-    });
-  }, [song]);
-
-  const lineCount = lines.length;
 
   const handleLanguageChange = (languages: string[]) => {
     setLocalSelectedLanguages(languages);

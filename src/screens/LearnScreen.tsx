@@ -380,7 +380,9 @@ export default function LearnScreen() {
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => setShowDropdown(true)}>
             <View style={styles.headerBtnIcons}>
-              <Ionicons name="language-outline" size={22} color={Colors.primary} />
+              <View style={styles.languageIconWrapper}>
+                <Ionicons name="language-outline" size={22} color={Colors.primary} />
+              </View>
               <View style={styles.settingsIconWrapper}>
                 <Ionicons name="settings-outline" size={22} color={Colors.primary} />
               </View>
@@ -527,13 +529,18 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
   },
+  languageIconWrapper: {
+    position: 'absolute',
+    top: -3,
+    left: 8,
+  },
   settingsIconWrapper: {
     position: 'absolute',
-    top: 6,
-    left: 6,
+    top: 8,
+    left: -3,
     backgroundColor: Colors.surface,
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 0.5,
     borderColor: Colors.surface,
   },
   wordCardContainer: {

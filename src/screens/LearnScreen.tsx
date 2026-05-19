@@ -168,24 +168,6 @@ export default function LearnScreen() {
     }
   };
 
-  if (!song) {
-    return (
-      <ScreenWrapper>
-        <View style={styles.emptyInner}>
-          <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>
-            No lyrics to display.{'\n'}Go to Editor to add lyrics.
-          </Text>
-          <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
-            <Text style={styles.goButtonText}>Go to Editor</Text>
-          </TouchableOpacity>
-        </View>
-      </ScreenWrapper>
-    );
-  }
-
-
-
   const handleWordPress = (word: string, line: string) => {
     const cleaned = removeSpecialChars(word);
     if (cleaned) {
@@ -297,6 +279,22 @@ export default function LearnScreen() {
       </View>
     );
   }, [words, song?.originalLanguages, selectedWord, displayMode, enableAnnotations, showEmoji, fontSize]);
+
+  if (!song) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.emptyInner}>
+          <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
+          <Text style={styles.emptyText}>
+            No lyrics to display.{'\n'}Go to Editor to add lyrics.
+          </Text>
+          <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
+            <Text style={styles.goButtonText}>Go to Editor</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenWrapper>
+    );
+  }
 
   /* ─── Word panel ──────────────────────────────────────── */
   const selectedWordEntry = selectedWord

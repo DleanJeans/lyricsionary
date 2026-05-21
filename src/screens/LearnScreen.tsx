@@ -18,6 +18,15 @@ import NewWordCard from '../components/NewWordCard';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
 
+interface ComputedLine {
+  original: string;
+  translations: {
+    language: string;
+    text: string;
+    show: boolean;
+  }[];
+}
+
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
   const isWide = useIsWide();
@@ -50,7 +59,7 @@ export default function LearnScreen() {
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [languagesInitialized, setLanguagesInitialized] = useState(false);
   const [isRendering, setIsRendering] = useState(true);
-  const [computedLines, setComputedLines] = useState<any[]>([]);
+  const [computedLines, setComputedLines] = useState<ComputedLine[]>([]);
 
   // Initialize selected languages when song changes
   useEffect(() => {

@@ -65,32 +65,33 @@ export default function SideBySideEditor({
           <ScrollView
             ref={leftScrollRef}
             style={styles.scroll}
-            horizontal
-            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
             onScrollBeginDrag={() => setIsScrolling('left')}
             onScrollEndDrag={() => setIsScrolling(null)}
             onMomentumScrollEnd={() => setIsScrolling(null)}
             onScroll={handleLeftScroll}
             scrollEventThrottle={16}
           >
-            <View>
-              {originalLines.map((line, i) => (
-                <View key={i} style={styles.line}>
-                  <Text style={styles.lineNumber}>{i + 1}</Text>
-                  <TextInput
-                    style={styles.lineInput}
-                    value={line}
-                    onChangeText={(text) => {
-                      const newLines = [...originalLines];
-                      newLines[i] = text;
-                      onOriginalChange(newLines.join('\n'));
-                    }}
-                    multiline={false}
-                    scrollEnabled={false}
-                  />
-                </View>
-              ))}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View>
+                {originalLines.map((line, i) => (
+                  <View key={i} style={styles.line}>
+                    <Text style={styles.lineNumber}>{i + 1}</Text>
+                    <TextInput
+                      style={styles.lineInput}
+                      value={line}
+                      onChangeText={(text) => {
+                        const newLines = [...originalLines];
+                        newLines[i] = text;
+                        onOriginalChange(newLines.join('\n'));
+                      }}
+                      multiline={true}
+                      scrollEnabled={false}
+                    />
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
           </ScrollView>
         </View>
 
@@ -106,32 +107,33 @@ export default function SideBySideEditor({
           <ScrollView
             ref={rightScrollRef}
             style={styles.scroll}
-            horizontal
-            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
             onScrollBeginDrag={() => setIsScrolling('right')}
             onScrollEndDrag={() => setIsScrolling(null)}
             onMomentumScrollEnd={() => setIsScrolling(null)}
             onScroll={handleRightScroll}
             scrollEventThrottle={16}
           >
-            <View>
-              {translationLines.map((line, i) => (
-                <View key={i} style={styles.line}>
-                  <Text style={styles.lineNumber}>{i + 1}</Text>
-                  <TextInput
-                    style={styles.lineInput}
-                    value={line}
-                    onChangeText={(text) => {
-                      const newLines = [...translationLines];
-                      newLines[i] = text;
-                      onTranslationChange(newLines.join('\n'));
-                    }}
-                    multiline={false}
-                    scrollEnabled={false}
-                  />
-                </View>
-              ))}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View>
+                {translationLines.map((line, i) => (
+                  <View key={i} style={styles.line}>
+                    <Text style={styles.lineNumber}>{i + 1}</Text>
+                    <TextInput
+                      style={styles.lineInput}
+                      value={line}
+                      onChangeText={(text) => {
+                        const newLines = [...translationLines];
+                        newLines[i] = text;
+                        onTranslationChange(newLines.join('\n'));
+                      }}
+                      multiline={true}
+                      scrollEnabled={false}
+                    />
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
           </ScrollView>
         </View>
       </View>

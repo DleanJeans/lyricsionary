@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TextInput,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -25,7 +26,7 @@ import LanguageFilterModal from '../components/LanguageFilterModal';
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RootTabParamList, 'Songs'>>();
-  const { songs, setCurrentSongId, deleteSong, trackSongOpen, setMatchedSongs } = useStore();
+  const { songs, setCurrentSongId, deleteSong, trackSongOpen, setMatchedSongs, setIsLoadingSong, isLoadingSong } = useStore();
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -36,6 +37,7 @@ export default function SongsScreen() {
   const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
   const [showLanguageFilter, setShowLanguageFilter] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
 
   // Handle search query from route params
   useEffect(() => {
@@ -54,6 +56,12 @@ export default function SongsScreen() {
       setMatchedSongs(null, 0);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isLoadingSong) {
+      setLoadingSongId(null);
+    }
+  }, [isLoadingSong])
 
   // Get all unique languages from songs and count occurrences
   const { availableLanguages, languageCounts } = React.useMemo(() => {
@@ -120,12 +128,18 @@ export default function SongsScreen() {
         }
       })
     : languageFilteredSongs;
-
+  
   const handlePressSong = (song: Song) => {
-    setCurrentSongId(song.id);
-    trackSongOpen(song.id);
-    navigation.navigate('Editor', { songId: song.id });
-    navigation.navigate('Learn');
+    setIsLoadingSong(true);
+    setLoadingSongId(song.id);
+    // Defer expensive operations to next tick to avoid blocking navigation
+    setTimeout(() => {
+      navigation.navigate('Editor', { songId: song.id });
+      navigation.navigate('Learn');
+
+      setCurrentSongId(song.id);
+      trackSongOpen(song.id);
+    }, 0);
   };
 
   const handleDeleteSong = (song: Song) => {
@@ -190,6 +204,8 @@ export default function SongsScreen() {
 
   const renderSong = ({ item }: { item: Song }) => {
     const matchedLine = searchInLyrics && searchQuery.trim() ? findMatchedLine(item, searchQuery) : null;
+    const isLoadingThisSong = loadingSongId === item.id;
+    const isAnySongLoading = loadingSongId !== null;
 
     return (
       <TouchableOpacity
@@ -197,6 +213,7 @@ export default function SongsScreen() {
         onPress={() => handlePressSong(item)}
         onLongPress={() => handleDeleteSong(item)}
         activeOpacity={0.7}
+        disabled={isAnySongLoading}
       >
         <View style={styles.cardLeft}>
           <View style={styles.songNameRow}>
@@ -245,7 +262,11 @@ export default function SongsScreen() {
             </View>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+        {isLoadingThisSong ? (
+          <ActivityIndicator size="small" color={Colors.primary} />
+        ) : (
+          <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+        )}
       </TouchableOpacity>
     );
   };

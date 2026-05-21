@@ -20,6 +20,7 @@ interface AppState {
   blurTranslations: boolean;
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
+  isLoadingSong: boolean;
 
   // Song actions
   loadSongs: () => Promise<void>;
@@ -29,6 +30,7 @@ interface AppState {
   setCurrentSongId: (id: string | null) => void;
   trackSongOpen: (id: string) => Promise<void>;
   setMatchedSongs: (searchQuery: string | null, count: number) => void;
+  setIsLoadingSong: (isLoading: boolean) => void;
 
   // Web actions
   setWebUrl: (url: string) => void;
@@ -70,6 +72,7 @@ export const useStore = create<AppState>((set, get) => ({
   blurTranslations: true,
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
+  isLoadingSong: false,
 
   loadSongs: async () => {
     try {
@@ -138,6 +141,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setMatchedSongs: (searchQuery, count) => set({ matchedSongsSearchQuery: searchQuery, matchedSongsCount: count }),
+
+  setIsLoadingSong: (isLoading) => set({ isLoadingSong: isLoading }),
 
   setWebUrl: (url) => set({ webUrl: url }),
   setScrapeTargetTab: (tab) => set({ scrapeTargetTab: tab }),

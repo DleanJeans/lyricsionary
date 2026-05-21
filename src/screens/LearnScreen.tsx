@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
@@ -35,6 +35,8 @@ export default function LearnScreen() {
     setSelectedTranslationLanguages,
     blurTranslations,
     toggleBlurTranslations,
+    isLoadingSong,
+    setIsLoadingSong,
   } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
@@ -49,6 +51,8 @@ export default function LearnScreen() {
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [languagesInitialized, setLanguagesInitialized] = useState(false);
+  const [isRendering, setIsRendering] = useState(true);
+  const [computedLines, setComputedLines] = useState<any[]>([]);
 
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -60,6 +64,73 @@ export default function LearnScreen() {
       setLanguagesInitialized(true);
     }
   }, [song, languagesInitialized]);
+
+  // Helper function to normalize text for comparison (remove punctuation, compare words only)
+  const normalizeText = (text: string): string => {
+    return text
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .trim()
+      .toLowerCase();
+  };
+
+  // Compute lines asynchronously to avoid blocking initial render
+  useEffect(() => {
+    if (!song) {
+      setComputedLines([]);
+      return;
+    }
+
+    // Use setTimeout to defer computation to next tick, allowing UI to render first
+    const timer = setTimeout(() => {
+      const originalLines = song.originalLyrics.split('\n');
+      const translationLines = song.translations.map((t) => t.lyrics.split('\n'));
+      const newLines = originalLines.map((line, i) => {
+        const originalNormalized = normalizeText(line);
+        const translations = translationLines.map((tl, ti) => {
+          const translationText = tl[i] || '';
+          const translationNormalized = normalizeText(translationText);
+          // Only include translation if it's different from original (word-wise comparison)
+          const isDifferent = originalNormalized !== translationNormalized;
+          return {
+            language: song.translations[ti].language,
+            text: translationText,
+            show: isDifferent,
+          };
+        });
+        return {
+          original: line,
+          translations,
+        };
+      });
+      setComputedLines(newLines);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [song]);
+
+  const lines = computedLines;
+
+  const lineCount = lines.length;
+
+  // Turn off loading state once lines are computed
+  useEffect(() => {
+    if (song && computedLines.length > 0 && isLoadingSong) {
+      // Use requestAnimationFrame to ensure the UI has time to render
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          setIsLoadingSong(false);
+          setIsRendering(false);
+        }, 50);
+      });
+    }
+  }, [song, computedLines, isLoadingSong]);
+
+  // Reset rendering state when song changes
+  useEffect(() => {
+    if (currentSongId) {
+      setIsRendering(true);
+    }
+  }, [currentSongId]);
 
   // Reset unblurred translations when blur is toggled off or song changes
   useEffect(() => {
@@ -84,40 +155,6 @@ export default function LearnScreen() {
     }
   }, [showToast]);
 
-  // Helper function to normalize text for comparison (remove punctuation, compare words only)
-  const normalizeText = (text: string): string => {
-    return text
-      .replace(/[^\p{L}\p{N}\s]/gu, '')
-      .trim()
-      .toLowerCase();
-  };
-
-  const lines = useMemo(() => {
-    if (!song) return [];
-    const originalLines = song.originalLyrics.split('\n');
-    const translationLines = song.translations.map((t) => t.lyrics.split('\n'));
-    return originalLines.map((line, i) => {
-      const originalNormalized = normalizeText(line);
-      const translations = translationLines.map((tl, ti) => {
-        const translationText = tl[i] || '';
-        const translationNormalized = normalizeText(translationText);
-        // Only include translation if it's different from original (word-wise comparison)
-        const isDifferent = originalNormalized !== translationNormalized;
-        return {
-          language: song.translations[ti].language,
-          text: translationText,
-          show: isDifferent,
-        };
-      });
-      return {
-        original: line,
-        translations,
-      };
-    });
-  }, [song]);
-
-  const lineCount = lines.length;
-
   const handleLanguageChange = (languages: string[]) => {
     setLocalSelectedLanguages(languages);
     if (languages.length === 0) {
@@ -132,24 +169,6 @@ export default function LearnScreen() {
       }
     }
   };
-
-  if (!song) {
-    return (
-      <ScreenWrapper>
-        <View style={styles.emptyInner}>
-          <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>
-            No lyrics to display.{'\n'}Go to Editor to add lyrics.
-          </Text>
-          <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
-            <Text style={styles.goButtonText}>Go to Editor</Text>
-          </TouchableOpacity>
-        </View>
-      </ScreenWrapper>
-    );
-  }
-
-
 
   const handleWordPress = (word: string, line: string) => {
     const cleaned = removeSpecialChars(word);
@@ -174,7 +193,7 @@ export default function LearnScreen() {
     }
   };
 
-  const renderPressableText = (text: string) => {
+  const renderPressableText = useCallback((text: string) => {
     const textWords = text.split(/(\s+)/);
     return (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -261,7 +280,23 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  };
+  }, [words, song?.originalLanguages, selectedWord, displayMode, enableAnnotations, showEmoji, fontSize]);
+
+  if (!song) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.emptyInner}>
+          <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
+          <Text style={styles.emptyText}>
+            No lyrics to display.{'\n'}Go to Editor to add lyrics.
+          </Text>
+          <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
+            <Text style={styles.goButtonText}>Go to Editor</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenWrapper>
+    );
+  }
 
   /* ─── Word panel ──────────────────────────────────────── */
   const selectedWordEntry = selectedWord
@@ -373,6 +408,14 @@ export default function LearnScreen() {
         </View>
       </View>
 
+      {/* Loading overlay - positioned below header */}
+      {(isLoadingSong || isRendering) && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading song...</Text>
+        </View>
+      )}
+
       {/* Settings Menu */}
       {song && (
         <LearnSettingsMenu
@@ -431,6 +474,23 @@ export default function LearnScreen() {
 
 const styles = StyleSheet.create({
   /* Layout */
+  loadingOverlay: {
+    position: 'absolute',
+    top: 60,  // Position below the header
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,  // Lower than header but above content
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginTop: 8,
+  },
   wideMain: {
     flex: 1,
     flexDirection: 'row',

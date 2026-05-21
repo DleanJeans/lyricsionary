@@ -31,10 +31,8 @@ export default function WordTransformButtons({
   // Get all transformed versions of the word
   const transforms = getWordTransforms(word, language || originalLanguages?.[0]);
 
-  // If no transforms, don't render anything
-  if (transforms.length === 0) {
-    return null;
-  }
+  // Always show at least the original word as a button
+  const wordsToShow = [word, ...transforms];
 
   const handleLookup = (transformedWord: string) => {
     navigation.navigate('WordLookup', {
@@ -50,7 +48,7 @@ export default function WordTransformButtons({
 
   return (
     <View style={styles.container}>
-      {transforms.map((transformedWord, index) => (
+      {wordsToShow.map((transformedWord, index) => (
         <TouchableOpacity
           key={`${transformedWord}-${index}`}
           style={styles.button}

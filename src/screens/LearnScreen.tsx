@@ -14,6 +14,7 @@ import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
+import WordTransformButtons from '../components/WordTransformButtons';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
 
@@ -295,23 +296,15 @@ export default function LearnScreen() {
             <Ionicons name="close" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.lookupNewButton}
-          onPress={() => {
-            navigation.navigate('WordLookup', {
-              word: selectedWord,
-              songId: song.id,
-              songName: song.songName,
-              artistName: song.artistName,
-              lyricsLine: selectedLine ?? undefined,
-              originalLanguages: song.originalLanguages,
-              source: 'Learn',
-            });
-          }}
-        >
-          <Ionicons name="search" size={18} color={Colors.white} />
-          <Text style={styles.lookupNewButtonText}>Look up</Text>
-        </TouchableOpacity>
+        <WordTransformButtons
+          word={selectedWord}
+          songId={song.id}
+          songName={song.songName}
+          artistName={song.artistName}
+          lyricsLine={selectedLine ?? undefined}
+          originalLanguages={song.originalLanguages}
+          source="Learn"
+        />
       </View>
     ) : null;
 
@@ -588,21 +581,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 10,
     fontWeight: '700',
-  },
-  lookupNewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  lookupNewButtonText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600',
   },
   actionBar: {
     flexDirection: 'row',

@@ -59,17 +59,17 @@ export default function NewWordCard({
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
-      <WordTransformButtons
-        word={word}
-        songId={songId}
-        songName={songName}
-        artistName={artistName}
-        lyricsLine={lyricsLine}
-        translationLine={translationLine}
-        originalLanguages={originalLanguages}
-        source="Learn"
-        hideOriginalWord
-      />
+        <WordTransformButtons
+          word={word}
+          songId={songId}
+          songName={songName}
+          artistName={artistName}
+          lyricsLine={lyricsLine}
+          translationLine={translationLine}
+          originalLanguages={originalLanguages}
+          source="Learn"
+          hideOriginalWord
+        />
     </View>
   );
 }
@@ -94,7 +94,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
   wordTitleRow: {
     flexDirection: 'row',

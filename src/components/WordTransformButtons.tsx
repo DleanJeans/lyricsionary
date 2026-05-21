@@ -52,7 +52,7 @@ export default function WordTransformButtons({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, wordsToShow.length > 0 && { marginTop: 12 }]}>
       {wordsToShow.map((transformedWord, index) => (
         <TouchableOpacity
           key={`${transformedWord}-${index}`}

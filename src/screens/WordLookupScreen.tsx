@@ -291,7 +291,7 @@ export default function WordLookupScreen() {
         )}
 
         {word && (
-          <View style={styles.manipulationButtons}>
+          <View style={styles.wordTransformButtons}>
             <WordTransformButtons
               word={word}
               language={language}
@@ -583,25 +583,8 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     fontWeight: '600',
   },
-  manipulationButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
+  wordTransformButtons: {
     marginLeft: 16,
-    flexWrap: 'wrap',
-  },
-  manipulationButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  manipulationButtonText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
   },
   fieldSection: {
     padding: 16,

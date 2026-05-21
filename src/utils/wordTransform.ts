@@ -29,7 +29,8 @@ export function getWordTransforms(word: string, language?: string): string[] {
   }
 
   // Handle hyphenated words with hyphens (e.g., "senti-mentale" -> "sentimentale")
-  if (hasHyphenInMiddle(word)) {
+  // Don't do this if word has an apostrophe (e.g., "qu'est-ce" should NOT become "qu'estce")
+  if (hasHyphenInMiddle(word) && !word.includes("'")) {
     transforms.push(getWithoutHyphens(word));
   }
 
@@ -81,13 +82,13 @@ export function getWithoutContractedPrefix(word: string): string {
 
 /**
  * Split contracted prefix into parts.
- * Handles multiple contractions in a word and hyphens in the remaining part.
+ * Handles multiple contractions in a word.
  * Examples:
  * - "j'aime" -> ["j'", "aime"]
  * - "l'essence" -> ["l'", "essence"]
  * - "d'y" -> ["d'", "y"]
  * - "j't'aime" -> ["j'", "aime"] (skips intermediate contracted parts)
- * - "qu'est-ce" -> ["qu'", "est-ce", "estce"]
+ * - "qu'est-ce" -> ["qu'", "est-ce"]
  */
 export function splitContractedPrefix(word: string): string[] {
   if (!hasContractedPrefix(word)) {
@@ -119,11 +120,6 @@ export function splitContractedPrefix(word: string): string[] {
 
   if (remaining.length > 0) {
     parts.push(remaining);
-
-    // If remaining part has a hyphen, also add the version without hyphens
-    if (remaining.includes('-')) {
-      parts.push(remaining.replace(/-/g, ''));
-    }
   }
 
   return parts;

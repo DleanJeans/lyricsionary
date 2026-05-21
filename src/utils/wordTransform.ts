@@ -25,7 +25,7 @@ export function getWordTransforms(word: string, language?: string): string[] {
     // Split into prefix and base word
     const parts = splitContractedPrefix(word);
     if (parts.length >= 2) {
-      transforms.push(...parts);
+      transforms.push(parts[0].toLowerCase(), ...parts.slice(1));
     }
 
     // For French, also provide version with apostrophe replaced by 'e'

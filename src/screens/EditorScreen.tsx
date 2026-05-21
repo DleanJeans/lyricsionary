@@ -31,6 +31,7 @@ import { Translation } from '../types';
 import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines } from '../utils/deeplTranslation';
+import SideBySideEditor from '../components/SideBySideEditor';
 
 
 export default function EditorScreen() {
@@ -672,42 +673,19 @@ export default function EditorScreen() {
 
   const lyricsPanel = isSideBySideMode && translations.length > 0 ? (
     // Side-by-side mode: Original on left, translation on right
-    <View style={[styles.lyricsContainer, isWide && styles.lyricsContainerWide]}>
-      <View style={styles.sideBySideContainer}>
-        {/* Left side: Original lyrics */}
-        <View style={styles.sideBySideColumn}>
-          <View style={styles.sideBySideColumnHeader}>
-            <Text style={styles.sideBySideColumnTitle}>Original</Text>
-          </View>
-          <ScrollView style={styles.sideBySideScroll}>
-            {originalLyrics.split('\n').map((line, i) => (
-              <View key={i} style={styles.sideBySideLine}>
-                <Text style={styles.sideBySideLineNumber}>{i + 1}</Text>
-                <Text style={styles.sideBySideLineText} numberOfLines={1}>{line || ' '}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Divider */}
-        <View style={styles.sideBySideDivider} />
-
-        {/* Right side: Translation */}
-        <View style={styles.sideBySideColumn}>
-          <View style={styles.sideBySideColumnHeader}>
-            <Text style={styles.sideBySideColumnTitle}>{translations[sideBySideTranslationIndex]?.language || 'Translation'}</Text>
-          </View>
-          <ScrollView style={styles.sideBySideScroll}>
-            {(translations[sideBySideTranslationIndex]?.lyrics || '').split('\n').map((line, i) => (
-              <View key={i} style={styles.sideBySideLine}>
-                <Text style={styles.sideBySideLineNumber}>{i + 1}</Text>
-                <Text style={styles.sideBySideLineText} numberOfLines={1}>{line || ' '}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </View>
+    <SideBySideEditor
+      originalLyrics={originalLyrics}
+      originalLanguages={originalLanguages}
+      translationLyrics={translations[sideBySideTranslationIndex]?.lyrics ?? ''}
+      translationLanguage={translations[sideBySideTranslationIndex]?.language ?? 'Translation'}
+      onOriginalChange={setOriginalLyrics}
+      onTranslationChange={(text) => {
+        const updated = [...translations];
+        updated[sideBySideTranslationIndex] = { ...updated[sideBySideTranslationIndex], lyrics: text };
+        setTranslations(updated);
+      }}
+      isWide={isWide}
+    />
   ) : (
     // Normal mode: Single editable text input
     <View style={[styles.lyricsContainer, isWide && styles.lyricsContainerWide]}>
@@ -1106,57 +1084,6 @@ const styles = StyleSheet.create({
   },
   sideBySideToggleTextActive: {
     color: Colors.white,
-  },
-  sideBySideContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  sideBySideColumn: {
-    flex: 1,
-  },
-  sideBySideDivider: {
-    width: 1,
-    backgroundColor: Colors.border,
-  },
-  sideBySideColumnHeader: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: Colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  sideBySideColumnTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  sideBySideScroll: {
-    flex: 1,
-  },
-  sideBySideLine: {
-    flexDirection: 'row',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  sideBySideLineNumber: {
-    width: 32,
-    color: Colors.textMuted,
-    fontSize: 13,
-    textAlign: 'right',
-    marginRight: 12,
-  },
-  sideBySideLineText: {
-    flex: 1,
-    color: Colors.text,
-    fontSize: 15,
-    lineHeight: 22,
   },
   actions: {
     flexDirection: 'row',

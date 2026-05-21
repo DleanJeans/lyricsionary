@@ -205,6 +205,7 @@ export default function SongsScreen() {
   const renderSong = ({ item }: { item: Song }) => {
     const matchedLine = searchInLyrics && searchQuery.trim() ? findMatchedLine(item, searchQuery) : null;
     const isLoadingThisSong = loadingSongId === item.id;
+    const isAnySongLoading = loadingSongId !== null;
 
     return (
       <TouchableOpacity
@@ -212,7 +213,7 @@ export default function SongsScreen() {
         onPress={() => handlePressSong(item)}
         onLongPress={() => handleDeleteSong(item)}
         activeOpacity={0.7}
-        disabled={isLoadingThisSong}
+        disabled={isAnySongLoading}
       >
         <View style={styles.cardLeft}>
           <View style={styles.songNameRow}>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/theme';
 import WordTransformButtons from './WordTransformButtons';
 
@@ -27,6 +28,21 @@ export default function NewWordCard({
   onClose,
   isWide = false,
 }: NewWordCardProps) {
+  const navigation = useNavigation<any>();
+
+  const handleLookupOriginalWord = () => {
+    navigation.navigate('WordLookup', {
+      word,
+      songId,
+      songName,
+      artistName,
+      lyricsLine,
+      translationLine,
+      originalLanguages,
+      source: 'Learn',
+    });
+  };
+
   return (
     <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
       <View style={styles.wordHeader}>
@@ -35,6 +51,9 @@ export default function NewWordCard({
           <View style={styles.newBadge}>
             <Text style={styles.newBadgeText}>NEW</Text>
           </View>
+          <TouchableOpacity style={styles.searchButton} onPress={handleLookupOriginalWord}>
+            <Ionicons name="search" size={16} color={Colors.primary} />
+          </TouchableOpacity>
         </View>
         <TouchableOpacity onPress={onClose}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
@@ -49,6 +68,7 @@ export default function NewWordCard({
         translationLine={translationLine}
         originalLanguages={originalLanguages}
         source="Learn"
+        hideOriginalWord
       />
     </View>
   );
@@ -97,5 +117,14 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 10,
     fontWeight: '700',
+  },
+  searchButton: {
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    marginLeft: 4,
+    marginBottom: -4,
   },
 });

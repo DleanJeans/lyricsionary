@@ -10,6 +10,7 @@ interface NewWordCardProps {
   songName: string;
   artistName: string;
   lyricsLine?: string;
+  translationLine?: string;
   originalLanguages?: string[];
   onClose: () => void;
   isWide?: boolean;
@@ -21,6 +22,7 @@ export default function NewWordCard({
   songName,
   artistName,
   lyricsLine,
+  translationLine,
   originalLanguages,
   onClose,
   isWide = false,
@@ -44,6 +46,7 @@ export default function NewWordCard({
         songName={songName}
         artistName={artistName}
         lyricsLine={lyricsLine}
+        translationLine={translationLine}
         originalLanguages={originalLanguages}
         source="Learn"
       />

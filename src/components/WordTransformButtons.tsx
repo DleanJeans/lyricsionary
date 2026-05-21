@@ -12,6 +12,7 @@ interface WordTransformButtonsProps {
   songName?: string;
   artistName?: string;
   lyricsLine?: string;
+  translationLine?: string;
   originalLanguages?: string[];
   source?: 'Learn' | 'Words';
   hideOriginalWord?: boolean;
@@ -24,6 +25,7 @@ export default function WordTransformButtons({
   songName,
   artistName,
   lyricsLine,
+  translationLine,
   originalLanguages,
   source,
   hideOriginalWord = false,
@@ -43,6 +45,7 @@ export default function WordTransformButtons({
       songName,
       artistName,
       lyricsLine,
+      translationLine,
       originalLanguages,
       source,
     });

@@ -44,5 +44,14 @@ export type RootTabParamList = {
   Learn: { songId?: string } | undefined;
   Songs: { searchQuery?: string } | undefined;
   Words: undefined;
-  WordLookup: { word: string; songId?: string; songName?: string; artistName?: string; lyricsLine?: string; originalLanguages?: string[]; source?: 'Learn' | 'Words' } | undefined;
+  WordLookup: {
+    word: string;
+    songId?: string;
+    songName?: string;
+    artistName?: string;
+    lyricsLine?: string;
+    translationLine?: string;
+    originalLanguages?: string[];
+    source?: 'Learn' | 'Words'
+  } | undefined;
 };

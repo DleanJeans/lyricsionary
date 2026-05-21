@@ -31,7 +31,7 @@ type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
-  const { word, songId, songName, artistName, lyricsLine, originalLanguages, source } = route.params || {};
+  const { word, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source } = route.params || {};
   const insets = useSafeAreaInsets();
 
   const { words, addOrUpdateWord } = useStore();
@@ -284,6 +284,9 @@ export default function WordLookupScreen() {
             <Text style={styles.contextLabel}>Context</Text>
             <Text style={styles.contextSong}>{songName} - {artistName}</Text>
             {lyricsLine && renderContextLine()}
+            {translationLine && (
+              <Text style={styles.contextTranslation}>{translationLine}</Text>
+            )}
           </View>
         )}
 
@@ -296,6 +299,7 @@ export default function WordLookupScreen() {
               songName={songName}
               artistName={artistName}
               lyricsLine={lyricsLine}
+              translationLine={translationLine}
               originalLanguages={originalLanguages}
               source={source}
               hideOriginalWord
@@ -568,6 +572,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     fontStyle: 'italic',
+  },
+  contextTranslation: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   contextLineUnderlined: {
     textDecorationLine: 'underline',

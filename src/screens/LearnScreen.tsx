@@ -49,6 +49,7 @@ export default function LearnScreen() {
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
+  const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -150,6 +151,7 @@ export default function LearnScreen() {
   useEffect(() => {
     setSelectedWord(null);
     setSelectedLine(null);
+    setSelectedLineIndex(null);
   }, [currentSongId]);
 
   // Auto-hide toast after 2 seconds
@@ -177,11 +179,12 @@ export default function LearnScreen() {
     }
   };
 
-  const handleWordPress = (word: string, line: string) => {
+  const handleWordPress = (word: string, line: string, lineIndex: number) => {
     const cleaned = removeSpecialChars(word);
     if (cleaned) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
+      setSelectedLineIndex(lineIndex);
     }
   };
 
@@ -200,7 +203,7 @@ export default function LearnScreen() {
     }
   };
 
-  const renderPressableText = useCallback((text: string) => {
+  const renderPressableText = useCallback((text: string, lineIndex: number) => {
     const textWords = text.split(/(\s+)/);
     return (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -272,7 +275,7 @@ export default function LearnScreen() {
                 )}
               </View>
               <Text
-                onPress={() => handleWordPress(word, text)}
+                onPress={() => handleWordPress(word, text, lineIndex)}
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
@@ -310,6 +313,15 @@ export default function LearnScreen() {
     ? words.find((w) => w.word.toLowerCase() === selectedWord.toLowerCase())
     : null;
 
+  // Get translation line for the selected line
+  const selectedTranslationLine =
+    selectedLineIndex !== null && lines[selectedLineIndex]
+      ? lines[selectedLineIndex].translations
+          .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
+          .map((tl) => tl.text)
+          .join(' / ')
+      : undefined;
+
   const wordPanel =
     selectedWord && selectedWordEntry ? (
       <View style={[styles.wordCardContainer]}>
@@ -333,6 +345,7 @@ export default function LearnScreen() {
         songName={song.songName}
         artistName={song.artistName}
         lyricsLine={selectedLine ?? undefined}
+        translationLine={selectedTranslationLine}
         originalLanguages={song.originalLanguages}
         onClose={() => setSelectedWord(null)}
         isWide={isWide}
@@ -361,7 +374,7 @@ export default function LearnScreen() {
     <ScrollView style={styles.lyricsScroll} contentContainerStyle={styles.lyricsContent}>
       {lines.map((line, i) => (
         <View key={i} style={styles.lineBlock}>
-          {renderPressableText(line.original)}
+          {renderPressableText(line.original, i)}
           {showTranslations &&
             line.translations
               .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))

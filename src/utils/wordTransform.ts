@@ -12,7 +12,6 @@ export function getWordTransforms(word: string, language?: string): string[] {
   if (!word || word.length === 0) return [];
 
   const transforms: string[] = [];
-  const isFrench = language?.toLowerCase().includes('french') || language?.toLowerCase() === 'français';
 
   // Handle capitalization
   if (isCapitalized(word)) {
@@ -26,12 +25,6 @@ export function getWordTransforms(word: string, language?: string): string[] {
     const parts = splitContractedPrefix(word);
     if (parts.length >= 2) {
       transforms.push(parts[0].toLowerCase(), ...parts.slice(1));
-    }
-
-    // For French, also provide version with apostrophe replaced by 'e'
-    // e.g., "d'bouts" -> "debouts"
-    if (isFrench) {
-      transforms.push(replaceApostropheWithE(word));
     }
   }
 
@@ -114,17 +107,6 @@ export function splitContractedPrefix(word: string): string[] {
   }
 
   return parts;
-}
-
-/**
- * Replace apostrophe with 'e' for French words like "d'bouts" -> "debouts"
- * Only applies when word starts with a letter followed by apostrophe
- */
-export function replaceApostropheWithE(word: string): string {
-  if (hasContractedPrefix(word)) {
-    return word.charAt(0) + 'e' + word.slice(2);
-  }
-  return word;
 }
 
 export function getWithoutHyphenatedPrefix(word: string): string {

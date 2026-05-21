@@ -11,7 +11,7 @@ export const getScrapeIpaJS = (language: string) => {
     if (ipaResults.length > 0) {
       sendIpa(ipaResults);
     } else {
-      sendError('No IPA pronunciations found');
+      // sendError('No IPA pronunciations found');
     }
   `;
 

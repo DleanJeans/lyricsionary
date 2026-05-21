@@ -25,3 +25,11 @@ export function getFlagForLanguage(langName: string): string {
   );
   return lang?.flag ?? '🌐';
 }
+
+export function getLanguageNameFromCode(code: string): string | null {
+  if (!code) return null;
+  const lang = LANGUAGES.find(
+    (l) => l.code.toLowerCase() === code.toLowerCase()
+  );
+  return lang?.name ?? null;
+}

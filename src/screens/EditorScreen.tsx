@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { LANGUAGES } from '../constants/languages';
+import { LANGUAGES, getLanguageNameFromCode } from '../constants/languages';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
@@ -161,8 +161,21 @@ export default function EditorScreen() {
     const targetTab = (route.params?.scrapedTargetTab as number | undefined) ?? 0;
     const url = route.params?.scrapedSourceUrl as string | undefined;
     const title = route.params?.scrapedPageTitle as string | undefined;
+    const languageCode = route.params?.scrapedLanguageCode as string | undefined;
+
     if (targetTab === 0) {
       setOriginalLyrics(scraped);
+      // Auto-fill language only for original lyrics (tab 0) and when language is detected
+      if (languageCode) {
+        const languageName = getLanguageNameFromCode(languageCode);
+        if (languageName && !originalLanguages.includes(languageName)) {
+          setOriginalLanguages((prev) => {
+            // Only add if not already present
+            if (prev.includes(languageName)) return prev;
+            return [...prev, languageName];
+          });
+        }
+      }
     } else {
       setTranslations((prev) => {
         const updated = [...prev];
@@ -174,7 +187,7 @@ export default function EditorScreen() {
     if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
     setActiveTab(targetTab);
     if (url) setShowSourceUrl(true);
-    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined });
+    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined });
   }, [route.params?.scrapedLyrics]);
 
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);

@@ -74,6 +74,8 @@ export default function EditorScreen() {
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
   const [isEditingMetadata, setIsEditingMetadata] = useState(true);
+  const [isSideBySideMode, setIsSideBySideMode] = useState(false);
+  const [sideBySideTranslationIndex, setSideBySideTranslationIndex] = useState(0);
   
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
@@ -488,20 +490,31 @@ export default function EditorScreen() {
         {translations.map((t, i) => (
           <View key={t.language} style={styles.tabWrapper}>
             <TouchableOpacity
-              style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
+              style={[styles.tab, activeTab === i + 1 && styles.tabActive, isSideBySideMode && sideBySideTranslationIndex === i && styles.tabActive]}
               onPress={() => {
-                if (activeTab === i + 1) {
-                  setShowSourceUrl(!showSourceUrl);
+                if (isSideBySideMode) {
+                  // In side-by-side mode, clicking a translation tab switches the right side
+                  setSideBySideTranslationIndex(i);
                 } else {
-                  setActiveTab(i + 1);
-                  setShowSourceUrl(true);
+                  // Normal mode behavior
+                  if (activeTab === i + 1) {
+                    setShowSourceUrl(!showSourceUrl);
+                  } else {
+                    setActiveTab(i + 1);
+                    setShowSourceUrl(true);
+                  }
                 }
               }}
             >
               {getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '') && (
                 <Image source={{ uri: getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
               )}
-              <Text style={[styles.tabText, activeTab === i + 1 && styles.tabTextActive]}>{t.language}</Text>
+              <Text style={[
+                styles.tabText,
+                (activeTab === i + 1 || (isSideBySideMode && sideBySideTranslationIndex === i)) && styles.tabTextActive
+              ]}>
+                {t.language}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteButton}
@@ -561,6 +574,23 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
+      {translations.length > 0 && (
+        <TouchableOpacity
+          style={[styles.sideBySideToggle, isSideBySideMode && styles.sideBySideToggleActive]}
+          onPress={() => {
+            setIsSideBySideMode(!isSideBySideMode);
+            if (!isSideBySideMode && translations.length > 0) {
+              // Ensure we have a valid translation index when enabling
+              setSideBySideTranslationIndex(activeTab > 0 ? activeTab - 1 : 0);
+            }
+          }}
+        >
+          <Ionicons name="resize-outline" size={18} color={isSideBySideMode ? Colors.white : Colors.primary} />
+          <Text style={[styles.sideBySideToggleText, isSideBySideMode && styles.sideBySideToggleTextActive]}>
+            Side by Side
+          </Text>
+        </TouchableOpacity>
+      )}
       {showSourceUrl && !!currentSourceUrl && (
         <TouchableOpacity style={styles.sourceUrlRow} onPress={() => { setWebUrl(currentSourceUrl); navigation.navigate('Web'); }}>
           {getFaviconUrl(currentSourceUrl) ? (
@@ -638,7 +668,46 @@ export default function EditorScreen() {
     [currentLyrics],
   );
 
-  const lyricsPanel = (
+  const lyricsPanel = isSideBySideMode && translations.length > 0 ? (
+    // Side-by-side mode: Original on left, translation on right
+    <View style={[styles.lyricsContainer, isWide && styles.lyricsContainerWide]}>
+      <View style={styles.sideBySideContainer}>
+        {/* Left side: Original lyrics */}
+        <View style={styles.sideBySideColumn}>
+          <View style={styles.sideBySideColumnHeader}>
+            <Text style={styles.sideBySideColumnTitle}>Original</Text>
+          </View>
+          <ScrollView style={styles.sideBySideScroll}>
+            {originalLyrics.split('\n').map((line, i) => (
+              <View key={i} style={styles.sideBySideLine}>
+                <Text style={styles.sideBySideLineNumber}>{i + 1}</Text>
+                <Text style={styles.sideBySideLineText} numberOfLines={1}>{line || ' '}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Divider */}
+        <View style={styles.sideBySideDivider} />
+
+        {/* Right side: Translation */}
+        <View style={styles.sideBySideColumn}>
+          <View style={styles.sideBySideColumnHeader}>
+            <Text style={styles.sideBySideColumnTitle}>{translations[sideBySideTranslationIndex]?.language || 'Translation'}</Text>
+          </View>
+          <ScrollView style={styles.sideBySideScroll}>
+            {(translations[sideBySideTranslationIndex]?.lyrics || '').split('\n').map((line, i) => (
+              <View key={i} style={styles.sideBySideLine}>
+                <Text style={styles.sideBySideLineNumber}>{i + 1}</Text>
+                <Text style={styles.sideBySideLineText} numberOfLines={1}>{line || ' '}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  ) : (
+    // Normal mode: Single editable text input
     <View style={[styles.lyricsContainer, isWide && styles.lyricsContainerWide]}>
       <View style={styles.lyricsInputWrapper}>
         <ScrollView
@@ -1011,6 +1080,82 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     opacity: 0,
+  },
+  sideBySideToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    gap: 6,
+    marginBottom: 10,
+  },
+  sideBySideToggleActive: {
+    backgroundColor: Colors.primary,
+  },
+  sideBySideToggleText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sideBySideToggleTextActive: {
+    color: Colors.white,
+  },
+  sideBySideContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  sideBySideColumn: {
+    flex: 1,
+  },
+  sideBySideDivider: {
+    width: 1,
+    backgroundColor: Colors.border,
+  },
+  sideBySideColumnHeader: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  sideBySideColumnTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  sideBySideScroll: {
+    flex: 1,
+  },
+  sideBySideLine: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  sideBySideLineNumber: {
+    width: 32,
+    color: Colors.textMuted,
+    fontSize: 13,
+    textAlign: 'right',
+    marginRight: 12,
+  },
+  sideBySideLineText: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: 15,
+    lineHeight: 22,
   },
   actions: {
     flexDirection: 'row',

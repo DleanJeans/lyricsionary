@@ -14,8 +14,18 @@ import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
+import NewWordCard from '../components/NewWordCard';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
+
+interface ComputedLine {
+  original: string;
+  translations: {
+    language: string;
+    text: string;
+    show: boolean;
+  }[];
+}
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -29,7 +39,6 @@ export default function LearnScreen() {
     setFontSize,
     showTranslations,
     toggleTranslations,
-    selectedTranslationLanguages,
     setSelectedTranslationLanguages,
     blurTranslations,
     toggleBlurTranslations,
@@ -40,6 +49,7 @@ export default function LearnScreen() {
   const song = songs.find((s) => s.id === currentSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
+  const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -50,7 +60,7 @@ export default function LearnScreen() {
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [languagesInitialized, setLanguagesInitialized] = useState(false);
   const [isRendering, setIsRendering] = useState(true);
-  const [computedLines, setComputedLines] = useState<any[]>([]);
+  const [computedLines, setComputedLines] = useState<ComputedLine[]>([]);
 
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -141,6 +151,7 @@ export default function LearnScreen() {
   useEffect(() => {
     setSelectedWord(null);
     setSelectedLine(null);
+    setSelectedLineIndex(null);
   }, [currentSongId]);
 
   // Auto-hide toast after 2 seconds
@@ -168,11 +179,12 @@ export default function LearnScreen() {
     }
   };
 
-  const handleWordPress = (word: string, line: string) => {
+  const handleWordPress = (word: string, line: string, lineIndex: number) => {
     const cleaned = removeSpecialChars(word);
     if (cleaned) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
+      setSelectedLineIndex(lineIndex);
     }
   };
 
@@ -191,7 +203,7 @@ export default function LearnScreen() {
     }
   };
 
-  const renderPressableText = useCallback((text: string) => {
+  const renderPressableText = useCallback((text: string, lineIndex: number) => {
     const textWords = text.split(/(\s+)/);
     return (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -263,7 +275,7 @@ export default function LearnScreen() {
                 )}
               </View>
               <Text
-                onPress={() => handleWordPress(word, text)}
+                onPress={() => handleWordPress(word, text, lineIndex)}
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
@@ -301,6 +313,15 @@ export default function LearnScreen() {
     ? words.find((w) => w.word.toLowerCase() === selectedWord.toLowerCase())
     : null;
 
+  // Get translation line for the selected line
+  const selectedTranslationLine =
+    selectedLineIndex !== null && lines[selectedLineIndex]
+      ? lines[selectedLineIndex].translations
+          .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
+          .map((tl) => tl.text)
+          .join(' / ')
+      : undefined;
+
   const wordPanel =
     selectedWord && selectedWordEntry ? (
       <View style={[styles.wordCardContainer]}>
@@ -318,36 +339,17 @@ export default function LearnScreen() {
         />
       </View>
     ) : selectedWord ? (
-      <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
-        <View style={styles.wordHeader}>
-          <View style={styles.wordTitleRow}>
-            <Text style={styles.wordText}>{selectedWord}</Text>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>NEW</Text>
-            </View>
-          </View>
-          <TouchableOpacity onPress={() => setSelectedWord(null)}>
-            <Ionicons name="close" size={22} color={Colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          style={styles.lookupNewButton}
-          onPress={() => {
-            navigation.navigate('WordLookup', {
-              word: selectedWord,
-              songId: song.id,
-              songName: song.songName,
-              artistName: song.artistName,
-              lyricsLine: selectedLine ?? undefined,
-              originalLanguages: song.originalLanguages,
-              source: 'Learn',
-            });
-          }}
-        >
-          <Ionicons name="search" size={18} color={Colors.white} />
-          <Text style={styles.lookupNewButtonText}>Look up</Text>
-        </TouchableOpacity>
-      </View>
+      <NewWordCard
+        word={selectedWord}
+        songId={song.id}
+        songName={song.songName}
+        artistName={song.artistName}
+        lyricsLine={selectedLine ?? undefined}
+        translationLine={selectedTranslationLine}
+        originalLanguages={song.originalLanguages}
+        onClose={() => setSelectedWord(null)}
+        isWide={isWide}
+      />
     ) : null;
 
   /* ─── Action bar ──────────────────────────────────────── */
@@ -372,7 +374,7 @@ export default function LearnScreen() {
     <ScrollView style={styles.lyricsScroll} contentContainerStyle={styles.lyricsContent}>
       {lines.map((line, i) => (
         <View key={i} style={styles.lineBlock}>
-          {renderPressableText(line.original)}
+          {renderPressableText(line.original, i)}
           {showTranslations &&
             line.translations
               .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
@@ -605,64 +607,6 @@ const styles = StyleSheet.create({
   },
   wordCardContainer: {
     marginHorizontal: 16,
-  },
-  wordPanel: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  wordPanelPadded: {
-    padding: 16,
-  },
-  wordPanelWide: {
-    marginHorizontal: 0,
-    marginBottom: 0,
-  },
-  wordHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  wordTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  wordText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  newBadge: {
-    backgroundColor: Colors.success,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginBottom: -4,
-  },
-  newBadgeText: {
-    color: Colors.white,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  lookupNewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  lookupNewButtonText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600',
   },
   actionBar: {
     flexDirection: 'row',

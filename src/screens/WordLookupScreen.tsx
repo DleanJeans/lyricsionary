@@ -24,14 +24,14 @@ import LanguageSelect from '../components/LanguageSelect';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
-import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
+import WordTransformButtons from '../components/WordTransformButtons';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
-  const { word, songId, songName, artistName, lyricsLine, originalLanguages, source } = route.params || {};
+  const { word, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source } = route.params || {};
   const insets = useSafeAreaInsets();
 
   const { words, addOrUpdateWord } = useStore();
@@ -228,47 +228,6 @@ export default function WordLookupScreen() {
     }
   };
 
-  // Helper functions for word manipulation
-  const isCapitalized = (word: string) => {
-    if (!word || word.length === 0) return false;
-    return word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase();
-  };
-
-  const hasContractedPrefix = (word: string) => {
-    if (!word || word.length < 2) return false;
-    return contractedPrefixRegex.test(word);
-  };
-
-  const hasHyphenatedPrefix = (word: string) => {
-    if (!word || word.length < 2) return false;
-    return hyphenatedPrefixRegex.test(word);
-  };
-
-  const getLowercaseVersion = (word: string) => {
-    return word.charAt(0).toLowerCase() + word.slice(1);
-  };
-
-  const getWithoutContractedPrefix = (word: string) => {
-    if (hasContractedPrefix(word)) {
-      return word.slice(2); // Remove first letter and apostrophe
-    }
-    return word;
-  };
-
-  const getWithoutHyphenatedPrefix = (word: string) => {
-    if (hasHyphenatedPrefix(word)) {
-      const hyphenIndex = word.indexOf('-');
-      return word.slice(hyphenIndex + 1); // Remove everything up to and including the hyphen
-    }
-    return word;
-  };
-
-  // Determine which buttons to show
-  const showCapitalizeButton = word && isCapitalized(word);
-  const showContractedPrefixButton = word && hasContractedPrefix(word);
-  const showHyphenatedPrefixButton = word && hasHyphenatedPrefix(word);
-  const showManipulationButtons = showCapitalizeButton || showContractedPrefixButton || showHyphenatedPrefixButton;
-
   // Render context line with underlined word
   const renderContextLine = () => {
     if (!lyricsLine || !word) return null;
@@ -325,61 +284,26 @@ export default function WordLookupScreen() {
             <Text style={styles.contextLabel}>Context</Text>
             <Text style={styles.contextSong}>{songName} - {artistName}</Text>
             {lyricsLine && renderContextLine()}
-
+            {translationLine && (
+              <Text style={styles.contextTranslation}>{translationLine}</Text>
+            )}
           </View>
         )}
 
-        {/* Word Manipulation Buttons */}
-        {showManipulationButtons && (
-          <View style={styles.manipulationButtons}>
-            {showCapitalizeButton && (
-              <TouchableOpacity
-                style={styles.manipulationButton}
-                onPress={() => {
-                  if (displayWord === word) {
-                    setDisplayWord(getLowercaseVersion(word!));
-                  } else {
-                    setDisplayWord(word!);
-                  }
-                }}
-              >
-                <Text style={styles.manipulationButtonText}>
-                  {displayWord === word ? getLowercaseVersion(word!) : word}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {showContractedPrefixButton && (
-              <TouchableOpacity
-                style={styles.manipulationButton}
-                onPress={() => {
-                  if (displayWord === word) {
-                    setDisplayWord(getWithoutContractedPrefix(word!));
-                  } else {
-                    setDisplayWord(word!);
-                  }
-                }}
-              >
-                <Text style={styles.manipulationButtonText}>
-                  {displayWord === word ? getWithoutContractedPrefix(word!) : word}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {showHyphenatedPrefixButton && (
-              <TouchableOpacity
-                style={styles.manipulationButton}
-                onPress={() => {
-                  if (displayWord === word) {
-                    setDisplayWord(getWithoutHyphenatedPrefix(word!));
-                  } else {
-                    setDisplayWord(word!);
-                  }
-                }}
-              >
-                <Text style={styles.manipulationButtonText}>
-                  {displayWord === word ? getWithoutHyphenatedPrefix(word!) : word}
-                </Text>
-              </TouchableOpacity>
-            )}
+        {word && (
+          <View style={styles.wordTransformButtons}>
+            <WordTransformButtons
+              word={word}
+              language={language}
+              songId={songId}
+              songName={songName}
+              artistName={artistName}
+              lyricsLine={lyricsLine}
+              translationLine={translationLine}
+              originalLanguages={originalLanguages}
+              source={source}
+              hideOriginalWord
+            />
           </View>
         )}
 
@@ -514,6 +438,19 @@ export default function WordLookupScreen() {
                 onNavigationStateChange={(navState) => {
                   setPageTitle(navState.title ?? '');
                   setCanGoBackInWebView(navState.canGoBack);
+
+                  // If navigating to Wiktionary without language anchor, add it
+                  if (lookupSource === 'wiktionary' && navState.url && webViewRef.current) {
+                    const url = navState.url;
+                    const isWiktionary = url.includes('wiktionary.org/wiki/');
+                    const hasLanguageAnchor = url.includes('#');
+
+                    if (isWiktionary && !hasLanguageAnchor && language) {
+                      // Add language anchor to current URL
+                      const newUrl = `${url}#${language}`;
+                      setCurrentUrl(newUrl);
+                    }
+                  }
                 }}
                 onLoadStart={() => setLoading(true)}
                 onLoadEnd={() => {
@@ -636,29 +573,18 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontStyle: 'italic',
   },
+  contextTranslation: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
   contextLineUnderlined: {
     textDecorationLine: 'underline',
     fontWeight: '600',
   },
-  manipulationButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
+  wordTransformButtons: {
     marginLeft: 16,
-    flexWrap: 'wrap',
-  },
-  manipulationButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  manipulationButtonText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
   },
   fieldSection: {
     padding: 16,

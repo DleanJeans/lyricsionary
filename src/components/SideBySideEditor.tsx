@@ -188,7 +188,6 @@ const styles = StyleSheet.create({
   line: {
     flexDirection: 'row',
     paddingVertical: 6,
-    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     minHeight: 40,

@@ -19,7 +19,8 @@ const _scrapeLyricsLogic = `
         }
         lyrics += p.innerText + '\\n\\n';
       });
-      // Extract language code from Google Translate
+
+      // won't work if Google language is not set to English
       const langCodeEl = document.querySelector('[data-lang-code-from]');
       if (langCodeEl) {
         languageCode = langCodeEl.getAttribute('data-lang-code-from') || '';
@@ -36,9 +37,7 @@ const _scrapeLyricsLogic = `
       genius.forEach(el => { lyrics += el.innerText + '\\n'; });
       // Extract language from Genius preloaded state
       try {
-        if (window.__PRELOADED_STATE__ && window.__PRELOADED_STATE__.songPage && window.__PRELOADED_STATE__.songPage.trackingData) {
-          languageCode = window.__PRELOADED_STATE__.songPage.trackingData["Lyrics Language"] || '';
-        }
+        languageCode = window.__PRELOADED_STATE__.songPage.trackingData["Lyrics Language"] || '';
       } catch (e) {
         consoleLog('Failed to extract language from Genius: ' + e.message);
       }
@@ -50,20 +49,9 @@ const _scrapeLyricsLogic = `
   // Musixmatch
   if (url.includes('musixmatch.com')) {
     try {
-      // Try extracting from __NEXT_DATA__ first
-      const nextDataScript = document.querySelector('#__NEXT_DATA__');
-      if (nextDataScript && nextDataScript.textContent) {
-        const nextData = JSON.parse(nextDataScript.textContent);
-        const trackInfo = nextData?.props?.pageProps?.data?.trackInfo?.data;
-        if (trackInfo && trackInfo.lyrics) {
-          lyrics = trackInfo.lyrics.body || '';
-          languageCode = trackInfo.lyrics.language || '';
-          if (lyrics) {
-            sendLyrics(lyrics, languageCode);
-            return;
-          }
-        }
-      }
+      const mLyrics = __NEXT_DATA__.props.pageProps.data.trackInfo.data.lyrics;
+      sendLyrics(mLyrics.body, mLyrics.language);
+      return;
     } catch (e) {
       consoleLog('Failed to extract from __NEXT_DATA__: ' + e.message);
     }

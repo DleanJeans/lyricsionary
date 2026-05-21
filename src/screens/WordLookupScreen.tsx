@@ -24,7 +24,7 @@ import LanguageSelect from '../components/LanguageSelect';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
-import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
+import WordTransformButtons from '../components/WordTransformButtons';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -228,47 +228,6 @@ export default function WordLookupScreen() {
     }
   };
 
-  // Helper functions for word manipulation
-  const isCapitalized = (word: string) => {
-    if (!word || word.length === 0) return false;
-    return word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase();
-  };
-
-  const hasContractedPrefix = (word: string) => {
-    if (!word || word.length < 2) return false;
-    return contractedPrefixRegex.test(word);
-  };
-
-  const hasHyphenatedPrefix = (word: string) => {
-    if (!word || word.length < 2) return false;
-    return hyphenatedPrefixRegex.test(word);
-  };
-
-  const getLowercaseVersion = (word: string) => {
-    return word.charAt(0).toLowerCase() + word.slice(1);
-  };
-
-  const getWithoutContractedPrefix = (word: string) => {
-    if (hasContractedPrefix(word)) {
-      return word.slice(2); // Remove first letter and apostrophe
-    }
-    return word;
-  };
-
-  const getWithoutHyphenatedPrefix = (word: string) => {
-    if (hasHyphenatedPrefix(word)) {
-      const hyphenIndex = word.indexOf('-');
-      return word.slice(hyphenIndex + 1); // Remove everything up to and including the hyphen
-    }
-    return word;
-  };
-
-  // Determine which buttons to show
-  const showCapitalizeButton = word && isCapitalized(word);
-  const showContractedPrefixButton = word && hasContractedPrefix(word);
-  const showHyphenatedPrefixButton = word && hasHyphenatedPrefix(word);
-  const showManipulationButtons = showCapitalizeButton || showContractedPrefixButton || showHyphenatedPrefixButton;
-
   // Render context line with underlined word
   const renderContextLine = () => {
     if (!lyricsLine || !word) return null;
@@ -325,60 +284,20 @@ export default function WordLookupScreen() {
             <Text style={styles.contextLabel}>Context</Text>
             <Text style={styles.contextSong}>{songName} - {artistName}</Text>
             {lyricsLine && renderContextLine()}
-
-          </View>
-        )}
-
-        {/* Word Manipulation Buttons */}
-        {showManipulationButtons && (
-          <View style={styles.manipulationButtons}>
-            {showCapitalizeButton && (
-              <TouchableOpacity
-                style={styles.manipulationButton}
-                onPress={() => {
-                  if (displayWord === word) {
-                    setDisplayWord(getLowercaseVersion(word!));
-                  } else {
-                    setDisplayWord(word!);
-                  }
-                }}
-              >
-                <Text style={styles.manipulationButtonText}>
-                  {displayWord === word ? getLowercaseVersion(word!) : word}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {showContractedPrefixButton && (
-              <TouchableOpacity
-                style={styles.manipulationButton}
-                onPress={() => {
-                  if (displayWord === word) {
-                    setDisplayWord(getWithoutContractedPrefix(word!));
-                  } else {
-                    setDisplayWord(word!);
-                  }
-                }}
-              >
-                <Text style={styles.manipulationButtonText}>
-                  {displayWord === word ? getWithoutContractedPrefix(word!) : word}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {showHyphenatedPrefixButton && (
-              <TouchableOpacity
-                style={styles.manipulationButton}
-                onPress={() => {
-                  if (displayWord === word) {
-                    setDisplayWord(getWithoutHyphenatedPrefix(word!));
-                  } else {
-                    setDisplayWord(word!);
-                  }
-                }}
-              >
-                <Text style={styles.manipulationButtonText}>
-                  {displayWord === word ? getWithoutHyphenatedPrefix(word!) : word}
-                </Text>
-              </TouchableOpacity>
+            {/* Word Transform Buttons */}
+            {word && (
+              <View style={styles.manipulationButtons}>
+                <WordTransformButtons
+                  word={word}
+                  language={language}
+                  songId={songId}
+                  songName={songName}
+                  artistName={artistName}
+                  lyricsLine={lyricsLine}
+                  originalLanguages={originalLanguages}
+                  source={source}
+                />
+              </View>
             )}
           </View>
         )}

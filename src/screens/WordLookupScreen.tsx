@@ -433,6 +433,19 @@ export default function WordLookupScreen() {
                 onNavigationStateChange={(navState) => {
                   setPageTitle(navState.title ?? '');
                   setCanGoBackInWebView(navState.canGoBack);
+
+                  // If navigating to Wiktionary without language anchor, add it
+                  if (lookupSource === 'wiktionary' && navState.url && webViewRef.current) {
+                    const url = navState.url;
+                    const isWiktionary = url.includes('wiktionary.org/wiki/');
+                    const hasLanguageAnchor = url.includes('#');
+
+                    if (isWiktionary && !hasLanguageAnchor && language) {
+                      // Add language anchor to current URL
+                      const newUrl = `${url}#${language}`;
+                      setCurrentUrl(newUrl);
+                    }
+                  }
                 }}
                 onLoadStart={() => setLoading(true)}
                 onLoadEnd={() => {

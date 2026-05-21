@@ -30,7 +30,11 @@ jobs:
               shouldOtaUpdate = labels.includes('expo ota');
               console.log('PR labels:', labels);
             } else if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
-              // For push to main, check if the merged PR had the labels
+              // For push to main, always trigger OTA update
+              shouldOtaUpdate = true;
+              console.log('Push to main detected - OTA update will be triggered');
+
+              // Check if the merged PR had the rebuild apk label
               const commits = context.payload.commits || [];
 
               // Get the most recent commit message to extract PR number
@@ -51,7 +55,6 @@ jobs:
 
                     const labels = pr.labels.map(label => label.name);
                     shouldBuildApk = labels.includes('rebuild apk');
-                    shouldOtaUpdate = labels.includes('expo ota');
                     console.log('Merged PR labels:', labels);
                   } catch (error) {
                     console.log('Could not fetch PR:', error.message);

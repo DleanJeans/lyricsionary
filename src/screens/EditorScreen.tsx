@@ -1140,7 +1140,6 @@ const styles = StyleSheet.create({
   sideBySideLine: {
     flexDirection: 'row',
     paddingVertical: 6,
-    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },

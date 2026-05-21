@@ -479,6 +479,8 @@ export default function EditorScreen() {
             } else {
               setActiveTab(0);
               setShowSourceUrl(true);
+              // Disable side-by-side mode when switching to original tab
+              setIsSideBySideMode(false);
             }
           }}
         >
@@ -574,7 +576,7 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
-      {translations.length > 0 && (
+      {translations.length > 0 && activeTab > 0 && (
         <TouchableOpacity
           style={[styles.sideBySideToggle, isSideBySideMode && styles.sideBySideToggleActive]}
           onPress={() => {

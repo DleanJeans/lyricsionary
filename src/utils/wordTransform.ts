@@ -44,7 +44,10 @@ export function getWordTransforms(word: string, language?: string): string[] {
 // Helper functions for checking word properties
 export function isCapitalized(word: string): boolean {
   if (!word || word.length === 0) return false;
-  return word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase();
+  const firstChar = word[0];
+  // Don't treat fully uppercase words as "capitalized" (e.g., "RER", "USA")
+  if (word === word.toUpperCase() && word.length > 1) return false;
+  return firstChar === firstChar.toUpperCase() && firstChar !== firstChar.toLowerCase();
 }
 
 export function hasContractedPrefix(word: string): boolean {
@@ -78,12 +81,13 @@ export function getWithoutContractedPrefix(word: string): string {
 
 /**
  * Split contracted prefix into parts.
- * Handles multiple contractions in a word.
+ * Handles multiple contractions in a word and hyphens in the remaining part.
  * Examples:
  * - "j'aime" -> ["j'", "aime"]
  * - "l'essence" -> ["l'", "essence"]
  * - "d'y" -> ["d'", "y"]
  * - "j't'aime" -> ["j'", "aime"] (skips intermediate contracted parts)
+ * - "qu'est-ce" -> ["qu'", "est-ce", "estce"]
  */
 export function splitContractedPrefix(word: string): string[] {
   if (!hasContractedPrefix(word)) {
@@ -91,19 +95,35 @@ export function splitContractedPrefix(word: string): string[] {
   }
 
   const parts: string[] = [];
-  const prefix = word.slice(0, 2); // First letter and apostrophe
+
+  // Handle special case "qu'" (3 characters) vs normal contractions (2 characters)
+  let prefixLength = 2;
+  if (word.startsWith("qu'") || word.startsWith("Qu'")) {
+    prefixLength = 3;
+  }
+
+  const prefix = word.slice(0, prefixLength);
   parts.push(prefix);
 
-  let remaining = word.slice(2);
+  let remaining = word.slice(prefixLength);
 
   // Check if remaining part also has a contracted prefix (e.g., "t'aime" in "j't'aime")
   // Skip it and just get the final base word
   while (remaining.length >= 2 && contractedPrefixRegex.test(remaining)) {
-    remaining = remaining.slice(2);
+    if (remaining.startsWith("qu'") || remaining.startsWith("Qu'")) {
+      remaining = remaining.slice(3);
+    } else {
+      remaining = remaining.slice(2);
+    }
   }
 
   if (remaining.length > 0) {
     parts.push(remaining);
+
+    // If remaining part has a hyphen, also add the version without hyphens
+    if (remaining.includes('-')) {
+      parts.push(remaining.replace(/-/g, ''));
+    }
   }
 
   return parts;

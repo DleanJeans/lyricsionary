@@ -15,6 +15,7 @@ import { removeSpecialChars } from '../utils/cleanLyrics';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
 import WordTransformButtons from '../components/WordTransformButtons';
+import NewWordCard from '../components/NewWordCard';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
 
@@ -284,28 +285,16 @@ export default function LearnScreen() {
         />
       </View>
     ) : selectedWord ? (
-      <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
-        <View style={styles.wordHeader}>
-          <View style={styles.wordTitleRow}>
-            <Text style={styles.wordText}>{selectedWord}</Text>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>NEW</Text>
-            </View>
-          </View>
-          <TouchableOpacity onPress={() => setSelectedWord(null)}>
-            <Ionicons name="close" size={22} color={Colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-        <WordTransformButtons
-          word={selectedWord}
-          songId={song.id}
-          songName={song.songName}
-          artistName={song.artistName}
-          lyricsLine={selectedLine ?? undefined}
-          originalLanguages={song.originalLanguages}
-          source="Learn"
-        />
-      </View>
+      <NewWordCard
+        word={selectedWord}
+        songId={song.id}
+        songName={song.songName}
+        artistName={song.artistName}
+        lyricsLine={selectedLine ?? undefined}
+        originalLanguages={song.originalLanguages}
+        onClose={() => setSelectedWord(null)}
+        isWide={isWide}
+      />
     ) : null;
 
   /* ─── Action bar ──────────────────────────────────────── */
@@ -538,49 +527,6 @@ const styles = StyleSheet.create({
   },
   wordCardContainer: {
     marginHorizontal: 16,
-  },
-  wordPanel: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  wordPanelPadded: {
-    padding: 16,
-  },
-  wordPanelWide: {
-    marginHorizontal: 0,
-    marginBottom: 0,
-  },
-  wordHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  wordTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  wordText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  newBadge: {
-    backgroundColor: Colors.success,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginBottom: -4,
-  },
-  newBadgeText: {
-    color: Colors.white,
-    fontSize: 10,
-    fontWeight: '700',
   },
   actionBar: {
     flexDirection: 'row',

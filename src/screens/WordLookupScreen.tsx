@@ -284,21 +284,22 @@ export default function WordLookupScreen() {
             <Text style={styles.contextLabel}>Context</Text>
             <Text style={styles.contextSong}>{songName} - {artistName}</Text>
             {lyricsLine && renderContextLine()}
-            {/* Word Transform Buttons */}
-            {word && (
-              <View style={styles.manipulationButtons}>
-                <WordTransformButtons
-                  word={word}
-                  language={language}
-                  songId={songId}
-                  songName={songName}
-                  artistName={artistName}
-                  lyricsLine={lyricsLine}
-                  originalLanguages={originalLanguages}
-                  source={source}
-                />
-              </View>
-            )}
+          </View>
+        )}
+
+        {word && (
+          <View style={styles.manipulationButtons}>
+            <WordTransformButtons
+              word={word}
+              language={language}
+              songId={songId}
+              songName={songName}
+              artistName={artistName}
+              lyricsLine={lyricsLine}
+              originalLanguages={originalLanguages}
+              source={source}
+              hideOriginalWord
+            />
           </View>
         )}
 

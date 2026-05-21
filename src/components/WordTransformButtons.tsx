@@ -14,6 +14,7 @@ interface WordTransformButtonsProps {
   lyricsLine?: string;
   originalLanguages?: string[];
   source?: 'Learn' | 'Words';
+  hideOriginalWord?: boolean;
 }
 
 export default function WordTransformButtons({
@@ -25,6 +26,7 @@ export default function WordTransformButtons({
   lyricsLine,
   originalLanguages,
   source,
+  hideOriginalWord = false,
 }: WordTransformButtonsProps) {
   const navigation = useNavigation<any>();
 
@@ -32,7 +34,7 @@ export default function WordTransformButtons({
   const transforms = getWordTransforms(word, language || originalLanguages?.[0]);
 
   // Always show at least the original word as a button
-  const wordsToShow = [word, ...transforms];
+  const wordsToShow = hideOriginalWord ? transforms : [word, ...transforms];
 
   const handleLookup = (transformedWord: string) => {
     navigation.navigate('WordLookup', {
@@ -55,7 +57,7 @@ export default function WordTransformButtons({
           onPress={() => handleLookup(transformedWord)}
         >
           <Ionicons name="search" size={16} color={Colors.primary} />
-          <Text style={styles.buttonText}>{transformedWord}</Text>
+          {transformedWord !== word && <Text style={styles.buttonText}>{transformedWord}</Text>}
         </TouchableOpacity>
       ))}
     </View>

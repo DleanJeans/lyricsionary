@@ -1,0 +1,89 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { Colors } from '../constants/theme';
+import { getWordTransforms } from '../utils/wordTransform';
+
+interface WordTransformButtonsProps {
+  word: string;
+  language?: string;
+  songId?: string;
+  songName?: string;
+  artistName?: string;
+  lyricsLine?: string;
+  originalLanguages?: string[];
+  source?: 'Learn' | 'Words';
+}
+
+export default function WordTransformButtons({
+  word,
+  language,
+  songId,
+  songName,
+  artistName,
+  lyricsLine,
+  originalLanguages,
+  source,
+}: WordTransformButtonsProps) {
+  const navigation = useNavigation<any>();
+
+  // Get all transformed versions of the word
+  const transforms = getWordTransforms(word, language || originalLanguages?.[0]);
+
+  // If no transforms, don't render anything
+  if (transforms.length === 0) {
+    return null;
+  }
+
+  const handleLookup = (transformedWord: string) => {
+    navigation.navigate('WordLookup', {
+      word: transformedWord,
+      songId,
+      songName,
+      artistName,
+      lyricsLine,
+      originalLanguages,
+      source,
+    });
+  };
+
+  return (
+    <View style={styles.container}>
+      {transforms.map((transformedWord, index) => (
+        <TouchableOpacity
+          key={`${transformedWord}-${index}`}
+          style={styles.button}
+          onPress={() => handleLookup(transformedWord)}
+        >
+          <Ionicons name="search" size={16} color={Colors.primary} />
+          <Text style={styles.buttonText}>{transformedWord}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    gap: 6,
+  },
+  buttonText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

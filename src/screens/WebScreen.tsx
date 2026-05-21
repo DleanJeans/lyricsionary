@@ -81,7 +81,13 @@ export default function WebScreen() {
         if (currentUrl.includes('genius.com')) {
           lyrics = cleanGeniusLyrics(lyrics);
         }
-        navigation.navigate('Editor', { scrapedLyrics: lyrics, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: scrapeTargetTab });
+        navigation.navigate('Editor', {
+          scrapedLyrics: lyrics,
+          scrapedSourceUrl: currentUrl,
+          scrapedPageTitle: data.title ?? '',
+          scrapedTargetTab: scrapeTargetTab,
+          scrapedLanguageCode: data.languageCode || ''
+        });
       }
       if (data.type === 'translation' && data.text) {
         let translation = data.text.trim();

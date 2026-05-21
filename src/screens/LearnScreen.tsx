@@ -14,7 +14,6 @@ import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
-import WordTransformButtons from '../components/WordTransformButtons';
 import NewWordCard from '../components/NewWordCard';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
@@ -31,7 +30,6 @@ export default function LearnScreen() {
     setFontSize,
     showTranslations,
     toggleTranslations,
-    selectedTranslationLanguages,
     setSelectedTranslationLanguages,
     blurTranslations,
     toggleBlurTranslations,

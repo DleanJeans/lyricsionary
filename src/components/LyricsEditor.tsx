@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -25,13 +25,13 @@ export default function LyricsEditor({
 }: LyricsEditorProps) {
   const lines = lyrics.split('\n');
   const hasReference = !!referenceLines && referenceLines.length > 0;
+  const cursorRef = useRef<Record<number, number>>({});
 
   const handleBackspace = (e: any, line: string, i: number) => {
     if (e.nativeEvent.key === 'Backspace') {
-      const input = e.currentTarget as any;
-      const selectionStart = input.selectionStart || 0;
-      if (selectionStart === 0 && i > 0) {
-        e.preventDefault();
+      const cursorPos = cursorRef.current[i] ?? line.length;
+      if (cursorPos === 0 && i > 0) {
+        e.preventDefault?.();
         const newLines = [...lines];
         if (line === '') {
           newLines.splice(i, 1);
@@ -42,6 +42,10 @@ export default function LyricsEditor({
         onLyricsChange(newLines.join('\n'));
       }
     }
+  };
+
+  const handleSelectionChange = (e: any, i: number) => {
+    cursorRef.current[i] = e.nativeEvent.selection.start;
   };
 
   const renderLine = (line: string, i: number) => {
@@ -67,6 +71,7 @@ export default function LyricsEditor({
                 onLyricsChange(newLines.join('\n'));
               }}
               onKeyPress={(e) => handleBackspace(e, line, i)}
+              onSelectionChange={(e) => handleSelectionChange(e, i)}
               multiline={wrapLines}
               scrollEnabled={false}
             />

@@ -20,7 +20,7 @@ export default function LyricsEditor({
   lyrics,
   onLyricsChange,
   showLineNumbers = true,
-  wrapLines = false,
+  wrapLines = true,
   referenceLines,
 }: LyricsEditorProps) {
   const lines = lyrics.split('\n');

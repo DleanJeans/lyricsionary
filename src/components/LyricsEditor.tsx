@@ -67,7 +67,7 @@ export default function LyricsEditor({
                 onLyricsChange(newLines.join('\n'));
               }}
               onKeyPress={(e) => handleBackspace(e, line, i)}
-              multiline={true}
+              multiline={wrapLines}
               scrollEnabled={false}
             />
           </View>
@@ -75,18 +75,10 @@ export default function LyricsEditor({
       );
   };
 
-  const content = <>{lines.map((line, i) => renderLine(line, i))}</>;
-
   return (
     <View style={styles.column}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {wrapLines ? (
-          content
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {content}
-          </ScrollView>
-        )}
+        {lines.map((line, i) => renderLine(line, i))}
       </ScrollView>
     </View>
   );

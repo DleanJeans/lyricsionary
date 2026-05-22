@@ -22,6 +22,7 @@ interface LyricsColumnProps {
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   scrollEventThrottle?: number;
   lineNumberPosition?: 'left' | 'middle';
+  showLineNumbers?: boolean;
 }
 
 const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
@@ -38,6 +39,7 @@ const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
       onScroll,
       scrollEventThrottle = 16,
       lineNumberPosition = 'left',
+      showLineNumbers = true,
     },
     ref
   ) => {
@@ -65,7 +67,7 @@ const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
             <View>
               {lines.map((line, i) => (
                 <View key={i} style={styles.line}>
-                  {lineNumberPosition === 'left' && (
+                  {showLineNumbers && lineNumberPosition === 'left' && (
                     <Text style={styles.lineNumber}>{i + 1}</Text>
                   )}
                   <TextInput
@@ -105,7 +107,7 @@ const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
                     scrollEnabled={false}
                     numberOfLines={1}
                   />
-                  {lineNumberPosition === 'middle' && (
+                  {showLineNumbers && lineNumberPosition === 'middle' && (
                     <Text style={styles.lineNumberMiddle}>{i + 1}</Text>
                   )}
                 </View>

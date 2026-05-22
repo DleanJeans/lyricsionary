@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   View,
+  Text,
   ScrollView,
   StyleSheet,
   NativeSyntheticEvent,
@@ -31,18 +32,21 @@ export default function SideBySideEditor({
 }: SideBySideEditorProps) {
   const leftScrollRef = useRef<ScrollView>(null);
   const rightScrollRef = useRef<ScrollView>(null);
+  const middleScrollRef = useRef<ScrollView>(null);
   const [activeScroll, setActiveScroll] = useState<'left' | 'right' | null>(null);
 
   const handleLeftScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (activeScroll !== 'left') return;
     const offsetY = event.nativeEvent.contentOffset.y;
     rightScrollRef.current?.scrollTo({ y: offsetY, animated: false });
+    middleScrollRef.current?.scrollTo({ y: offsetY, animated: false });
   };
 
   const handleRightScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (activeScroll !== 'right') return;
     const offsetY = event.nativeEvent.contentOffset.y;
     leftScrollRef.current?.scrollTo({ y: offsetY, animated: false });
+    middleScrollRef.current?.scrollTo({ y: offsetY, animated: false });
   };
 
   const handleLeftScrollEnd = () => {
@@ -59,6 +63,12 @@ export default function SideBySideEditor({
   const originalFlag = originalLanguages.length > 0 ? getFlagForLanguage(originalLanguages[0]) : '🌐';
   const translationFlag = getFlagForLanguage(translationLanguage);
 
+  // Calculate number of lines for the middle column
+  const maxLines = Math.max(
+    originalLyrics.split('\n').length,
+    translationLyrics.split('\n').length
+  );
+
   return (
     <View style={[styles.container, isWide && styles.containerWide]}>
       <View style={styles.sideBySideContainer}>
@@ -73,8 +83,30 @@ export default function SideBySideEditor({
           onScrollEndDrag={handleLeftScrollEnd}
           onMomentumScrollEnd={() => setActiveScroll(null)}
           onScroll={handleLeftScroll}
-          lineNumberPosition="middle"
+          showLineNumbers={false}
         />
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Middle column: Line numbers */}
+        <View style={styles.middleColumn}>
+          <View style={styles.middleHeader} />
+          <ScrollView
+            ref={middleScrollRef}
+            style={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={false}
+          >
+            <View>
+              {Array.from({ length: maxLines }).map((_, i) => (
+                <View key={i} style={styles.lineNumberRow}>
+                  <Text style={styles.lineNumberText}>{i + 1}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
 
         {/* Divider */}
         <View style={styles.divider} />
@@ -90,7 +122,7 @@ export default function SideBySideEditor({
           onScrollEndDrag={handleRightScrollEnd}
           onMomentumScrollEnd={() => setActiveScroll(null)}
           onScroll={handleRightScroll}
-          lineNumberPosition="middle"
+          showLineNumbers={false}
         />
       </View>
     </View>
@@ -117,5 +149,32 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     backgroundColor: Colors.border,
+  },
+  middleColumn: {
+    width: 44,
+  },
+  middleHeader: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    height: 48,
+  },
+  scroll: {
+    flex: 1,
+  },
+  lineNumberRow: {
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    height: 34,
+    justifyContent: 'center',
+  },
+  lineNumberText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
   },
 });

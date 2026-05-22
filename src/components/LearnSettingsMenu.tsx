@@ -102,7 +102,7 @@ export default function LearnSettingsMenu({
                   size={20}
                   color={Colors.text}
                 />
-                <Text style={styles.settingText}>Show Mastery Level Colors</Text>
+                <Text style={styles.settingText}>Mastery Level Colors</Text>
               </View>
               <View style={[styles.switch, showMasteryLevelColors && styles.switchActive]}>
                 <View style={[styles.switchThumb, showMasteryLevelColors && styles.switchThumbActive]} />

@@ -47,18 +47,17 @@ export default function LyricsEditor({
   const renderLine = (line: string, i: number) => {
     const refLine = hasReference ? (i < referenceLines!.length ? referenceLines![i] : '') : null;
 
-    if (hasReference) {
       return (
         <View
           key={i}
-          style={styles.linePair}
+          style={hasReference ? styles.linePair : styles.lineSolo}
         >
           <View style={styles.line}>
             {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
-            <Text style={styles.referenceLineText}>{refLine}</Text>
+            {hasReference && <Text style={styles.referenceLineText}>{refLine}</Text>}
           </View>
           <View style={styles.line}>
-            {showLineNumbers && <View style={styles.lineNumberSpacer} />}
+            {hasReference && showLineNumbers && <View style={styles.lineNumberSpacer} />}
             <TextInput
               style={styles.lineInput}
               value={line}
@@ -74,25 +73,6 @@ export default function LyricsEditor({
           </View>
         </View>
       );
-    }
-
-    return (
-      <View key={i} style={styles.lineSolo}>
-        {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
-        <TextInput
-          style={styles.lineInput}
-          value={line}
-          onChangeText={(text) => {
-            const newLines = [...lines];
-            newLines[i] = text;
-            onLyricsChange(newLines.join('\n'));
-          }}
-          onKeyPress={(e) => handleBackspace(e, line, i)}
-          multiline={true}
-          scrollEnabled={false}
-        />
-      </View>
-    );
   };
 
   const content = <>{lines.map((line, i) => renderLine(line, i))}</>;

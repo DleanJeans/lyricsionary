@@ -37,6 +37,9 @@ interface ContextFormData {
   definition: string;
   songId?: string;
   songName?: string;
+  translation?: string;
+  readOnly?: boolean;
+  occurrence?: number;
 }
 
 export default function WordLookupScreen() {
@@ -134,6 +137,7 @@ export default function WordLookupScreen() {
             c.songId === songId && c.context === lyricsLine
           );
           const matchingSongIndex = existingWord.contexts.findIndex(c => c.songId === songId);
+          const hasNewContextFromLearn = source === 'Learn' && lyricsLine && matchingIndex < 0;
 
           if (matchingIndex >= 0) {
             const ctx = existingWord.contexts[matchingIndex];
@@ -176,24 +180,49 @@ export default function WordLookupScreen() {
                 songId: c.songId,
                 songName: c.songName,
               }));
-            setContextBlocks([first, ...rest]);
+            const newBlock: ContextFormData = {
+              context: lyricsLine || '',
+              emoji: '',
+              ipa: '',
+              definition: '',
+              songId,
+              songName,
+              translation: translationLine,
+              readOnly: true,
+            };
+            setContextBlocks([newBlock, first, ...rest]);
           } else {
-            setContextBlocks(existingWord.contexts.map(c => ({
+            const existingBlocks: ContextFormData[] = existingWord.contexts.map(c => ({
               context: c.context,
               emoji: c.emoji || '',
               ipa: c.ipa || '',
               definition: c.definition || '',
               songId: c.songId,
               songName: c.songName,
-            })));
+            }));
+            if (hasNewContextFromLearn) {
+              const newBlock: ContextFormData = {
+                context: lyricsLine,
+                emoji: '',
+                ipa: '',
+                definition: '',
+                songId,
+                songName,
+                translation: translationLine,
+                readOnly: true,
+              };
+              setContextBlocks([newBlock, ...existingBlocks]);
+            } else {
+              setContextBlocks(existingBlocks);
+            }
           }
         } else {
-          setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName }]);
+          setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine) }]);
         }
       } else {
         setPronunciation('');
         setMasteryLevel('New');
-        setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName }]);
+        setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine) }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
         } else {

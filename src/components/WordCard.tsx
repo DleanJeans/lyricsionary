@@ -22,6 +22,7 @@ interface WordCardProps {
   songName?: string;
   artistName?: string;
   lyricsLine?: string;
+  translationLine?: string;
   originalLanguages?: string[];
 }
 
@@ -34,6 +35,12 @@ export default function WordCard({
   onClose,
   onDelete,
   source,
+  songId,
+  songName,
+  artistName,
+  lyricsLine,
+  translationLine,
+  originalLanguages,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const swipeableRef = useRef<Swipeable>(null);
@@ -49,6 +56,12 @@ export default function WordCard({
     incrementWordLookupCount(item.id);
     navigation.navigate('WordLookup', {
       word: item.word,
+      songId,
+      songName,
+      artistName,
+      lyricsLine,
+      translationLine,
+      originalLanguages,
       source,
     });
   };

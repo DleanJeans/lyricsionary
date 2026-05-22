@@ -115,6 +115,7 @@ export default function WordLookupScreen() {
   ]);
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [undoData, setUndoData] = useState<{ block: ContextFormData; index: number } | null>(null);
 
   const [displayWord, setDisplayWord] = useState(word);
 
@@ -272,15 +273,29 @@ export default function WordLookupScreen() {
   }, [canGoBackInWebView, navigation, source, songId]);
 
   const updateContextBlock = (index: number, field: keyof ContextFormData, value: string) => {
+    setUndoData(null);
     setContextBlocks(prev => prev.map((b, i) => i === index ? { ...b, [field]: value } : b));
   };
 
   const addContextBlock = () => {
+    setUndoData(null);
     setContextBlocks(prev => [...prev, { context: '', emoji: '', ipa: '', definition: '', songId, songName }]);
   };
 
   const removeContextBlock = (index: number) => {
+    setUndoData({ block: contextBlocks[index], index });
     setContextBlocks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const undoRemoveContextBlock = () => {
+    if (undoData) {
+      setContextBlocks(prev => {
+        const newBlocks = [...prev];
+        newBlocks.splice(undoData.index, 0, undoData.block);
+        return newBlocks;
+      });
+      setUndoData(null);
+    }
   };
 
   const handleSave = async () => {
@@ -527,6 +542,13 @@ export default function WordLookupScreen() {
             <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
             <Text style={styles.addContextButtonText}>Add context</Text>
           </TouchableOpacity>
+
+          {undoData && (
+            <TouchableOpacity style={styles.undoButton} onPress={undoRemoveContextBlock}>
+              <Ionicons name="undo-outline" size={18} color={Colors.primary} />
+              <Text style={styles.undoButtonText}>Undo remove</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.sourceSelector}>
@@ -815,6 +837,17 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 15,
     fontWeight: '600',
+  },
+  undoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+  },
+  undoButtonText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
   },
   deleteButton: {
     flexDirection: 'row',

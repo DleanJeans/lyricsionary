@@ -48,6 +48,30 @@ export default function LyricsEditor({
     cursorRef.current[i] = e.nativeEvent.selection.start;
   };
 
+  const handleChangeText = (text: string, i: number) => {
+    if (text.includes('\n')) {
+      const parts = text.split('\n');
+      const newLines = [...lines];
+      newLines.splice(i, 1, ...parts);
+      onLyricsChange(newLines.join('\n'));
+      return;
+    }
+    const newLines = [...lines];
+    newLines[i] = text;
+    onLyricsChange(newLines.join('\n'));
+  };
+
+  const handleSubmitEditing = (i: number) => {
+    const cursorPos = cursorRef.current[i] ?? lines[i].length;
+    const currentLine = lines[i];
+    const before = currentLine.substring(0, cursorPos);
+    const after = currentLine.substring(cursorPos);
+    const newLines = [...lines];
+    newLines[i] = before;
+    newLines.splice(i + 1, 0, after);
+    onLyricsChange(newLines.join('\n'));
+  };
+
   const renderLine = (line: string, i: number) => {
     const refLine = hasReference ? (i < referenceLines!.length ? referenceLines![i] : '') : null;
 
@@ -65,14 +89,12 @@ export default function LyricsEditor({
             <TextInput
               style={styles.lineInput}
               value={line}
-              onChangeText={(text) => {
-                const newLines = [...lines];
-                newLines[i] = text;
-                onLyricsChange(newLines.join('\n'));
-              }}
+              onChangeText={(text) => handleChangeText(text, i)}
               onKeyPress={(e) => handleBackspace(e, line, i)}
               onSelectionChange={(e) => handleSelectionChange(e, i)}
+              onSubmitEditing={() => handleSubmitEditing(i)}
               multiline={wrapLines}
+              blurOnSubmit={false}
               scrollEnabled={false}
             />
           </View>

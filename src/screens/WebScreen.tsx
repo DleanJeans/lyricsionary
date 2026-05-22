@@ -214,12 +214,14 @@ export default function WebScreen() {
           setPageTitle(navState.title ?? '');
           setShowUrlInput(false);
           setCanGoBack(navState.canGoBack);
-          setShowFab(false);
           if (navState.url !== webUrl) {
             setShowTranslationFab(false);
           }
         }}
-        onLoadStart={() => setLoading(true)}
+        onLoadStart={() => {
+          setLoading(true);
+          setShowFab(false);
+        }}
         onLoadEnd={() => {
           setLoading(false);
           // Inject both detection scripts when page finishes loading

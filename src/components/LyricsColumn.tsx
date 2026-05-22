@@ -79,6 +79,28 @@ const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
                       newLines[i] = text;
                       onLyricsChange(newLines.join('\n'));
                     }}
+                    onKeyPress={(e) => {
+                      // Handle delete/backspace at position 0
+                      if (e.nativeEvent.key === 'Backspace') {
+                        const input = e.currentTarget as any;
+                        const selectionStart = input.selectionStart || 0;
+
+                        if (selectionStart === 0 && i > 0) {
+                          // At position 0 and not first line
+                          e.preventDefault();
+                          const newLines = [...lines];
+                          if (line === '') {
+                            // Current line is empty, delete it
+                            newLines.splice(i, 1);
+                          } else {
+                            // Join with previous line
+                            newLines[i - 1] = newLines[i - 1] + newLines[i];
+                            newLines.splice(i, 1);
+                          }
+                          onLyricsChange(newLines.join('\n'));
+                        }
+                      }
+                    }}
                     multiline={true}
                     scrollEnabled={false}
                     numberOfLines={1}

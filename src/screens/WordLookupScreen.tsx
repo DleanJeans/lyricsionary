@@ -498,13 +498,6 @@ export default function WordLookupScreen() {
             <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
             <Text style={styles.addContextButtonText}>Add context</Text>
           </TouchableOpacity>
-
-          {existingWord && (
-            <TouchableOpacity style={styles.deleteButton} onPress={() => setShowDeleteConfirm(true)}>
-              <Ionicons name="trash-outline" size={20} color={Colors.danger} />
-              <Text style={styles.deleteButtonText}>Delete word</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         <View style={styles.sourceSelector}>
@@ -603,6 +596,13 @@ export default function WordLookupScreen() {
             )}
           </View>
         </View>
+
+        {existingWord && (
+          <TouchableOpacity style={styles.deleteButton} onPress={() => setShowDeleteConfirm(true)}>
+            <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+            <Text style={styles.deleteButtonText}>Delete word</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
       <EmojiPicker
         onEmojiSelected={(emojiObject: EmojiType) => {
@@ -792,8 +792,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 12,
-    marginTop: 8,
+    marginBottom: 16,
   },
   deleteButtonText: {
     color: Colors.danger,

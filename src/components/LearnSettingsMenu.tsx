@@ -83,9 +83,10 @@ export default function LearnSettingsMenu({
             <TouchableOpacity style={styles.settingRow} onPress={onToggleBlur}>
               <View style={styles.settingLeft}>
                 <Ionicons
-                  name={blurTranslations ? 'eye-outline' : 'eye-off'}
+                  name='eye-outline'
                   size={20}
                   color={Colors.text}
+                  style={{ filter: blurTranslations ? 'blur(2px)' : 'none' }}
                 />
                 <Text style={styles.settingText}>Blur Translations</Text>
               </View>

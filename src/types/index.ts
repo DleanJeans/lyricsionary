@@ -27,6 +27,8 @@ export interface WordDefinition {
   lyricsLine?: string;
 }
 
+export type MasteryLevel = 'Unknown' | 'New' | 'Learning' | 'Mastered';
+
 export interface WordEntry {
   id: string;
   word: string;
@@ -36,6 +38,7 @@ export interface WordEntry {
   lookupCount: number;
   lastLookedUp: number;
   emoji?: string;
+  masteryLevel?: MasteryLevel;
 }
 
 export type RootTabParamList = {

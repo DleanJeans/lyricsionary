@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { RootTabParamList } from '../types';
+import { RootTabParamList, MasteryLevel } from '../types';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LanguageSelect from '../components/LanguageSelect';
@@ -98,6 +98,7 @@ export default function WordLookupScreen() {
   const [pronunciation, setPronunciation] = useState('');
   const [definition, setDefinition] = useState('');
   const [emoji, setEmoji] = useState('');
+  const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('New');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
 
@@ -119,6 +120,7 @@ export default function WordLookupScreen() {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation);
         setEmoji(existingWord.emoji || '');
+        setMasteryLevel(existingWord.masteryLevel || 'New');
         // Load the most recent definition or one matching this song
         const relevantDef = existingWord.definitions.find(d => d.songId === songId)
           || existingWord.definitions[0];
@@ -130,6 +132,7 @@ export default function WordLookupScreen() {
         setPronunciation('');
         setDefinition('');
         setEmoji('');
+        setMasteryLevel('New');
         if (originalLanguages && originalLanguages.length > 0) {
           // If no existing word, use first original language as default
           setLanguage(originalLanguages[0]);
@@ -189,7 +192,7 @@ export default function WordLookupScreen() {
     if (!displayWord) return;
 
     // Update word with new data - save the displayWord, not the original word
-    await addOrUpdateWord(displayWord, language, pronunciation, definition, songId, songName, lyricsLine, emoji);
+    await addOrUpdateWord(displayWord, language, pronunciation, definition, songId, songName, lyricsLine, emoji, masteryLevel);
 
     // Navigate back to the source screen
     if (source === 'Words') {
@@ -369,6 +372,52 @@ export default function WordLookupScreen() {
               multiline
               numberOfLines={3}
             />
+          </View>
+
+          {/* Mastery Level Selector - only show for saved words */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Level</Text>
+            <View style={styles.masteryLevelSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.masteryLevelButton,
+                  masteryLevel === 'New' && styles.masteryLevelButtonActive,
+                  masteryLevel === 'New' && { backgroundColor: Colors.masteryNew }
+                ]}
+                onPress={() => setMasteryLevel('New')}
+              >
+                <Text style={[
+                  styles.masteryLevelButtonText,
+                  masteryLevel === 'New' && styles.masteryLevelButtonTextActive
+                ]}>New</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.masteryLevelButton,
+                  masteryLevel === 'Learning' && styles.masteryLevelButtonActive,
+                  masteryLevel === 'Learning' && { backgroundColor: Colors.masteryLearning }
+                ]}
+                onPress={() => setMasteryLevel('Learning')}
+              >
+                <Text style={[
+                  styles.masteryLevelButtonText,
+                  masteryLevel === 'Learning' && styles.masteryLevelButtonTextActive
+                ]}>Learning</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.masteryLevelButton,
+                  masteryLevel === 'Mastered' && styles.masteryLevelButtonActive,
+                  masteryLevel === 'Mastered' && { backgroundColor: Colors.masteryMastered }
+                ]}
+                onPress={() => setMasteryLevel('Mastered')}
+              >
+                <Text style={[
+                  styles.masteryLevelButtonText,
+                  masteryLevel === 'Mastered' && styles.masteryLevelButtonTextActive
+                ]}>Mastered</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -733,5 +782,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  masteryLevelSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  masteryLevelButton: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  masteryLevelButtonActive: {
+    borderColor: 'transparent',
+  },
+  masteryLevelButtonText: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  masteryLevelButtonTextActive: {
+    color: Colors.background,
   },
 });

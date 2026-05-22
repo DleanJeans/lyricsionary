@@ -26,6 +26,7 @@ export default function LyricsEditor({
   const lines = lyrics.split('\n');
   const hasReference = !!referenceLines && referenceLines.length > 0;
   const cursorRef = useRef<Record<number, number>>({});
+  const [refreshLineHeight, setRefreshLineHeight] = React.useState(false);
 
   const handleBackspace = (e: any, line: string, i: number) => {
     if (e.nativeEvent.key === 'Backspace') {
@@ -70,6 +71,9 @@ export default function LyricsEditor({
     newLines[i] = before;
     newLines.splice(i + 1, 0, after);
     onLyricsChange(newLines.join('\n'));
+
+    setRefreshLineHeight(true);
+    setRefreshLineHeight(false);
   };
 
   const renderLine = (line: string, i: number) => {
@@ -84,7 +88,7 @@ export default function LyricsEditor({
             onKeyPress={(e) => handleBackspace(e, line, i)}
             onSelectionChange={(e) => handleSelectionChange(e, i)}
             onSubmitEditing={() => handleSubmitEditing(i)}
-            multiline={wrapLines}
+            multiline={refreshLineHeight ? !wrapLines : wrapLines}
             blurOnSubmit={false}
             scrollEnabled={false}
           />
@@ -108,7 +112,7 @@ export default function LyricsEditor({
             onKeyPress={(e) => handleBackspace(e, line, i)}
             onSelectionChange={(e) => handleSelectionChange(e, i)}
             onSubmitEditing={() => handleSubmitEditing(i)}
-            multiline={wrapLines}
+            multiline={refreshLineHeight ? !wrapLines : wrapLines}
             blurOnSubmit={false}
             scrollEnabled={false}
           />

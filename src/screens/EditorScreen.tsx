@@ -31,8 +31,7 @@ import { Translation } from '../types';
 import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines } from '../utils/deeplTranslation';
-import SideBySideEditor from '../components/SideBySideEditor';
-import LyricsColumn from '../components/LyricsColumn';
+import LyricsEditor from '../components/LyricsEditor';
 
 
 export default function EditorScreen() {
@@ -76,8 +75,8 @@ export default function EditorScreen() {
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
   const [isEditingMetadata, setIsEditingMetadata] = useState(true);
-  const [isSideBySideMode, setIsSideBySideMode] = useState(false);
-  const [sideBySideTranslationIndex, setSideBySideTranslationIndex] = useState(0);
+  const [isBilingualMode, setIsBilingualMode] = useState(false);
+  const [isWrapEnabled, setIsWrapEnabled] = useState(false);
   
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
@@ -484,7 +483,7 @@ export default function EditorScreen() {
               setActiveTab(0);
               setShowSourceUrl(true);
               // Disable side-by-side mode when switching to original tab
-              setIsSideBySideMode(false);
+              setIsBilingualMode(false);
             }
           }}
         >
@@ -496,19 +495,13 @@ export default function EditorScreen() {
         {translations.map((t, i) => (
           <View key={t.language} style={styles.tabWrapper}>
             <TouchableOpacity
-              style={[styles.tab, activeTab === i + 1 && styles.tabActive, isSideBySideMode && sideBySideTranslationIndex === i && styles.tabActive]}
+              style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
               onPress={() => {
-                if (isSideBySideMode) {
-                  // In side-by-side mode, clicking a translation tab switches the right side
-                  setSideBySideTranslationIndex(i);
+                if (activeTab === i + 1) {
+                  setShowSourceUrl(!showSourceUrl);
                 } else {
-                  // Normal mode behavior
-                  if (activeTab === i + 1) {
-                    setShowSourceUrl(!showSourceUrl);
-                  } else {
-                    setActiveTab(i + 1);
-                    setShowSourceUrl(true);
-                  }
+                  setActiveTab(i + 1);
+                  setShowSourceUrl(true);
                 }
               }}
             >
@@ -517,7 +510,7 @@ export default function EditorScreen() {
               )}
               <Text style={[
                 styles.tabText,
-                (activeTab === i + 1 || (isSideBySideMode && sideBySideTranslationIndex === i)) && styles.tabTextActive
+                activeTab === i + 1 && styles.tabTextActive
               ]}>
                 {t.language}
               </Text>
@@ -580,22 +573,29 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
-      {translations.length > 0 && activeTab > 0 && (
-        <TouchableOpacity
-          style={[styles.sideBySideToggle, isSideBySideMode && styles.sideBySideToggleActive]}
-          onPress={() => {
-            setIsSideBySideMode(!isSideBySideMode);
-            if (!isSideBySideMode && translations.length > 0) {
-              // Ensure we have a valid translation index when enabling
-              setSideBySideTranslationIndex(activeTab > 0 ? activeTab - 1 : 0);
-            }
-          }}
-        >
-          <Ionicons name="resize-outline" size={18} color={isSideBySideMode ? Colors.white : Colors.primary} />
-          <Text style={[styles.sideBySideToggleText, isSideBySideMode && styles.sideBySideToggleTextActive]}>
-            Side by Side
-          </Text>
-        </TouchableOpacity>
+      {(translations.length > 0 && activeTab > 0 || currentLyrics.length > 0) && (
+        <View style={styles.togglesRow}>
+          {translations.length > 0 && activeTab > 0 && (
+            <TouchableOpacity
+              style={[styles.toggle, isBilingualMode && styles.toggleActive]}
+              onPress={() => setIsBilingualMode(!isBilingualMode)}
+            >
+              <Ionicons name="language-outline" size={18} color={isBilingualMode ? Colors.white : Colors.primary} />
+              <Text style={[styles.toggleText, isBilingualMode && styles.toggleTextActive]}>
+                Bilingual
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.toggle, isWrapEnabled && styles.toggleActive]}
+            onPress={() => setIsWrapEnabled(!isWrapEnabled)}
+          >
+            <Ionicons name="text" size={18} color={isWrapEnabled ? Colors.white : Colors.primary} />
+            <Text style={[styles.toggleText, isWrapEnabled && styles.toggleTextActive]}>
+              Wrap
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
       {showSourceUrl && !!currentSourceUrl && (
         <TouchableOpacity style={styles.sourceUrlRow} onPress={() => { setWebUrl(currentSourceUrl); navigation.navigate('Web'); }}>
@@ -648,30 +648,19 @@ export default function EditorScreen() {
     </View>
   );
 
-  const lyricsPanel = isSideBySideMode && translations.length > 0 ? (
-    // Side-by-side mode: Original on left, translation on right
-    <SideBySideEditor
-      originalLyrics={originalLyrics}
-      originalLanguages={originalLanguages}
-      translationLyrics={translations[sideBySideTranslationIndex]?.lyrics ?? ''}
-      translationLanguage={translations[sideBySideTranslationIndex]?.language ?? 'Translation'}
-      onOriginalChange={setOriginalLyrics}
-      onTranslationChange={(text) => {
-        const updated = [...translations];
-        updated[sideBySideTranslationIndex] = { ...updated[sideBySideTranslationIndex], lyrics: text };
-        setTranslations(updated);
-      }}
-      isWide={isWide}
-    />
-  ) : (
-    // Normal mode: Single editable column
+  const bilingualReferenceLines = isBilingualMode && activeTab > 0
+    ? originalLyrics.split('\n')
+    : undefined;
+
+  const lyricsPanel = (
     <View style={[styles.lyricsContainer, isWide && styles.lyricsContainerWide]}>
       <View style={styles.lyricsInputWrapper}>
-        <LyricsColumn
+        <LyricsEditor
           lyrics={currentLyrics}
           onLyricsChange={setCurrentLyrics}
-          showHeader={false}
-          lineNumberPosition="left"
+          showLineNumbers={true}
+          wrapLines={isWrapEnabled}
+          referenceLines={bilingualReferenceLines}
         />
       </View>
     </View>
@@ -965,7 +954,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     overflow: 'hidden',
   },
-  sideBySideToggle: {
+  togglesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  toggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -976,17 +970,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.primary,
     gap: 6,
-    marginBottom: 10,
   },
-  sideBySideToggleActive: {
+  toggleActive: {
     backgroundColor: Colors.primary,
   },
-  sideBySideToggleText: {
+  toggleText: {
     color: Colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
-  sideBySideToggleTextActive: {
+  toggleTextActive: {
     color: Colors.white,
   },
   actions: {

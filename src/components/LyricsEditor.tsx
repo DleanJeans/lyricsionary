@@ -125,14 +125,12 @@ const styles = StyleSheet.create({
   lineSolo: {
     flexDirection: 'row',
     paddingVertical: 4,
-    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     alignItems: 'flex-start',
   },
   line: {
     flexDirection: 'row',
-    paddingHorizontal: 4,
     alignItems: 'flex-start',
   },
   lineNumber: {

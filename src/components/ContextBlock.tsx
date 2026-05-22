@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, TextInput, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
@@ -14,7 +14,18 @@ interface ContextBlockProps {
   definition: string;
   onDefinitionChange: (value: string) => void;
   onRemove?: () => void;
-  showRemoveButton?: boolean;
+  word?: string;
+  occurrence?: number;
+  onOccurrenceChange?: (value: number) => void;
+  translation?: string;
+  readOnly?: boolean;
+}
+
+function countOccurrences(text: string, word: string): number {
+  if (!word || !text) return 0;
+  const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+  const matches = text.match(regex);
+  return matches ? matches.length : 0;
 }
 
 export default function ContextBlock({
@@ -28,7 +39,69 @@ export default function ContextBlock({
   definition,
   onDefinitionChange,
   onRemove,
+  word,
+  occurrence = 1,
+  onOccurrenceChange,
+  translation,
+  readOnly = false,
 }: ContextBlockProps) {
+  const occurrenceCount = useMemo(
+    () => countOccurrences(context, word || ''),
+    [context, word]
+  );
+
+  const showOccurrenceSelector = occurrenceCount > 1;
+
+  const renderContextText = () => {
+    if (!word || !context) return context;
+
+    const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    let occurrenceIndex = 0;
+    const parts: { text: string; isHighlight: boolean }[] = [];
+    const regex = new RegExp(`(${escapedWord})`, 'gi');
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(context)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ text: context.slice(lastIndex, match.index), isHighlight: false });
+      }
+      occurrenceIndex++;
+      parts.push({
+        text: match[1],
+        isHighlight: occurrenceIndex === occurrence,
+      });
+      lastIndex = match.index + match[1].length;
+    }
+
+    if (lastIndex < context.length) {
+      parts.push({ text: context.slice(lastIndex), isHighlight: false });
+    }
+
+    if (parts.length === 0) {
+      return <Text style={styles.contextText}>{context}</Text>;
+    }
+
+    return (
+      <Text style={styles.contextText}>
+        {parts.map((part, i) =>
+          part.isHighlight ? (
+            <Text key={i} style={styles.contextUnderlined}>{part.text}</Text>
+          ) : (
+            <Text key={i}>{part.text}</Text>
+          )
+        )}
+      </Text>
+    );
+  };
+
+  const handleOccurrencePress = () => {
+    if (!onOccurrenceChange) return;
+    const next = occurrence >= occurrenceCount ? 1 : occurrence + 1;
+    onOccurrenceChange(next);
+  };
+
   return (
     <View style={styles.container}>
       {onRemove && (
@@ -37,14 +110,30 @@ export default function ContextBlock({
         </TouchableOpacity>
       )}
       <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Context</Text>
-        <TextInput
-          style={styles.fieldInput}
-          value={context}
-          onChangeText={onContextChange}
-          placeholder="Line of lyrics"
-          placeholderTextColor={Colors.textMuted}
-        />
+        <View style={styles.contextLabelRow}>
+          <Text style={styles.fieldLabel}>Context</Text>
+          {showOccurrenceSelector && (
+            <TouchableOpacity style={styles.occurrenceButton} onPress={handleOccurrencePress}>
+              <Text style={styles.occurrenceText}>{occurrence}/{occurrenceCount}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {readOnly ? (
+          <View style={styles.contextDisplay}>
+            {renderContextText()}
+          </View>
+        ) : (
+          <TextInput
+            style={styles.fieldInput}
+            value={context}
+            onChangeText={onContextChange}
+            placeholder="Line of lyrics"
+            placeholderTextColor={Colors.textMuted}
+          />
+        )}
+        {translation ? (
+          <Text style={styles.translationText}>{translation}</Text>
+        ) : null}
       </View>
       <View style={styles.contextRow}>
         <View style={styles.contextEmojiField}>
@@ -97,10 +186,49 @@ const styles = StyleSheet.create({
   field: {
     gap: 6,
   },
+  contextLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
+  },
+  occurrenceButton: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  occurrenceText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  contextDisplay: {
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  contextText: {
+    fontSize: 15,
+    color: Colors.text,
+  },
+  contextUnderlined: {
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  translationText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
   },
   fieldInput: {
     backgroundColor: Colors.surface,

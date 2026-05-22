@@ -111,7 +111,7 @@ export default function WordLookupScreen() {
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
 
   const [contextBlocks, setContextBlocks] = useState<ContextFormData[]>([
-    { context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName }
+    { context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1 }
   ]);
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -149,6 +149,7 @@ export default function WordLookupScreen() {
               definition: ctx.definition || '',
               songId: ctx.songId,
               songName: ctx.songName,
+              occurrence: 1,
             };
             const rest: ContextFormData[] = existingWord.contexts
               .filter((_, i) => i !== matchingIndex)
@@ -159,6 +160,7 @@ export default function WordLookupScreen() {
                 definition: c.definition || '',
                 songId: c.songId,
                 songName: c.songName,
+                occurrence: 1,
               }));
             setContextBlocks([first, ...rest]);
           } else if (matchingSongIndex >= 0) {
@@ -170,6 +172,7 @@ export default function WordLookupScreen() {
               definition: ctx.definition || '',
               songId: ctx.songId,
               songName: ctx.songName,
+              occurrence: 1,
             };
             const rest: ContextFormData[] = existingWord.contexts
               .filter((_, i) => i !== matchingSongIndex)
@@ -180,6 +183,7 @@ export default function WordLookupScreen() {
                 definition: c.definition || '',
                 songId: c.songId,
                 songName: c.songName,
+                occurrence: 1,
               }));
             const newBlock: ContextFormData = {
               context: lyricsLine || '',
@@ -190,6 +194,7 @@ export default function WordLookupScreen() {
               songName,
               translation: translationLine,
               readOnly: true,
+              occurrence: 1,
             };
             setContextBlocks([newBlock, first, ...rest]);
           } else {
@@ -200,6 +205,7 @@ export default function WordLookupScreen() {
               definition: c.definition || '',
               songId: c.songId,
               songName: c.songName,
+              occurrence: 1,
             }));
             if (hasNewContextFromLearn) {
               const newBlock: ContextFormData = {
@@ -211,6 +217,7 @@ export default function WordLookupScreen() {
                 songName,
                 translation: translationLine,
                 readOnly: true,
+                occurrence: 1,
               };
               setContextBlocks([newBlock, ...existingBlocks]);
             } else {
@@ -218,12 +225,12 @@ export default function WordLookupScreen() {
             }
           }
         } else {
-          setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine) }]);
+          setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
         }
       } else {
         setPronunciation('');
         setMasteryLevel('New');
-        setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine) }]);
+        setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
         } else {
@@ -272,14 +279,14 @@ export default function WordLookupScreen() {
     };
   }, [canGoBackInWebView, navigation, source, songId]);
 
-  const updateContextBlock = (index: number, field: keyof ContextFormData, value: string) => {
+  const updateContextBlock = (index: number, field: keyof ContextFormData, value: string | number) => {
     setUndoData(null);
     setContextBlocks(prev => prev.map((b, i) => i === index ? { ...b, [field]: value } : b));
   };
 
   const addContextBlock = () => {
     setUndoData(null);
-    setContextBlocks(prev => [...prev, { context: '', emoji: '', ipa: '', definition: '', songId, songName }]);
+    setContextBlocks(prev => [...prev, { context: '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1 }]);
   };
 
   const removeContextBlock = (index: number) => {
@@ -534,6 +541,11 @@ export default function WordLookupScreen() {
                 definition={block.definition}
                 onDefinitionChange={(v) => updateContextBlock(index, 'definition', v)}
                 onRemove={contextBlocks.length > 1 ? () => removeContextBlock(index) : undefined}
+                word={displayWord}
+                occurrence={block.occurrence}
+                onOccurrenceChange={(v) => updateContextBlock(index, 'occurrence', v)}
+                translation={block.translation}
+                readOnly={block.readOnly}
               />
             </View>
           ))}

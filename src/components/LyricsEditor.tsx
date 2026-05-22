@@ -28,7 +28,7 @@ export default function LyricsEditor({
   const cursorRef = useRef<Record<number, number>>({});
   const inputRefs = useRef<Record<number, any>>({});
   const [focusTarget, setFocusTarget] = useState<{ lineIndex: number; cursorPos?: number } | null>(null);
-  const [refreshLineHeight, setRefreshLineHeight] = React.useState(false);
+  const [lineGenerations, setLineGenerations] = useState<Record<number, number>>({});
 
   useEffect(() => {
     if (focusTarget) {
@@ -76,6 +76,7 @@ export default function LyricsEditor({
       newLines.splice(i, 1, ...parts);
       onLyricsChange(newLines.join('\n'));
       setFocusTarget({ lineIndex: i + 1, cursorPos: 0 });
+      setLineGenerations(prev => ({ ...prev, [i]: (prev[i] || 0) + 1 }));
       return;
     }
     const newLines = [...lines];
@@ -93,9 +94,7 @@ export default function LyricsEditor({
     newLines.splice(i + 1, 0, after);
     onLyricsChange(newLines.join('\n'));
     setFocusTarget({ lineIndex: i + 1, cursorPos: 0 });
-
-    setRefreshLineHeight(true);
-    setRefreshLineHeight(false);
+    setLineGenerations(prev => ({ ...prev, [i]: (prev[i] || 0) + 1 }));
   };
 
   const renderLineInput = (line: string, i: number) => (
@@ -107,16 +106,17 @@ export default function LyricsEditor({
       onKeyPress={(e) => handleBackspace(e, line, i)}
       onSelectionChange={(e) => handleSelectionChange(e, i)}
       onSubmitEditing={() => handleSubmitEditing(i)}
-      multiline={refreshLineHeight ? !wrapLines : wrapLines}
+      multiline={wrapLines}
       blurOnSubmit={false}
       scrollEnabled={false}
     />
   );
 
   const renderLine = (line: string, i: number) => {
+    const lineKey = `${i}-${lineGenerations[i] || 0}`;
     if (!hasReference) {
       return (
-        <View key={i} style={styles.lineSolo}>
+        <View key={lineKey} style={styles.lineSolo}>
           {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
           {renderLineInput(line, i)}
         </View>
@@ -125,7 +125,7 @@ export default function LyricsEditor({
 
     const refLine = i < referenceLines!.length ? referenceLines![i] : '';
     return (
-      <View key={i} style={styles.linePair}>
+      <View key={lineKey} style={styles.linePair}>
         <View style={styles.line}>
           {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
           <Text style={styles.referenceLineText}>{refLine}</Text>

@@ -81,6 +81,7 @@ const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
                     }}
                     multiline={true}
                     scrollEnabled={false}
+                    numberOfLines={1}
                   />
                   {lineNumberPosition === 'middle' && (
                     <Text style={styles.lineNumberMiddle}>{i + 1}</Text>

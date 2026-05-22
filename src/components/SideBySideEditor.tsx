@@ -31,18 +31,28 @@ export default function SideBySideEditor({
 }: SideBySideEditorProps) {
   const leftScrollRef = useRef<ScrollView>(null);
   const rightScrollRef = useRef<ScrollView>(null);
-  const [isScrolling, setIsScrolling] = useState<'left' | 'right' | null>(null);
+  const [activeScroll, setActiveScroll] = useState<'left' | 'right' | null>(null);
 
   const handleLeftScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (isScrolling !== 'left') return;
+    if (activeScroll !== 'left') return;
     const offsetY = event.nativeEvent.contentOffset.y;
     rightScrollRef.current?.scrollTo({ y: offsetY, animated: false });
   };
 
   const handleRightScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (isScrolling !== 'right') return;
+    if (activeScroll !== 'right') return;
     const offsetY = event.nativeEvent.contentOffset.y;
     leftScrollRef.current?.scrollTo({ y: offsetY, animated: false });
+  };
+
+  const handleLeftScrollEnd = () => {
+    // Keep activeScroll set during momentum scrolling
+    // Only clear it when momentum ends
+  };
+
+  const handleRightScrollEnd = () => {
+    // Keep activeScroll set during momentum scrolling
+    // Only clear it when momentum ends
   };
 
   // Get flags for languages
@@ -59,9 +69,9 @@ export default function SideBySideEditor({
           onLyricsChange={onOriginalChange}
           headerFlag={originalFlag}
           headerTitle="Original"
-          onScrollBeginDrag={() => setIsScrolling('left')}
-          onScrollEndDrag={() => setIsScrolling(null)}
-          onMomentumScrollEnd={() => setIsScrolling(null)}
+          onScrollBeginDrag={() => setActiveScroll('left')}
+          onScrollEndDrag={handleLeftScrollEnd}
+          onMomentumScrollEnd={() => setActiveScroll(null)}
           onScroll={handleLeftScroll}
           lineNumberPosition="middle"
         />
@@ -76,9 +86,9 @@ export default function SideBySideEditor({
           onLyricsChange={onTranslationChange}
           headerFlag={translationFlag}
           headerTitle={translationLanguage}
-          onScrollBeginDrag={() => setIsScrolling('right')}
-          onScrollEndDrag={() => setIsScrolling(null)}
-          onMomentumScrollEnd={() => setIsScrolling(null)}
+          onScrollBeginDrag={() => setActiveScroll('right')}
+          onScrollEndDrag={handleRightScrollEnd}
+          onMomentumScrollEnd={() => setActiveScroll(null)}
           onScroll={handleRightScroll}
           lineNumberPosition="middle"
         />

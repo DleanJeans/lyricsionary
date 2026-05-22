@@ -73,33 +73,48 @@ export default function LyricsEditor({
   };
 
   const renderLine = (line: string, i: number) => {
-    const refLine = hasReference ? (i < referenceLines!.length ? referenceLines![i] : '') : null;
-
+    if (!hasReference) {
       return (
-        <View
-          key={i}
-          style={hasReference ? styles.linePair : styles.lineSolo}
-        >
-          <View style={styles.line}>
-            {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
-            {hasReference && <Text style={styles.referenceLineText}>{refLine}</Text>}
-          </View>
-          <View style={styles.line}>
-            {hasReference && showLineNumbers && <View style={styles.lineNumberSpacer} />}
-            <TextInput
-              style={styles.lineInput}
-              value={line}
-              onChangeText={(text) => handleChangeText(text, i)}
-              onKeyPress={(e) => handleBackspace(e, line, i)}
-              onSelectionChange={(e) => handleSelectionChange(e, i)}
-              onSubmitEditing={() => handleSubmitEditing(i)}
-              multiline={wrapLines}
-              blurOnSubmit={false}
-              scrollEnabled={false}
-            />
-          </View>
+        <View key={i} style={styles.lineSolo}>
+          {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
+          <TextInput
+            style={styles.lineInput}
+            value={line}
+            onChangeText={(text) => handleChangeText(text, i)}
+            onKeyPress={(e) => handleBackspace(e, line, i)}
+            onSelectionChange={(e) => handleSelectionChange(e, i)}
+            onSubmitEditing={() => handleSubmitEditing(i)}
+            multiline={wrapLines}
+            blurOnSubmit={false}
+            scrollEnabled={false}
+          />
         </View>
       );
+    }
+
+    const refLine = i < referenceLines!.length ? referenceLines![i] : '';
+    return (
+      <View key={i} style={styles.linePair}>
+        <View style={styles.line}>
+          {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
+          <Text style={styles.referenceLineText}>{refLine}</Text>
+        </View>
+        <View style={styles.line}>
+          {showLineNumbers && <View style={styles.lineNumberSpacer} />}
+          <TextInput
+            style={styles.lineInput}
+            value={line}
+            onChangeText={(text) => handleChangeText(text, i)}
+            onKeyPress={(e) => handleBackspace(e, line, i)}
+            onSelectionChange={(e) => handleSelectionChange(e, i)}
+            onSubmitEditing={() => handleSubmitEditing(i)}
+            multiline={wrapLines}
+            blurOnSubmit={false}
+            scrollEnabled={false}
+          />
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -127,7 +142,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   line: {
     flexDirection: 'row',
@@ -139,7 +154,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'right',
     marginRight: 8,
-    marginVertical: 'auto',
   },
   lineNumberSpacer: {
     width: 28,
@@ -160,7 +174,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingVertical: 4,
     paddingHorizontal: 4,
-    minWidth: 300,
     textAlignVertical: 'top',
   },
 });

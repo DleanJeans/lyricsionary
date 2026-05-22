@@ -75,7 +75,7 @@ export default function EditorScreen() {
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
   const [isEditingMetadata, setIsEditingMetadata] = useState(true);
-  const [isBilingualMode, setIsBilingualMode] = useState(false);
+  const [isShowingOriginal, setIsShowingOriginal] = useState(false);
   const [isWrapEnabled, setIsWrapEnabled] = useState(false);
   
   // Track original state for Reset button
@@ -483,7 +483,7 @@ export default function EditorScreen() {
               setActiveTab(0);
               setShowSourceUrl(true);
               // Disable side-by-side mode when switching to original tab
-              setIsBilingualMode(false);
+              setIsShowingOriginal(false);
             }
           }}
         >
@@ -577,12 +577,12 @@ export default function EditorScreen() {
         <View style={styles.togglesRow}>
           {translations.length > 0 && activeTab > 0 && (
             <TouchableOpacity
-              style={[styles.toggle, isBilingualMode && styles.toggleActive]}
-              onPress={() => setIsBilingualMode(!isBilingualMode)}
+              style={[styles.toggle, isShowingOriginal && styles.toggleActive]}
+              onPress={() => setIsShowingOriginal(!isShowingOriginal)}
             >
-              <Ionicons name="language-outline" size={18} color={isBilingualMode ? Colors.white : Colors.primary} />
-              <Text style={[styles.toggleText, isBilingualMode && styles.toggleTextActive]}>
-                Bilingual
+              <Ionicons name="language-outline" size={18} color={isShowingOriginal ? Colors.white : Colors.primary} />
+              <Text style={[styles.toggleText, isShowingOriginal && styles.toggleTextActive]}>
+                Show Original
               </Text>
             </TouchableOpacity>
           )}
@@ -648,7 +648,7 @@ export default function EditorScreen() {
     </View>
   );
 
-  const bilingualReferenceLines = isBilingualMode && activeTab > 0
+  const bilingualReferenceLines = isShowingOriginal && activeTab > 0
     ? originalLyrics.split('\n')
     : undefined;
 

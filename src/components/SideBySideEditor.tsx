@@ -1,8 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   ScrollView,
   StyleSheet,
   NativeSyntheticEvent,
@@ -10,6 +8,7 @@ import {
 } from 'react-native';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
+import LyricsColumn from './LyricsColumn';
 
 interface SideBySideEditorProps {
   originalLyrics: string;
@@ -46,9 +45,6 @@ export default function SideBySideEditor({
     leftScrollRef.current?.scrollTo({ y: offsetY, animated: false });
   };
 
-  const originalLines = originalLyrics.split('\n');
-  const translationLines = translationLyrics.split('\n');
-
   // Get flags for languages
   const originalFlag = originalLanguages.length > 0 ? getFlagForLanguage(originalLanguages[0]) : '🌐';
   const translationFlag = getFlagForLanguage(translationLanguage);
@@ -57,85 +53,35 @@ export default function SideBySideEditor({
     <View style={[styles.container, isWide && styles.containerWide]}>
       <View style={styles.sideBySideContainer}>
         {/* Left side: Original lyrics */}
-        <View style={styles.column}>
-          <View style={styles.columnHeader}>
-            <Text style={styles.headerFlag}>{originalFlag}</Text>
-            <Text style={styles.columnTitle}>Original</Text>
-          </View>
-          <ScrollView
-            ref={leftScrollRef}
-            style={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            onScrollBeginDrag={() => setIsScrolling('left')}
-            onScrollEndDrag={() => setIsScrolling(null)}
-            onMomentumScrollEnd={() => setIsScrolling(null)}
-            onScroll={handleLeftScroll}
-            scrollEventThrottle={16}
-          >
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View>
-                {originalLines.map((line, i) => (
-                  <View key={i} style={styles.line}>
-                    <Text style={styles.lineNumber}>{i + 1}</Text>
-                    <TextInput
-                      style={styles.lineInput}
-                      value={line}
-                      onChangeText={(text) => {
-                        const newLines = [...originalLines];
-                        newLines[i] = text;
-                        onOriginalChange(newLines.join('\n'));
-                      }}
-                      multiline={true}
-                      scrollEnabled={false}
-                    />
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </ScrollView>
-        </View>
+        <LyricsColumn
+          ref={leftScrollRef}
+          lyrics={originalLyrics}
+          onLyricsChange={onOriginalChange}
+          headerFlag={originalFlag}
+          headerTitle="Original"
+          onScrollBeginDrag={() => setIsScrolling('left')}
+          onScrollEndDrag={() => setIsScrolling(null)}
+          onMomentumScrollEnd={() => setIsScrolling(null)}
+          onScroll={handleLeftScroll}
+          lineNumberPosition="middle"
+        />
 
         {/* Divider */}
         <View style={styles.divider} />
 
         {/* Right side: Translation */}
-        <View style={styles.column}>
-          <View style={styles.columnHeader}>
-            <Text style={styles.headerFlag}>{translationFlag}</Text>
-            <Text style={styles.columnTitle}>{translationLanguage}</Text>
-          </View>
-          <ScrollView
-            ref={rightScrollRef}
-            style={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            onScrollBeginDrag={() => setIsScrolling('right')}
-            onScrollEndDrag={() => setIsScrolling(null)}
-            onMomentumScrollEnd={() => setIsScrolling(null)}
-            onScroll={handleRightScroll}
-            scrollEventThrottle={16}
-          >
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View>
-                {translationLines.map((line, i) => (
-                  <View key={i} style={styles.line}>
-                    <Text style={styles.lineNumber}>{i + 1}</Text>
-                    <TextInput
-                      style={styles.lineInput}
-                      value={line}
-                      onChangeText={(text) => {
-                        const newLines = [...translationLines];
-                        newLines[i] = text;
-                        onTranslationChange(newLines.join('\n'));
-                      }}
-                      multiline={true}
-                      scrollEnabled={false}
-                    />
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </ScrollView>
-        </View>
+        <LyricsColumn
+          ref={rightScrollRef}
+          lyrics={translationLyrics}
+          onLyricsChange={onTranslationChange}
+          headerFlag={translationFlag}
+          headerTitle={translationLanguage}
+          onScrollBeginDrag={() => setIsScrolling('right')}
+          onScrollEndDrag={() => setIsScrolling(null)}
+          onMomentumScrollEnd={() => setIsScrolling(null)}
+          onScroll={handleRightScroll}
+          lineNumberPosition="middle"
+        />
       </View>
     </View>
   );
@@ -158,56 +104,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     overflow: 'hidden',
   },
-  column: {
-    flex: 1,
-  },
   divider: {
     width: 1,
     backgroundColor: Colors.border,
-  },
-  columnHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    backgroundColor: Colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 6,
-  },
-  headerFlag: {
-    fontSize: 16,
-  },
-  columnTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  scroll: {
-    flex: 1,
-  },
-  line: {
-    flexDirection: 'row',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    minHeight: 40,
-    alignItems: 'center',
-  },
-  lineNumber: {
-    width: 28,
-    color: Colors.textMuted,
-    fontSize: 13,
-    textAlign: 'right',
-    marginRight: 8,
-  },
-  lineInput: {
-    color: Colors.text,
-    fontSize: 15,
-    lineHeight: 22,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    minWidth: 300,
   },
 });

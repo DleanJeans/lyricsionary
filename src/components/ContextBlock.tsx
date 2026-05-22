@@ -3,7 +3,7 @@ import { View, StyleSheet, TextInput, TouchableOpacity, Text } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 
-interface CEIDBlockProps {
+interface ContextBlockProps {
   context: string;
   onContextChange: (value: string) => void;
   emoji: string;
@@ -17,7 +17,7 @@ interface CEIDBlockProps {
   showRemoveButton?: boolean;
 }
 
-export default function CEIDBlock({
+export default function ContextBlock({
   context,
   onContextChange,
   emoji,
@@ -28,7 +28,7 @@ export default function CEIDBlock({
   definition,
   onDefinitionChange,
   onRemove,
-}: CEIDBlockProps) {
+}: ContextBlockProps) {
   return (
     <View style={styles.container}>
       {onRemove && (

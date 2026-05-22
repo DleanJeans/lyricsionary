@@ -25,7 +25,7 @@ import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import WordTransformButtons from '../components/WordTransformButtons';
-import CEIDBlock from '../components/CEIDBlock';
+import ContextBlock from '../components/ContextBlock';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
@@ -475,11 +475,11 @@ export default function WordLookupScreen() {
           </View>
 
           {contextBlocks.map((block, index) => (
-            <View key={index} style={styles.ceidBlockWrapper}>
+            <View key={index} style={styles.contextBlockWrapper}>
               {contextBlocks.length > 1 && index > 0 && (
-                <View style={styles.ceidDivider} />
+                <View style={styles.contextDivider} />
               )}
-              <CEIDBlock
+              <ContextBlock
                 context={block.context}
                 onContextChange={(v) => updateContextBlock(index, 'context', v)}
                 emoji={block.emoji}
@@ -768,10 +768,10 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 14,
   },
-  ceidBlockWrapper: {
+  contextBlockWrapper: {
     gap: 0,
   },
-  ceidDivider: {
+  contextDivider: {
     height: 1,
     backgroundColor: Colors.border,
     marginVertical: 8,

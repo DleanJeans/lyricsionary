@@ -45,19 +45,16 @@ export default function LyricsEditor({
   };
 
   const renderLine = (line: string, i: number) => {
-    const refLine = hasReference
-      ? i < referenceLines!.length
-        ? referenceLines![i]
-        : ''
-      : null;
+    const refLine = hasReference ? (i < referenceLines!.length ? referenceLines![i] : '') : null;
 
     if (hasReference) {
       return (
-        <View key={i} style={styles.linePair}>
+        <View
+          key={i}
+          style={styles.linePair}
+        >
           <View style={styles.line}>
-            {showLineNumbers && (
-              <Text style={styles.lineNumber}>{i + 1}</Text>
-            )}
+            {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
             <Text style={styles.referenceLineText}>{refLine}</Text>
           </View>
           <View style={styles.line}>
@@ -136,7 +133,6 @@ const styles = StyleSheet.create({
   },
   line: {
     flexDirection: 'row',
-    paddingVertical: 2,
     paddingHorizontal: 4,
     alignItems: 'flex-start',
   },

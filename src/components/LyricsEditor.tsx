@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,25 @@ export default function LyricsEditor({
   const lines = lyrics.split('\n');
   const hasReference = !!referenceLines && referenceLines.length > 0;
   const cursorRef = useRef<Record<number, number>>({});
+  const inputRefs = useRef<Record<number, any>>({});
+  const [focusTarget, setFocusTarget] = useState<{ lineIndex: number; cursorPos?: number } | null>(null);
   const [refreshLineHeight, setRefreshLineHeight] = React.useState(false);
+
+  useEffect(() => {
+    if (focusTarget) {
+      const { lineIndex, cursorPos } = focusTarget;
+      const ref = inputRefs.current[lineIndex];
+      if (ref) {
+        ref.focus();
+        if (cursorPos !== undefined) {
+          requestAnimationFrame(() => {
+            ref.setNativeProps({ selection: { start: cursorPos, end: cursorPos } });
+          });
+        }
+      }
+      setFocusTarget(null);
+    }
+  }, [focusTarget, lines]);
 
   const handleBackspace = (e: any, line: string, i: number) => {
     if (e.nativeEvent.key === 'Backspace') {
@@ -34,6 +52,7 @@ export default function LyricsEditor({
       if (cursorPos === 0 && i > 0) {
         e.preventDefault?.();
         const newLines = [...lines];
+        const mergePos = newLines[i - 1].length;
         if (line === '') {
           newLines.splice(i, 1);
         } else {
@@ -41,6 +60,7 @@ export default function LyricsEditor({
           newLines.splice(i, 1);
         }
         onLyricsChange(newLines.join('\n'));
+        setFocusTarget({ lineIndex: i - 1, cursorPos: mergePos });
       }
     }
   };
@@ -55,6 +75,7 @@ export default function LyricsEditor({
       const newLines = [...lines];
       newLines.splice(i, 1, ...parts);
       onLyricsChange(newLines.join('\n'));
+      setFocusTarget({ lineIndex: i + 1, cursorPos: 0 });
       return;
     }
     const newLines = [...lines];
@@ -71,6 +92,7 @@ export default function LyricsEditor({
     newLines[i] = before;
     newLines.splice(i + 1, 0, after);
     onLyricsChange(newLines.join('\n'));
+    setFocusTarget({ lineIndex: i + 1, cursorPos: 0 });
 
     setRefreshLineHeight(true);
     setRefreshLineHeight(false);
@@ -78,6 +100,7 @@ export default function LyricsEditor({
 
   const renderLineInput = (line: string, i: number) => (
     <TextInput
+      ref={(el) => { if (el) inputRefs.current[i] = el; }}
       style={styles.lineInput}
       value={line}
       onChangeText={(text) => handleChangeText(text, i)}

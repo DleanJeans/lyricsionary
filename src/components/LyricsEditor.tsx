@@ -76,22 +76,26 @@ export default function LyricsEditor({
     setRefreshLineHeight(false);
   };
 
+  const renderLineInput = (line: string, i: number) => (
+    <TextInput
+      style={styles.lineInput}
+      value={line}
+      onChangeText={(text) => handleChangeText(text, i)}
+      onKeyPress={(e) => handleBackspace(e, line, i)}
+      onSelectionChange={(e) => handleSelectionChange(e, i)}
+      onSubmitEditing={() => handleSubmitEditing(i)}
+      multiline={refreshLineHeight ? !wrapLines : wrapLines}
+      blurOnSubmit={false}
+      scrollEnabled={false}
+    />
+  );
+
   const renderLine = (line: string, i: number) => {
     if (!hasReference) {
       return (
         <View key={i} style={styles.lineSolo}>
           {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
-          <TextInput
-            style={styles.lineInput}
-            value={line}
-            onChangeText={(text) => handleChangeText(text, i)}
-            onKeyPress={(e) => handleBackspace(e, line, i)}
-            onSelectionChange={(e) => handleSelectionChange(e, i)}
-            onSubmitEditing={() => handleSubmitEditing(i)}
-            multiline={refreshLineHeight ? !wrapLines : wrapLines}
-            blurOnSubmit={false}
-            scrollEnabled={false}
-          />
+          {renderLineInput(line, i)}
         </View>
       );
     }
@@ -105,17 +109,7 @@ export default function LyricsEditor({
         </View>
         <View style={styles.line}>
           {showLineNumbers && <View style={styles.lineNumberSpacer} />}
-          <TextInput
-            style={styles.lineInput}
-            value={line}
-            onChangeText={(text) => handleChangeText(text, i)}
-            onKeyPress={(e) => handleBackspace(e, line, i)}
-            onSelectionChange={(e) => handleSelectionChange(e, i)}
-            onSubmitEditing={() => handleSubmitEditing(i)}
-            multiline={refreshLineHeight ? !wrapLines : wrapLines}
-            blurOnSubmit={false}
-            scrollEnabled={false}
-          />
+          {renderLineInput(line, i)}
         </View>
       </View>
     );

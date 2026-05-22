@@ -51,12 +51,7 @@ interface AppState {
     word: string,
     language: string,
     pronunciation?: string,
-    context?: string,
-    contextEmoji?: string,
-    contextIpa?: string,
-    contextDefinition?: string,
-    songId?: string,
-    songName?: string,
+    contexts?: WordContext[],
     masteryLevel?: MasteryLevel
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
@@ -208,7 +203,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addOrUpdateWord: async (word, language, pronunciation = '', context = '', contextEmoji, contextIpa, contextDefinition, songId, songName, masteryLevel) => {
+  addOrUpdateWord: async (word, language, pronunciation = '', contexts: WordContext[] = [], masteryLevel) => {
     const existing = get().words.find(
       (w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language
     );
@@ -216,26 +211,18 @@ export const useStore = create<AppState>((set, get) => ({
     if (existing) {
       const updatedContexts = [...(existing.contexts || [])];
 
-      // If context data is provided, add or update the context
-      if (context) {
+      for (const ctx of contexts) {
+        if (!ctx.context) continue;
         const contextIndex = updatedContexts.findIndex(c =>
-          c.songId === songId && c.context === context
+          c.songId === ctx.songId && c.context === ctx.context
         );
-        const newContext: WordContext = {
-          context,
-          emoji: contextEmoji,
-          ipa: contextIpa,
-          definition: contextDefinition,
-          songId,
-          songName,
-        };
         if (contextIndex >= 0) {
           updatedContexts[contextIndex] = {
             ...updatedContexts[contextIndex],
-            ...newContext,
+            ...ctx,
           };
         } else {
-          updatedContexts.push(newContext);
+          updatedContexts.push(ctx);
         }
       }
 
@@ -252,22 +239,12 @@ export const useStore = create<AppState>((set, get) => ({
           : w
       );
     } else {
-      // Create new word entry
-      const contexts: WordContext[] = context ? [{
-        context,
-        emoji: contextEmoji,
-        ipa: contextIpa,
-        definition: contextDefinition,
-        songId,
-        songName,
-      }] : [];
-
       const entry: WordEntry = {
         id: uuidv4(),
         word,
         language,
         pronunciation,
-        contexts,
+        contexts: contexts.filter(c => c.context),
         lookupCount: 1,
         lastLookedUp: Date.now(),
         masteryLevel: masteryLevel || 'New',

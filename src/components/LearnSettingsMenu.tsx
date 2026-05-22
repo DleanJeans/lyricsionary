@@ -20,6 +20,8 @@ interface LearnSettingsMenuProps {
   onEnableAnnotationsChange: (enable: boolean) => void;
   blurTranslations: boolean;
   onToggleBlur: () => void;
+  showMasteryLevelColors: boolean;
+  onToggleShowMasteryLevelColors: () => void;
 }
 
 export default function LearnSettingsMenu({
@@ -37,6 +39,8 @@ export default function LearnSettingsMenu({
   onEnableAnnotationsChange,
   blurTranslations,
   onToggleBlur,
+  showMasteryLevelColors,
+  onToggleShowMasteryLevelColors,
 }: LearnSettingsMenuProps) {
   const languagesToShow = LANGUAGES.filter((lang) =>
     availableLanguages.includes(lang.name)
@@ -87,6 +91,21 @@ export default function LearnSettingsMenu({
               </View>
               <View style={[styles.switch, blurTranslations && styles.switchActive]}>
                 <View style={[styles.switchThumb, blurTranslations && styles.switchThumbActive]} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Mastery Level Colors Toggle */}
+            <TouchableOpacity style={styles.settingRow} onPress={onToggleShowMasteryLevelColors}>
+              <View style={styles.settingLeft}>
+                <Ionicons
+                  name="color-palette-outline"
+                  size={20}
+                  color={Colors.text}
+                />
+                <Text style={styles.settingText}>Show Mastery Level Colors</Text>
+              </View>
+              <View style={[styles.switch, showMasteryLevelColors && styles.switchActive]}>
+                <View style={[styles.switchThumb, showMasteryLevelColors && styles.switchThumbActive]} />
               </View>
             </TouchableOpacity>
 

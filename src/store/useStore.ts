@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Song, Translation, WordEntry } from '../types';
+import { Song, Translation, WordEntry, MasteryLevel } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
@@ -18,6 +18,7 @@ interface AppState {
   showTranslations: boolean;
   selectedTranslationLanguages: string[];
   blurTranslations: boolean;
+  showMasteryLevelColors: boolean;
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
@@ -42,6 +43,7 @@ interface AppState {
   toggleTranslations: () => void;
   setSelectedTranslationLanguages: (languages: string[]) => void;
   toggleBlurTranslations: () => void;
+  toggleShowMasteryLevelColors: () => void;
 
   // Word actions
   loadWords: () => Promise<void>;
@@ -53,7 +55,8 @@ interface AppState {
     songId?: string,
     songName?: string,
     lyricsLine?: string,
-    emoji?: string
+    emoji?: string,
+    masteryLevel?: MasteryLevel
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
   incrementWordLookupCount: (id: string) => Promise<void>;
@@ -70,6 +73,7 @@ export const useStore = create<AppState>((set, get) => ({
   showTranslations: true,
   selectedTranslationLanguages: [],
   blurTranslations: true,
+  showMasteryLevelColors: false,
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
@@ -156,15 +160,18 @@ export const useStore = create<AppState>((set, get) => ({
 
   toggleBlurTranslations: () => set((s) => ({ blurTranslations: !s.blurTranslations })),
 
+  toggleShowMasteryLevelColors: () => set((s) => ({ showMasteryLevelColors: !s.showMasteryLevelColors })),
+
   loadWords: async () => {
     try {
       const json = await AsyncStorage.getItem(WORDS_KEY);
       if (json) {
         const loadedWords: WordEntry[] = JSON.parse(json);
-        // Migrate old words that don't have definitions array
+        // Migrate old words that don't have definitions array or masteryLevel
         const migratedWords = loadedWords.map(w => ({
           ...w,
           definitions: w.definitions || [],
+          masteryLevel: w.masteryLevel || 'New' as MasteryLevel,
         }));
         set({ words: migratedWords });
       }
@@ -173,7 +180,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addOrUpdateWord: async (word, language, pronunciation = '', definition = '', songId, songName, lyricsLine, emoji = '') => {
+  addOrUpdateWord: async (word, language, pronunciation = '', definition = '', songId, songName, lyricsLine, emoji = '', masteryLevel) => {
     const existing = get().words.find(
       (w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language
     );
@@ -207,6 +214,7 @@ export const useStore = create<AppState>((set, get) => ({
               pronunciation: pronunciation || w.pronunciation,
               definitions: updatedDefinitions,
               emoji: emoji || w.emoji,
+              masteryLevel: masteryLevel !== undefined ? masteryLevel : w.masteryLevel,
             }
           : w
       );
@@ -226,6 +234,7 @@ export const useStore = create<AppState>((set, get) => ({
         lookupCount: 1,
         lastLookedUp: Date.now(),
         emoji,
+        masteryLevel: masteryLevel || 'New',
       };
       words = [...get().words, entry];
     }

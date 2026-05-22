@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
-import { Colors } from '../constants/theme';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
 import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -42,6 +42,8 @@ export default function LearnScreen() {
     setSelectedTranslationLanguages,
     blurTranslations,
     toggleBlurTranslations,
+    showMasteryLevelColors,
+    toggleShowMasteryLevelColors,
     isLoadingSong,
     setIsLoadingSong,
   } = useStore();
@@ -259,6 +261,13 @@ export default function LearnScreen() {
           const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && wordEntry.emoji &&
             wordEntry.emoji !== getFlagForLanguage(wordEntry.language);
 
+          // Get word color based on mastery level if enabled
+          const wordColor = isSelected
+            ? Colors.primary
+            : (showMasteryLevelColors && wordEntry?.masteryLevel)
+              ? getMasteryLevelColor(wordEntry.masteryLevel)
+              : Colors.text;
+
           return (
             <View key={i} style={{ alignItems: 'center' }}>
               {/* Always render annotation space to keep all words aligned */}
@@ -279,7 +288,7 @@ export default function LearnScreen() {
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
-                  color: isSelected ? Colors.primary : Colors.text,
+                  color: wordColor,
                   fontWeight: isSelected ? '700' : '400',
                 }}
               >
@@ -290,7 +299,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [words, song?.originalLanguages, selectedWord, displayMode, enableAnnotations, showEmoji, fontSize]);
+  }, [words, song?.originalLanguages, selectedWord, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors]);
 
   if (!song) {
     return (
@@ -453,6 +462,8 @@ export default function LearnScreen() {
           onEnableAnnotationsChange={setEnableAnnotations}
           blurTranslations={blurTranslations}
           onToggleBlur={toggleBlurTranslations}
+          showMasteryLevelColors={showMasteryLevelColors}
+          onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
         />
       )}
 

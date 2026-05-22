@@ -75,9 +75,34 @@ export function getLowercaseVersion(word: string): string {
 
 export function getWithoutContractedPrefix(word: string): string {
   if (hasContractedPrefix(word)) {
-    return word.slice(2); // Remove first letter and apostrophe
+    if (word.startsWith("qu'") || word.startsWith("Qu'")) {
+      return word.slice(3);
+    }
+    return word.slice(2);
   }
   return word;
+}
+
+export function splitElisionParts(word: string): string[] | null {
+  if (!hasContractedPrefix(word)) return null;
+
+  const parts: string[] = [];
+  let remaining = word;
+
+  while (remaining.length >= 2 && contractedPrefixRegex.test(remaining)) {
+    let prefixLength = 2;
+    if (remaining.startsWith("qu'") || remaining.startsWith("Qu'")) {
+      prefixLength = 3;
+    }
+    parts.push(remaining.slice(0, prefixLength));
+    remaining = remaining.slice(prefixLength);
+  }
+
+  if (remaining.length > 0) {
+    parts.push(remaining);
+  }
+
+  return parts.length > 1 ? parts : null;
 }
 
 /**

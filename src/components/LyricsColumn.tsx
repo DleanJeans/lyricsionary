@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'right',
     marginRight: 8,
-    paddingTop: 4,
+    marginVertical: 'auto',
   },
   lineNumberMiddle: {
     width: 28,
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     marginLeft: 8,
-    paddingTop: 4,
+    marginVertical: 'auto',
   },
   lineInput: {
     flex: 1,

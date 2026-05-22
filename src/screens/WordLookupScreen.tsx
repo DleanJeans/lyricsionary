@@ -375,52 +375,50 @@ export default function WordLookupScreen() {
           </View>
 
           {/* Mastery Level Selector - only show for saved words */}
-          {!isNewWord && (
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Level</Text>
-              <View style={styles.masteryLevelSelector}>
-                <TouchableOpacity
-                  style={[
-                    styles.masteryLevelButton,
-                    masteryLevel === 'New' && styles.masteryLevelButtonActive,
-                    masteryLevel === 'New' && { backgroundColor: Colors.masteryNew }
-                  ]}
-                  onPress={() => setMasteryLevel('New')}
-                >
-                  <Text style={[
-                    styles.masteryLevelButtonText,
-                    masteryLevel === 'New' && styles.masteryLevelButtonTextActive
-                  ]}>New</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.masteryLevelButton,
-                    masteryLevel === 'Learning' && styles.masteryLevelButtonActive,
-                    masteryLevel === 'Learning' && { backgroundColor: Colors.masteryLearning }
-                  ]}
-                  onPress={() => setMasteryLevel('Learning')}
-                >
-                  <Text style={[
-                    styles.masteryLevelButtonText,
-                    masteryLevel === 'Learning' && styles.masteryLevelButtonTextActive
-                  ]}>Learning</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.masteryLevelButton,
-                    masteryLevel === 'Mastered' && styles.masteryLevelButtonActive,
-                    masteryLevel === 'Mastered' && { backgroundColor: Colors.masteryMastered }
-                  ]}
-                  onPress={() => setMasteryLevel('Mastered')}
-                >
-                  <Text style={[
-                    styles.masteryLevelButtonText,
-                    masteryLevel === 'Mastered' && styles.masteryLevelButtonTextActive
-                  ]}>Mastered</Text>
-                </TouchableOpacity>
-              </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Level</Text>
+            <View style={styles.masteryLevelSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.masteryLevelButton,
+                  masteryLevel === 'New' && styles.masteryLevelButtonActive,
+                  masteryLevel === 'New' && { backgroundColor: Colors.masteryNew }
+                ]}
+                onPress={() => setMasteryLevel('New')}
+              >
+                <Text style={[
+                  styles.masteryLevelButtonText,
+                  masteryLevel === 'New' && styles.masteryLevelButtonTextActive
+                ]}>New</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.masteryLevelButton,
+                  masteryLevel === 'Learning' && styles.masteryLevelButtonActive,
+                  masteryLevel === 'Learning' && { backgroundColor: Colors.masteryLearning }
+                ]}
+                onPress={() => setMasteryLevel('Learning')}
+              >
+                <Text style={[
+                  styles.masteryLevelButtonText,
+                  masteryLevel === 'Learning' && styles.masteryLevelButtonTextActive
+                ]}>Learning</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.masteryLevelButton,
+                  masteryLevel === 'Mastered' && styles.masteryLevelButtonActive,
+                  masteryLevel === 'Mastered' && { backgroundColor: Colors.masteryMastered }
+                ]}
+                onPress={() => setMasteryLevel('Mastered')}
+              >
+                <Text style={[
+                  styles.masteryLevelButtonText,
+                  masteryLevel === 'Mastered' && styles.masteryLevelButtonTextActive
+                ]}>Mastered</Text>
+              </TouchableOpacity>
             </View>
-          )}
+          </View>
         </View>
 
         {/* Source Selector */}

@@ -126,10 +126,10 @@ const styles = StyleSheet.create({
   line: {
     flexDirection: 'row',
     paddingVertical: 6,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    minHeight: 40,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   lineNumber: {
     width: 28,
@@ -137,6 +137,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'right',
     marginRight: 8,
+    paddingTop: 4,
   },
   lineNumberMiddle: {
     width: 28,
@@ -144,6 +145,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     marginLeft: 8,
+    paddingTop: 4,
   },
   lineInput: {
     flex: 1,
@@ -153,6 +155,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 4,
     minWidth: 300,
+    textAlignVertical: 'top',
   },
   lineInputWithMiddleNumber: {
     minWidth: 250,

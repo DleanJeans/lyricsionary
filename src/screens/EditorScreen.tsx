@@ -112,6 +112,8 @@ export default function EditorScreen() {
         songSourceUrl: editSong.sourceUrl ?? '',
         translations: editSong.translations.map((t) => ({ ...t })),
       });
+      // Set metadata to not editing when loading an existing song
+      setIsEditingMetadata(false);
     } else {
       setOriginalState(null);
     }

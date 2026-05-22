@@ -76,7 +76,7 @@ export default function EditorScreen() {
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
   const [isEditingMetadata, setIsEditingMetadata] = useState(true);
   const [isShowingOriginal, setIsShowingOriginal] = useState(false);
-  const [isWrapEnabled, setIsWrapEnabled] = useState(false);
+  
   
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
@@ -586,15 +586,7 @@ export default function EditorScreen() {
               </Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={[styles.toggle, isWrapEnabled && styles.toggleActive]}
-            onPress={() => setIsWrapEnabled(!isWrapEnabled)}
-          >
-            <Ionicons name="text" size={18} color={isWrapEnabled ? Colors.white : Colors.primary} />
-            <Text style={[styles.toggleText, isWrapEnabled && styles.toggleTextActive]}>
-              Wrap
-            </Text>
-          </TouchableOpacity>
+          
         </View>
       )}
       {showSourceUrl && !!currentSourceUrl && (
@@ -659,7 +651,6 @@ export default function EditorScreen() {
           lyrics={currentLyrics}
           onLyricsChange={setCurrentLyrics}
           showLineNumbers={true}
-          wrapLines={isWrapEnabled}
           referenceLines={bilingualReferenceLines}
         />
       </View>

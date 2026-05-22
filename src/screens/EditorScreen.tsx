@@ -32,6 +32,7 @@ import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines } from '../utils/deeplTranslation';
 import SideBySideEditor from '../components/SideBySideEditor';
+import LyricsColumn from '../components/LyricsColumn';
 
 
 export default function EditorScreen() {
@@ -647,32 +648,6 @@ export default function EditorScreen() {
     </View>
   );
 
-  const logicalLines = currentLyrics.split('\n');
-  const [lineHeights, setLineHeights] = useState<number[]>(() => logicalLines.map(() => 24));
-
-  const handleTextLayout = useCallback(
-    (e: { nativeEvent: { lines: Array<{ text: string; height: number }> } }) => {
-      const renderedLines = e.nativeEvent.lines;
-      const logical = currentLyrics.split('\n');
-      const heights: number[] = [];
-      let rIdx = 0;
-      for (const logicalLine of logical) {
-        let accumulated = 0;
-        let logicalHeight = 0;
-        while (rIdx < renderedLines.length) {
-          const rLine = renderedLines[rIdx];
-          logicalHeight += rLine.height;
-          accumulated += rLine.text.length;
-          rIdx++;
-          if (accumulated >= logicalLine.length) break;
-        }
-        heights.push(logicalHeight || 24);
-      }
-      setLineHeights(heights);
-    },
-    [currentLyrics],
-  );
-
   const lyricsPanel = isSideBySideMode && translations.length > 0 ? (
     // Side-by-side mode: Original on left, translation on right
     <SideBySideEditor
@@ -689,46 +664,15 @@ export default function EditorScreen() {
       isWide={isWide}
     />
   ) : (
-    // Normal mode: Single editable text input
+    // Normal mode: Single editable column
     <View style={[styles.lyricsContainer, isWide && styles.lyricsContainerWide]}>
       <View style={styles.lyricsInputWrapper}>
-        <ScrollView
-          style={styles.lyricsScroll}
-          decelerationRate="normal"
-          scrollEventThrottle={16}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.lyricsRow}>
-            <View style={styles.lineNumbersColumn}>
-              {logicalLines.map((_, i) => (
-                <View key={i} style={{ height: lineHeights[i] ?? 24, justifyContent: 'flex-start' }}>
-                  <Text style={styles.lineNumber}>{i + 1}</Text>
-                </View>
-              ))}
-            </View>
-            <TextInput
-              style={styles.lyricsInput}
-              multiline
-              scrollEnabled={false}
-              placeholder="Paste or type lyrics here..."
-              placeholderTextColor={Colors.textMuted}
-              value={currentLyrics}
-              onChangeText={setCurrentLyrics}
-              textAlignVertical="top"
-              onPress={() => {
-                // Only close if both fields have values
-                if (songName.trim() && artistName.trim()) {
-                  setIsEditingMetadata(false);
-                }
-              }}
-            />
-            <View style={styles.lyricsInputMeasureContainer} pointerEvents="none">
-              <Text style={styles.lyricsInputMeasure} onTextLayout={handleTextLayout}>
-                {currentLyrics}
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
+        <LyricsColumn
+          lyrics={currentLyrics}
+          onLyricsChange={setCurrentLyrics}
+          showHeader={false}
+          lineNumberPosition="left"
+        />
       </View>
     </View>
   );
@@ -1020,48 +964,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',
-  },
-  lyricsScroll: {
-    flex: 1,
-  },
-  lyricsRow: {
-    flexDirection: 'row',
-  },
-  lineNumbersColumn: {
-    paddingTop: 16,
-    paddingBottom: 16,
-    paddingHorizontal: 8,
-    backgroundColor: Colors.background,
-    borderRightWidth: 1,
-    borderRightColor: Colors.border,
-    alignItems: 'flex-end',
-    minWidth: 36,
-  },
-  lineNumber: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    lineHeight: 24,
-    textAlign: 'right',
-  },
-  lyricsInput: {
-    flex: 1,
-    padding: 16,
-    color: Colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  lyricsInputMeasureContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  lyricsInputMeasure: {
-    padding: 16,
-    fontSize: 16,
-    lineHeight: 24,
-    opacity: 0,
   },
   sideBySideToggle: {
     flexDirection: 'row',

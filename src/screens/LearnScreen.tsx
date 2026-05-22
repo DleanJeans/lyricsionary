@@ -14,6 +14,7 @@ import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
+import { splitElisionParts } from '../utils/wordTransform';
 import NewWordCard from '../components/NewWordCard';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
@@ -216,36 +217,115 @@ export default function LearnScreen() {
 
           const cleanedWord = removeSpecialChars(word);
 
-          // Helper function to check if word has contracted prefix (e.g., j'viens)
-          const hasContractedPrefix = (w: string) => contractedPrefixRegex.test(w);
+          const hasContractedPrefixWord = contractedPrefixRegex.test(cleanedWord);
+          const hasHyphenatedPrefixWord = hyphenatedPrefixRegex.test(cleanedWord);
 
-          // Helper function to check if word has hyphenated prefix (e.g., mélan-mélanger)
-          const hasHyphenatedPrefix = (w: string) => hyphenatedPrefixRegex.test(w);
-
-          // For French words with prefixes, also try matching without the prefix
-          // Check if original languages include French
           const hasFrenchLanguage = song?.originalLanguages?.some(
             lang => lang.toLowerCase() === 'french' || lang.toLowerCase() === 'fr'
           );
 
-          let wordEntry = cleanedWord ? words.find((w) => w.word.toLowerCase() === cleanedWord.toLowerCase()) : null;
+          // Check if this word should be split for elision rendering (e.g., l'essence → l' + essence)
+          const elisionParts = cleanedWord && hasContractedPrefixWord && hasFrenchLanguage
+            ? splitElisionParts(cleanedWord)
+            : null;
 
-          // If no match found and the word has a contracted prefix and song has French, try without prefix
-          if (!wordEntry && cleanedWord && hasContractedPrefix(cleanedWord) && hasFrenchLanguage) {
-            const withoutPrefix = cleanedWord.slice(2); // Remove first letter and apostrophe
-            wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
+          if (elisionParts && elisionParts.length > 1) {
+            // Compute display parts by splitting the original text to match the cleaned parts
+            let cleanStart = 0;
+            while (cleanStart < word.length && /[^\p{L}\p{N}'-]/u.test(word[cleanStart])) {
+              cleanStart++;
+            }
+
+            const displayParts: string[] = [];
+            let pos = cleanStart;
+            for (let p = 0; p < elisionParts.length; p++) {
+              const partLength = elisionParts[p].length;
+              if (p === 0) {
+                displayParts.push(word.slice(0, cleanStart + partLength));
+                pos = cleanStart + partLength;
+              } else if (p === elisionParts.length - 1) {
+                displayParts.push(word.slice(pos));
+              } else {
+                displayParts.push(word.slice(pos, pos + partLength));
+                pos += partLength;
+              }
+            }
+
+            const partEntries = elisionParts.map(part =>
+              part ? words.find(w => w.word.toLowerCase() === part.toLowerCase()) : null
+            );
+
+            const mainEntry = [...partEntries].reverse().find(e => e !== null) || null;
+
+            let displayContent = '';
+            if (enableAnnotations && mainEntry && displayMode !== 'none') {
+              if (displayMode === 'ipa' && mainEntry.pronunciation) {
+                displayContent = mainEntry.pronunciation.includes('/')
+                  ? mainEntry.pronunciation
+                  : `/${mainEntry.pronunciation}/`;
+              } else if (displayMode === 'definition' && mainEntry.definitions && mainEntry.definitions.length > 0) {
+                displayContent = mainEntry.definitions[0].text;
+              }
+            }
+
+            const shouldShowEmoji = enableAnnotations && showEmoji && mainEntry && mainEntry.emoji &&
+              mainEntry.emoji !== getFlagForLanguage(mainEntry.language);
+
+            return (
+              <View key={i} style={{ alignItems: 'center' }}>
+                <View style={styles.annotationSpace}>
+                  {shouldShowEmoji && (
+                    <Text style={styles.wordAnnotation}>
+                      {mainEntry.emoji}
+                    </Text>
+                  )}
+                  {displayContent && (
+                    <Text style={styles.wordAnnotation} numberOfLines={1}>
+                      {displayContent}
+                    </Text>
+                  )}
+                </View>
+                <Text style={{ fontSize, lineHeight: fontSize * 1.6 }}>
+                  {elisionParts.map((part, pi) => {
+                    const partEntry = partEntries[pi];
+                    const isPartSelected = selectedWord && part === selectedWord;
+                    const partColor = isPartSelected
+                      ? Colors.primary
+                      : (showMasteryLevelColors && partEntry?.masteryLevel)
+                        ? getMasteryLevelColor(partEntry.masteryLevel)
+                        : Colors.text;
+                    const displayPart = displayParts[pi] || part;
+                    return (
+                      <Text
+                        key={pi}
+                        onPress={() => handleWordPress(displayPart, text, lineIndex)}
+                        style={{
+                          color: partColor,
+                          fontWeight: isPartSelected ? '700' : '400',
+                          fontSize,
+                          lineHeight: fontSize * 1.6,
+                        }}
+                      >
+                        {displayPart}
+                      </Text>
+                    );
+                  })}
+                </Text>
+              </View>
+            );
           }
 
-          // If no match found and the word has a hyphenated prefix and song has French, try without prefix
-          if (!wordEntry && cleanedWord && hasHyphenatedPrefix(cleanedWord) && hasFrenchLanguage) {
+          // Standard rendering for non-elision words
+          let wordEntry = cleanedWord ? words.find((w) => w.word.toLowerCase() === cleanedWord.toLowerCase()) : null;
+
+          if (!wordEntry && cleanedWord && hasHyphenatedPrefixWord && hasFrenchLanguage) {
             const hyphenIndex = cleanedWord.indexOf('-');
-            const withoutPrefix = cleanedWord.slice(hyphenIndex + 1); // Remove everything up to and including the hyphen
+            const withoutPrefix = cleanedWord.slice(hyphenIndex + 1);
             wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
           }
 
           const isSelected = selectedWord && cleanedWord === selectedWord;
 
-          // Get display content based on mode
           let displayContent = '';
           if (enableAnnotations && wordEntry && displayMode !== 'none') {
             if (displayMode === 'ipa' && wordEntry.pronunciation) {
@@ -257,11 +337,9 @@ export default function LearnScreen() {
             }
           }
 
-          // Check if emoji is just the default flag for the language
           const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && wordEntry.emoji &&
             wordEntry.emoji !== getFlagForLanguage(wordEntry.language);
 
-          // Get word color based on mastery level if enabled
           const wordColor = isSelected
             ? Colors.primary
             : (showMasteryLevelColors && wordEntry?.masteryLevel)
@@ -270,7 +348,6 @@ export default function LearnScreen() {
 
           return (
             <View key={i} style={{ alignItems: 'center' }}>
-              {/* Always render annotation space to keep all words aligned */}
               <View style={styles.annotationSpace}>
                 {shouldShowEmoji && (
                   <Text style={styles.wordAnnotation}>

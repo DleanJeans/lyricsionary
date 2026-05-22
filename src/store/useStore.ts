@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Song, Translation, WordEntry, MasteryLevel } from '../types';
+import { Song, Translation, WordEntry, WordContext, MasteryLevel } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 
@@ -51,11 +51,12 @@ interface AppState {
     word: string,
     language: string,
     pronunciation?: string,
-    definition?: string,
+    context?: string,
+    contextEmoji?: string,
+    contextIpa?: string,
+    contextDefinition?: string,
     songId?: string,
     songName?: string,
-    lyricsLine?: string,
-    emoji?: string,
     masteryLevel?: MasteryLevel
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
@@ -168,11 +169,38 @@ export const useStore = create<AppState>((set, get) => ({
       if (json) {
         const loadedWords: WordEntry[] = JSON.parse(json);
         // Migrate old words that don't have definitions array or masteryLevel
-        const migratedWords = loadedWords.map(w => ({
-          ...w,
-          definitions: w.definitions || [],
-          masteryLevel: w.masteryLevel || 'New' as MasteryLevel,
-        }));
+        const migratedWords = loadedWords.map(w => {
+          const contexts = w.contexts || [];
+          const needsMigration = contexts.length === 0 && (w.definitions || []).length > 0;
+          let migratedContexts = contexts;
+          if (needsMigration) {
+            migratedContexts = (w.definitions || []).map(d => ({
+              context: d.lyricsLine || '',
+              emoji: w.emoji || undefined,
+              ipa: undefined,
+              definition: d.text,
+              songId: d.songId,
+              songName: d.songName,
+            }));
+          }
+          // Also migrate global emoji to contexts if word has emoji but some contexts don't
+          if (w.emoji && migratedContexts.length > 0) {
+            migratedContexts = migratedContexts.map(c => ({
+              ...c,
+              emoji: c.emoji || w.emoji,
+            }));
+          }
+          // If still no contexts but has global emoji, create a default context
+          if (migratedContexts.length === 0 && w.emoji) {
+            migratedContexts = [{ context: '', emoji: w.emoji }];
+          }
+          return {
+            ...w,
+            definitions: w.definitions || [],
+            contexts: migratedContexts,
+            masteryLevel: w.masteryLevel || 'New' as MasteryLevel,
+          };
+        });
         set({ words: migratedWords });
       }
     } catch (e) {
@@ -180,28 +208,34 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addOrUpdateWord: async (word, language, pronunciation = '', definition = '', songId, songName, lyricsLine, emoji = '', masteryLevel) => {
+  addOrUpdateWord: async (word, language, pronunciation = '', context = '', contextEmoji, contextIpa, contextDefinition, songId, songName, masteryLevel) => {
     const existing = get().words.find(
       (w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language
     );
     let words: WordEntry[];
     if (existing) {
-      // Update existing word
-      const updatedDefinitions = [...(existing.definitions || [])];
+      const updatedContexts = [...(existing.contexts || [])];
 
-      // If definition is provided, add or update it
-      if (definition) {
-        const defIndex = updatedDefinitions.findIndex(d => d.songId === songId);
-        const newDef = {
-          text: definition,
+      // If context data is provided, add or update the context
+      if (context) {
+        const contextIndex = updatedContexts.findIndex(c =>
+          c.songId === songId && c.context === context
+        );
+        const newContext: WordContext = {
+          context,
+          emoji: contextEmoji,
+          ipa: contextIpa,
+          definition: contextDefinition,
           songId,
           songName,
-          lyricsLine,
         };
-        if (defIndex >= 0) {
-          updatedDefinitions[defIndex] = newDef;
+        if (contextIndex >= 0) {
+          updatedContexts[contextIndex] = {
+            ...updatedContexts[contextIndex],
+            ...newContext,
+          };
         } else {
-          updatedDefinitions.push(newDef);
+          updatedContexts.push(newContext);
         }
       }
 
@@ -212,28 +246,30 @@ export const useStore = create<AppState>((set, get) => ({
               lookupCount: w.lookupCount + 1,
               lastLookedUp: Date.now(),
               pronunciation: pronunciation || w.pronunciation,
-              definitions: updatedDefinitions,
-              emoji: emoji || w.emoji,
+              contexts: updatedContexts,
               masteryLevel: masteryLevel !== undefined ? masteryLevel : w.masteryLevel,
             }
           : w
       );
     } else {
       // Create new word entry
+      const contexts: WordContext[] = context ? [{
+        context,
+        emoji: contextEmoji,
+        ipa: contextIpa,
+        definition: contextDefinition,
+        songId,
+        songName,
+      }] : [];
+
       const entry: WordEntry = {
         id: uuidv4(),
         word,
         language,
         pronunciation,
-        definitions: definition ? [{
-          text: definition,
-          songId,
-          songName,
-          lyricsLine,
-        }] : [],
+        contexts,
         lookupCount: 1,
         lastLookedUp: Date.now(),
-        emoji,
         masteryLevel: masteryLevel || 'New',
       };
       words = [...get().words, entry];

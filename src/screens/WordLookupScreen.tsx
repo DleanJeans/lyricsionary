@@ -73,7 +73,6 @@ export default function WordLookupScreen() {
       } else if (data.type === 'ipa' && data.results) {
         setScrapedIpaResults(data.results);
       } else if (data.type === 'ipaError') {
-        // Could show a toast here if needed
         console.log('IPA scraping error:', data.message);
       }
     } catch {}
@@ -91,16 +90,19 @@ export default function WordLookupScreen() {
   const [lookupSource, setLookupSource] = useState<'google' | 'wiktionary'>('wiktionary');
 
   // Word data fields
-  // Use first original language as default, fallback to English
   const [language, setLanguage] = useState(
     (originalLanguages && originalLanguages.length > 0) ? originalLanguages[0] : 'English'
   );
   const [pronunciation, setPronunciation] = useState('');
-  const [definition, setDefinition] = useState('');
-  const [emoji, setEmoji] = useState('');
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('New');
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
+
+  // Context-specific data
+  const [context, setContext] = useState(lyricsLine || '');
+  const [contextEmoji, setContextEmoji] = useState('');
+  const [contextIpa, setContextIpa] = useState('');
+  const [contextDefinition, setContextDefinition] = useState('');
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   // Track which version of the word we're currently displaying
   const [displayWord, setDisplayWord] = useState(word);
@@ -119,30 +121,39 @@ export default function WordLookupScreen() {
       if (existingWord) {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation);
-        setEmoji(existingWord.emoji || '');
         setMasteryLevel(existingWord.masteryLevel || 'New');
-        // Load the most recent definition or one matching this song
-        const relevantDef = existingWord.definitions.find(d => d.songId === songId)
-          || existingWord.definitions[0];
-        if (relevantDef) {
-          setDefinition(relevantDef.text);
+
+        // Find matching context for this song/lyricsLine
+        const matchingContext = existingWord.contexts?.find(c =>
+          c.songId === songId && c.context === lyricsLine
+        ) || existingWord.contexts?.find(c => c.songId === songId);
+
+        if (matchingContext) {
+          setContext(matchingContext.context);
+          setContextEmoji(matchingContext.emoji || '');
+          setContextIpa(matchingContext.ipa || '');
+          setContextDefinition(matchingContext.definition || '');
+        } else {
+          setContext(lyricsLine || '');
+          setContextEmoji('');
+          setContextIpa('');
+          setContextDefinition('');
         }
       } else {
-        // For new words, reset fields to ensure clean state
         setPronunciation('');
-        setDefinition('');
-        setEmoji('');
         setMasteryLevel('New');
+        setContext(lyricsLine || '');
+        setContextEmoji('');
+        setContextIpa('');
+        setContextDefinition('');
         if (originalLanguages && originalLanguages.length > 0) {
-          // If no existing word, use first original language as default
           setLanguage(originalLanguages[0]);
         } else {
-          // Reset to default language if no original languages provided
           setLanguage('English');
         }
       }
     }
-  }, [displayWord, words, songId, originalLanguages]);
+  }, [displayWord, words, songId, lyricsLine, originalLanguages]);
 
   // Determine if word exists in saved words (check against displayWord)
   const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
@@ -154,8 +165,8 @@ export default function WordLookupScreen() {
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
         : `https://en.wiktionary.org/wiki/${encodeURIComponent(displayWord)}#${language}`;
       setCurrentUrl(url);
-      setWebViewAtTop(true); // reset on navigation
-      setScrapedIpaResults([]); // clear scraped results when navigating
+      setWebViewAtTop(true);
+      setScrapedIpaResults([]);
     }
   }, [displayWord, lookupSource]);
 
@@ -167,12 +178,10 @@ export default function WordLookupScreen() {
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (canGoBackInWebView && webViewRef.current) {
-        // Go back in WebView history
         webViewRef.current.goBack();
-        return true; // Prevent default behavior
+        return true;
       }
 
-      // No WebView history - navigate back to source screen
       if (source === 'Words') {
         navigation.navigate('Words');
       } else if (source === 'Learn' && songId) {
@@ -180,7 +189,7 @@ export default function WordLookupScreen() {
       } else {
         navigation.goBack();
       }
-      return true; // Prevent default behavior
+      return true;
     });
 
     return () => {
@@ -191,28 +200,27 @@ export default function WordLookupScreen() {
   const handleSave = async () => {
     if (!displayWord) return;
 
-    // Update word with new data - save the displayWord, not the original word
-    await addOrUpdateWord(displayWord, language, pronunciation, definition, songId, songName, lyricsLine, emoji, masteryLevel);
+    await addOrUpdateWord(
+      displayWord, language, pronunciation,
+      context, contextEmoji, contextIpa, contextDefinition,
+      songId, songName, masteryLevel
+    );
 
-    // Navigate back to the source screen
     if (source === 'Words') {
       navigation.navigate('Words');
     } else if (source === 'Learn' && songId) {
       navigation.navigate('Learn', { songId });
     } else {
-      // Fallback to goBack if source is not specified
       navigation.goBack();
     }
   };
 
   const handleCancel = () => {
-    // Navigate back to the source screen
     if (source === 'Words') {
       navigation.navigate('Words');
     } else if (source === 'Learn' && songId) {
       navigation.navigate('Learn', { songId });
     } else {
-      // Fallback to goBack if source is not specified
       navigation.goBack();
     }
   };
@@ -255,6 +263,10 @@ export default function WordLookupScreen() {
       </Text>
     );
   };
+
+  const ipaPlaceholder = pronunciation
+    ? (pronunciation.includes('/') ? pronunciation : `/${pronunciation}/`)
+    : 'e.g., /prəˌnʌnsiˈeɪʃən/';
 
   return (
     <KeyboardAvoidingView
@@ -312,69 +324,17 @@ export default function WordLookupScreen() {
 
         {/* Word Info Fields */}
         <View style={styles.fieldSection}>
-          <View style={styles.languageEmojiRow}>
-            <View style={styles.emojiField}>
-              <Text style={styles.fieldLabel}>Emoji</Text>
-              <TouchableOpacity
-                style={styles.emojiButton}
-                onPress={() => setIsEmojiPickerOpen(true)}
-              >
-                {emoji ? (
-                  <Text style={styles.emojiButtonText}>{emoji}</Text>
-                ) : (
-                  <Ionicons name="happy-outline" size={26} color={Colors.textMuted} />
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.languageField}>
-              <Text style={styles.fieldLabel}>Language</Text>
-              <LanguageSelect
-                value={language}
-                onValueChange={setLanguage}
-                placeholder="Select language"
-              />
-            </View>
-          </View>
-
+          {/* Row 1: Language */}
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Pronunciation</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={pronunciation}
-              onChangeText={setPronunciation}
-              placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
-              placeholderTextColor={Colors.textMuted}
-            />
-            {lookupSource === 'wiktionary' && scrapedIpaResults.length > 0 && (
-              <View style={styles.ipaResultsRow}>
-                {scrapedIpaResults.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.ipaResultButton}
-                    onPress={() => setPronunciation(ipa)}
-                  >
-                    <Text style={styles.ipaResultButtonText}>{ipa}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Definition</Text>
-            <TextInput
-              style={[styles.fieldInput, styles.definitionInput]}
-              value={definition}
-              onChangeText={setDefinition}
-              placeholder="Add definition or meaning"
-              placeholderTextColor={Colors.textMuted}
-              multiline
-              numberOfLines={3}
+            <Text style={styles.fieldLabel}>Language</Text>
+            <LanguageSelect
+              value={language}
+              onValueChange={setLanguage}
+              placeholder="Select language"
             />
           </View>
 
-          {/* Mastery Level Selector - only show for saved words */}
+          {/* Row 2: Mastery Level */}
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Level</Text>
             <View style={styles.masteryLevelSelector}>
@@ -418,6 +378,80 @@ export default function WordLookupScreen() {
                 ]}>Mastered</Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          {/* Context TextInput */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Context</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={context}
+              onChangeText={setContext}
+              placeholder="Line of lyrics"
+              placeholderTextColor={Colors.textMuted}
+            />
+          </View>
+
+          {/* Context Row: Emoji | IPA | Definition */}
+          <View style={styles.contextRow}>
+            <View style={styles.contextEmojiField}>
+              <Text style={styles.fieldLabel}>Emoji</Text>
+              <TouchableOpacity
+                style={styles.emojiButtonSmall}
+                onPress={() => setIsEmojiPickerOpen(true)}
+              >
+                {contextEmoji ? (
+                  <Text style={styles.emojiButtonTextSmall}>{contextEmoji}</Text>
+                ) : (
+                  <Ionicons name="happy-outline" size={20} color={Colors.textMuted} />
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={styles.contextIpaField}>
+              <Text style={styles.fieldLabel}>IPA</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={contextIpa}
+                onChangeText={setContextIpa}
+                placeholder={ipaPlaceholder}
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+            <View style={styles.contextDefinitionField}>
+              <Text style={styles.fieldLabel}>Definition</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={contextDefinition}
+                onChangeText={setContextDefinition}
+                placeholder="Add definition"
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+          </View>
+
+          {/* Pronunciation (main/global IPA) */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Pronunciation</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={pronunciation}
+              onChangeText={setPronunciation}
+              placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
+              placeholderTextColor={Colors.textMuted}
+            />
+            {lookupSource === 'wiktionary' && scrapedIpaResults.length > 0 && (
+              <View style={styles.ipaResultsRow}>
+                {scrapedIpaResults.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.ipaResultButton}
+                    onPress={() => setPronunciation(ipa)}
+                  >
+                    <Text style={styles.ipaResultButtonText}>{ipa}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         </View>
 
@@ -488,14 +522,12 @@ export default function WordLookupScreen() {
                   setPageTitle(navState.title ?? '');
                   setCanGoBackInWebView(navState.canGoBack);
 
-                  // If navigating to Wiktionary without language anchor, add it
                   if (lookupSource === 'wiktionary' && navState.url && webViewRef.current) {
                     const url = navState.url;
                     const isWiktionary = url.includes('wiktionary.org/wiki/');
                     const hasLanguageAnchor = url.includes('#');
 
                     if (isWiktionary && !hasLanguageAnchor && language) {
-                      // Add language anchor to current URL
                       const newUrl = `${url}#${language}`;
                       setCurrentUrl(newUrl);
                     }
@@ -504,7 +536,6 @@ export default function WordLookupScreen() {
                 onLoadStart={() => setLoading(true)}
                 onLoadEnd={() => {
                   setLoading(false);
-                  // Auto-inject IPA scraping script when on Wiktionary
                   if (lookupSource === 'wiktionary' && webViewRef.current) {
                     webViewRef.current.injectJavaScript(getScrapeIpaJS(language));
                   }
@@ -525,7 +556,7 @@ export default function WordLookupScreen() {
       </ScrollView>
       <EmojiPicker
         onEmojiSelected={(emojiObject: EmojiType) => {
-          setEmoji(emojiObject.emoji);
+          setContextEmoji(emojiObject.emoji);
         }}
         open={isEmojiPickerOpen}
         onClose={() => setIsEmojiPickerOpen(false)}
@@ -639,18 +670,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
   },
-  languageEmojiRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  emojiField: {
-    flex: 0.2,
-    gap: 6,
-  },
-  languageField: {
-    flex: 0.8,
-    gap: 6,
-  },
   field: {
     gap: 6,
   },
@@ -669,23 +688,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  emojiButton: {
+  contextRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-end',
+  },
+  contextEmojiField: {
+    width: 60,
+    gap: 6,
+  },
+  contextIpaField: {
     flex: 1,
+    gap: 6,
+  },
+  contextDefinitionField: {
+    flex: 1.5,
+    gap: 6,
+  },
+  emojiButtonSmall: {
     backgroundColor: Colors.surface,
     borderRadius: 10,
-    paddingHorizontal: 8,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  emojiButtonText: {
-    fontSize: 28,
+  emojiButtonTextSmall: {
+    fontSize: 22,
     textAlign: 'center',
-  },
-  definitionInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
   },
   ipaResultsRow: {
     flexDirection: 'row',

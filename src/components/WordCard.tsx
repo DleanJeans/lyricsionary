@@ -85,7 +85,7 @@ export default function WordCard({
           </TouchableOpacity>
         )}
         <View style={styles.cardRow}>
-          <Text style={styles.flag}>{item.emoji || getFlagForLanguage(item.language)}</Text>
+          <Text style={styles.flag}>{(item.contexts?.[0]?.emoji || item.emoji) || getFlagForLanguage(item.language)}</Text>
           <View style={styles.cardContent}>
             <HighlightedText
               text={item.word}

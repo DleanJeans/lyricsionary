@@ -20,11 +20,13 @@ export interface Translation {
   sourceUrlTitle?: string;
 }
 
-export interface WordDefinition {
-  text: string;
+export interface WordContext {
+  context: string;
+  emoji?: string;
+  ipa?: string;
+  definition?: string;
   songId?: string;
   songName?: string;
-  lyricsLine?: string;
 }
 
 export type MasteryLevel = 'Unknown' | 'New' | 'Learning' | 'Mastered';
@@ -34,11 +36,12 @@ export interface WordEntry {
   word: string;
   language: string;
   pronunciation: string;
-  definitions: WordDefinition[];
+  contexts: WordContext[];
   lookupCount: number;
   lastLookedUp: number;
-  emoji?: string;
   masteryLevel?: MasteryLevel;
+  emoji?: string;
+  definitions?: { text: string; songId?: string; songName?: string; lyricsLine?: string }[];
 }
 
 export type RootTabParamList = {

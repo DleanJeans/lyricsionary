@@ -23,6 +23,7 @@ interface LyricsColumnProps {
   scrollEventThrottle?: number;
   lineNumberPosition?: 'left' | 'middle';
   showLineNumbers?: boolean;
+  wrapLines?: boolean;
 }
 
 const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
@@ -40,6 +41,7 @@ const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
       scrollEventThrottle = 16,
       lineNumberPosition = 'left',
       showLineNumbers = true,
+      wrapLines = false,
     },
     ref
   ) => {
@@ -63,7 +65,7 @@ const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
           onScroll={onScroll}
           scrollEventThrottle={scrollEventThrottle}
         >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {wrapLines ? (
             <View>
               {lines.map((line, i) => (
                 <View key={i} style={styles.line}>
@@ -113,7 +115,59 @@ const LyricsColumn = forwardRef<ScrollView, LyricsColumnProps>(
                 </View>
               ))}
             </View>
-          </ScrollView>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View>
+                {lines.map((line, i) => (
+                  <View key={i} style={styles.line}>
+                    {showLineNumbers && lineNumberPosition === 'left' && (
+                      <Text style={styles.lineNumber}>{i + 1}</Text>
+                    )}
+                    <TextInput
+                      style={[
+                        styles.lineInput,
+                        lineNumberPosition === 'middle' && styles.lineInputWithMiddleNumber,
+                      ]}
+                      value={line}
+                      onChangeText={(text) => {
+                        const newLines = [...lines];
+                        newLines[i] = text;
+                        onLyricsChange(newLines.join('\n'));
+                      }}
+                      onKeyPress={(e) => {
+                        // Handle delete/backspace at position 0
+                        if (e.nativeEvent.key === 'Backspace') {
+                          const input = e.currentTarget as any;
+                          const selectionStart = input.selectionStart || 0;
+
+                          if (selectionStart === 0 && i > 0) {
+                            // At position 0 and not first line
+                            e.preventDefault();
+                            const newLines = [...lines];
+                            if (line === '') {
+                              // Current line is empty, delete it
+                              newLines.splice(i, 1);
+                            } else {
+                              // Join with previous line
+                              newLines[i - 1] = newLines[i - 1] + newLines[i];
+                              newLines.splice(i, 1);
+                            }
+                            onLyricsChange(newLines.join('\n'));
+                          }
+                        }
+                      }}
+                      multiline={true}
+                      scrollEnabled={false}
+                      numberOfLines={1}
+                    />
+                    {showLineNumbers && lineNumberPosition === 'middle' && (
+                      <Text style={styles.lineNumberMiddle}>{i + 1}</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          )}
         </ScrollView>
       </View>
     );

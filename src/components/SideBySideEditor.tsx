@@ -84,6 +84,7 @@ export default function SideBySideEditor({
           onMomentumScrollEnd={() => setActiveScroll(null)}
           onScroll={handleLeftScroll}
           showLineNumbers={false}
+          wrapLines={true}
         />
 
         {/* Divider */}
@@ -123,6 +124,7 @@ export default function SideBySideEditor({
           onMomentumScrollEnd={() => setActiveScroll(null)}
           onScroll={handleRightScroll}
           showLineNumbers={false}
+          wrapLines={true}
         />
       </View>
     </View>

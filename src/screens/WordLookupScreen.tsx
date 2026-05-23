@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -117,6 +117,13 @@ export default function WordLookupScreen() {
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [undoData, setUndoData] = useState<{ block: WordSensemData; index: number } | null>(null);
+
+  const initialDataRef = useRef<{
+    language: string;
+    pronunciation: string;
+    masteryLevel: MasteryLevel;
+    wordSenses: WordSensemData[];
+  } | null>(null);
 
   const [displayWord, setDisplayWord] = useState(word);
 
@@ -247,6 +254,27 @@ export default function WordLookupScreen() {
   }, [displayWord, words, songId, lyricsLine, originalLanguages]);
 
   const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
+
+  const hasChanges = useMemo(() => {
+    if (!displayWord) return false;
+    if (isNewWord) return true;
+    const existing = words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
+    if (!existing) return true;
+    if (language !== existing.language) return true;
+    if (pronunciation !== existing.pronunciation) return true;
+    if (masteryLevel !== (existing.masteryLevel || 'New')) return true;
+    const normalizeSense = (s: any) => `${s.context || ''}|${s.emoji || ''}|${s.ipa || ''}|${s.definition || ''}|${s.songId || ''}|${s.occurrence || 1}`;
+    const currentNormalized = wordSenses
+      .filter(b => b.context || b.emoji || b.ipa || b.definition)
+      .map(normalizeSense)
+      .sort()
+      .join('||');
+    const storedNormalized = (existing.contexts || [])
+      .map(normalizeSense)
+      .sort()
+      .join('||');
+    return currentNormalized !== storedNormalized;
+  }, [displayWord, isNewWord, language, pronunciation, masteryLevel, wordSenses, words]);
 
   useEffect(() => {
     if (displayWord) {
@@ -392,8 +420,12 @@ export default function WordLookupScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{displayWord}</Text>
-        <TouchableOpacity onPress={handleSave} style={[styles.saveButton, isNewWord && { backgroundColor: Colors.success }]}>
-          <Text style={styles.saveButtonText}>{isNewWord ? 'Add' : 'Save'}</Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          style={[styles.saveButton, isNewWord && { backgroundColor: Colors.success }, !hasChanges && !isNewWord && styles.saveButtonDisabled]}
+          disabled={!hasChanges && !isNewWord}
+        >
+          <Text style={[styles.saveButtonText, !hasChanges && !isNewWord && styles.saveButtonTextDisabled]}>{isNewWord ? 'Add' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -740,6 +772,12 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 15,
     fontWeight: '600',
+  },
+  saveButtonDisabled: {
+    opacity: 0.4,
+  },
+  saveButtonTextDisabled: {
+    opacity: 0.4,
   },
   content: {
     flex: 1,

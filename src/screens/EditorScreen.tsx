@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -78,6 +78,8 @@ export default function EditorScreen() {
   const [isShowingOriginal, setIsShowingOriginal] = useState(false);
   
   
+  const skipMatchingRef = useRef(false);
+
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
     songName: string;
@@ -123,8 +125,13 @@ export default function EditorScreen() {
 
   // Search for matching songs when song name or artist name changes
   useEffect(() => {
-    // Only search for new lyrics (not when editing existing song)
     if (isEditMode) {
+      setMatchedSongs(null, 0);
+      return;
+    }
+
+    if (skipMatchingRef.current) {
+      skipMatchingRef.current = false;
       setMatchedSongs(null, 0);
       return;
     }
@@ -132,13 +139,11 @@ export default function EditorScreen() {
     const trimmedSongName = songName.trim();
     const trimmedArtistName = artistName.trim();
 
-    // Need at least song name or artist name to search
     if (!trimmedSongName && !trimmedArtistName) {
       setMatchedSongs(null, 0);
       return;
     }
 
-    // Search for matching songs
     const searchQuery = trimmedSongName || trimmedArtistName;
     const matchedSongs = songs.filter((s) => {
       if (trimmedSongName && trimmedArtistName) {
@@ -272,6 +277,7 @@ export default function EditorScreen() {
       });
       setPendingPageTitles(titles);
     } else {
+      skipMatchingRef.current = true;
       const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, originalLanguages, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
       setCurrentSongId(song.id);
       handleClear();

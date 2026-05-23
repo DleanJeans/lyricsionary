@@ -25,12 +25,12 @@ import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import WordTransformButtons from '../components/WordTransformButtons';
-import ContextBlock from '../components/ContextBlock';
+import WordSenseCard from '../components/WordSenseCard';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
-interface ContextFormData {
+interface WordSensemData {
   context: string;
   emoji: string;
   ipa: string;
@@ -110,12 +110,12 @@ export default function WordLookupScreen() {
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('New');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
 
-  const [contextBlocks, setContextBlocks] = useState<ContextFormData[]>([
+  const [wordSenses, setWordSenses] = useState<WordSensemData[]>([
     { context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1 }
   ]);
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [undoData, setUndoData] = useState<{ block: ContextFormData; index: number } | null>(null);
+  const [undoData, setUndoData] = useState<{ block: WordSensemData; index: number } | null>(null);
 
   const [displayWord, setDisplayWord] = useState(word);
 
@@ -142,7 +142,7 @@ export default function WordLookupScreen() {
 
           if (matchingIndex >= 0) {
             const ctx = existingWord.contexts[matchingIndex];
-            const first: ContextFormData = {
+            const first: WordSensemData = {
               context: ctx.context,
               emoji: ctx.emoji || '',
               ipa: ctx.ipa || '',
@@ -151,7 +151,7 @@ export default function WordLookupScreen() {
               songName: ctx.songName,
               occurrence: 1,
             };
-            const rest: ContextFormData[] = existingWord.contexts
+            const rest: WordSensemData[] = existingWord.contexts
               .filter((_, i) => i !== matchingIndex)
               .map(c => ({
                 context: c.context,
@@ -162,10 +162,10 @@ export default function WordLookupScreen() {
                 songName: c.songName,
                 occurrence: 1,
               }));
-            setContextBlocks([first, ...rest]);
+            setWordSenses([first, ...rest]);
           } else if (matchingSongIndex >= 0) {
             const ctx = existingWord.contexts[matchingSongIndex];
-            const first: ContextFormData = {
+            const first: WordSensemData = {
               context: ctx.context,
               emoji: ctx.emoji || '',
               ipa: ctx.ipa || '',
@@ -174,7 +174,7 @@ export default function WordLookupScreen() {
               songName: ctx.songName,
               occurrence: 1,
             };
-            const rest: ContextFormData[] = existingWord.contexts
+            const rest: WordSensemData[] = existingWord.contexts
               .filter((_, i) => i !== matchingSongIndex)
               .map(c => ({
                 context: c.context,
@@ -185,7 +185,7 @@ export default function WordLookupScreen() {
                 songName: c.songName,
                 occurrence: 1,
               }));
-            const newBlock: ContextFormData = {
+            const newBlock: WordSensemData = {
               context: lyricsLine || '',
               emoji: '',
               ipa: '',
@@ -196,9 +196,9 @@ export default function WordLookupScreen() {
               readOnly: true,
               occurrence: 1,
             };
-            setContextBlocks([newBlock, first, ...rest]);
+            setWordSenses([newBlock, first, ...rest]);
           } else {
-            const existingBlocks: ContextFormData[] = existingWord.contexts.map(c => ({
+            const existingBlocks: WordSensemData[] = existingWord.contexts.map(c => ({
               context: c.context,
               emoji: c.emoji || '',
               ipa: c.ipa || '',
@@ -208,7 +208,7 @@ export default function WordLookupScreen() {
               occurrence: 1,
             }));
             if (hasNewContextFromLearn) {
-              const newBlock: ContextFormData = {
+              const newBlock: WordSensemData = {
                 context: lyricsLine,
                 emoji: '',
                 ipa: '',
@@ -219,18 +219,18 @@ export default function WordLookupScreen() {
                 readOnly: true,
                 occurrence: 1,
               };
-              setContextBlocks([newBlock, ...existingBlocks]);
+              setWordSenses([newBlock, ...existingBlocks]);
             } else {
-              setContextBlocks(existingBlocks);
+              setWordSenses(existingBlocks);
             }
           }
         } else {
-          setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
+          setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
         }
       } else {
         setPronunciation('');
         setMasteryLevel('New');
-        setContextBlocks([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
+        setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
         } else {
@@ -279,24 +279,24 @@ export default function WordLookupScreen() {
     };
   }, [canGoBackInWebView, navigation, source, songId]);
 
-  const updateContextBlock = (index: number, field: keyof ContextFormData, value: string | number) => {
+  const updateWordSense = (index: number, field: keyof WordSensemData, value: string | number) => {
     setUndoData(null);
-    setContextBlocks(prev => prev.map((b, i) => i === index ? { ...b, [field]: value } : b));
+    setWordSenses(prev => prev.map((b, i) => i === index ? { ...b, [field]: value } : b));
   };
 
-  const addContextBlock = () => {
+  const addWordSense = () => {
     setUndoData(null);
-    setContextBlocks(prev => [...prev, { context: '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1 }]);
+    setWordSenses(prev => [...prev, { context: '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1 }]);
   };
 
-  const removeContextBlock = (index: number) => {
-    setUndoData({ block: contextBlocks[index], index });
-    setContextBlocks(prev => prev.filter((_, i) => i !== index));
+  const removeWordSense = (index: number) => {
+    setUndoData({ block: wordSenses[index], index });
+    setWordSenses(prev => prev.filter((_, i) => i !== index));
   };
 
-  const undoRemoveContextBlock = () => {
+  const undoRemoveWordSense = () => {
     if (undoData) {
-      setContextBlocks(prev => {
+      setWordSenses(prev => {
         const newBlocks = [...prev];
         newBlocks.splice(undoData.index, 0, undoData.block);
         return newBlocks;
@@ -308,7 +308,7 @@ export default function WordLookupScreen() {
   const handleSave = async () => {
     if (!displayWord) return;
 
-    const contexts: WordContext[] = contextBlocks
+    const contexts: WordContext[] = wordSenses
       .filter(b => b.context || b.emoji || b.ipa || b.definition)
       .map(b => ({
         context: b.context,
@@ -525,38 +525,38 @@ export default function WordLookupScreen() {
             </View>
           </View>
 
-          {contextBlocks.map((block, index) => (
-            <View key={index} style={styles.contextBlockWrapper}>
-              {contextBlocks.length > 1 && index > 0 && (
+          {wordSenses.map((block, index) => (
+            <View key={index} style={styles.wordSenseWrapper}>
+              {wordSenses.length > 1 && index > 0 && (
                 <View style={styles.contextDivider} />
               )}
-              <ContextBlock
+              <WordSenseCard
                 context={block.context}
-                onContextChange={(v) => updateContextBlock(index, 'context', v)}
+                onContextChange={(v) => updateWordSense(index, 'context', v)}
                 emoji={block.emoji}
                 onEmojiPress={() => setEmojiPickerIndex(index)}
                 ipa={block.ipa}
-                onIpaChange={(v) => updateContextBlock(index, 'ipa', v)}
+                onIpaChange={(v) => updateWordSense(index, 'ipa', v)}
                 ipaPlaceholder={ipaPlaceholder}
                 definition={block.definition}
-                onDefinitionChange={(v) => updateContextBlock(index, 'definition', v)}
-                onRemove={contextBlocks.length > 1 ? () => removeContextBlock(index) : undefined}
+                onDefinitionChange={(v) => updateWordSense(index, 'definition', v)}
+                onRemove={wordSenses.length > 1 ? () => removeWordSense(index) : undefined}
                 word={displayWord}
                 occurrence={block.occurrence}
-                onOccurrenceChange={(v) => updateContextBlock(index, 'occurrence', v)}
+                onOccurrenceChange={(v) => updateWordSense(index, 'occurrence', v)}
                 translation={block.translation}
                 readOnly={block.readOnly}
               />
             </View>
           ))}
 
-          <TouchableOpacity style={styles.addContextButton} onPress={addContextBlock}>
+          <TouchableOpacity style={styles.addContextButton} onPress={addWordSense}>
             <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
             <Text style={styles.addContextButtonText}>Add context</Text>
           </TouchableOpacity>
 
           {undoData && (
-            <TouchableOpacity style={styles.undoButton} onPress={undoRemoveContextBlock}>
+            <TouchableOpacity style={styles.undoButton} onPress={undoRemoveWordSense}>
               <Ionicons name="arrow-undo-outline" size={18} color={Colors.primary} />
               <Text style={styles.undoButtonText}>Undo remove</Text>
             </TouchableOpacity>
@@ -670,7 +670,7 @@ export default function WordLookupScreen() {
       <EmojiPicker
         onEmojiSelected={(emojiObject: EmojiType) => {
           if (emojiPickerIndex !== null) {
-            updateContextBlock(emojiPickerIndex, 'emoji', emojiObject.emoji);
+            updateWordSense(emojiPickerIndex, 'emoji', emojiObject.emoji);
           }
         }}
         open={emojiPickerIndex !== null}
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 14,
   },
-  contextBlockWrapper: {
+  wordSenseWrapper: {
     gap: 0,
   },
   contextDivider: {

@@ -3,7 +3,7 @@ import { View, StyleSheet, TextInput, TouchableOpacity, Text } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 
-interface ContextBlockProps {
+interface WordSenseCardProps {
   context: string;
   onContextChange: (value: string) => void;
   emoji: string;
@@ -28,7 +28,7 @@ function countOccurrences(text: string, word: string): number {
   return matches ? matches.length : 0;
 }
 
-export default function ContextBlock({
+export default function WordSenseCard({
   context,
   onContextChange,
   emoji,
@@ -44,7 +44,7 @@ export default function ContextBlock({
   onOccurrenceChange,
   translation,
   readOnly = false,
-}: ContextBlockProps) {
+}: WordSenseCardProps) {
   const occurrenceCount = useMemo(
     () => countOccurrences(context, word || ''),
     [context, word]

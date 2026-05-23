@@ -232,15 +232,30 @@ export default function EditorScreen() {
     if (text) setCurrentLyrics(text);
   };
 
+  type ResolvedSourceData = {
+    sourceUrl: string | undefined;
+    sourceUrlTitle: string | undefined;
+    translations: Translation[];
+  };
+
+  // #region Save Logic
   const handleSave = async () => {
     if (!songName.trim()) {
       Alert.alert('Missing Info', 'Please enter a song name.');
       return;
     }
-    const resolvedSourceUrl = (pendingSourceUrls[0] ?? songSourceUrl).trim() || undefined;
-    const resolvedSourceUrlTitle = resolvedSourceUrl ? (pendingPageTitles[0] || undefined) : undefined;
+    const resolved = resolveSourceUrls();
+    if (isEditMode && editSong) {
+      await handleUpdatingSavedSong(resolved);
+    } else {
+      await handleSavingNewSong(resolved);
+    }
+  };
+
+  const resolveSourceUrls = (): ResolvedSourceData => {
+    const sourceUrl = (pendingSourceUrls[0] ?? songSourceUrl).trim() || undefined;
+    const sourceUrlTitle = sourceUrl ? (pendingPageTitles[0] || undefined) : undefined;
     const resolvedTranslations = translations.map((t, i) => {
-      // If there's a pending URL for this translation, use it; otherwise keep existing URL
       const hasPendingUrl = pendingSourceUrls[i + 1] !== undefined;
       return {
         ...t,
@@ -248,44 +263,48 @@ export default function EditorScreen() {
         sourceUrlTitle: hasPendingUrl ? (pendingPageTitles[i + 1] || undefined) : t.sourceUrlTitle,
       };
     });
-    if (isEditMode && editSong) {
-      await updateSong(editSong.id, {
-        songName: songName.trim(),
-        artistName: artistName.trim(),
-        originalLyrics,
-        originalLanguages,
-        sourceUrl: resolvedSourceUrl,
-        sourceUrlTitle: resolvedSourceUrlTitle,
-        translations: resolvedTranslations,
-      });
-      setCurrentSongId(editSong.id);
-      // Update the original state to reflect the new saved state
-      setOriginalState({
-        songName: songName.trim(),
-        artistName: artistName.trim(),
-        originalLyrics,
-        originalLanguages: [...originalLanguages],
-        songSourceUrl: resolvedSourceUrl ?? '',
-        translations: resolvedTranslations.map((t) => ({ ...t })),
-      });
-      // Clear pending URLs since they are now saved
-      setPendingSourceUrls({});
-      const titles: Record<number, string> = {};
-      if (resolvedSourceUrlTitle) titles[0] = resolvedSourceUrlTitle;
-      resolvedTranslations.forEach((t, i) => {
-        if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
-      });
-      setPendingPageTitles(titles);
-    } else {
-      skipMatchingRef.current = true;
-      const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, originalLanguages, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
-      setCurrentSongId(song.id);
-      setEditSongId(song.id);
-      navigation.setParams({ songId: song.id });
-      navigation.navigate('Learn');
-    }
+    return { sourceUrl, sourceUrlTitle, translations: resolvedTranslations };
+  };
+
+  const handleUpdatingSavedSong = async (resolved: ResolvedSourceData) => {
+    if (!editSong) return;
+    await updateSong(editSong.id, {
+      songName: songName.trim(),
+      artistName: artistName.trim(),
+      originalLyrics,
+      originalLanguages,
+      sourceUrl: resolved.sourceUrl,
+      sourceUrlTitle: resolved.sourceUrlTitle,
+      translations: resolved.translations,
+    });
+    setCurrentSongId(editSong.id);
+    setOriginalState({
+      songName: songName.trim(),
+      artistName: artistName.trim(),
+      originalLyrics,
+      originalLanguages: [...originalLanguages],
+      songSourceUrl: resolved.sourceUrl ?? '',
+      translations: resolved.translations.map((t) => ({ ...t })),
+    });
+    setPendingSourceUrls({});
+    const titles: Record<number, string> = {};
+    if (resolved.sourceUrlTitle) titles[0] = resolved.sourceUrlTitle;
+    resolved.translations.forEach((t, i) => {
+      if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
+    });
+    setPendingPageTitles(titles);
+  };
+
+  const handleSavingNewSong = async (resolved: ResolvedSourceData) => {
+    skipMatchingRef.current = true;
+    const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, originalLanguages, resolved.translations, resolved.sourceUrl, resolved.sourceUrlTitle);
+    setCurrentSongId(song.id);
+    setEditSongId(song.id);
+    navigation.setParams({ songId: song.id });
+    navigation.navigate('Learn');
     setIsEditingMetadata(false);
   };
+  // #endregion
 
   const handleClear = () => {
     setSongName('');

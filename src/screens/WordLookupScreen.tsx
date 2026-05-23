@@ -39,7 +39,6 @@ interface WordSensemData {
   songId?: string;
   songName?: string;
   translation?: string;
-  readOnly?: boolean;
   fromSong?: boolean;
   occurrence?: number;
 }
@@ -199,9 +198,8 @@ export default function WordLookupScreen() {
               songId,
               songName,
               translation: translationLine,
-              readOnly: true,
-              occurrence: 1,
               fromSong: true,
+              occurrence: 1,
             };
             setWordSenses([newBlock, first, ...rest]);
           } else {
@@ -224,9 +222,8 @@ export default function WordLookupScreen() {
                 songId,
                 songName,
                 translation: translationLine,
-                readOnly: true,
-                occurrence: 1,
                 fromSong: true,
+                occurrence: 1,
               };
               setWordSenses([newBlock, ...existingBlocks]);
             } else {
@@ -234,12 +231,12 @@ export default function WordLookupScreen() {
             }
           }
         } else {
-          setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine), occurrence: 1, fromSong: !!(source === 'Learn' && lyricsLine) }]);
+          setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
         }
       } else {
         setPronunciation('');
         setMasteryLevel('New');
-        setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, readOnly: !!(source === 'Learn' && lyricsLine), occurrence: 1, fromSong: !!(source === 'Learn' && lyricsLine) }]);
+        setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
         } else {
@@ -535,7 +532,7 @@ export default function WordLookupScreen() {
                 occurrence={block.occurrence}
                 onOccurrenceChange={(v) => updateWordSense(index, 'occurrence', v)}
                 translation={block.translation}
-                readOnly={block.readOnly}
+                fromSong={block.fromSong}
                 songName={songName}
                 artistName={artistName}
               />

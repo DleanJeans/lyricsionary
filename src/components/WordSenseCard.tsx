@@ -19,7 +19,7 @@ interface WordSenseCardProps {
   occurrence?: number;
   onOccurrenceChange?: (value: number) => void;
   translation?: string;
-  readOnly?: boolean;
+  fromSong?: boolean;
   songName?: string;
   artistName?: string;
 }
@@ -39,7 +39,7 @@ export default function WordSenseCard({
   occurrence = 1,
   onOccurrenceChange,
   translation,
-  readOnly = false,
+  fromSong = false,
   songName,
   artistName,
 }: WordSenseCardProps) {
@@ -55,7 +55,7 @@ export default function WordSenseCard({
             </TouchableOpacity>
           )}
         </View>
-        {readOnly && context ? (
+        {fromSong && context ? (
           <View style={styles.contextDisplay}>
             <SongContextBlock
               context={context}
@@ -77,7 +77,7 @@ export default function WordSenseCard({
             placeholderTextColor={Colors.textMuted}
           />
         )}
-        {!readOnly && translation ? (
+        {!fromSong && translation ? (
           <Text style={styles.translationText}>{translation}</Text>
         ) : null}
       </View>

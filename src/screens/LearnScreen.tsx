@@ -345,6 +345,7 @@ export default function LearnScreen() {
                   {elisionParts.map((part, pi) => {
                     const partEntry = partEntries[pi];
                     const isPartSelected = selectedWord && part === selectedWord;
+                    const isPartActiveOccurrence = isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
                     const partColor = isPartSelected
                       ? Colors.primary
                       : (showMasteryLevelColors && partEntry?.masteryLevel)
@@ -357,7 +358,7 @@ export default function LearnScreen() {
                         onPress={() => handleWordPress(displayPart, text, lineIndex, occurrenceMap[i] || 1)}
                         style={{
                           color: partColor,
-                          fontWeight: isPartSelected ? '700' : '400',
+                          fontWeight: isPartActiveOccurrence ? '700' : '400',
                           fontSize,
                           lineHeight: fontSize * 1.6,
                         }}
@@ -381,6 +382,7 @@ export default function LearnScreen() {
           }
 
           const isSelected = selectedWord && cleanedWord === selectedWord;
+          const isActiveOccurrence = isSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
 
           let displayContent = '';
           if (enableAnnotations && wordEntry && displayMode !== 'none') {
@@ -435,7 +437,7 @@ export default function LearnScreen() {
                   fontSize,
                   lineHeight: fontSize * 1.6,
                   color: wordColor,
-                  fontWeight: isSelected ? '700' : '400',
+                  fontWeight: isActiveOccurrence ? '700' : '400',
                 }}
               >
                 {word}

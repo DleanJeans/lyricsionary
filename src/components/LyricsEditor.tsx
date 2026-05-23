@@ -12,7 +12,6 @@ interface LyricsEditorProps {
   lyrics: string;
   onLyricsChange: (text: string) => void;
   showLineNumbers?: boolean;
-  wrapLines?: boolean;
   referenceLines?: string[];
 }
 
@@ -20,7 +19,6 @@ export default function LyricsEditor({
   lyrics,
   onLyricsChange,
   showLineNumbers = true,
-  wrapLines = true,
   referenceLines,
 }: LyricsEditorProps) {
   const lines = lyrics.split('\n');
@@ -106,7 +104,7 @@ export default function LyricsEditor({
       onKeyPress={(e) => handleBackspace(e, line, i)}
       onSelectionChange={(e) => handleSelectionChange(e, i)}
       onSubmitEditing={() => handleSubmitEditing(i)}
-      multiline={wrapLines}
+      multiline={true}
       blurOnSubmit={false}
       scrollEnabled={false}
     />

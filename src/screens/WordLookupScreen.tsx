@@ -557,7 +557,7 @@ export default function WordLookupScreen() {
 
           {undoData && (
             <TouchableOpacity style={styles.undoButton} onPress={undoRemoveContextBlock}>
-              <Ionicons name="undo-outline" size={18} color={Colors.primary} />
+              <Ionicons name="arrow-undo-outline" size={18} color={Colors.primary} />
               <Text style={styles.undoButtonText}>Undo remove</Text>
             </TouchableOpacity>
           )}

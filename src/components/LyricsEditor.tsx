@@ -23,6 +23,7 @@ export default function LyricsEditor({
 }: LyricsEditorProps) {
   const lines = lyrics.split('\n');
   const hasReference = !!referenceLines && referenceLines.length > 0;
+  const totalLines = hasReference ? Math.max(lines.length, referenceLines!.length) : lines.length;
   const cursorRef = useRef<Record<number, number>>({});
   const inputRefs = useRef<Record<number, any>>({});
   const [focusTarget, setFocusTarget] = useState<{ lineIndex: number; cursorPos?: number } | null>(null);
@@ -110,7 +111,8 @@ export default function LyricsEditor({
     />
   );
 
-  const renderLine = (line: string, i: number) => {
+  const renderLine = (i: number) => {
+    const line = i < lines.length ? lines[i] : '';
     const lineKey = `${i}-${lineGenerations[i] || 0}`;
     if (!hasReference) {
       return (
@@ -121,17 +123,39 @@ export default function LyricsEditor({
       );
     }
 
-    const refLine = i < referenceLines!.length ? referenceLines![i] : '';
+    const refLine = referenceLines![i] ?? '';
+    const hasLyricsRow = i < lines.length;
     return (
       <View key={lineKey} style={styles.linePair}>
         <View style={styles.line}>
           {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
           <Text style={styles.referenceLineText}>{refLine}</Text>
         </View>
-        <View style={styles.line}>
-          {showLineNumbers && <View style={styles.lineNumberSpacer} />}
-          {renderLineInput(line, i)}
-        </View>
+        {hasLyricsRow ? (
+          <View style={styles.line}>
+            {showLineNumbers && <View style={styles.lineNumberSpacer} />}
+            {renderLineInput(line, i)}
+          </View>
+        ) : (
+          <View style={styles.line}>
+            {showLineNumbers && <View style={styles.lineNumberSpacer} />}
+            <TextInput
+              style={styles.lineInput}
+              value=""
+              placeholder="–"
+              placeholderTextColor={Colors.textMuted}
+              onChangeText={(text) => {
+                const newLines = [...lines];
+                while (newLines.length <= i) newLines.push('');
+                newLines[i] = text;
+                onLyricsChange(newLines.join('\n'));
+              }}
+              multiline={true}
+              blurOnSubmit={false}
+              scrollEnabled={false}
+            />
+          </View>
+        )}
       </View>
     );
   };
@@ -139,7 +163,7 @@ export default function LyricsEditor({
   return (
     <View style={styles.column}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {lines.map((line, i) => renderLine(line, i))}
+        {Array.from({ length: totalLines }, (_, i) => renderLine(i))}
       </ScrollView>
     </View>
   );

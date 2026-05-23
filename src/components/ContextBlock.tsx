@@ -104,19 +104,22 @@ export default function ContextBlock({
 
   return (
     <View style={styles.container}>
-      {onRemove && (
-        <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
-          <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
-        </TouchableOpacity>
-      )}
+      
       <View style={styles.field}>
         <View style={styles.contextLabelRow}>
           <Text style={styles.fieldLabel}>Context</Text>
-          {showOccurrenceSelector && (
-            <TouchableOpacity style={styles.occurrenceButton} onPress={handleOccurrencePress}>
-              <Text style={styles.occurrenceText}>{occurrence}/{occurrenceCount}</Text>
-            </TouchableOpacity>
-          )}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {showOccurrenceSelector && (
+              <TouchableOpacity style={styles.occurrenceButton} onPress={handleOccurrencePress}>
+                <Text style={styles.occurrenceText}>{occurrence}/{occurrenceCount}</Text>
+              </TouchableOpacity>
+            )}
+            {onRemove && (
+              <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
+                <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         {readOnly ? (
           <View style={styles.contextDisplay}>
@@ -177,11 +180,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   removeButton: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    zIndex: 10,
-    padding: 2,
   },
   field: {
     gap: 6,

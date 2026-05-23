@@ -652,6 +652,7 @@ export default function EditorScreen() {
           onLyricsChange={setCurrentLyrics}
           showLineNumbers={true}
           referenceLines={bilingualReferenceLines}
+          onFocus={() => setIsEditingMetadata(false)}
         />
       </View>
     </View>

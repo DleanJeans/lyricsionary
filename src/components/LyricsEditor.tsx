@@ -13,6 +13,7 @@ interface LyricsEditorProps {
   onLyricsChange: (text: string) => void;
   showLineNumbers?: boolean;
   referenceLines?: string[];
+  onFocus?: () => void;
 }
 
 export default function LyricsEditor({
@@ -20,6 +21,7 @@ export default function LyricsEditor({
   onLyricsChange,
   showLineNumbers = true,
   referenceLines,
+  onFocus,
 }: LyricsEditorProps) {
   const lines = lyrics.split('\n');
   const hasReference = !!referenceLines && referenceLines.length > 0;
@@ -107,6 +109,7 @@ export default function LyricsEditor({
       multiline={true}
       blurOnSubmit={false}
       scrollEnabled={false}
+      onFocus={onFocus}
     />
   );
 
@@ -152,6 +155,7 @@ export default function LyricsEditor({
               multiline={true}
               blurOnSubmit={false}
               scrollEnabled={false}
+              onFocus={onFocus}
             />
           </View>
         )}

@@ -19,13 +19,24 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      pull-requests: read
-      issues: read
+      pull-requests: write
+      issues: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      - name: Reply with action URL
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ACTION_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            gh issue comment "${{ github.event.issue.number }}" --body "🚀 [OpenCode run]($ACTION_URL)"
+          else
+            gh pr comment "${{ github.event.pull_request.number }}" --body "🚀 [OpenCode run]($ACTION_URL)"
+          fi
 
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
@@ -34,5 +45,6 @@ jobs:
         with:
           model: opencode-go/glm-5.1
           prompt: |
-            Work on each bullet/numbered point and push as a separate commit.
             When creating a branch/PR for an issue, name it in this format: `opencode/issue{issue_number}-{summarized_from_issue_title_and_changes}`
+            Work on each bullet/numbered point and push as a separate commit.
+            Don't forget to push the commits.

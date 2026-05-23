@@ -27,6 +27,7 @@ export interface WordContext {
   definition?: string;
   songId?: string;
   songName?: string;
+  fromSong?: boolean;
 }
 
 export type MasteryLevel = 'Unknown' | 'New' | 'Learning' | 'Mastered';

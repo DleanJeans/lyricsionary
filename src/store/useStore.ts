@@ -176,8 +176,14 @@ export const useStore = create<AppState>((set, get) => ({
               definition: d.text,
               songId: d.songId,
               songName: d.songName,
+              fromSong: !!d.songId,
             }));
           }
+          // Migrate contexts missing fromSong
+          migratedContexts = migratedContexts.map(c => ({
+            ...c,
+            fromSong: c.fromSong ?? (!!c.songId && !!c.context),
+          }));
           // Also migrate global emoji to contexts if word has emoji but some contexts don't
           if (w.emoji && migratedContexts.length > 0) {
             migratedContexts = migratedContexts.map(c => ({

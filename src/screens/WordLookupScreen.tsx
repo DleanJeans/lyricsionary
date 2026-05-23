@@ -343,7 +343,7 @@ export default function WordLookupScreen() {
   };
 
   const handleDelete = async () => {
-    const existing = words.find(w => w.word.toLowerCase() === displayWord.toLowerCase());
+    const existing = words.find(w => w.word.toLowerCase() === displayWord?.toLowerCase());
     if (existing) {
       await deleteWord(existing.id);
     }
@@ -392,7 +392,7 @@ export default function WordLookupScreen() {
     ? (pronunciation.includes('/') ? pronunciation : `/${pronunciation}/`)
     : 'e.g., /prəˌnʌnsiˈeɪʃən/';
 
-  const existingWord = words.find(w => w.word.toLowerCase() === displayWord.toLowerCase());
+  const existingWord = words.find(w => w.word.toLowerCase() === displayWord?.toLowerCase());
 
   return (
     <KeyboardAvoidingView

@@ -31,6 +31,7 @@ import { Translation } from '../types';
 import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines } from '../utils/deeplTranslation';
+import LyricsEditor from '../components/LyricsEditor';
 
 
 export default function EditorScreen() {
@@ -74,6 +75,8 @@ export default function EditorScreen() {
   const [pendingSourceUrls, setPendingSourceUrls] = useState<Record<number, string>>({});
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
   const [isEditingMetadata, setIsEditingMetadata] = useState(true);
+  const [isShowingOriginal, setIsShowingOriginal] = useState(false);
+  
   
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
@@ -109,6 +112,8 @@ export default function EditorScreen() {
         songSourceUrl: editSong.sourceUrl ?? '',
         translations: editSong.translations.map((t) => ({ ...t })),
       });
+      // Set metadata to not editing when loading an existing song
+      setIsEditingMetadata(false);
     } else {
       setOriginalState(null);
     }
@@ -477,6 +482,8 @@ export default function EditorScreen() {
             } else {
               setActiveTab(0);
               setShowSourceUrl(true);
+              // Disable side-by-side mode when switching to original tab
+              setIsShowingOriginal(false);
             }
           }}
         >
@@ -501,7 +508,12 @@ export default function EditorScreen() {
               {getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '') && (
                 <Image source={{ uri: getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
               )}
-              <Text style={[styles.tabText, activeTab === i + 1 && styles.tabTextActive]}>{t.language}</Text>
+              <Text style={[
+                styles.tabText,
+                activeTab === i + 1 && styles.tabTextActive
+              ]}>
+                {t.language}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteButton}
@@ -561,6 +573,22 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
+      {(translations.length > 0 && activeTab > 0 || currentLyrics.length > 0) && (
+        <View style={styles.togglesRow}>
+          {translations.length > 0 && activeTab > 0 && (
+            <TouchableOpacity
+              style={[styles.toggle, isShowingOriginal && styles.toggleActive]}
+              onPress={() => setIsShowingOriginal(!isShowingOriginal)}
+            >
+              <Ionicons name="language-outline" size={18} color={isShowingOriginal ? Colors.white : Colors.primary} />
+              <Text style={[styles.toggleText, isShowingOriginal && styles.toggleTextActive]}>
+                Show Original
+              </Text>
+            </TouchableOpacity>
+          )}
+          
+        </View>
+      )}
       {showSourceUrl && !!currentSourceUrl && (
         <TouchableOpacity style={styles.sourceUrlRow} onPress={() => { setWebUrl(currentSourceUrl); navigation.navigate('Web'); }}>
           {getFaviconUrl(currentSourceUrl) ? (
@@ -612,72 +640,20 @@ export default function EditorScreen() {
     </View>
   );
 
-  const logicalLines = currentLyrics.split('\n');
-  const [lineHeights, setLineHeights] = useState<number[]>(() => logicalLines.map(() => 24));
-
-  const handleTextLayout = useCallback(
-    (e: { nativeEvent: { lines: Array<{ text: string; height: number }> } }) => {
-      const renderedLines = e.nativeEvent.lines;
-      const logical = currentLyrics.split('\n');
-      const heights: number[] = [];
-      let rIdx = 0;
-      for (const logicalLine of logical) {
-        let accumulated = 0;
-        let logicalHeight = 0;
-        while (rIdx < renderedLines.length) {
-          const rLine = renderedLines[rIdx];
-          logicalHeight += rLine.height;
-          accumulated += rLine.text.length;
-          rIdx++;
-          if (accumulated >= logicalLine.length) break;
-        }
-        heights.push(logicalHeight || 24);
-      }
-      setLineHeights(heights);
-    },
-    [currentLyrics],
-  );
+  const bilingualReferenceLines = isShowingOriginal && activeTab > 0
+    ? originalLyrics.split('\n')
+    : undefined;
 
   const lyricsPanel = (
     <View style={[styles.lyricsContainer, isWide && styles.lyricsContainerWide]}>
       <View style={styles.lyricsInputWrapper}>
-        <ScrollView
-          style={styles.lyricsScroll}
-          decelerationRate="normal"
-          scrollEventThrottle={16}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.lyricsRow}>
-            <View style={styles.lineNumbersColumn}>
-              {logicalLines.map((_, i) => (
-                <View key={i} style={{ height: lineHeights[i] ?? 24, justifyContent: 'flex-start' }}>
-                  <Text style={styles.lineNumber}>{i + 1}</Text>
-                </View>
-              ))}
-            </View>
-            <TextInput
-              style={styles.lyricsInput}
-              multiline
-              scrollEnabled={false}
-              placeholder="Paste or type lyrics here..."
-              placeholderTextColor={Colors.textMuted}
-              value={currentLyrics}
-              onChangeText={setCurrentLyrics}
-              textAlignVertical="top"
-              onPress={() => {
-                // Only close if both fields have values
-                if (songName.trim() && artistName.trim()) {
-                  setIsEditingMetadata(false);
-                }
-              }}
-            />
-            <View style={styles.lyricsInputMeasureContainer} pointerEvents="none">
-              <Text style={styles.lyricsInputMeasure} onTextLayout={handleTextLayout}>
-                {currentLyrics}
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
+        <LyricsEditor
+          lyrics={currentLyrics}
+          onLyricsChange={setCurrentLyrics}
+          showLineNumbers={true}
+          referenceLines={bilingualReferenceLines}
+          onFocus={() => setIsEditingMetadata(false)}
+        />
       </View>
     </View>
   );
@@ -970,47 +946,33 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     overflow: 'hidden',
   },
-  lyricsScroll: {
-    flex: 1,
-  },
-  lyricsRow: {
+  togglesRow: {
     flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
   },
-  lineNumbersColumn: {
-    paddingTop: 16,
-    paddingBottom: 16,
-    paddingHorizontal: 8,
-    backgroundColor: Colors.background,
-    borderRightWidth: 1,
-    borderRightColor: Colors.border,
-    alignItems: 'flex-end',
-    minWidth: 36,
+  toggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    gap: 6,
   },
-  lineNumber: {
-    color: Colors.textMuted,
+  toggleActive: {
+    backgroundColor: Colors.primary,
+  },
+  toggleText: {
+    color: Colors.primary,
     fontSize: 14,
-    lineHeight: 24,
-    textAlign: 'right',
+    fontWeight: '600',
   },
-  lyricsInput: {
-    flex: 1,
-    padding: 16,
-    color: Colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  lyricsInputMeasureContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  lyricsInputMeasure: {
-    padding: 16,
-    fontSize: 16,
-    lineHeight: 24,
-    opacity: 0,
+  toggleTextActive: {
+    color: Colors.white,
   },
   actions: {
     flexDirection: 'row',

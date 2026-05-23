@@ -1,0 +1,24 @@
+name: Runner Status
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  check-runner:
+    name: Check Runner Status
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/home?')
+    runs-on: self-hosted
+    permissions:
+      pull-requests: write
+    steps:
+      - name: React to comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.reactions.createForIssueComment({
+              comment_id: context.payload.comment.id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              content: '+1'
+            });

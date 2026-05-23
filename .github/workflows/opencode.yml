@@ -28,15 +28,17 @@ jobs:
           persist-credentials: false
 
       - name: Reply with action URL
+        id: action-comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ACTION_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          ACTION_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ github.job }}"
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            gh issue comment "${{ github.event.issue.number }}" --body "🚀 [OpenCode run]($ACTION_URL)"
+            COMMENT_ID=$(gh issue comment "${{ github.event.issue.number }}" --body "🚀 [OpenCode running...]($ACTION_URL)" --json id --jq '.id')
           else
-            gh pr comment "${{ github.event.pull_request.number }}" --body "🚀 [OpenCode run]($ACTION_URL)"
+            COMMENT_ID=$(gh pr comment "${{ github.event.pull_request.number }}" --body "🚀 [OpenCode running...]($ACTION_URL)" --json id --jq '.id')
           fi
+          echo "comment_id=$COMMENT_ID" >> "$GITHUB_OUTPUT"
 
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
@@ -48,3 +50,13 @@ jobs:
             When creating a branch/PR for an issue, name it in this format: `opencode/issue{issue_number}-{summarized_from_issue_title_and_changes}`
             Work on each bullet/numbered point and push as a separate commit.
             Don't forget to push the commits.
+
+      - name: Delete action URL comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMENT_ID="${{ steps.action-comment.outputs.comment_id }}"
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "/repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -X DELETE
+          fi

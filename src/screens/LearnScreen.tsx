@@ -125,8 +125,7 @@ export default function LearnScreen() {
 
   // Turn off loading state once lines are computed
   useEffect(() => {
-    if (song && computedLines.length > 0 && isLoadingSong) {
-      // Use requestAnimationFrame to ensure the UI has time to render
+    if (song && computedLines.length > 0) {
       requestAnimationFrame(() => {
         setTimeout(() => {
           setIsLoadingSong(false);
@@ -134,7 +133,7 @@ export default function LearnScreen() {
         }, 50);
       });
     }
-  }, [song, computedLines, isLoadingSong]);
+  }, [song, computedLines]);
 
   // Reset rendering state when song changes
   useEffect(() => {

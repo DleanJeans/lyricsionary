@@ -26,6 +26,7 @@ import { removeSpecialChars } from '../utils/cleanLyrics';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import WordTransformButtons from '../components/WordTransformButtons';
 import WordSenseCard from '../components/WordSenseCard';
+import SongContextBlock from '../components/SongContextBlock';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
@@ -364,29 +365,7 @@ export default function WordLookupScreen() {
     }
   };
 
-  const renderContextLine = () => {
-    if (!lyricsLine || !word) return null;
-
-    const cleanWord = removeSpecialChars(word).toLowerCase();
-    const parts = lyricsLine.split(new RegExp(`(\\b${cleanWord}\\b)`, 'gi'));
-
-    return (
-      <Text style={styles.contextLine}>
-        "
-        {parts.map((part, index) => {
-          if (part.toLowerCase() === cleanWord) {
-            return (
-              <Text key={index} style={styles.contextLineUnderlined}>
-                {part}
-              </Text>
-            );
-          }
-          return part;
-        })}
-        "
-      </Text>
-    );
-  };
+  const cleanWordForContext = word ? removeSpecialChars(word) : undefined;
 
   const ipaPlaceholder = pronunciation
     ? (pronunciation.includes('/') ? pronunciation : `/${pronunciation}/`)
@@ -421,11 +400,13 @@ export default function WordLookupScreen() {
         {songName && (
           <View style={styles.contextSection}>
             <Text style={styles.contextLabel}>Context</Text>
-            <Text style={styles.contextSong}>{songName} - {artistName}</Text>
-            {lyricsLine && renderContextLine()}
-            {translationLine && (
-              <Text style={styles.contextTranslation}>{translationLine}</Text>
-            )}
+            <SongContextBlock
+              context={lyricsLine || ''}
+              word={cleanWordForContext}
+              songName={songName}
+              artistName={artistName}
+              translation={translationLine}
+            />
           </View>
         )}
 
@@ -546,6 +527,8 @@ export default function WordLookupScreen() {
                 onOccurrenceChange={(v) => updateWordSense(index, 'occurrence', v)}
                 translation={block.translation}
                 readOnly={block.readOnly}
+                songName={songName}
+                artistName={artistName}
               />
             </View>
           ))}
@@ -767,27 +750,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 6,
   },
-  contextSong: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  contextLine: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  contextTranslation: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  contextLineUnderlined: {
-    textDecorationLine: 'underline',
-    fontWeight: '600',
-  },
+  
   wordTransformButtons: {
     marginLeft: 16,
   },

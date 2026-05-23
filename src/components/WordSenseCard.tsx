@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, StyleSheet, TextInput, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
+import SongContextBlock from './SongContextBlock';
 
 interface WordSenseCardProps {
   context: string;
@@ -19,13 +20,8 @@ interface WordSenseCardProps {
   onOccurrenceChange?: (value: number) => void;
   translation?: string;
   readOnly?: boolean;
-}
-
-function countOccurrences(text: string, word: string): number {
-  if (!word || !text) return 0;
-  const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-  const matches = text.match(regex);
-  return matches ? matches.length : 0;
+  songName?: string;
+  artistName?: string;
 }
 
 export default function WordSenseCard({
@@ -44,86 +40,33 @@ export default function WordSenseCard({
   onOccurrenceChange,
   translation,
   readOnly = false,
+  songName,
+  artistName,
 }: WordSenseCardProps) {
-  const occurrenceCount = useMemo(
-    () => countOccurrences(context, word || ''),
-    [context, word]
-  );
-
-  const showOccurrenceSelector = occurrenceCount > 1;
-
-  const renderContextText = () => {
-    if (!word || !context) return context;
-
-    const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    let occurrenceIndex = 0;
-    const parts: { text: string; isHighlight: boolean }[] = [];
-    const regex = new RegExp(`(${escapedWord})`, 'gi');
-    let lastIndex = 0;
-    let match;
-
-    while ((match = regex.exec(context)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push({ text: context.slice(lastIndex, match.index), isHighlight: false });
-      }
-      occurrenceIndex++;
-      parts.push({
-        text: match[1],
-        isHighlight: occurrenceIndex === occurrence,
-      });
-      lastIndex = match.index + match[1].length;
-    }
-
-    if (lastIndex < context.length) {
-      parts.push({ text: context.slice(lastIndex), isHighlight: false });
-    }
-
-    if (parts.length === 0) {
-      return <Text style={styles.contextText}>{context}</Text>;
-    }
-
-    return (
-      <Text style={styles.contextText}>
-        {parts.map((part, i) =>
-          part.isHighlight ? (
-            <Text key={i} style={styles.contextUnderlined}>{part.text}</Text>
-          ) : (
-            <Text key={i}>{part.text}</Text>
-          )
-        )}
-      </Text>
-    );
-  };
-
-  const handleOccurrencePress = () => {
-    if (!onOccurrenceChange) return;
-    const next = occurrence >= occurrenceCount ? 1 : occurrence + 1;
-    onOccurrenceChange(next);
-  };
-
   return (
     <View style={styles.container}>
       
       <View style={styles.field}>
         <View style={styles.contextLabelRow}>
           <Text style={styles.fieldLabel}>Context</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {showOccurrenceSelector && (
-              <TouchableOpacity style={styles.occurrenceButton} onPress={handleOccurrencePress}>
-                <Text style={styles.occurrenceText}>{occurrence}/{occurrenceCount}</Text>
-              </TouchableOpacity>
-            )}
-            {onRemove && (
-              <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
-                <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
+          {onRemove && (
+            <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
+              <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
-        {readOnly ? (
+        {readOnly && context ? (
           <View style={styles.contextDisplay}>
-            {renderContextText()}
+            <SongContextBlock
+              context={context}
+              word={word}
+              occurrence={occurrence}
+              onOccurrenceChange={onOccurrenceChange}
+              songName={songName}
+              artistName={artistName}
+              translation={translation}
+              showSongName={false}
+            />
           </View>
         ) : (
           <TextInput
@@ -134,7 +77,7 @@ export default function WordSenseCard({
             placeholderTextColor={Colors.textMuted}
           />
         )}
-        {translation ? (
+        {!readOnly && translation ? (
           <Text style={styles.translationText}>{translation}</Text>
         ) : null}
       </View>
@@ -194,19 +137,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text,
   },
-  occurrenceButton: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  occurrenceText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
   contextDisplay: {
     backgroundColor: Colors.surface,
     borderRadius: 10,
@@ -214,14 +144,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-  },
-  contextText: {
-    fontSize: 15,
-    color: Colors.text,
-  },
-  contextUnderlined: {
-    textDecorationLine: 'underline',
-    fontWeight: '600',
   },
   translationText: {
     fontSize: 13,

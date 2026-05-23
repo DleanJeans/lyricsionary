@@ -280,9 +280,11 @@ export default function EditorScreen() {
       skipMatchingRef.current = true;
       const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, originalLanguages, resolvedTranslations, resolvedSourceUrl, resolvedSourceUrlTitle);
       setCurrentSongId(song.id);
-      handleClear();
+      setEditSongId(song.id);
+      navigation.setParams({ songId: song.id });
       navigation.navigate('Learn');
     }
+    setIsEditingMetadata(false);
   };
 
   const handleClear = () => {

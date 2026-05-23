@@ -46,7 +46,7 @@ interface WordSensemData {
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
-  const { word, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source } = route.params || {};
+  const { word, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence } = route.params || {};
   const insets = useSafeAreaInsets();
 
   const { words, addOrUpdateWord, deleteWord } = useStore();
@@ -112,7 +112,7 @@ export default function WordLookupScreen() {
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
 
   const [wordSenses, setWordSenses] = useState<WordSensemData[]>([
-    { context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1 }
+    { context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: routeOccurrence || 1 }
   ]);
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -136,7 +136,7 @@ export default function WordLookupScreen() {
 
         if (existingWord.contexts && existingWord.contexts.length > 0) {
           const matchingIndex = existingWord.contexts.findIndex(c =>
-            c.songId === songId && c.context === lyricsLine
+            c.songId === songId && c.context === lyricsLine && (c.occurrence || 1) === (routeOccurrence || 1)
           );
           const matchingSongIndex = existingWord.contexts.findIndex(c => c.songId === songId);
           const hasNewContextFromLearn = source === 'Learn' && lyricsLine && matchingIndex < 0;
@@ -150,7 +150,7 @@ export default function WordLookupScreen() {
               definition: ctx.definition || '',
               songId: ctx.songId,
               songName: ctx.songName,
-              occurrence: 1,
+              occurrence: ctx.occurrence || 1,
               fromSong: ctx.fromSong ?? false,
             };
             const rest: WordSensemData[] = existingWord.contexts
@@ -162,7 +162,7 @@ export default function WordLookupScreen() {
                 definition: c.definition || '',
                 songId: c.songId,
                 songName: c.songName,
-                occurrence: 1,
+                occurrence: c.occurrence || 1,
                 fromSong: c.fromSong ?? false,
               }));
             setWordSenses([first, ...rest]);
@@ -175,7 +175,7 @@ export default function WordLookupScreen() {
               definition: ctx.definition || '',
               songId: ctx.songId,
               songName: ctx.songName,
-              occurrence: 1,
+              occurrence: ctx.occurrence || 1,
               fromSong: ctx.fromSong ?? false,
             };
             const rest: WordSensemData[] = existingWord.contexts
@@ -187,7 +187,7 @@ export default function WordLookupScreen() {
                 definition: c.definition || '',
                 songId: c.songId,
                 songName: c.songName,
-                occurrence: 1,
+                occurrence: c.occurrence || 1,
                 fromSong: c.fromSong ?? false,
               }));
             const newBlock: WordSensemData = {
@@ -199,7 +199,7 @@ export default function WordLookupScreen() {
               songName,
               translation: translationLine,
               fromSong: true,
-              occurrence: 1,
+              occurrence: routeOccurrence || 1,
             };
             setWordSenses([newBlock, first, ...rest]);
           } else {
@@ -210,7 +210,7 @@ export default function WordLookupScreen() {
               definition: c.definition || '',
               songId: c.songId,
               songName: c.songName,
-              occurrence: 1,
+              occurrence: c.occurrence || 1,
               fromSong: c.fromSong ?? false,
             }));
             if (hasNewContextFromLearn) {
@@ -223,7 +223,7 @@ export default function WordLookupScreen() {
                 songName,
                 translation: translationLine,
                 fromSong: true,
-                occurrence: 1,
+                occurrence: routeOccurrence || 1,
               };
               setWordSenses([newBlock, ...existingBlocks]);
             } else {
@@ -231,12 +231,12 @@ export default function WordLookupScreen() {
             }
           }
         } else {
-          setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
+          setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1 }]);
         }
       } else {
         setPronunciation('');
         setMasteryLevel('New');
-        setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: 1 }]);
+        setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1 }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
         } else {
@@ -324,6 +324,7 @@ export default function WordLookupScreen() {
         songId: b.songId,
         songName: b.songName,
         fromSong: b.fromSong ?? false,
+        occurrence: b.occurrence || 1,
       }));
 
     await addOrUpdateWord(

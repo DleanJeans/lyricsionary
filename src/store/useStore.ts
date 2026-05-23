@@ -220,7 +220,7 @@ export const useStore = create<AppState>((set, get) => ({
       for (const ctx of contexts) {
         if (!ctx.context) continue;
         const contextIndex = updatedContexts.findIndex(c =>
-          c.songId === ctx.songId && c.context === ctx.context
+          c.songId === ctx.songId && c.context === ctx.context && (c.occurrence || 1) === (ctx.occurrence || 1)
         );
         if (contextIndex >= 0) {
           updatedContexts[contextIndex] = {

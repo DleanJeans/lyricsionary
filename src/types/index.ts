@@ -28,6 +28,7 @@ export interface WordContext {
   songId?: string;
   songName?: string;
   fromSong?: boolean;
+  occurrence?: number;
 }
 
 export type MasteryLevel = 'Unknown' | 'New' | 'Learning' | 'Mastered';
@@ -59,6 +60,7 @@ export type RootTabParamList = {
     lyricsLine?: string;
     translationLine?: string;
     originalLanguages?: string[];
-    source?: 'Learn' | 'Words'
+    source?: 'Learn' | 'Words';
+    occurrence?: number;
   } | undefined;
 };

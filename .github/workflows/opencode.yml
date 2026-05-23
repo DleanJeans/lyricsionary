@@ -32,12 +32,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ACTION_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ github.job }}"
+          JOB_ID=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" --jq '.jobs[0].id')
+          ACTION_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/$JOB_ID"
+          BODY="🚀 [OpenCode running...]($ACTION_URL)"
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            COMMENT_ID=$(gh issue comment "${{ github.event.issue.number }}" --body "🚀 [OpenCode running...]($ACTION_URL)" --json id --jq '.id')
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
           else
-            COMMENT_ID=$(gh pr comment "${{ github.event.pull_request.number }}" --body "🚀 [OpenCode running...]($ACTION_URL)" --json id --jq '.id')
+            ISSUE_NUMBER="${{ github.event.pull_request.number }}"
           fi
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments" -f body="$BODY" --jq '.id')
           echo "comment_id=$COMMENT_ID" >> "$GITHUB_OUTPUT"
 
       - name: Run opencode

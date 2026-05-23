@@ -54,6 +54,7 @@ export default function LearnScreen() {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
+  const [selectedOccurrence, setSelectedOccurrence] = useState<number>(1);
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -185,6 +186,7 @@ export default function LearnScreen() {
     setSelectedWord(null);
     setSelectedLine(null);
     setSelectedLineIndex(null);
+    setSelectedOccurrence(1);
   }, [currentSongId]);
 
   // Auto-hide toast after 2 seconds
@@ -212,12 +214,13 @@ export default function LearnScreen() {
     }
   };
 
-  const handleWordPress = (word: string, line: string, lineIndex: number) => {
+  const handleWordPress = (word: string, line: string, lineIndex: number, occurrence: number) => {
     const cleaned = removeSpecialChars(word);
     if (cleaned) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
       setSelectedLineIndex(lineIndex);
+      setSelectedOccurrence(occurrence);
     }
   };
 
@@ -238,6 +241,16 @@ export default function LearnScreen() {
 
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
     const textWords = text.split(/(\s+)/);
+    const occurrenceMap: Record<number, number> = {};
+    const wordCountMap: Record<string, number> = {};
+    textWords.forEach((w, i) => {
+      if (!w.trim()) return;
+      const cleaned = removeSpecialChars(w);
+      if (cleaned) {
+        wordCountMap[cleaned.toLowerCase()] = (wordCountMap[cleaned.toLowerCase()] || 0) + 1;
+        occurrenceMap[i] = wordCountMap[cleaned.toLowerCase()];
+      }
+    });
     return (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {textWords.map((word, i) => {
@@ -341,7 +354,7 @@ export default function LearnScreen() {
                     return (
                       <Text
                         key={pi}
-                        onPress={() => handleWordPress(displayPart, text, lineIndex)}
+                        onPress={() => handleWordPress(displayPart, text, lineIndex, occurrenceMap[i] || 1)}
                         style={{
                           color: partColor,
                           fontWeight: isPartSelected ? '700' : '400',
@@ -417,7 +430,7 @@ export default function LearnScreen() {
                 )}
               </View>
               <Text
-                onPress={() => handleWordPress(word, text, lineIndex)}
+                onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
@@ -479,6 +492,7 @@ export default function LearnScreen() {
           lyricsLine={selectedLine ?? undefined}
           translationLine={selectedTranslationLine}
           originalLanguages={song.originalLanguages}
+          occurrence={selectedOccurrence}
         />
       </View>
     ) : selectedWord ? (
@@ -492,6 +506,7 @@ export default function LearnScreen() {
         originalLanguages={song.originalLanguages}
         onClose={() => setSelectedWord(null)}
         isWide={isWide}
+        occurrence={selectedOccurrence}
       />
     ) : null;
 

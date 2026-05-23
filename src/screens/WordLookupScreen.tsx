@@ -142,63 +142,29 @@ export default function WordLookupScreen() {
         setMasteryLevel(existingWord.masteryLevel || 'New');
 
         if (existingWord.contexts && existingWord.contexts.length > 0) {
-          const matchingIndex = existingWord.contexts.findIndex(c =>
+          const exactMatchIndex = existingWord.contexts.findIndex(c =>
             c.songId === songId && c.context === lyricsLine && (c.occurrence || 1) === (routeOccurrence || 1)
           );
-          const matchingSongIndex = existingWord.contexts.findIndex(c => c.songId === songId);
-          const hasNewContextFromLearn = source === 'Learn' && lyricsLine && matchingIndex < 0;
+          const hasNewContextFromLearn = source === 'Learn' && lyricsLine && exactMatchIndex < 0;
 
-          if (matchingIndex >= 0) {
-            const ctx = existingWord.contexts[matchingIndex];
-            const first: WordSensemData = {
-              context: ctx.context,
-              emoji: ctx.emoji || '',
-              ipa: ctx.ipa || '',
-              definition: ctx.definition || '',
-              songId: ctx.songId,
-              songName: ctx.songName,
-              occurrence: ctx.occurrence || 1,
-              fromSong: ctx.fromSong ?? false,
-            };
-            const rest: WordSensemData[] = existingWord.contexts
-              .filter((_, i) => i !== matchingIndex)
-              .map(c => ({
-                context: c.context,
-                emoji: c.emoji || '',
-                ipa: c.ipa || '',
-                definition: c.definition || '',
-                songId: c.songId,
-                songName: c.songName,
-                occurrence: c.occurrence || 1,
-                fromSong: c.fromSong ?? false,
-              }));
+          const mapContext = (c: WordContext): WordSensemData => ({
+            context: c.context,
+            emoji: c.emoji || '',
+            ipa: c.ipa || '',
+            definition: c.definition || '',
+            songId: c.songId,
+            songName: c.songName,
+            occurrence: c.occurrence || 1,
+            fromSong: c.fromSong ?? false,
+          });
+
+          if (exactMatchIndex >= 0) {
+            const first = mapContext(existingWord.contexts[exactMatchIndex]);
+            const rest = existingWord.contexts.filter((_, i) => i !== exactMatchIndex).map(mapContext);
             setWordSenses([first, ...rest]);
-          } else if (matchingSongIndex >= 0) {
-            const ctx = existingWord.contexts[matchingSongIndex];
-            const first: WordSensemData = {
-              context: ctx.context,
-              emoji: ctx.emoji || '',
-              ipa: ctx.ipa || '',
-              definition: ctx.definition || '',
-              songId: ctx.songId,
-              songName: ctx.songName,
-              occurrence: ctx.occurrence || 1,
-              fromSong: ctx.fromSong ?? false,
-            };
-            const rest: WordSensemData[] = existingWord.contexts
-              .filter((_, i) => i !== matchingSongIndex)
-              .map(c => ({
-                context: c.context,
-                emoji: c.emoji || '',
-                ipa: c.ipa || '',
-                definition: c.definition || '',
-                songId: c.songId,
-                songName: c.songName,
-                occurrence: c.occurrence || 1,
-                fromSong: c.fromSong ?? false,
-              }));
+          } else if (hasNewContextFromLearn) {
             const newBlock: WordSensemData = {
-              context: lyricsLine || '',
+              context: lyricsLine,
               emoji: '',
               ipa: '',
               definition: '',
@@ -208,34 +174,11 @@ export default function WordLookupScreen() {
               fromSong: true,
               occurrence: routeOccurrence || 1,
             };
-            setWordSenses([newBlock, first, ...rest]);
+            const existingBlocks = existingWord.contexts.map(mapContext);
+            setWordSenses([newBlock, ...existingBlocks]);
           } else {
-            const existingBlocks: WordSensemData[] = existingWord.contexts.map(c => ({
-              context: c.context,
-              emoji: c.emoji || '',
-              ipa: c.ipa || '',
-              definition: c.definition || '',
-              songId: c.songId,
-              songName: c.songName,
-              occurrence: c.occurrence || 1,
-              fromSong: c.fromSong ?? false,
-            }));
-            if (hasNewContextFromLearn) {
-              const newBlock: WordSensemData = {
-                context: lyricsLine,
-                emoji: '',
-                ipa: '',
-                definition: '',
-                songId,
-                songName,
-                translation: translationLine,
-                fromSong: true,
-                occurrence: routeOccurrence || 1,
-              };
-              setWordSenses([newBlock, ...existingBlocks]);
-            } else {
-              setWordSenses(existingBlocks);
-            }
+            const existingBlocks = existingWord.contexts.map(mapContext);
+            setWordSenses(existingBlocks);
           }
         } else {
           setWordSenses([{ context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1 }]);

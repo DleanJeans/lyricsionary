@@ -15,6 +15,7 @@ interface NewWordCardProps {
   originalLanguages?: string[];
   onClose: () => void;
   isWide?: boolean;
+  occurrence?: number;
 }
 
 export default function NewWordCard({
@@ -27,6 +28,7 @@ export default function NewWordCard({
   originalLanguages,
   onClose,
   isWide = false,
+  occurrence,
 }: NewWordCardProps) {
   const navigation = useNavigation<any>();
 
@@ -40,6 +42,7 @@ export default function NewWordCard({
       translationLine,
       originalLanguages,
       source: 'Learn',
+      occurrence,
     });
   };
 

@@ -24,6 +24,7 @@ interface WordCardProps {
   lyricsLine?: string;
   translationLine?: string;
   originalLanguages?: string[];
+  occurrence?: number;
 }
 
 export default function WordCard({
@@ -41,6 +42,7 @@ export default function WordCard({
   lyricsLine,
   translationLine,
   originalLanguages,
+  occurrence,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const swipeableRef = useRef<Swipeable>(null);
@@ -63,6 +65,7 @@ export default function WordCard({
       translationLine,
       originalLanguages,
       source,
+      occurrence,
     });
   };
 

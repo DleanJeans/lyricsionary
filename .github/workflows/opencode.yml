@@ -33,3 +33,6 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
           model: opencode-go/glm-5.1
+          prompt: |
+            Work on each bullet/numbered point and push as a separate commit.
+            When creating a branch/PR for an issue, name it in this format: `opencode/issue{issue_number}-{summarized_from_issue_title_and_changes}`

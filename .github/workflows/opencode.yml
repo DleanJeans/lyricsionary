@@ -51,9 +51,9 @@ jobs:
         with:
           model: opencode-go/glm-5.1
           prompt: |
-            When creating a branch/PR for an issue, name it in this format: `opencode/issue{issue_number}-{summarized_from_issue_title_and_changes}`
+            After working on an issue without PR, create a branch/PR for an issue named in this format: `opencode/issue{issue_number}-{summarized_from_issue_title_and_changes}`
             Work on each bullet/numbered point and push as a separate commit.
-            Don't forget to push the commits.
+            Make sure to push the commits.
 
       - name: Delete action URL comment
         if: always()

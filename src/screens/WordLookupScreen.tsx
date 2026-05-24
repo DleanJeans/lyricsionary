@@ -821,7 +821,8 @@ const styles = StyleSheet.create({
   contextDivider: {
     height: 1,
     backgroundColor: Colors.border,
-    marginVertical: 8,
+    marginBottom: 8,
+    marginTop: -8,
   },
   addContextButton: {
     flexDirection: 'row',

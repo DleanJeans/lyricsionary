@@ -55,17 +55,6 @@ export default function WordSenseCard({
     isNew && !isRemoved && styles.containerNew,
   ];
 
-  if (isRemoved) {
-    return (
-      <View style={containerStyle}>
-        <TouchableOpacity style={styles.undoButton} onPress={onUndoRemove}>
-          <Ionicons name="arrow-undo-outline" size={18} color={Colors.primary} />
-          <Text style={styles.undoButtonText}>Undo remove</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <View style={containerStyle}>
       <View style={styles.field}>
@@ -131,13 +120,20 @@ export default function WordSenseCard({
           />
         </View>
       </View>
+
+      {isRemoved && onUndoRemove && (
+        <TouchableOpacity style={styles.undoButton} onPress={onUndoRemove}>
+          <Ionicons name="arrow-undo-outline" size={18} color={Colors.primary} />
+          <Text style={styles.undoButtonText}>Undo remove</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 6,
     position: 'relative',
   },
   containerNew: {
@@ -153,7 +149,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 1,
     borderColor: Colors.danger,
-    opacity: 0.6,
   },
   removeButton: {
     position: 'absolute',

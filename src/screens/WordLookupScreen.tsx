@@ -160,6 +160,7 @@ export default function WordLookupScreen() {
             songName: c.songName,
             occurrence: c.occurrence || 1,
             fromSong: c.fromSong ?? false,
+            translation: c.translation,
           });
 
           if (exactMatchIndex >= 0) {
@@ -300,6 +301,7 @@ export default function WordLookupScreen() {
         songName: b.songName,
         fromSong: b.fromSong ?? false,
         occurrence: b.occurrence || 1,
+        translation: b.translation || undefined,
       }));
 
     await addOrUpdateWord(

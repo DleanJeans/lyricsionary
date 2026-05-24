@@ -520,28 +520,27 @@ export default function EditorScreen() {
           <Text style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}>Original</Text>
         </TouchableOpacity>
         {translations.map((t, i) => (
-          <View key={t.language} style={styles.tabWrapper}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
-              onPress={() => {
-                if (activeTab === i + 1) {
-                  setShowSourceUrl(!showSourceUrl);
-                } else {
-                  setActiveTab(i + 1);
-                  setShowSourceUrl(true);
-                }
-              }}
-            >
-              {getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '') && (
-                <Image source={{ uri: getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
-              )}
-              <Text style={[
-                styles.tabText,
-                activeTab === i + 1 && styles.tabTextActive
-              ]}>
-                {t.language}
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            key={t.language}
+            style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
+            onPress={() => {
+              if (activeTab === i + 1) {
+                setShowSourceUrl(!showSourceUrl);
+              } else {
+                setActiveTab(i + 1);
+                setShowSourceUrl(true);
+              }
+            }}
+          >
+            {getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '') && (
+              <Image source={{ uri: getFaviconUrl(pendingSourceUrls[i + 1] ?? t.sourceUrl ?? '')! }} style={styles.tabFavicon} />
+            )}
+            <Text style={[
+              styles.tabText,
+              activeTab === i + 1 && styles.tabTextActive
+            ]}>
+              {t.language}
+            </Text>
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => {
@@ -556,12 +555,10 @@ export default function EditorScreen() {
                       onPress: () => {
                         const newTranslations = translations.filter((_, idx) => idx !== i);
                         setTranslations(newTranslations);
-                        // Clean up pending data for this tab
                         const newPendingUrls = { ...pendingSourceUrls };
                         const newPendingTitles = { ...pendingPageTitles };
                         delete newPendingUrls[i + 1];
                         delete newPendingTitles[i + 1];
-                        // Shift indices for tabs after the deleted one
                         Object.keys(newPendingUrls).forEach((key) => {
                           const idx = parseInt(key);
                           if (idx > i + 1) {
@@ -578,11 +575,9 @@ export default function EditorScreen() {
                         });
                         setPendingSourceUrls(newPendingUrls);
                         setPendingPageTitles(newPendingTitles);
-                        // Switch to Original tab if we deleted the active tab
                         if (activeTab === i + 1) {
                           setActiveTab(0);
                         } else if (activeTab > i + 1) {
-                          // Adjust active tab index if it's after the deleted tab
                           setActiveTab(activeTab - 1);
                         }
                       },
@@ -593,7 +588,7 @@ export default function EditorScreen() {
             >
               <Ionicons name="close" size={14} color={activeTab === i + 1 ? Colors.white : Colors.textSecondary} />
             </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         ))}
         <TouchableOpacity style={styles.addTab} onPress={() => setShowAddDialog(true)}>
           <Ionicons name="add" size={20} color={Colors.primary} />
@@ -887,12 +882,6 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     marginBottom: 10,
   },
-  tabWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 8,
-    position: 'relative',
-  },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -902,14 +891,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: Colors.surface,
     paddingRight: 32,
+    position: 'relative',
+    marginRight: 8,
   },
   originalTab: {
     paddingRight: 16,
-    marginRight: 8,
   },
   deleteButton: {
-    marginLeft: -24,
-    marginRight: 10,
+    position: 'absolute',
+    right: 10,
+    top: '50%',
+    transform: [{ translateY: -7 }],
   },
   tabFavicon: {
     width: 14,

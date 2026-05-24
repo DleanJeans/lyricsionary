@@ -344,7 +344,7 @@ export default function LearnScreen() {
                 <Text style={{ fontSize, lineHeight: fontSize * 1.6 }}>
                   {elisionParts.map((part, pi) => {
                     const partEntry = partEntries[pi];
-                    const isPartSelected = selectedWord && part === selectedWord;
+                    const isPartSelected = selectedWord && part.toLowerCase() === selectedWord.toLowerCase();
                     const isPartActiveOccurrence = isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
                     const partColor = isPartSelected
                       ? Colors.primary
@@ -381,7 +381,7 @@ export default function LearnScreen() {
             wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
           }
 
-          const isSelected = selectedWord && cleanedWord === selectedWord;
+          const isSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();
           const isActiveOccurrence = isSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
 
           let displayContent = '';
@@ -447,7 +447,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [words, song?.originalLanguages, song?.id, selectedWord, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [words, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
 
   if (!song) {
     return (

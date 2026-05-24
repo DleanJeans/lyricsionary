@@ -194,7 +194,7 @@ export default function WordLookupScreen() {
         }
       }
     }
-  }, [displayWord, words, songId, lyricsLine, originalLanguages]);
+  }, [displayWord, words, songId, lyricsLine, originalLanguages, routeOccurrence, source]);
 
   const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
 
@@ -404,6 +404,7 @@ export default function WordLookupScreen() {
               translationLine={translationLine}
               originalLanguages={originalLanguages}
               source={source}
+              occurrence={routeOccurrence}
               hideOriginalWord
             />
           </View>

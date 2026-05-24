@@ -15,6 +15,7 @@ interface WordSenseCardProps {
   definition: string;
   onDefinitionChange: (value: string) => void;
   onRemove?: () => void;
+  onUndoRemove?: () => void;
   word?: string;
   occurrence?: number;
   onOccurrenceChange?: (value: number) => void;
@@ -22,6 +23,8 @@ interface WordSenseCardProps {
   fromSong?: boolean;
   songName?: string;
   artistName?: string;
+  isNew?: boolean;
+  isRemoved?: boolean;
 }
 
 export default function WordSenseCard({
@@ -35,6 +38,7 @@ export default function WordSenseCard({
   definition,
   onDefinitionChange,
   onRemove,
+  onUndoRemove,
   word,
   occurrence = 1,
   onOccurrenceChange,
@@ -42,9 +46,28 @@ export default function WordSenseCard({
   fromSong = false,
   songName,
   artistName,
+  isNew = false,
+  isRemoved = false,
 }: WordSenseCardProps) {
+  const containerStyle = [
+    styles.container,
+    isRemoved && styles.containerRemoved,
+    isNew && !isRemoved && styles.containerNew,
+  ];
+
+  if (isRemoved) {
+    return (
+      <View style={containerStyle}>
+        <TouchableOpacity style={styles.undoButton} onPress={onUndoRemove}>
+          <Ionicons name="arrow-undo-outline" size={18} color={Colors.primary} />
+          <Text style={styles.undoButtonText}>Undo remove</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={containerStyle}>
       <View style={styles.field}>
         <View style={styles.contextLabelRow}>
           {onRemove && (
@@ -117,6 +140,21 @@ const styles = StyleSheet.create({
     gap: 12,
     position: 'relative',
   },
+  containerNew: {
+    backgroundColor: 'rgba(0, 184, 148, 0.08)',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: Colors.success,
+  },
+  containerRemoved: {
+    backgroundColor: 'rgba(255, 107, 107, 0.08)',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: Colors.danger,
+    opacity: 0.6,
+  },
   removeButton: {
     position: 'absolute',
     zIndex: 1,
@@ -179,5 +217,17 @@ const styles = StyleSheet.create({
   emojiButtonTextSmall: {
     fontSize: 22,
     textAlign: 'center',
+  },
+  undoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+  },
+  undoButtonText: {
+    color: Colors.primaryLight,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

@@ -42,6 +42,7 @@ interface WordSenseData {
   translation?: string;
   fromSong?: boolean;
   occurrence?: number;
+  isNew?: boolean;
 }
 
 export default function WordLookupScreen() {
@@ -122,13 +123,6 @@ export default function WordLookupScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [undoData, setUndoData] = useState<{ block: WordSenseData; index: number } | null>(null);
 
-  const initialDataRef = useRef<{
-    language: string;
-    pronunciation: string;
-    masteryLevel: MasteryLevel;
-    wordSenses: WordSenseData[];
-  } | null>(null);
-
   const [displayWord, setDisplayWord] = useState(word);
 
   useEffect(() => {
@@ -184,6 +178,7 @@ export default function WordLookupScreen() {
               translation: translationLine,
               fromSong: true,
               occurrence: routeOccurrence || 1,
+              isNew: true,
             };
             const existingBlocks = existingWord.contexts.map(mapContext);
             setWordSenses([newBlock, ...existingBlocks]);
@@ -192,12 +187,12 @@ export default function WordLookupScreen() {
             setWordSenses(existingBlocks);
           }
         } else {
-          setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1 }]);
+          setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
         }
       } else {
         setPronunciation('');
         setMasteryLevel('New');
-        setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1 }]);
+        setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
         } else {
@@ -207,7 +202,7 @@ export default function WordLookupScreen() {
     }
   }, [displayWord, words, songId, lyricsLine, originalLanguages, routeOccurrence, source]);
 
-  const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
+const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
 
   const hasChanges = useMemo(() => {
     if (!displayWord) return false;
@@ -274,7 +269,7 @@ export default function WordLookupScreen() {
 
   const addWordSense = () => {
     setUndoData(null);
-    setWordSenses(prev => [...prev, { uid: mkUid(), context: '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1 }]);
+    setWordSenses(prev => [...prev, { uid: mkUid(), context: '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1, isNew: true }]);
   };
 
   const removeWordSense = (index: number) => {
@@ -492,32 +487,49 @@ export default function WordLookupScreen() {
           <Text style={styles.fieldLabel}>Contexts</Text>
 
           {(() => {
-            const items: ({ type: 'sense'; block: WordSenseData; senseIndex: number } | { type: 'undo' })[] = [];
+            const items: ({ type: 'sense'; block: WordSenseData; senseIndex: number } | { type: 'removed'; block: WordSenseData })[] = [];
             let senseIdx = 0;
-            for (let pos = 0; pos < wordSenses.length + (undoData ? 1 : 0); pos++) {
-              if (undoData && pos === undoData.index) {
-                items.push({ type: 'undo' });
+            const totalSlots = wordSenses.length + (undoData ? 1 : 0);
+            const removedPos = undoData ? undoData.index : -1;
+            for (let pos = 0; pos < totalSlots; pos++) {
+              if (pos === removedPos && undoData) {
+                items.push({ type: 'removed', block: undoData.block });
               } else {
                 items.push({ type: 'sense', block: wordSenses[senseIdx], senseIndex: senseIdx });
                 senseIdx++;
               }
             }
             return items.map((item, pos) => {
-              if (item.type === 'undo') {
+              if (item.type === 'removed') {
                 return (
-                  <View key="undo" style={styles.wordSenseWrapper}>
-                    {pos > 0 && <View style={styles.contextDivider} />}
-                    <TouchableOpacity style={styles.undoButton} onPress={undoRemoveWordSense}>
-                      <Ionicons name="arrow-undo-outline" size={18} color={Colors.primary} />
-                      <Text style={styles.undoButtonText}>Undo remove</Text>
-                    </TouchableOpacity>
+                  <View key="removed" style={styles.wordSenseWrapper}>
+                    {totalSlots > 1 && pos > 0 && <View style={styles.contextDivider} />}
+                    <WordSenseCard
+                      context={item.block.context}
+                      onContextChange={() => {}}
+                      emoji={item.block.emoji}
+                      onEmojiPress={() => {}}
+                      ipa={item.block.ipa}
+                      onIpaChange={() => {}}
+                      ipaPlaceholder={ipaPlaceholder}
+                      definition={item.block.definition}
+                      onDefinitionChange={() => {}}
+                      onUndoRemove={undoRemoveWordSense}
+                      word={displayWord}
+                      occurrence={item.block.occurrence}
+                      translation={item.block.translation}
+                      fromSong={item.block.fromSong}
+                      songName={songName}
+                      artistName={artistName}
+                      isRemoved
+                    />
                   </View>
                 );
               }
               const { block, senseIndex } = item;
               return (
                 <View key={block.uid} style={styles.wordSenseWrapper}>
-                  {items.length > 1 && pos > 0 && <View style={styles.contextDivider} />}
+                  {totalSlots > 1 && pos > 0 && <View style={styles.contextDivider} />}
                   <WordSenseCard
                     context={block.context}
                     onContextChange={(v) => updateWordSense(senseIndex, 'context', v)}
@@ -536,6 +548,7 @@ export default function WordLookupScreen() {
                     fromSong={block.fromSong}
                     songName={songName}
                     artistName={artistName}
+                    isNew={!!block.isNew}
                   />
                 </View>
               );
@@ -820,17 +833,6 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 15,
     fontWeight: '600',
-  },
-  undoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-  },
-  undoButtonText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '500',
   },
   deleteButton: {
     flexDirection: 'row',

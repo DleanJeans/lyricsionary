@@ -501,7 +501,7 @@ export default function WordLookupScreen() {
                 onRemove={wordSenses.length > 1 ? () => removeWordSense(index) : undefined}
                 word={displayWord}
                 occurrence={block.occurrence}
-                onOccurrenceChange={(v) => updateWordSense(index, 'occurrence', v)}
+                onOccurrenceChange={(isNewWord || !block.fromSong) ? (v) => updateWordSense(index, 'occurrence', v) : undefined}
                 translation={block.translation}
                 fromSong={block.fromSong}
                 songName={songName}

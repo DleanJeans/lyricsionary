@@ -132,6 +132,10 @@ export default function WordLookupScreen() {
   }, [word]);
 
   useEffect(() => {
+    setShowDeleteConfirm(false);
+  }, [word]);
+
+  useEffect(() => {
     if (displayWord) {
       const existingWord = words.find(
         (w) => w.word.toLowerCase() === displayWord.toLowerCase()
@@ -326,6 +330,7 @@ export default function WordLookupScreen() {
     if (existing) {
       await deleteWord(existing.id);
     }
+    setShowDeleteConfirm(false);
     handleCancel();
   };
 

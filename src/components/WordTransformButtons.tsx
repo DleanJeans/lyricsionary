@@ -15,6 +15,7 @@ interface WordTransformButtonsProps {
   translationLine?: string;
   originalLanguages?: string[];
   source?: 'Learn' | 'Words';
+  occurrence?: number;
   hideOriginalWord?: boolean;
 }
 
@@ -28,6 +29,7 @@ export default function WordTransformButtons({
   translationLine,
   originalLanguages,
   source,
+  occurrence,
   hideOriginalWord = false,
 }: WordTransformButtonsProps) {
   const navigation = useNavigation<any>();
@@ -48,6 +50,7 @@ export default function WordTransformButtons({
       translationLine,
       originalLanguages,
       source,
+      occurrence,
     });
   };
 

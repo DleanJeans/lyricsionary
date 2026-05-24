@@ -16,6 +16,7 @@ import SongMetadataHeader from '../components/SongMetadataHeader';
 import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
 import { splitElisionParts } from '../utils/wordTransform';
 import NewWordCard from '../components/NewWordCard';
+import { WordContext } from '../types';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
 
@@ -53,6 +54,7 @@ export default function LearnScreen() {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
+  const [selectedOccurrence, setSelectedOccurrence] = useState<number>(1);
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -83,6 +85,43 @@ export default function LearnScreen() {
       .trim()
       .toLowerCase();
   };
+
+  // Helper: find the best-matching WordContext for a word on a given line
+  const findWordContext = useCallback((wordEntry: { contexts?: WordContext[]; emoji?: string; definitions?: { text: string }[] }, line: string, occurrence?: number): {
+    emoji: string | undefined;
+    ipa: string | undefined;
+    definition: string | undefined;
+  } | null => {
+    if (!wordEntry.contexts || wordEntry.contexts.length === 0) return null;
+    const occ = occurrence || 1;
+    // Try matching by songId + context line + occurrence first
+    const bySongLineOcc = wordEntry.contexts.find(c =>
+      c.songId === song?.id && c.context === line && (c.occurrence || 1) === occ
+    );
+    if (bySongLineOcc) {
+      return { emoji: bySongLineOcc.emoji, ipa: bySongLineOcc.ipa, definition: bySongLineOcc.definition };
+    }
+    // Try matching by songId + context line (no occurrence)
+    const bySongAndLine = wordEntry.contexts.find(c =>
+      c.songId === song?.id && c.context === line && !c.occurrence
+    );
+    if (bySongAndLine) {
+      return { emoji: bySongAndLine.emoji, ipa: bySongAndLine.ipa, definition: bySongAndLine.definition };
+    }
+    // Try matching by songId only
+    const bySong = wordEntry.contexts.find(c => c.songId === song?.id);
+    if (bySong) {
+      return { emoji: bySong.emoji, ipa: bySong.ipa, definition: bySong.definition };
+    }
+    // Try matching by context line text only
+    const byLine = wordEntry.contexts.find(c => c.context === line);
+    if (byLine) {
+      return { emoji: byLine.emoji, ipa: byLine.ipa, definition: byLine.definition };
+    }
+    // Fall back to first context
+    const first = wordEntry.contexts[0];
+    return { emoji: first.emoji, ipa: first.ipa, definition: first.definition };
+  }, [song?.id]);
 
   // Compute lines asynchronously to avoid blocking initial render
   useEffect(() => {
@@ -154,6 +193,7 @@ export default function LearnScreen() {
     setSelectedWord(null);
     setSelectedLine(null);
     setSelectedLineIndex(null);
+    setSelectedOccurrence(1);
   }, [currentSongId]);
 
   // Auto-hide toast after 2 seconds
@@ -181,12 +221,13 @@ export default function LearnScreen() {
     }
   };
 
-  const handleWordPress = (word: string, line: string, lineIndex: number) => {
+  const handleWordPress = (word: string, line: string, lineIndex: number, occurrence: number) => {
     const cleaned = removeSpecialChars(word);
     if (cleaned) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
       setSelectedLineIndex(lineIndex);
+      setSelectedOccurrence(occurrence);
     }
   };
 
@@ -207,6 +248,16 @@ export default function LearnScreen() {
 
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
     const textWords = text.split(/(\s+)/);
+    const occurrenceMap: Record<number, number> = {};
+    const wordCountMap: Record<string, number> = {};
+    textWords.forEach((w, i) => {
+      if (!w.trim()) return;
+      const cleaned = removeSpecialChars(w);
+      if (cleaned) {
+        wordCountMap[cleaned.toLowerCase()] = (wordCountMap[cleaned.toLowerCase()] || 0) + 1;
+        occurrenceMap[i] = wordCountMap[cleaned.toLowerCase()];
+      }
+    });
     return (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {textWords.map((word, i) => {
@@ -258,24 +309,37 @@ export default function LearnScreen() {
 
             let displayContent = '';
             if (enableAnnotations && mainEntry && displayMode !== 'none') {
-              if (displayMode === 'ipa' && mainEntry.pronunciation) {
-                displayContent = mainEntry.pronunciation.includes('/')
-                  ? mainEntry.pronunciation
-                  : `/${mainEntry.pronunciation}/`;
-              } else if (displayMode === 'definition' && mainEntry.definitions && mainEntry.definitions.length > 0) {
-                displayContent = mainEntry.definitions[0].text;
+              const ctx = findWordContext(mainEntry, text, occurrenceMap[i] || 1);
+              if (displayMode === 'ipa') {
+                const contextIpa = ctx?.ipa;
+                const globalIpa = mainEntry.pronunciation;
+                const ipaValue = contextIpa || globalIpa;
+                if (ipaValue) {
+                  displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
+                }
+              } else if (displayMode === 'definition') {
+                const contextDef = ctx?.definition;
+                if (contextDef) {
+                  displayContent = contextDef;
+                } else if (mainEntry.definitions && mainEntry.definitions.length > 0) {
+                  displayContent = mainEntry.definitions[0].text;
+                }
               }
             }
 
-            const shouldShowEmoji = enableAnnotations && showEmoji && mainEntry && mainEntry.emoji &&
-              mainEntry.emoji !== getFlagForLanguage(mainEntry.language);
+            const ctx = mainEntry ? findWordContext(mainEntry, text, occurrenceMap[i] || 1) : null;
+            const contextEmoji = ctx?.emoji;
+            const globalEmoji = mainEntry?.emoji;
+            const effectiveEmoji = contextEmoji || globalEmoji;
+            const shouldShowEmoji = enableAnnotations && showEmoji && mainEntry && effectiveEmoji &&
+              effectiveEmoji !== getFlagForLanguage(mainEntry.language);
 
             return (
               <View key={i} style={{ alignItems: 'center' }}>
                 <View style={styles.annotationSpace}>
                   {shouldShowEmoji && (
                     <Text style={styles.wordAnnotation}>
-                      {mainEntry.emoji}
+                      {effectiveEmoji}
                     </Text>
                   )}
                   {displayContent && (
@@ -287,7 +351,8 @@ export default function LearnScreen() {
                 <Text style={{ fontSize, lineHeight: fontSize * 1.6 }}>
                   {elisionParts.map((part, pi) => {
                     const partEntry = partEntries[pi];
-                    const isPartSelected = selectedWord && part === selectedWord;
+                    const isPartSelected = selectedWord && part.toLowerCase() === selectedWord.toLowerCase();
+                    const isPartActiveOccurrence = isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
                     const partColor = isPartSelected
                       ? Colors.primary
                       : (showMasteryLevelColors && partEntry?.masteryLevel)
@@ -297,10 +362,10 @@ export default function LearnScreen() {
                     return (
                       <Text
                         key={pi}
-                        onPress={() => handleWordPress(displayPart, text, lineIndex)}
+                        onPress={() => handleWordPress(displayPart, text, lineIndex, occurrenceMap[i] || 1)}
                         style={{
                           color: partColor,
-                          fontWeight: isPartSelected ? '700' : '400',
+                          fontWeight: isPartActiveOccurrence ? '700' : '400',
                           fontSize,
                           lineHeight: fontSize * 1.6,
                         }}
@@ -323,21 +388,35 @@ export default function LearnScreen() {
             wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
           }
 
-          const isSelected = selectedWord && cleanedWord === selectedWord;
+          const isSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();
+          const isActiveOccurrence = isSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
 
           let displayContent = '';
           if (enableAnnotations && wordEntry && displayMode !== 'none') {
-            if (displayMode === 'ipa' && wordEntry.pronunciation) {
-              displayContent = wordEntry.pronunciation.includes('/')
-                ? wordEntry.pronunciation
-                : `/${wordEntry.pronunciation}/`;
-            } else if (displayMode === 'definition' && wordEntry.definitions && wordEntry.definitions.length > 0) {
-              displayContent = wordEntry.definitions[0].text;
-            }
-          }
+const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
+             if (displayMode === 'ipa') {
+               const contextIpa = ctx?.ipa;
+               const globalIpa = wordEntry.pronunciation;
+               const ipaValue = contextIpa || globalIpa;
+               if (ipaValue) {
+                 displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
+               }
+             } else if (displayMode === 'definition') {
+               const contextDef = ctx?.definition;
+               if (contextDef) {
+                 displayContent = contextDef;
+               } else if (wordEntry.definitions && wordEntry.definitions.length > 0) {
+                 displayContent = wordEntry.definitions[0].text;
+               }
+             }
+           }
 
-          const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && wordEntry.emoji &&
-            wordEntry.emoji !== getFlagForLanguage(wordEntry.language);
+          const emojiCtx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
+          const contextEmoji = emojiCtx?.emoji;
+          const globalEmoji = wordEntry?.emoji;
+          const effectiveEmoji = contextEmoji || globalEmoji;
+          const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && effectiveEmoji &&
+            effectiveEmoji !== getFlagForLanguage(wordEntry.language);
 
           const wordColor = isSelected
             ? Colors.primary
@@ -350,7 +429,7 @@ export default function LearnScreen() {
               <View style={styles.annotationSpace}>
                 {shouldShowEmoji && (
                   <Text style={styles.wordAnnotation}>
-                    {wordEntry?.emoji}
+                    {effectiveEmoji}
                   </Text>
                 )}
                 {displayContent && (
@@ -360,12 +439,12 @@ export default function LearnScreen() {
                 )}
               </View>
               <Text
-                onPress={() => handleWordPress(word, text, lineIndex)}
+                onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
                   color: wordColor,
-                  fontWeight: isSelected ? '700' : '400',
+                  fontWeight: isActiveOccurrence ? '700' : '400',
                 }}
               >
                 {word}
@@ -375,7 +454,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [words, song?.originalLanguages, selectedWord, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors]);
+  }, [words, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
 
   if (!song) {
     return (
@@ -420,7 +499,9 @@ export default function LearnScreen() {
           songName={song.songName}
           artistName={song.artistName}
           lyricsLine={selectedLine ?? undefined}
+          translationLine={selectedTranslationLine}
           originalLanguages={song.originalLanguages}
+          occurrence={selectedOccurrence}
         />
       </View>
     ) : selectedWord ? (
@@ -434,6 +515,7 @@ export default function LearnScreen() {
         originalLanguages={song.originalLanguages}
         onClose={() => setSelectedWord(null)}
         isWide={isWide}
+        occurrence={selectedOccurrence}
       />
     ) : null;
 

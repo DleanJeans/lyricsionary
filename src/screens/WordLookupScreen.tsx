@@ -384,19 +384,6 @@ export default function WordLookupScreen() {
         onScroll={handleOuterScroll}
         scrollEventThrottle={20}
       >
-        {songName && (
-          <View style={styles.contextSection}>
-            <Text style={styles.contextLabel}>Context</Text>
-            <SongContextBlock
-              context={lyricsLine || ''}
-              word={cleanWordForContext}
-              songName={songName}
-              artistName={artistName}
-              translation={translationLine}
-            />
-          </View>
-        )}
-
         {word && (
           <View style={styles.wordTransformButtons}>
             <WordTransformButtons

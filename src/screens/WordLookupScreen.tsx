@@ -31,7 +31,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
-interface WordSensemData {
+interface WordSenseData {
   uid: number;
   context: string;
   emoji: string;
@@ -115,18 +115,18 @@ export default function WordLookupScreen() {
   const uidRef = useRef(0);
   const mkUid = () => ++uidRef.current;
 
-  const [wordSenses, setWordSenses] = useState<WordSensemData[]>([
+  const [wordSenses, setWordSenses] = useState<WordSenseData[]>([
     { uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: routeOccurrence || 1 }
   ]);
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [undoData, setUndoData] = useState<{ block: WordSensemData; index: number } | null>(null);
+  const [undoData, setUndoData] = useState<{ block: WordSenseData; index: number } | null>(null);
 
   const initialDataRef = useRef<{
     language: string;
     pronunciation: string;
     masteryLevel: MasteryLevel;
-    wordSenses: WordSensemData[];
+    wordSenses: WordSenseData[];
   } | null>(null);
 
   const [displayWord, setDisplayWord] = useState(word);
@@ -155,7 +155,7 @@ export default function WordLookupScreen() {
           );
           const hasNewContextFromLearn = source === 'Learn' && lyricsLine && exactMatchIndex < 0;
 
-          const mapContext = (c: WordContext): WordSensemData => ({
+          const mapContext = (c: WordContext): WordSenseData => ({
             uid: mkUid(),
             context: c.context,
             emoji: c.emoji || '',
@@ -173,7 +173,7 @@ export default function WordLookupScreen() {
             const rest = existingWord.contexts.filter((_, i) => i !== exactMatchIndex).map(mapContext);
             setWordSenses([first, ...rest]);
           } else if (hasNewContextFromLearn) {
-            const newBlock: WordSensemData = {
+            const newBlock: WordSenseData = {
               uid: mkUid(),
               context: lyricsLine,
               emoji: '',
@@ -267,7 +267,7 @@ export default function WordLookupScreen() {
     };
   }, [canGoBackInWebView, navigation, source, songId]);
 
-  const updateWordSense = (index: number, field: keyof WordSensemData, value: string | number) => {
+  const updateWordSense = (index: number, field: keyof WordSenseData, value: string | number) => {
     setUndoData(null);
     setWordSenses(prev => prev.map((b, i) => i === index ? { ...b, [field]: value } : b));
   };
@@ -490,7 +490,7 @@ export default function WordLookupScreen() {
           </View>
 
           {(() => {
-            const items: ({ type: 'sense'; block: WordSensemData; senseIndex: number } | { type: 'undo' })[] = [];
+            const items: ({ type: 'sense'; block: WordSenseData; senseIndex: number } | { type: 'undo' })[] = [];
             let senseIdx = 0;
             for (let pos = 0; pos < wordSenses.length + (undoData ? 1 : 0); pos++) {
               if (undoData && pos === undoData.index) {

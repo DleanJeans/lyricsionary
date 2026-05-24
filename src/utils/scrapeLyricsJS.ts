@@ -72,6 +72,23 @@ const _scrapeLyricsLogic = `
     }
   }
 
+  // LyricsTranslate
+  if (url.includes('lyricstranslate.com')) {
+    const originalTab = document.querySelector('[data-target=original]');
+    if (originalTab) originalTab.click();
+    const originalLyricsEl = document.querySelector('#original-lyrics');
+    if (originalLyricsEl) {
+      lyrics = originalLyricsEl.innerText;
+      languageCode = originalLyricsEl.lang || '';
+      const translationEl = document.querySelector('#translation-body');
+      const translationText = translationEl ? translationEl.innerText : '';
+      const translationLangEl = document.querySelector('.lt-breadcrumb-item:last-child');
+      const translationLanguage = translationLangEl ? translationLangEl.textContent.trim().replace(/\\s*translation\\s*$/i, '') : '';
+      sendLyrics(lyrics, languageCode, translationText, translationLanguage);
+      return;
+    }
+  }
+
   // Generic fallback
   consoleLog(window.location.hostname + ' - Using fallback, scraping entire page text');
   const body = document.body.innerText;
@@ -84,8 +101,13 @@ export const scrapeLyricsJS = `
     const consoleLog = (log) => {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'debug', log }));
     };
-    const sendLyrics = (text, languageCode) => {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text, title: document.title, languageCode: languageCode || '' }));
+    const sendLyrics = (text, languageCode, translationText, translationLanguage) => {
+      const msg = { type: 'lyrics', text, title: document.title, languageCode: languageCode || '' };
+      if (translationText) {
+        msg.translationText = translationText;
+        msg.translationLanguage = translationLanguage || '';
+      }
+      window.ReactNativeWebView.postMessage(JSON.stringify(msg));
     };
     const sendError = (err) => {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: err && err.message ? err.message : String(err) }));

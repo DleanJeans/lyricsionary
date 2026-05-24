@@ -24,6 +24,17 @@ const _detectLyricsLogic = `
     const songLyricsEl = document.querySelector('#songLyricsDiv');
     hasLyrics = !!songLyricsEl;
   }
+  // LyricsTranslate
+  else if (url.includes('lyricstranslate.com')) {
+    const originalTab = document.querySelector('[data-target=original]');
+    if (originalTab) originalTab.click();
+    const originalLyricsEl = document.querySelector('#original-lyrics');
+    hasLyrics = !!originalLyricsEl && originalLyricsEl.textContent.trim().length > 0;
+    const translationBody = document.querySelector('#translation-body');
+    if (translationBody && translationBody.textContent.trim().length > 0) {
+      sendTranslationDetection(true);
+    }
+  }
 
   sendDetectionResult(hasLyrics);
 `;
@@ -34,8 +45,11 @@ export const detectLyricsJS = `
     const sendDetectionResult = (hasLyrics) => {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyricsDetected', hasLyrics }));
     };
+    const sendTranslationDetection = (hasTranslation) => {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'translationDetected', hasTranslation }));
+    };
     try {
-      (new Function('sendDetectionResult', ${JSON.stringify(_detectLyricsLogic)}))(sendDetectionResult);
+      (new Function('sendDetectionResult', 'sendTranslationDetection', ${JSON.stringify(_detectLyricsLogic)}))(sendDetectionResult, sendTranslationDetection);
     } catch (e) {
       // Silently fail detection - button won't show
     }

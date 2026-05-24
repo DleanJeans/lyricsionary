@@ -900,8 +900,6 @@ const styles = StyleSheet.create({
   deleteButton: {
     position: 'absolute',
     right: 10,
-    top: '50%',
-    transform: [{ translateY: -7 }],
   },
   tabFavicon: {
     width: 14,

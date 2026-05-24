@@ -1,0 +1,17 @@
+diff --git a/src/winter/runtime.native.ts b/src/winter/runtime.native.ts
+index 2d9b4faa53840a05b266a46f33babe690dcf3825..b17f74a0e1c4d20b697b0c7c7f3023408ec8b61b 100644
+--- a/src/winter/runtime.native.ts
++++ b/src/winter/runtime.native.ts	
+@@ -22,7 +22,11 @@ install('__ExpoImportMetaRegistry', () => require('./ImportMetaRegistry').Import
+ // https://html.spec.whatwg.org/multipage/structured-data.html#structuredclone
+ install('structuredClone', () => require('@ungap/structured-clone').default);
+ 
+-installFormDataPatch(FormData);
++// Guard against FormData not yet being available (e.g., when Expo Go's eager
++// require of this module runs before InitializeCore sets up the FormData polyfill).
++if (typeof FormData !== 'undefined') {
++  installFormDataPatch(FormData);
++}
+ 
+ // Polyfill async iterator symbol for Hermes.
+ // @ts-expect-error: readonly property only applies when the engine supports it

@@ -1,16 +1,22 @@
 import React from 'react';
+import { useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import EditorScreen from '../screens/EditorScreen';
 import WebScreen from '../screens/WebScreen';
 import LearnScreen from '../screens/LearnScreen';
-import LyricsScreen from '../screens/LyricsScreen';
+import SongsScreen from '../screens/SongsScreen';
 import WordsScreen from '../screens/WordsScreen';
+import WordLookupScreen from '../screens/WordLookupScreen';
 import CustomTabBar from './CustomTabBar';
+import DrawerContent from './DrawerContent';
 import { RootTabParamList } from '../types';
+import { WIDE_BREAKPOINT } from '../hooks/useLayout';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+const Drawer = createDrawerNavigator();
 
-export default function AppNavigator() {
+function TabNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
@@ -19,8 +25,43 @@ export default function AppNavigator() {
       <Tab.Screen name="Editor" component={EditorScreen} />
       <Tab.Screen name="Web" component={WebScreen} />
       <Tab.Screen name="Learn" component={LearnScreen} />
-      <Tab.Screen name="Lyrics" component={LyricsScreen} />
+      <Tab.Screen name="Songs" component={SongsScreen} />
       <Tab.Screen name="Words" component={WordsScreen} />
+      <Tab.Screen
+        name="WordLookup"
+        component={WordLookupScreen}
+        options={{
+          tabBarButton: () => null, // Hide from tab bar
+        }}
+      />
     </Tab.Navigator>
+  );
+}
+
+export default function AppNavigator() {
+  const { width } = useWindowDimensions();
+  const isWide = width >= WIDE_BREAKPOINT;
+
+  // On wide screens, use tab navigator with built-in sidebar
+  // On narrow screens, wrap with drawer navigator
+  if (isWide) {
+    return <TabNavigator />;
+  }
+
+  return (
+    <Drawer.Navigator
+      drawerContent={(props) => <DrawerContent {...props} />}
+      screenOptions={{
+        headerShown: false,
+        drawerType: 'front',
+        drawerPosition: 'right',
+        drawerStyle: {
+          width: 280,
+        },
+        swipeEdgeWidth: 60,
+      }}
+    >
+      <Drawer.Screen name="Tabs" component={TabNavigator} />
+    </Drawer.Navigator>
   );
 }

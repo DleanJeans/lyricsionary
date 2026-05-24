@@ -4,6 +4,7 @@ export const Colors = {
   primary: '#6C5CE7',
   primaryLight: '#A29BFE',
   secondary: '#00CEC9',
+  blue: '#3498DB',
   background: '#0F0F1A',
   surface: '#1A1A2E',
   surfaceLight: '#25253D',
@@ -12,9 +13,29 @@ export const Colors = {
   textMuted: '#6C6C80',
   border: '#2D2D44',
   danger: '#FF6B6B',
+  dangerDark: '#E74C3C',
   success: '#00B894',
   warning: '#FDCB6E',
   white: '#FFFFFF',
+  // Mastery level colors
+  masteryUnknown: '#FFFFFF',      // White (default)
+  masteryNew: '#FF6B6B',           // Red-orange
+  masteryLearning: '#FDCB6E',      // Yellow
+  masteryMastered: '#00B894',      // Green
+};
+
+export const getMasteryLevelColor = (level?: 'Unknown' | 'New' | 'Learning' | 'Mastered'): string => {
+  switch (level) {
+    case 'New':
+      return Colors.masteryNew;
+    case 'Learning':
+      return Colors.masteryLearning;
+    case 'Mastered':
+      return Colors.masteryMastered;
+    case 'Unknown':
+    default:
+      return Colors.masteryUnknown;
+  }
 };
 
 export const globalStyles = StyleSheet.create({

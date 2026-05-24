@@ -1,0 +1,2 @@
+patchedDependencies:
+  expo@55.0.19: patches/expo@55.0.19.patch

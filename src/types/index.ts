@@ -3,29 +3,65 @@ export interface Song {
   songName: string;
   artistName: string;
   originalLyrics: string;
+  originalLanguages?: string[];
+  sourceUrl?: string;
+  sourceUrlTitle?: string;
   translations: Translation[];
   createdAt: number;
   updatedAt: number;
+  lastOpenedAt?: number;
+  openCount?: number;
 }
 
 export interface Translation {
   language: string;
   lyrics: string;
+  sourceUrl?: string;
+  sourceUrlTitle?: string;
 }
+
+export interface WordContext {
+  context: string;
+  emoji?: string;
+  ipa?: string;
+  definition?: string;
+  songId?: string;
+  songName?: string;
+  fromSong?: boolean;
+  occurrence?: number;
+  translation?: string;
+}
+
+export type MasteryLevel = 'Unknown' | 'New' | 'Learning' | 'Mastered';
 
 export interface WordEntry {
   id: string;
   word: string;
   language: string;
   pronunciation: string;
+  contexts: WordContext[];
   lookupCount: number;
   lastLookedUp: number;
+  masteryLevel?: MasteryLevel;
+  emoji?: string;
+  definitions?: { text: string; songId?: string; songName?: string; lyricsLine?: string }[];
 }
 
 export type RootTabParamList = {
   Editor: { songId?: string } | undefined;
   Web: { url?: string } | undefined;
   Learn: { songId?: string } | undefined;
-  Lyrics: undefined;
+  Songs: { searchQuery?: string } | undefined;
   Words: undefined;
+  WordLookup: {
+    word: string;
+    songId?: string;
+    songName?: string;
+    artistName?: string;
+    lyricsLine?: string;
+    translationLine?: string;
+    originalLanguages?: string[];
+    source?: 'Learn' | 'Words';
+    occurrence?: number;
+  } | undefined;
 };

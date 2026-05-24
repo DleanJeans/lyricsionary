@@ -1,0 +1,25 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: LearnScreen not stuck loading after saving a new song — #127
+# Verifies that the LearnScreen content is visible (not stuck on loading)
+# after navigating from Editor saving a new song
+
+- runFlow: ../00-launch-app.yaml
+
+# Enter song name
+- tapOn: "Song Name"
+- inputText: "Loading Song"
+
+# Enter artist name
+- tapOn: "Artist Name"
+- inputText: "Loading Artist"
+
+# Save the new song — this navigates to Learn
+- tapOn: "Save"
+
+# After save, we should land on Learn screen
+# The loading overlay should NOT be stuck — content should be visible
+- assertVisible: "Learn"
+
+# "Loading song..." text should NOT be visible
+- assertNotVisible: "Loading song..."

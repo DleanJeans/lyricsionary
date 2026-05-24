@@ -4,5 +4,23 @@ appId: com.dleanjeans.lyricsionary
 # Requires Metro bundler running (npx expo start)
 # For Android emulator, 10.0.2.2 maps to host localhost
 
+- clearState: com.dleanjeans.lyricsionary
 - openLink: "exp+lyricsionary://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8081"
-- assertVisible: "Editor"
+
+# Dismiss Expo dev client welcome screen
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+
+# Dismiss Expo dev client dev menu overlay (X button)
+- runFlow:
+    when:
+      visible: "Close"
+    commands:
+      - tapOn:
+          text: "Close"
+          optional: true
+
+- assertVisible: "New Lyrics"

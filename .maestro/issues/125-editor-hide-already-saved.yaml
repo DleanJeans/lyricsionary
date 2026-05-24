@@ -1,0 +1,26 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: Editor hides "Already Saved!" button while saving new song — #125
+# Verifies that the "Already Saved!" FAB does not appear after saving a new song
+
+- runFlow: ../00-launch-app.yaml
+
+# Enter song name
+- tapOn: "Song Name"
+- inputText: "Unique Song 125"
+
+# Enter artist name
+- tapOn: "Artist Name"
+- inputText: "Unique Artist 125"
+
+# Before saving, the "Already Saved!" FAB should NOT be visible
+- assertNotVisible: "Already Saved!"
+
+# Save the new song
+- tapOn: "Save"
+
+# After saving, navigate back to Editor
+- tapOn: "Editor"
+
+# The "Already Saved!" FAB should still NOT appear for the just-saved song
+- assertNotVisible: "Already Saved!"

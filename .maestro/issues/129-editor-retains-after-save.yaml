@@ -3,7 +3,7 @@ appId: com.dleanjeans.lyricsionary
 # Test: Editor retains state after saving a new song — #129
 # Verifies that the EditorScreen does not clear after saving a new song
 
-- runFlow: 00-launch-app.yaml
+- runFlow: ../00-launch-app.yaml
 
 # Enter song name
 - tapOn: "Song Name"

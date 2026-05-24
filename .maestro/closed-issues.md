@@ -4,24 +4,26 @@ Each issue below is a closed feature or bugfix that should have corresponding te
 
 ## Issues
 
-### #132 — Editor: Original and Translation tab button height differ
+### ❌ #132 — Editor: Original and Translation tab button height differ
 - **URL**: https://github.com/DleanJeans/lyricsionary/issues/132
 - **PR**: https://github.com/DleanJeans/lyricsionary/pull/133
 - Fix height inconsistency between Original and Translation tab buttons in Editor
 
-### #129 — EditorScreen should not clear after saving new song
+### ✅ #129 — EditorScreen should not clear after saving new song
 - **URL**: https://github.com/DleanJeans/lyricsionary/issues/129
 - **PR**: https://github.com/DleanJeans/lyricsionary/pull/130
 - EditorScreen should retain its state after saving a new song instead of clearing
 
-### #127 — LearnScreen is stuck loading after coming from saving a new song
+### ✅ #127 — LearnScreen is stuck loading after coming from saving a new song
 - **URL**: https://github.com/DleanJeans/lyricsionary/issues/127
 - **PR**: https://github.com/DleanJeans/lyricsionary/pull/128
+- **Test**: `.maestro/issues/127-learn-screen-not-stuck-loading.yaml`
 - Fix LearnScreen stuck in loading state after coming from saving a new song
 
-### #125 — Editor: Hide Already Saved! button while saving new song
+### ✅ #125 — Editor: Hide Already Saved! button while saving new song
 - **URL**: https://github.com/DleanJeans/lyricsionary/issues/125
 - **PR**: https://github.com/DleanJeans/lyricsionary/pull/126
+- **Test**: `.maestro/issues/125-editor-hide-already-saved.yaml`
 - Hide the "Already Saved!" button while saving a new song in EditorScreen
 
 ### #122 — WebScreen: Fix Get Lyrics button flickering when detected lyrics

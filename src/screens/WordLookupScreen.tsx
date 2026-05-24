@@ -181,7 +181,7 @@ export default function WordLookupScreen() {
               isNew: true,
             };
             const existingBlocks = existingWord.contexts.map(mapContext);
-            setWordSenses([newBlock, ...existingBlocks]);
+            setWordSenses([...existingBlocks, newBlock]);
           } else {
             const existingBlocks = existingWord.contexts.map(mapContext);
             setWordSenses(existingBlocks);

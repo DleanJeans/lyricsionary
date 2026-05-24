@@ -5,6 +5,7 @@ import {
   Modal,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { Colors } from '../constants/theme';
 
@@ -17,6 +18,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   destructive?: boolean;
+  loading?: boolean;
 }
 
 export default function ConfirmDialog({
@@ -28,6 +30,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   destructive = false,
+  loading = false,
 }: ConfirmDialogProps) {
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -36,14 +39,19 @@ export default function ConfirmDialog({
           <Text style={styles.modalTitle}>{title}</Text>
           <Text style={styles.modalMessage}>{message}</Text>
           <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.modalCancel} onPress={onCancel}>
-              <Text style={styles.modalCancelText}>{cancelText}</Text>
+            <TouchableOpacity style={styles.modalCancel} onPress={onCancel} disabled={loading}>
+              <Text style={[styles.modalCancelText, loading && styles.modalButtonTextDisabled]}>{cancelText}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalConfirm, destructive && styles.modalConfirmDestructive]}
+              style={[styles.modalConfirm, destructive && styles.modalConfirmDestructive, loading && styles.modalButtonDisabled]}
               onPress={onConfirm}
+              disabled={loading}
             >
-              <Text style={styles.modalConfirmText}>{confirmText}</Text>
+              {loading ? (
+                <ActivityIndicator color={Colors.white} size="small" />
+              ) : (
+                <Text style={styles.modalConfirmText}>{confirmText}</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -101,6 +109,12 @@ const styles = StyleSheet.create({
   },
   modalConfirmDestructive: {
     backgroundColor: Colors.danger,
+  },
+  modalButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalButtonTextDisabled: {
+    opacity: 0.5,
   },
   modalConfirmText: {
     color: Colors.white,

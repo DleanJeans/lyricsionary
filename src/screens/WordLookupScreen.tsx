@@ -121,6 +121,7 @@ export default function WordLookupScreen() {
   ]);
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [undoData, setUndoData] = useState<{ block: WordSenseData; index: number } | null>(null);
 
   const [displayWord, setDisplayWord] = useState(word);
@@ -329,10 +330,12 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
   };
 
   const handleDelete = async () => {
+    setIsDeleting(true);
     const existing = words.find(w => w.word.toLowerCase() === displayWord?.toLowerCase());
     if (existing) {
       await deleteWord(existing.id);
     }
+    setIsDeleting(false);
     setShowDeleteConfirm(false);
     handleCancel();
   };
@@ -706,6 +709,7 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
         destructive
+        loading={isDeleting}
       />
       </View>
     </KeyboardAvoidingView>

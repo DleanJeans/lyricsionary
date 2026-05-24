@@ -87,15 +87,23 @@ export default function LearnScreen() {
   };
 
   // Helper: find the best-matching WordContext for a word on a given line
-  const findWordContext = useCallback((wordEntry: { contexts?: WordContext[]; emoji?: string; definitions?: { text: string }[] }, line: string): {
+  const findWordContext = useCallback((wordEntry: { contexts?: WordContext[]; emoji?: string; definitions?: { text: string }[] }, line: string, occurrence?: number): {
     emoji: string | undefined;
     ipa: string | undefined;
     definition: string | undefined;
   } | null => {
     if (!wordEntry.contexts || wordEntry.contexts.length === 0) return null;
-    // Try matching by songId + context line first
+    const occ = occurrence || 1;
+    // Try matching by songId + context line + occurrence first
+    const bySongLineOcc = wordEntry.contexts.find(c =>
+      c.songId === song?.id && c.context === line && (c.occurrence || 1) === occ
+    );
+    if (bySongLineOcc) {
+      return { emoji: bySongLineOcc.emoji, ipa: bySongLineOcc.ipa, definition: bySongLineOcc.definition };
+    }
+    // Try matching by songId + context line (no occurrence)
     const bySongAndLine = wordEntry.contexts.find(c =>
-      c.songId === song?.id && c.context === line
+      c.songId === song?.id && c.context === line && !c.occurrence
     );
     if (bySongAndLine) {
       return { emoji: bySongAndLine.emoji, ipa: bySongAndLine.ipa, definition: bySongAndLine.definition };
@@ -302,7 +310,7 @@ export default function LearnScreen() {
 
             let displayContent = '';
             if (enableAnnotations && mainEntry && displayMode !== 'none') {
-              const ctx = findWordContext(mainEntry, text);
+              const ctx = findWordContext(mainEntry, text, occurrenceMap[i] || 1);
               if (displayMode === 'ipa') {
                 const contextIpa = ctx?.ipa;
                 const globalIpa = mainEntry.pronunciation;
@@ -320,7 +328,7 @@ export default function LearnScreen() {
               }
             }
 
-            const ctx = mainEntry ? findWordContext(mainEntry, text) : null;
+            const ctx = mainEntry ? findWordContext(mainEntry, text, occurrenceMap[i] || 1) : null;
             const contextEmoji = ctx?.emoji;
             const globalEmoji = mainEntry?.emoji;
             const effectiveEmoji = contextEmoji || globalEmoji;
@@ -386,26 +394,26 @@ export default function LearnScreen() {
 
           let displayContent = '';
           if (enableAnnotations && wordEntry && displayMode !== 'none') {
-            const ctx = wordEntry ? findWordContext(wordEntry, text) : null;
-            if (displayMode === 'ipa') {
-              const contextIpa = ctx?.ipa;
-              const globalIpa = wordEntry.pronunciation;
-              const ipaValue = contextIpa || globalIpa;
-              if (ipaValue) {
-                displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
-              }
-            } else if (displayMode === 'definition') {
-              const contextDef = ctx?.definition;
-              if (contextDef) {
-                displayContent = contextDef;
-              } else if (wordEntry.definitions && wordEntry.definitions.length > 0) {
-                displayContent = wordEntry.definitions[0].text;
-              }
-            }
-          }
+const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
+             if (displayMode === 'ipa') {
+               const contextIpa = ctx?.ipa;
+               const globalIpa = wordEntry.pronunciation;
+               const ipaValue = contextIpa || globalIpa;
+               if (ipaValue) {
+                 displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
+               }
+             } else if (displayMode === 'definition') {
+               const contextDef = ctx?.definition;
+               if (contextDef) {
+                 displayContent = contextDef;
+               } else if (wordEntry.definitions && wordEntry.definitions.length > 0) {
+                 displayContent = wordEntry.definitions[0].text;
+               }
+             }
+           }
 
-          const ctx = wordEntry ? findWordContext(wordEntry, text) : null;
-          const contextEmoji = ctx?.emoji;
+          const emojiCtx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
+          const contextEmoji = emojiCtx?.emoji;
           const globalEmoji = wordEntry?.emoji;
           const effectiveEmoji = contextEmoji || globalEmoji;
           const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && effectiveEmoji &&

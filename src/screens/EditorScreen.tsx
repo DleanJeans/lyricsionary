@@ -172,6 +172,8 @@ export default function EditorScreen() {
     const url = route.params?.scrapedSourceUrl as string | undefined;
     const title = route.params?.scrapedPageTitle as string | undefined;
     const languageCode = route.params?.scrapedLanguageCode as string | undefined;
+    const translationText = route.params?.scrapedTranslationText as string | undefined;
+    const translationLanguage = route.params?.scrapedTranslationLanguage as string | undefined;
 
     if (targetTab === 0) {
       setOriginalLyrics(scraped);
@@ -186,6 +188,18 @@ export default function EditorScreen() {
           });
         }
       }
+      if (translationText && translationLanguage) {
+        const matchedLang = LANGUAGES.find(
+          l => l.name.toLowerCase() === translationLanguage.toLowerCase() || l.code.toLowerCase() === translationLanguage.toLowerCase()
+        );
+        const finalLangName = matchedLang ? matchedLang.name : translationLanguage;
+        setTranslations(prev => {
+          if (prev.some(t => t.language === finalLangName)) {
+            return prev.map(t => t.language === finalLangName ? { ...t, lyrics: translationText.trim(), sourceUrl: url, sourceUrlTitle: title || undefined } : t);
+          }
+          return [...prev, { language: finalLangName, lyrics: translationText.trim(), sourceUrl: url, sourceUrlTitle: title || undefined }];
+        });
+      }
     } else {
       setTranslations((prev) => {
         const updated = [...prev];
@@ -197,7 +211,7 @@ export default function EditorScreen() {
     if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
     setActiveTab(targetTab);
     if (url) setShowSourceUrl(true);
-    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined });
+    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined, scrapedTranslationText: undefined, scrapedTranslationLanguage: undefined });
   }, [route.params?.scrapedLyrics]);
 
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);

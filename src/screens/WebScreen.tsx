@@ -74,6 +74,9 @@ export default function WebScreen() {
       }
       if (data.type === 'translationDetected') {
         setWaitingForTranslation(!data.hasTranslation);
+        if (data.hasTranslation) {
+          setShowTranslationFab(true);
+        }
         return;
       }
       if (data.type === 'lyrics' && data.text) {
@@ -86,7 +89,8 @@ export default function WebScreen() {
           scrapedSourceUrl: currentUrl,
           scrapedPageTitle: data.title ?? '',
           scrapedTargetTab: scrapeTargetTab,
-          scrapedLanguageCode: data.languageCode || ''
+          scrapedLanguageCode: data.languageCode || '',
+          ...(data.translationText ? { scrapedTranslationText: data.translationText, scrapedTranslationLanguage: data.translationLanguage || '' } : {}),
         });
       }
       if (data.type === 'translation' && data.text) {

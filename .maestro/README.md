@@ -44,17 +44,6 @@ maestro test .maestro/01-app-launch.yaml
 pnpm test:maestro:studio
 ```
 
-## Test Structure
-
-- **00-launch-app.yaml** - Reusable sub-flow that launches the app via Expo dev client deep link
-- **01-app-launch.yaml** - Verifies app launches and all tabs are visible
-- **02-editor-create-lyrics.yaml** - Tests creating new lyrics entries
-- **03-editor-add-translation.yaml** - Tests adding translations to lyrics
-- **04-lyrics-browse.yaml** - Tests browsing saved lyrics (Songs tab)
-- **05-learn-screen.yaml** - Tests the learn screen functionality
-- **06-words-screen.yaml** - Tests the words vocabulary screen
-- **07-web-screen.yaml** - Tests the integrated web browser
-- **08-end-to-end-flow.yaml** - Complete user journey from creation to learning
 
 ### How the launch sub-flow works
 

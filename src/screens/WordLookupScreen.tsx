@@ -489,6 +489,8 @@ export default function WordLookupScreen() {
             </View>
           </View>
 
+          <Text style={styles.fieldLabel}>Contexts</Text>
+
           {(() => {
             const items: ({ type: 'sense'; block: WordSenseData; senseIndex: number } | { type: 'undo' })[] = [];
             let senseIdx = 0;

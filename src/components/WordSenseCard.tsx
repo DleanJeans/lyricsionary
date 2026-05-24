@@ -45,10 +45,8 @@ export default function WordSenseCard({
 }: WordSenseCardProps) {
   return (
     <View style={styles.container}>
-      
       <View style={styles.field}>
         <View style={styles.contextLabelRow}>
-          <Text style={styles.fieldLabel}>Context</Text>
           {onRemove && (
             <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
               <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
@@ -73,7 +71,7 @@ export default function WordSenseCard({
             style={styles.fieldInput}
             value={context}
             onChangeText={onContextChange}
-            placeholder="Line of lyrics"
+            placeholder="Context"
             placeholderTextColor={Colors.textMuted}
           />
         )}
@@ -83,7 +81,6 @@ export default function WordSenseCard({
       </View>
       <View style={styles.contextRow}>
         <View style={styles.contextEmojiField}>
-          <Text style={styles.fieldLabel}>Emoji</Text>
           <TouchableOpacity style={styles.emojiButtonSmall} onPress={onEmojiPress}>
             {emoji ? (
               <Text style={styles.emojiButtonTextSmall}>{emoji}</Text>
@@ -93,7 +90,6 @@ export default function WordSenseCard({
           </TouchableOpacity>
         </View>
         <View style={styles.contextIpaField}>
-          <Text style={styles.fieldLabel}>IPA</Text>
           <TextInput
             style={styles.fieldInput}
             value={ipa}
@@ -103,12 +99,11 @@ export default function WordSenseCard({
           />
         </View>
         <View style={styles.contextDefinitionField}>
-          <Text style={styles.fieldLabel}>Definition</Text>
           <TextInput
             style={styles.fieldInput}
             value={definition}
             onChangeText={onDefinitionChange}
-            placeholder="Add definition"
+            placeholder="Definition"
             placeholderTextColor={Colors.textMuted}
           />
         </View>
@@ -123,19 +118,17 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   removeButton: {
+    position: 'absolute',
+    zIndex: 1,
+    top: 1,
+    right: 1,
   },
   field: {
-    gap: 6,
   },
   contextLabelRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
   },
   contextDisplay: {
     backgroundColor: Colors.surface,
@@ -167,15 +160,12 @@ const styles = StyleSheet.create({
   },
   contextEmojiField: {
     width: 60,
-    gap: 6,
   },
   contextIpaField: {
     flex: 1,
-    gap: 6,
   },
   contextDefinitionField: {
     flex: 1.5,
-    gap: 6,
   },
   emojiButtonSmall: {
     backgroundColor: Colors.surface,

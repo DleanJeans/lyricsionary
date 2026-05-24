@@ -18,101 +18,94 @@ This directory contains Maestro test flows for the Lyricsionary mobile app.
    maestro --version
    ```
 
-3. **Set up an Android Emulator or iOS Simulator**:
-   - For Android: Use Android Studio's AVD Manager
-   - For iOS: Use Xcode Simulator (macOS only)
+3. **Build and install the app on an emulator**:
+   ```bash
+   npx expo run:android
+   ```
 
 ## Running Tests
 
-### Run all tests
+Tests require a running Metro bundler since they use the Expo dev client deep link to connect.
+
+### 1. Start Metro bundler
 ```bash
-maestro test .maestro
+pnpm start
 ```
 
-### Run a specific test
+### 2. Run tests (in another terminal)
 ```bash
+# Run all tests
+pnpm test:maestro
+
+# Run a specific test
 maestro test .maestro/01-app-launch.yaml
-```
 
-### Run with Maestro Studio (interactive mode)
-```bash
-maestro studio
+# Run with Maestro Studio (interactive mode)
+pnpm test:maestro:studio
 ```
 
 ## Test Structure
 
-Our test flows are organized as follows:
-
-- **01-app-launch.yaml** - Verifies app launches and basic navigation
+- **00-launch-app.yaml** - Reusable sub-flow that launches the app via Expo dev client deep link
+- **01-app-launch.yaml** - Verifies app launches and all tabs are visible
 - **02-editor-create-lyrics.yaml** - Tests creating new lyrics entries
 - **03-editor-add-translation.yaml** - Tests adding translations to lyrics
-- **04-lyrics-browse.yaml** - Tests browsing saved lyrics library
+- **04-lyrics-browse.yaml** - Tests browsing saved lyrics (Songs tab)
 - **05-learn-screen.yaml** - Tests the learn screen functionality
 - **06-words-screen.yaml** - Tests the words vocabulary screen
 - **07-web-screen.yaml** - Tests the integrated web browser
 - **08-end-to-end-flow.yaml** - Complete user journey from creation to learning
 
+### How the launch sub-flow works
+
+All test flows use `runFlow: .maestro/00-launch-app.yaml` instead of `launchApp`. This sub-flow:
+1. Opens the Expo dev client deep link (`exp+lyricsionary://expo-development-client/?url=...`)
+2. Waits up to 30 seconds for the app to connect to Metro and load
+
+For Android emulators, `10.0.2.2` maps to the host machine's `localhost`, so Metro on port 8081 is reached at `http://10.0.2.2:8081`.
+
 ## Running Tests on Different Platforms
 
-### Android (APK)
+### Android Emulator
+```bash
+# Start emulator, build, and install app
+npx expo run:android
+
+# Start Metro
+pnpm start
+
+# Run tests
+pnpm test:maestro
+```
+
+### Physical Android Device
+Replace `10.0.2.2` in `00-launch-app.yaml` with your machine's local IP (e.g., `192.168.1.x`).
+
+### Release APK (no Metro needed)
 ```bash
 maestro test --app lyricsionary.apk .maestro
 ```
-
-### iOS (Simulator)
-```bash
-maestro test --app Lyricsionary.app .maestro
-```
-
-### With Expo Go (Development)
-```bash
-# Start Expo
-pnpm start
-
-# In another terminal, run Maestro tests
-maestro test .maestro
-```
-
-## Continuous Integration
-
-Maestro tests can be integrated into CI/CD pipelines. See `.github/workflows/maestro-tests.yml` for GitHub Actions integration.
-
-### CI Environment Variables
-- `MAESTRO_CLOUD_API_KEY` - Required for Maestro Cloud testing
-
-## Writing New Tests
-
-1. Create a new `.yaml` file in this directory
-2. Start with the app configuration:
-   ```yaml
-   appId: com.dleanjeans.lyricsionary
-   ---
-   ```
-3. Add test commands following [Maestro's documentation](https://maestro.mobile.dev/api-reference/commands)
-
-### Common Commands
-- `launchApp` - Launch the app
-- `tapOn: "text"` - Tap on element with text
-- `inputText: "text"` - Input text into focused field
-- `assertVisible: "text"` - Assert element is visible
-- `back` - Navigate back
-- `scroll` - Scroll the screen
+When testing with a release APK, replace the `runFlow` in each test with `launchApp` since no dev server is needed.
 
 ## Troubleshooting
 
-### App not found
-- Ensure the app is installed on the emulator/simulator
-- For Android: Check that the package name matches `com.dleanjeans.lyricsionary`
-- Build and install the app first using `eas build` or `expo run:android`
+### App launches to Expo dev client launcher, not the actual app
+- Ensure Metro bundler is running (`pnpm start`)
+- The deep link in `00-launch-app.yaml` must match your Metro port (default 8081)
 
 ### Tests timing out
-- Increase wait times with `- waitForAnimationToEnd`
+- The launch sub-flow waits up to 30 seconds for the app to load from Metro
+- First load is slower; subsequent loads are faster due to caching
 - Add explicit waits: `- wait: 2000` (milliseconds)
 
 ### Element not found
 - Check that the text exactly matches what's displayed in the app
 - Use Maestro Studio to inspect elements: `maestro studio`
 - Consider adding testID props to components for more reliable selection
+
+### Connecting to Metro from a physical device
+- Find your machine's IP (e.g., `ifconfig` on macOS)
+- Update the deep link URL in `00-launch-app.yaml` from `10.0.2.2` to your IP
 
 ## Resources
 

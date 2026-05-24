@@ -3,7 +3,7 @@ appId: com.dleanjeans.lyricsionary
 # Test: Words Screen Functionality
 # This flow tests the words vocabulary screen
 
-- launchApp
+- runFlow: 00-launch-app.yaml
 - tapOn: "Words"
 
 # Screen should show either words or empty state

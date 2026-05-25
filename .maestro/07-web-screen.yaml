@@ -7,4 +7,4 @@ appId: com.dleanjeans.lyricsionary
 - tapOn: "Web"
 
 # Web screen should be visible
-- assertVisible: "Web"
+- assertVisible: "Google"

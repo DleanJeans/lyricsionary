@@ -7,7 +7,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test:maestro": "maestro test .maestro"
+    "test:maestro": "maestro test .maestro",
+    "test:maestro:studio": "maestro studio",
+    "emulator": "$ANDROID_HOME/emulator/emulator -netdelay none -netspeed full -no-snapshot-load -avd maestro_test"
   },
   "dependencies": {
     "@expo/metro-runtime": "^55.0.10",

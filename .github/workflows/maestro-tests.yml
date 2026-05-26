@@ -59,7 +59,8 @@ jobs:
       - name: Run Maestro Tests
         id: maestro
         run: |
-          maestro test .maestro --format junit --output test-results.xml 2>&1 | tee maestro-output.txt
+          export PATH="$PATH:$HOME/.maestro/bin"
+          maestro test .maestro --format junit --output test-results.xml
         continue-on-error: true
 
       - name: Upload Maestro Test Results

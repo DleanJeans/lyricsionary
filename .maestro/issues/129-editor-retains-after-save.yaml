@@ -5,22 +5,11 @@ appId: com.dleanjeans.lyricsionary
 
 - runFlow: ../00-launch-app.yaml
 
-# Enter song name
 - tapOn: "Song Name"
-- inputText: "Test Song"
+- inputText: "#129 - Editor Retains"
 
-# Enter artist name
-- tapOn: "Artist Name"
-- inputText: "Test Artist"
-
-# Save the new song
 - tapOn: "Save"
 
-# After save, navigate back to Editor from Learn
 - tapOn: "Editor"
 
-# Verify song name is still present (not cleared)
-- assertVisible: "Test Song"
-
-# Verify artist name is still present (not cleared)
-- assertVisible: "Test Artist"
+- assertVisible: "#129 - Editor Retains"

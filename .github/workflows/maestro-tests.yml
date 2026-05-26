@@ -70,35 +70,39 @@ jobs:
           name: maestro-test-results
           path: |
             test-results.xml
-            maestro-output.txt
             ~/.maestro/tests/**/*
-
-      - name: Format Test Results
-        if: github.event_name == 'pull_request' && always()
-        id: format-results
-        run: |
-          # Parse Maestro console output for per-flow results
-          RESULTS=$(grep -E '^\[(Passed|Failed)\]' maestro-output.txt || true)
-          echo "results<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESULTS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Comment PR with Test Results
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v7
         with:
           script: |
-            const results = `${{ steps.format-results.outputs.results }}`.trim();
-            const lines = results ? results.split('\n').filter(l => l.trim()) : [];
-            const passed = lines.filter(l => l.startsWith('[Passed]')).length;
-            const failed = lines.filter(l => l.startsWith('[Failed]')).length;
-            const status = failed === 0 ? '✅' : '❌';
-            const summary = `${status} ${passed} passed, ${failed} failed`;
+            const fs = require('fs');
+            let lines = [];
 
-            let body = `### 🎭 Maestro Tests: ${summary}\n\n`;
-            for (const line of lines) {
-              const icon = line.startsWith('[Passed]') ? '✅' : '❌';
-              body += `${icon} ${line.replace(/^\[(Passed|Failed)\]\s*/, '')}\n`;
+            try {
+              const xml = fs.readFileSync('test-results.xml', 'utf8');
+              const cases = xml.match(/<testcase[^]*?<\/testcase>/g) || [];
+              for (const tc of cases) {
+                const name = (tc.match(/name="([^"]+)"/) || [,''])[1];
+                const time = (tc.match(/time="([^"]+)"/) || [,''])[1];
+                const seconds = time ? Math.round(parseFloat(time)) + 's' : '';
+                const failed = tc.includes('<failure') || tc.includes('<error');
+                lines.push({
+                  status: failed ? '❌' : '✅',
+                  text: `${name} (${seconds})`
+                });
+              }
+            } catch (e) {
+              lines.push({ status: '⚠️', text: 'Could not parse test-results.xml' });
+            }
+
+            const passed = lines.filter(l => l.status === '✅').length;
+            const failed = lines.filter(l => l.status === '❌').length;
+            const status = failed > 0 ? '❌' : '✅';
+            let body = `### 🎭 Maestro Tests: ${status} ${passed} passed, ${failed} failed\n\n`;
+            for (const l of lines) {
+              body += `${l.status} ${l.text}\n`;
             }
 
             github.rest.issues.createComment({

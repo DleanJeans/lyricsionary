@@ -5,6 +5,8 @@
 
 # Default app identifier
 appId: com.dleanjeans.lyricsionary
+flows:
+  - "issues/*.yaml"
 
 # Optional: Set default tags for all flows
 tags:

@@ -5,6 +5,7 @@ import {
   TextInput,
   ScrollView,
   StyleSheet,
+  Pressable,
 } from 'react-native';
 import { Colors } from '../constants/theme';
 
@@ -97,6 +98,13 @@ export default function LyricsEditor({
     setLineGenerations(prev => ({ ...prev, [i]: (prev[i] || 0) + 1 }));
   };
 
+  const renderLineNumber = (i: number) =>
+    showLineNumbers && (
+      <Pressable onPress={() => inputRefs.current[i]?.focus()}>
+        <Text style={styles.lineNumber}>{i + 1}</Text>
+      </Pressable>
+    );
+
   const renderLineInput = (line: string, i: number) => (
     <TextInput
       ref={(el) => { if (el) inputRefs.current[i] = el; }}
@@ -119,7 +127,7 @@ export default function LyricsEditor({
     if (!hasReference) {
       return (
         <View key={lineKey} style={styles.lineSolo}>
-          {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
+          {renderLineNumber(i)}
           {renderLineInput(line, i)}
         </View>
       );
@@ -130,8 +138,8 @@ export default function LyricsEditor({
     return (
       <View key={lineKey} style={styles.linePair}>
         <View style={styles.line}>
-          {showLineNumbers && <Text style={styles.lineNumber}>{i + 1}</Text>}
-          <Text style={styles.referenceLineText}>{refLine}</Text>
+            {renderLineNumber(i)}
+            <Text style={styles.referenceLineText}>{refLine}</Text>
         </View>
         {hasLyricsRow ? (
           <View style={styles.line}>

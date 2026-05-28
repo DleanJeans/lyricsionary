@@ -26,6 +26,18 @@ jobs:
       ANDROID_SDK_ROOT: /opt/homebrew/share/android-commandlinetools
       MAESTRO_CLI_NO_ANALYTICS: true
     steps:
+      - name: React to comment
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.reactions.createForIssueComment({
+              comment_id: context.payload.comment.id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              content: 'rocket'
+            });
+
       - name: Get PR number
         if: github.event_name == 'issue_comment'
         id: pr

@@ -10,9 +10,11 @@
     "test:maestro": "maestro test .maestro",
     "emulator": "$ANDROID_HOME/emulator/emulator -netdelay none -netspeed full -no-snapshot-load -avd maestro_test",
     "test:detox": "detox test --configuration android.emu.release",
+    "test:detox:debug": "detox test --configuration android.emu.debug --reuse",
     "test:detox:ios": "detox test --configuration ios.sim.debug",
     "test:detox:android": "detox test --configuration android.emu.release",
     "test:detox:build": "detox build --configuration android.emu.release",
+    "test:detox:build:debug": "detox build --configuration android.emu.debug",
     "test:detox:build:ios": "detox build --configuration ios.sim.debug"
   },
   "dependencies": {

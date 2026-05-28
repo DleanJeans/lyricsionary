@@ -41,6 +41,7 @@ export default function SongMetadataHeader({
             placeholderTextColor={Colors.textMuted}
             value={songName}
             onChangeText={onSongNameChange}
+            testID="song-name-input"
           />
         </View>
         <View style={styles.inputRow}>
@@ -51,6 +52,7 @@ export default function SongMetadataHeader({
             placeholderTextColor={Colors.textMuted}
             value={artistName}
             onChangeText={onArtistNameChange}
+            testID="artist-name-input"
           />
         </View>
         {showLanguageSelect && (
@@ -71,7 +73,7 @@ export default function SongMetadataHeader({
     <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
       <View style={styles.displayContainer}>
         <View style={styles.songNameRow}>
-          <Text style={styles.songName} numberOfLines={1}>
+          <Text style={styles.songName} numberOfLines={1} testID="song-name-display">
             {songName}
           </Text>
           <View style={styles.headerFlags}>

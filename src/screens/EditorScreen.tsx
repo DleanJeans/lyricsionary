@@ -632,6 +632,7 @@ export default function EditorScreen() {
               style={[styles.actionButton, styles.saveButton, isEditMode && !hasChanges && styles.disabled]}
               disabled={isEditMode && !hasChanges}
               onPress={handleSave}
+              testID="save-button"
             >
               <Ionicons name="checkmark" size={20} color={Colors.white} />
               <Text style={styles.actionButtonText}>Save</Text>
@@ -702,6 +703,7 @@ export default function EditorScreen() {
                 style={[styles.actionButton, styles.saveButton, isEditMode && !hasChanges && styles.disabled]}
                 disabled={isEditMode && !hasChanges}
                 onPress={handleSave}
+                testID="save-button"
               >
                 <Ionicons name="checkmark" size={20} color={Colors.white} />
                 <Text style={styles.actionButtonText}>Save</Text>

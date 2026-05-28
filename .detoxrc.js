@@ -35,6 +35,7 @@ module.exports = {
       build:
         'cd android && ./gradlew :app:assembleDebug :app:assembleAndroidTest -DtestBuildType=debug && cd ..',
       binaryPath: 'android/app/build/outputs/apk/debug/app-debug.apk',
+      forcePush: true,
     },
     'android.local': {
       type: 'android.apk',

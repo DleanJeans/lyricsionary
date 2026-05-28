@@ -6,7 +6,7 @@ import { LANGUAGES } from '../constants/languages';
 
 interface MultiLanguageSelectProps {
   value: string[];
-  onValueChange: (languages: string[]) => void;
+  onValueChange?: (languages: string[]) => void;
   placeholder?: string;
   availableLanguages?: string[];
   showModal?: boolean;
@@ -40,7 +40,9 @@ export default function MultiLanguageSelect({
     : LANGUAGES;
 
   const handleSelect = () => {
-    onValueChange(selectedLanguages);
+    if (onValueChange) {
+      onValueChange(selectedLanguages);
+    }
     if (onClose) {
       onClose();
     } else {

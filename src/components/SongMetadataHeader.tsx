@@ -13,7 +13,7 @@ interface SongMetadataHeaderProps {
   onPress?: () => void;
   onSongNameChange?: (text: string) => void;
   onArtistNameChange?: (text: string) => void;
-  onLanguagesChange?: (languages: string[]) => void;
+  onLanguagesChange: (languages: string[]) => void;
   showLanguageSelect?: boolean;
 }
 

@@ -1,5 +1,10 @@
 import { StyleSheet } from 'react-native';
 
+export const Fonts = {
+  regular: 'GoogleSans',
+  italic: 'GoogleSans-Italic',
+};
+
 export const Colors = {
   primary: '#6C5CE7',
   primaryLight: '#A29BFE',

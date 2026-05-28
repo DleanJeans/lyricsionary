@@ -61,7 +61,7 @@ jobs:
           if $ANDROID_HOME/platform-tools/adb devices | grep -q "emulator"; then
             echo "Emulator already running"
           else
-            screen -dmS emulator pnpm emulator
+            pnpm emulator &
             echo "Waiting for emulator to boot..."
             $ANDROID_HOME/platform-tools/adb wait-for-device
             for i in $(seq 1 60); do

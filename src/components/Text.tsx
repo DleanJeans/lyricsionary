@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 
 const DEFAULT_FONT_SIZE = 14;
-const LINE_HEIGHT_RATIO = 1.6;
 const BOLD_WEIGHTS = ['700', '800', '900', 'bold'];
 
 function getFontFamily(flatStyle: TextStyle | undefined): string | undefined {
@@ -21,9 +20,13 @@ function getFontFamily(flatStyle: TextStyle | undefined): string | undefined {
 
 function defaultFont(flatStyle: TextStyle | undefined) {
   const fontSize = flatStyle?.fontSize ?? DEFAULT_FONT_SIZE;
-  const lineHeight = flatStyle?.lineHeight ?? Math.round(fontSize * LINE_HEIGHT_RATIO);
   const fontFamily = getFontFamily(flatStyle);
-  return { fontFamily, fontSize, lineHeight, fontWeight: undefined };
+  return {
+    fontFamily,
+    fontSize,
+    fontWeight: undefined,
+    includeFontPadding: false,
+  };
 }
 
 function Text(props: TextProps) {
@@ -37,18 +40,16 @@ function Text(props: TextProps) {
   );
 }
 
-const TextInput = React.forwardRef<RNTextInput, TextInputProps>(
-  function TextInput(props, ref) {
-    const flatStyle = StyleSheet.flatten(props.style) as TextStyle | undefined;
+const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function TextInput(props, ref) {
+  const flatStyle = StyleSheet.flatten(props.style) as TextStyle | undefined;
 
-    return (
-      <RNTextInput
-        {...props}
-        ref={ref}
-        style={[props.style, defaultFont(flatStyle)]}
-      />
-    );
-  },
-);
+  return (
+    <RNTextInput
+      {...props}
+      ref={ref}
+      style={[props.style, defaultFont(flatStyle)]}
+    />
+  );
+});
 
 export { Text, TextInput };

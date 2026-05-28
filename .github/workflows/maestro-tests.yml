@@ -115,7 +115,7 @@ jobs:
             const passed = lines.filter(l => l.startsWith('[Passed]')).length;
             const failed = lines.filter(l => l.startsWith('[Failed]')).length;
             const icon = failed > 0 ? '❌' : '✅';
-            let body = `## 🎭 Maestro Tests: ${icon} ${passed} passed, ${failed} failed\n\n`;
+            let body = `## <img src="https://maestro.dev/favicon.svg" width="15" height="15"> Maestro Tests: ${icon} ${passed} passed, ${failed} failed\n\n`;
             for (const line of lines) {
               const status = line.startsWith('[Passed]') ? '✅' : '❌';
               body += `- ${status} ${line.replace(/^\[(Passed|Failed)\]\s*/, '')}\n`;

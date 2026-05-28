@@ -462,7 +462,7 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
       <ScreenWrapper>
         <View style={styles.emptyInner}>
           <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>
+          <Text style={styles.emptyText} testID="learn-empty">
             No lyrics to display.{'\n'}Go to Editor to add lyrics.
           </Text>
           <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
@@ -600,7 +600,7 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
       {(isLoadingSong || isRendering) && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading song...</Text>
+          <Text style={styles.loadingText} testID="loading-song">Loading song...</Text>
         </View>
       )}
 

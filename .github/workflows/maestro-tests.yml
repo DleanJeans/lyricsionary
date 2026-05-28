@@ -11,11 +11,9 @@ jobs:
   maestro-test:
     name: Run Maestro Tests
     if: >
-      github.event.comment.user.login == 'DleanJeans' && (
-        github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'pull_request' && contains(github.event.label.name, 'run maestro tests')) ||
-        (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/maestro'))
-      )
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && contains(github.event.label.name, 'run maestro tests')) ||
+      (github.event_name == 'issue_comment' && github.event.comment.user.login == 'DleanJeans' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/maestro'))
     runs-on: self-hosted
     timeout-minutes: 20
     permissions:

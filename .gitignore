@@ -43,4 +43,4 @@ yarn-error.*
 
 # Detox
 .detoxrc.local.js
-e2e/artifacts/
+.detox/artifacts/

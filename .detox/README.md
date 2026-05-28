@@ -30,7 +30,7 @@ pnpm install
 
 ```
 lyricsionary/
-├── e2e/
+├── .detox/
 │   ├── jest.config.js    # Jest configuration for E2E tests
 │   ├── app.test.ts       # Sample E2E test suite
 │   └── artifacts/        # Test artifacts (screenshots, logs) - gitignored
@@ -44,7 +44,7 @@ lyricsionary/
 
 1. **Build the app for testing:**
    ```bash
-   pnpm test:e2e:build
+   pnpm test:detox:build
    ```
 
 2. **Start an Android emulator** (or connect a physical device):
@@ -58,29 +58,29 @@ lyricsionary/
 
 3. **Run the tests:**
    ```bash
-   pnpm test:e2e:android
+   pnpm test:detox:android
    ```
 
 ### iOS
 
 1. **Build the app for testing:**
    ```bash
-   pnpm test:e2e:build:ios
+   pnpm test:detox:build:ios
    ```
 
 2. **Run the tests:**
    ```bash
-   pnpm test:e2e:ios
+   pnpm test:detox:ios
    ```
 
 ### Quick Test (Default: Android)
 ```bash
-pnpm test:e2e
+pnpm test:detox
 ```
 
 ## Writing Tests
 
-Tests are located in the `e2e/` directory and follow this pattern:
+Tests are located in the `.detox/` directory and follow this pattern:
 
 ```typescript
 import { device, element, by, expect as detoxExpect } from 'detox';
@@ -130,7 +130,7 @@ The project supports multiple test configurations:
 
 ## CI/CD Integration
 
-E2E tests run automatically on pull requests via GitHub Actions. See `.github/workflows/e2e-tests.yml` for the workflow configuration.
+E2E tests run automatically on pull requests via GitHub Actions. See `.github/workflows/detox-tests.yml` for the workflow configuration.
 
 The CI workflow:
 1. Sets up the environment (pnpm, Node.js, Android SDK)
@@ -166,7 +166,7 @@ echo "no" | avdmanager create avd -n Pixel_7_API_34 -k "system-images;android-34
 rm -rf ios/build
 
 # Rebuild
-pnpm test:e2e:build:ios
+pnpm test:detox:build:ios
 ```
 
 ### General Debugging
@@ -175,7 +175,7 @@ pnpm test:e2e:build:ios
    The Jest configuration already has `verbose: true` enabled.
 
 2. **Check Detox logs:**
-   Logs are saved to `e2e/artifacts/` when tests fail.
+   Logs are saved to `.detox/artifacts/` when tests fail.
 
 3. **Take screenshots:**
    Add `await device.takeScreenshot('debug-point')` in your tests.
@@ -201,8 +201,8 @@ This creates the `ios/` and `android/` directories needed by Detox. These direct
 
 To add more test files:
 
-1. Create a new `.test.ts` file in the `e2e/` directory
+1. Create a new `.test.ts` file in the `.detox/` directory
 2. Follow the test structure shown above
-3. Run `pnpm test:e2e` to execute all tests
+3. Run `pnpm test:detox` to execute all tests
 
-The test runner will automatically discover and run all `*.test.ts` files in the `e2e/` directory.
+The test runner will automatically discover and run all `*.test.ts` files in the `.detox/` directory.

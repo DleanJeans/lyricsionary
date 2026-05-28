@@ -46,7 +46,7 @@ jobs:
         run: npx expo prebuild --platform android --clean
 
       - name: Build the app for Detox
-        run: pnpm test:e2e:build
+        run: pnpm test:detox:build
 
       - name: Start Android Emulator
         run: |
@@ -56,11 +56,11 @@ jobs:
           echo "Emulator started successfully"
 
       - name: Run Detox tests
-        run: pnpm test:e2e:android
+        run: pnpm test:detox:android
 
       - name: Upload test artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: detox-artifacts
-          path: e2e/artifacts/
+          path: .detox/artifacts/

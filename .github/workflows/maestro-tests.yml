@@ -11,14 +11,17 @@ jobs:
   maestro-test:
     name: Run Maestro Tests
     if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && contains(github.event.label.name, 'run maestro tests')) ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/maestro'))
+      github.event.comment.user.login == 'DleanJeans' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' && contains(github.event.label.name, 'run maestro tests')) ||
+        (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/maestro'))
+      )
     runs-on: self-hosted
     timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
+      issues: read
     env:
       ANDROID_HOME: /opt/homebrew/share/android-commandlinetools
       ANDROID_SDK_ROOT: /opt/homebrew/share/android-commandlinetools

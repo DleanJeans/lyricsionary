@@ -115,10 +115,10 @@ jobs:
             const passed = lines.filter(l => l.startsWith('[Passed]')).length;
             const failed = lines.filter(l => l.startsWith('[Failed]')).length;
             const icon = failed > 0 ? '❌' : '✅';
-            let body = `### 🎭 Maestro Tests: ${icon} ${passed} passed, ${failed} failed\n\n`;
+            let body = `## 🎭 Maestro Tests: ${icon} ${passed} passed, ${failed} failed\n\n`;
             for (const line of lines) {
               const status = line.startsWith('[Passed]') ? '✅' : '❌';
-              body += `${status} ${line.replace(/^\[(Passed|Failed)\]\s*/, '')}\n`;
+              body += `- ${status} ${line.replace(/^\[(Passed|Failed)\]\s*/, '')}\n`;
             }
             github.rest.issues.createComment({
               issue_number: context.issue.number,

@@ -75,10 +75,10 @@ export function getLowercaseVersion(word: string): string {
 
 export function getWithoutContractedPrefix(word: string): string {
   if (hasContractedPrefix(word)) {
-    if (word.startsWith("qu'") || word.startsWith("Qu'")) {
-      return word.slice(3);
+    const apostropheIndex = word.indexOf("'");
+    if (apostropheIndex !== -1) {
+      return word.slice(apostropheIndex + 1);
     }
-    return word.slice(2);
   }
   return word;
 }
@@ -90,10 +90,11 @@ export function splitElisionParts(word: string): string[] | null {
   let remaining = word;
 
   while (remaining.length >= 2 && contractedPrefixRegex.test(remaining)) {
-    let prefixLength = 2;
-    if (remaining.startsWith("qu'") || remaining.startsWith("Qu'")) {
-      prefixLength = 3;
-    }
+    // Find the apostrophe position to determine prefix length
+    const apostropheIndex = remaining.indexOf("'");
+    if (apostropheIndex === -1) break;
+
+    const prefixLength = apostropheIndex + 1; // Include the apostrophe
     parts.push(remaining.slice(0, prefixLength));
     remaining = remaining.slice(prefixLength);
   }
@@ -114,6 +115,8 @@ export function splitElisionParts(word: string): string[] | null {
  * - "d'y" -> ["d'", "y"]
  * - "j't'aime" -> ["j'", "aime"] (skips intermediate contracted parts)
  * - "qu'est-ce" -> ["qu'", "est-ce"]
+ * - "dell'umanità" -> ["dell'", "umanità"]
+ * - "sull'arte" -> ["sull'", "arte"]
  */
 export function splitContractedPrefix(word: string): string[] {
   if (!hasContractedPrefix(word)) {
@@ -122,12 +125,13 @@ export function splitContractedPrefix(word: string): string[] {
 
   const parts: string[] = [];
 
-  // Handle special case "qu'" (3 characters) vs normal contractions (2 characters)
-  let prefixLength = 2;
-  if (word.startsWith("qu'") || word.startsWith("Qu'")) {
-    prefixLength = 3;
+  // Find the apostrophe position to determine prefix length
+  const apostropheIndex = word.indexOf("'");
+  if (apostropheIndex === -1) {
+    return [word];
   }
 
+  const prefixLength = apostropheIndex + 1; // Include the apostrophe
   const prefix = word.slice(0, prefixLength);
   parts.push(prefix);
 
@@ -136,11 +140,9 @@ export function splitContractedPrefix(word: string): string[] {
   // Check if remaining part also has a contracted prefix (e.g., "t'aime" in "j't'aime")
   // Skip it and just get the final base word
   while (remaining.length >= 2 && contractedPrefixRegex.test(remaining)) {
-    if (remaining.startsWith("qu'") || remaining.startsWith("Qu'")) {
-      remaining = remaining.slice(3);
-    } else {
-      remaining = remaining.slice(2);
-    }
+    const nextApostropheIndex = remaining.indexOf("'");
+    if (nextApostropheIndex === -1) break;
+    remaining = remaining.slice(nextApostropheIndex + 1);
   }
 
   if (remaining.length > 0) {

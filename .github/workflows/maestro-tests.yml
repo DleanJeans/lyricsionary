@@ -3,6 +3,8 @@ name: Maestro Tests
 on:
   pull_request:
     types: [labeled]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
 
 jobs:
@@ -10,7 +12,8 @@ jobs:
     name: Run Maestro Tests
     if: >
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && contains(github.event.label.name, 'run maestro tests'))
+      (github.event_name == 'pull_request' && contains(github.event.label.name, 'run maestro tests')) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/maestro'))
     runs-on: self-hosted
     timeout-minutes: 20
     permissions:
@@ -21,7 +24,23 @@ jobs:
       ANDROID_SDK_ROOT: /opt/homebrew/share/android-commandlinetools
       MAESTRO_CLI_NO_ANALYTICS: true
     steps:
+      - name: Get PR number
+        if: github.event_name == 'issue_comment'
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            return pr.number.toString();
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || '' }}
 
       - name: Start Emulator (if not running)
         run: |
@@ -64,7 +83,7 @@ jobs:
         continue-on-error: true
 
       - name: Format Test Results
-        if: github.event_name == 'pull_request' && always()
+        if: always()
         id: format-results
         run: |
           RESULTS=$(grep -E '^\[(Passed|Failed)\]' maestro-output.txt || true)
@@ -73,7 +92,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Comment PR with Test Results
-        if: github.event_name == 'pull_request' && always()
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |

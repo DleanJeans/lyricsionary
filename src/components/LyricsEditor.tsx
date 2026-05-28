@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import { TextInput } from './Text'
+import { Text } from './Text';
 import { Colors } from '../constants/theme';
 
 interface LyricsEditorProps {

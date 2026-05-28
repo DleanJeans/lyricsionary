@@ -32,6 +32,7 @@ export default function App() {
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({
     GoogleSans: require('./assets/fonts/GoogleSans.ttf'),
+    'GoogleSans-Bold': require('./assets/fonts/GoogleSans-Bold.ttf'),
   });
 
   useEffect(() => {
@@ -59,7 +60,6 @@ export default function App() {
 
   // Hide splash screen when fonts are loaded
   useEffect(() => {
-    console.log({ fontsLoaded, fontError });
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }

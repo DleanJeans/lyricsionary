@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   Linking,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import * as Updates from 'expo-updates';
 import { Colors } from '../constants/theme';

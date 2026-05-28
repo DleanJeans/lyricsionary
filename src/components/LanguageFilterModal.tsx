@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { LANGUAGES } from '../constants/languages';

@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 
 export const Fonts = {
   regular: 'GoogleSans',
-  italic: 'GoogleSans-Italic',
+  bold: 'GoogleSans-Bold',
 };
 
 export const Colors = {

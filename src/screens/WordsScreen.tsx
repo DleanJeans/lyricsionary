@@ -1,12 +1,11 @@
 import React, { useState, useRef } from 'react';
 import {
   View,
-  Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  TextInput,
 } from 'react-native';
+import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Text, StyleSheet } from 'react-native';
-import { Colors } from '../constants/theme';
+import { StyleSheet } from 'react-native';
+import { Text } from './Text';
 
 interface HighlightedTextProps {
   text: string;

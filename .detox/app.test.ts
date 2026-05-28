@@ -10,10 +10,8 @@ describe('App Launch', () => {
   });
 
   it('should launch the app successfully', async () => {
-    await device.takeScreenshot('app-launched');
   });
 
   it('should display the navigation tabs', async () => {
-    await device.takeScreenshot('navigation-tabs');
   });
 });

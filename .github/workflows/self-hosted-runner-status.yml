@@ -1,4 +1,4 @@
-name: Runner Status
+name: Self-Hosted Runner Status
 
 on:
   issue_comment:
@@ -6,8 +6,8 @@ on:
 
 jobs:
   check-runner:
-    name: Check Runner Status
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/home?')
+    name: Respond
+    if: github.event.comment.user.login == 'DleanJeans' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/home?')
     runs-on: self-hosted
     permissions:
       pull-requests: write

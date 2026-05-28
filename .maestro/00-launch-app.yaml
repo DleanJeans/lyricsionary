@@ -1,0 +1,10 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Launches the app via Expo dev client deep link
+# Requires Metro bundler running (npx expo start)
+# For Android emulator, 10.0.2.2 maps to host localhost
+
+- clearState: com.dleanjeans.lyricsionary
+- openLink: "exp+lyricsionary://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8081?disableOnboarding=1"
+
+- assertVisible: "New Lyrics"

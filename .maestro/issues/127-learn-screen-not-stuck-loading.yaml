@@ -1,0 +1,14 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: LearnScreen not stuck loading after saving a new song — #127
+
+- runFlow: ../00-launch-app.yaml
+
+- tapOn: "Song Name"
+- inputText: "#127 - Not Stuck Loading"
+- pressKey: "Back"
+
+- tapOn: "Save"
+
+- assertVisible: "1 lines"
+- assertNotVisible: "Loading song..."

@@ -40,3 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Maestro test artifacts
+.maestro/tests/
+test-results.xml

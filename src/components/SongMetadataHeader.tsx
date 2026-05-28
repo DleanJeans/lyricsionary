@@ -1,5 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { TextInput } from './Text'
+import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';

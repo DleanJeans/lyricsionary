@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { LANGUAGES } from '../constants/languages';
 
 interface MultiLanguageSelectProps {
   value: string[];
-  onValueChange: (languages: string[]) => void;
+  onValueChange?: (languages: string[]) => void;
   placeholder?: string;
   availableLanguages?: string[];
   showModal?: boolean;
@@ -40,7 +41,9 @@ export default function MultiLanguageSelect({
     : LANGUAGES;
 
   const handleSelect = () => {
-    onValueChange(selectedLanguages);
+    if (onValueChange) {
+      onValueChange(selectedLanguages);
+    }
     if (onClose) {
       onClose();
     } else {
@@ -94,7 +97,7 @@ export default function MultiLanguageSelect({
       <Modal visible={showModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Translation Languages</Text>
+            <Text style={styles.modalTitle}>Select Original Languages</Text>
             <FlatList
               data={languagesToShow}
               keyExtractor={(item) => item.code}

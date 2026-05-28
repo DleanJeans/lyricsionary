@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, TextInput } from './Text'
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import SongContextBlock from './SongContextBlock';
@@ -179,7 +180,6 @@ const styles = StyleSheet.create({
   fieldInput: {
     backgroundColor: Colors.surface,
     borderRadius: 10,
-    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
     color: Colors.text,

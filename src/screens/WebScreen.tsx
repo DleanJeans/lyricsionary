@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, useWindowDimensions, TextInput, BackHandler, ToastAndroid, Platform, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, useWindowDimensions, BackHandler, ToastAndroid, Platform, Image } from 'react-native';
+import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';

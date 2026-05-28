@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { Colors } from '../constants/theme';
-import { opacity } from 'react-native-reanimated/lib/typescript/Colors';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 

@@ -61,7 +61,7 @@ jobs:
           if $ANDROID_HOME/platform-tools/adb devices | grep -q "emulator"; then
             echo "Emulator already running"
           else
-            nohup pnpm emulator > /tmp/emulator.log 2>&1 &
+            screen -dmS emulator pnpm emulator
             echo "Waiting for emulator to boot..."
             $ANDROID_HOME/platform-tools/adb wait-for-device
             for i in $(seq 1 60); do
@@ -78,7 +78,7 @@ jobs:
           if curl -s http://localhost:8081/status | grep -q "running"; then
             echo "Metro already running"
           else
-            nohup npx expo start --port 8081 > /tmp/metro.log 2>&1 &
+            screen -dmS metro npx expo start --port 8081
             echo "Waiting for Metro..."
             for i in $(seq 1 60); do
               if curl -s http://localhost:8081/status | grep -q "running"; then

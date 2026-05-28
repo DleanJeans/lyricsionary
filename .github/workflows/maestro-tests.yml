@@ -60,7 +60,7 @@ jobs:
         id: maestro
         run: |
           export PATH="$PATH:$HOME/.maestro/bin"
-          maestro test .maestro 2>maestro-output.txt
+          maestro test .maestro 2>&1 | tee maestro-output.txt
         continue-on-error: true
 
       - name: Format Test Results

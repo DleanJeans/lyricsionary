@@ -200,6 +200,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'right',
     marginRight: 8,
+    marginTop: 4,
   },
   lineNumberSpacer: {
     width: 28,

@@ -97,7 +97,7 @@ export default function MultiLanguageSelect({
       <Modal visible={showModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Translation Languages</Text>
+            <Text style={styles.modalTitle}>Select Original Languages</Text>
             <FlatList
               data={languagesToShow}
               keyExtractor={(item) => item.code}

@@ -44,3 +44,7 @@ yarn-error.*
 # Detox
 .detoxrc.local.js
 .detox/artifacts/
+
+# Maestro test artifacts
+.maestro/tests/
+test-results.xml

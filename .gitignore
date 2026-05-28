@@ -41,6 +41,6 @@ yarn-error.*
 /ios
 /android
 
-# Maestro test artifacts
-.maestro/tests/
-test-results.xml
+# Detox
+.detoxrc.local.js
+e2e/artifacts/

@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, useWindowDimensions, TextInput, BackHandler, ToastAndroid, Platform, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, useWindowDimensions, BackHandler, ToastAndroid, Platform, Image } from 'react-native';
+import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -41,6 +42,20 @@ export default function WebScreen() {
   const timeoutRef = useRef<number | null>(null);
   const [webViewKey, setWebViewKey] = useState(0);
   const pendingPasteText = useRef<string | null>(null);
+
+  const injectDeepLScripts = (url: string) => {
+    webViewRef.current?.injectJavaScript(detectLyricsJS);
+
+    if (!url.includes('deepl.com')) return;
+    webViewRef.current?.injectJavaScript(detectTranslationJS);
+
+    if (pendingPasteText.current) {
+      webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
+      pendingPasteText.current = null;
+      setShowTranslationFab(true);
+      setWaitingForTranslation(true);
+    }
+  };
 
   const handleNavigate = () => {
     let url = addressText.trim();
@@ -214,8 +229,12 @@ export default function WebScreen() {
           setPageTitle(navState.title ?? '');
           setShowUrlInput(false);
           setCanGoBack(navState.canGoBack);
+          setLoading(navState.loading);
           if (navState.url !== webUrl) {
             setShowTranslationFab(false);
+          }
+          if (!navState.loading) {
+            injectDeepLScripts(navState.url);
           }
         }}
         onLoadStart={() => {
@@ -224,25 +243,13 @@ export default function WebScreen() {
         }}
         onLoadEnd={() => {
           setLoading(false);
-          // Inject both detection scripts when page finishes loading
-          webViewRef.current?.injectJavaScript(detectLyricsJS);
-
-          if (!webUrl.includes('deepl.com')) return;
-          webViewRef.current?.injectJavaScript(detectTranslationJS);
-
-          // If we have pending text to paste, inject it now that page is loaded
-          if (pendingPasteText.current) {
-            webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
-            pendingPasteText.current = null;
-            setShowTranslationFab(true);
-            setWaitingForTranslation(true);
-          }
+          injectDeepLScripts(webUrl);
         }}
         onMessage={handleMessage}
         javaScriptEnabled
       />
       {loading && (
-        <View style={styles.loadingOverlay}>
+        <View accessibilityLabel="loading-overlay" style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}

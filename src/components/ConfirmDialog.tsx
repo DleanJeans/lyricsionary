@@ -1,12 +1,12 @@
 import React from 'react';
 import {
   View,
-  Text,
   Modal,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { Text } from './Text';
 import { Colors } from '../constants/theme';
 
 interface ConfirmDialogProps {

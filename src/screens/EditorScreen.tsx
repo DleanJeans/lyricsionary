@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
@@ -11,6 +9,7 @@ import {
   FlatList,
   Image,
 } from 'react-native';
+import { Text } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store/useStore';
@@ -866,13 +865,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.border,
-  },
-  textInput: {
-    flex: 1,
-    color: Colors.text,
-    fontSize: 16,
-    paddingVertical: 14,
-    marginLeft: 10,
   },
   searchButtonRow: {
     flexDirection: 'row',

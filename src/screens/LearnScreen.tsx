@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
@@ -843,8 +844,6 @@ const styles = StyleSheet.create({
   },
   translationLine: {
     color: Colors.primaryLight,
-    fontStyle: 'italic',
-    lineHeight: 22,
     marginTop: 2,
   },
   blurredText: {

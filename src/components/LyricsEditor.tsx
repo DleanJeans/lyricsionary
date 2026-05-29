@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   ScrollView,
   StyleSheet,
   Pressable,
 } from 'react-native';
+import { TextInput } from './Text'
+import { Text } from './Text';
 import { Colors } from '../constants/theme';
 
 interface LyricsEditorProps {
@@ -208,6 +208,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'right',
     marginRight: 8,
+    marginTop: 4,
   },
   lineNumberSpacer: {
     width: 28,

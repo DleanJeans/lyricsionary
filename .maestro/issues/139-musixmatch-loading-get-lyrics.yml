@@ -1,0 +1,7 @@
+appId: com.dleanjeans.lyricsionary
+---
+# 139: WebScreen stuck loading Musixmatch after closing translation
+- runFlow: ./search-donne-musixmatch.yml
+
+- assertNotVisible: "Loading Overlay"
+- assertVisible: "Get Lyrics"

@@ -20,7 +20,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
-import SearchAndLanguageFilter from '../components/SearchAndLanguageFilter';
+import LanguageTabButtons from '../components/LanguageTabButtons';
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
@@ -272,34 +272,88 @@ export default function SongsScreen() {
 
   return (
     <ScreenWrapper>
-      <SearchAndLanguageFilter
-        title="Saved Songs"
-        showSearch={showSearch}
-        searchQuery={searchQuery}
-        searchPlaceholder={searchInLyrics ? 'Search lyrics' : 'Search title or artist'}
-        onSearchQueryChange={setSearchQuery}
-        onToggleSearch={toggleSearch}
-        showLanguageTabs={showLanguageTabs}
-        selectedLanguages={selectedLanguages}
-        availableLanguages={availableLanguages}
-        languageCounts={languageCounts}
-        onLanguagesChange={setSelectedLanguages}
-        onToggleLanguageTabs={() => setShowLanguageTabs(!showLanguageTabs)}
-        searchInLyrics={searchInLyrics}
-        onToggleSearchInLyrics={() => setSearchInLyrics(!searchInLyrics)}
-        leftButton={
+      <View style={[styles.titleRow, showSearch ? { marginBottom: 12 } : { marginBottom: 25 - 6.5 }]}>
+        <TouchableOpacity
+          onPress={cycleSortMode}
+          style={styles.searchButton}
+        >
+          <Ionicons
+            name={getSortIcon()}
+            size={22}
+            color={Colors.textMuted}
+          />
+        </TouchableOpacity>
+        {showSearch ? (
+          <>
+            <TextInput
+              style={styles.searchInput}
+              placeholder={searchInLyrics ? 'Search lyrics' : 'Search title or artist'}
+              placeholderTextColor={Colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+            <View style={styles.searchButtons}>
+              <TouchableOpacity
+                onPress={() => setSearchInLyrics(!searchInLyrics)}
+                style={styles.lyricsToggle}
+              >
+                <Ionicons
+                  name={searchInLyrics ? 'musical-notes' : 'musical-notes-outline'}
+                  size={22}
+                  color={searchInLyrics ? Colors.primary : Colors.textMuted}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={toggleSearch}
+              >
+                <Ionicons
+                  name={'close'}
+                  size={22}
+                  color={Colors.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.title}>Saved Songs</Text>
+        )}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {!showSearch && (
+            <TouchableOpacity
+              onPress={toggleSearch}
+              style={styles.searchButton}
+            >
+              <Ionicons
+                name={'search'}
+                size={22}
+                color={Colors.textMuted}
+              />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            onPress={cycleSortMode}
+            onPress={() => setShowLanguageTabs(!showLanguageTabs)}
             style={styles.searchButton}
           >
             <Ionicons
-              name={getSortIcon()}
+              name="language-outline"
               size={22}
-              color={Colors.textMuted}
+              color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
             />
           </TouchableOpacity>
-        }
-      />
+        </View>
+      </View>
+
+      {showLanguageTabs && availableLanguages.length > 0 && (
+        <View style={styles.languageTabsContainer}>
+          <LanguageTabButtons
+            selectedLanguages={selectedLanguages}
+            onLanguagesChange={setSelectedLanguages}
+            availableLanguages={availableLanguages}
+            languageCounts={languageCounts}
+          />
+        </View>
+      )}
 
       {filteredSongs.length === 0 ? (
         <View style={styles.empty}>
@@ -360,9 +414,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 26,
+    fontWeight: '700',
+    color: Colors.text,
+  },
   searchButton: {
     padding: 4,
     zIndex: 1,
+  },
+  searchButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginRight: 16,
+    marginLeft: -60,
+  },
+  lyricsToggle: {
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    color: Colors.text,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginLeft: 8,
   },
   list: {
     paddingBottom: 40,
@@ -452,5 +540,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 24,
+  },
+  languageTabsContainer: {
+    marginBottom: 12,
   },
 });

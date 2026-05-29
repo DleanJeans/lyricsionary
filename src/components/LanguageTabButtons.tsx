@@ -28,9 +28,11 @@ export default function LanguageTabButtons({
 
   const toggleLanguage = (langName: string) => {
     if (selectedLanguages.includes(langName)) {
-      onLanguagesChange(selectedLanguages.filter((l) => l !== langName));
+      // Deselect if already selected
+      onLanguagesChange([]);
     } else {
-      onLanguagesChange([...selectedLanguages, langName]);
+      // Select only this language (single selection)
+      onLanguagesChange([langName]);
     }
   };
 

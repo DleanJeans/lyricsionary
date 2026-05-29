@@ -34,7 +34,7 @@ export default function SongsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInLyrics, setSearchInLyrics] = useState(false);
   const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
-  const [showLanguageTabs, setShowLanguageTabs] = useState(false);
+  const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
 

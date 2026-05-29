@@ -30,7 +30,7 @@ export default function WordsScreen() {
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showLanguageTabs, setShowLanguageTabs] = useState(false);
+  const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);

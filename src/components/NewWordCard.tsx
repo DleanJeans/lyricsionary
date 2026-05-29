@@ -55,7 +55,7 @@ export default function NewWordCard({
           <View style={styles.newBadge}>
             <Text style={styles.newBadgeText}>NEW</Text>
           </View>
-          <TouchableOpacity style={styles.searchButton} onPress={handleLookupOriginalWord}>
+          <TouchableOpacity accessibilityLabel="Search New Word" style={styles.searchButton} onPress={handleLookupOriginalWord}>
             <Ionicons name="search" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>

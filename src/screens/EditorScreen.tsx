@@ -31,6 +31,7 @@ import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines } from '../utils/deeplTranslation';
 import LyricsEditor from '../components/LyricsEditor';
+import { normalizeApostrophes } from '../utils/normalizeApostrophes';
 
 
 export default function EditorScreen() {
@@ -267,28 +268,41 @@ export default function EditorScreen() {
 
   const handleUpdatingSavedSong = async (resolved: ResolvedSourceData) => {
     if (!editSong) return;
+
+    // Normalize apostrophes in lyrics before saving
+    const normalizedOriginalLyrics = normalizeApostrophes(originalLyrics);
+    const normalizedTranslations = resolved.translations.map((t) => ({
+      ...t,
+      lyrics: normalizeApostrophes(t.lyrics),
+    }));
+
     await updateSong(editSong.id, {
       songName: songName.trim(),
       artistName: artistName.trim(),
-      originalLyrics,
+      originalLyrics: normalizedOriginalLyrics,
       originalLanguages,
       sourceUrl: resolved.sourceUrl,
       sourceUrlTitle: resolved.sourceUrlTitle,
-      translations: resolved.translations,
+      translations: normalizedTranslations,
     });
     setCurrentSongId(editSong.id);
+
+    // Update the editor state with normalized lyrics
+    setOriginalLyrics(normalizedOriginalLyrics);
+    setTranslations(normalizedTranslations);
+
     setOriginalState({
       songName: songName.trim(),
       artistName: artistName.trim(),
-      originalLyrics,
+      originalLyrics: normalizedOriginalLyrics,
       originalLanguages: [...originalLanguages],
       songSourceUrl: resolved.sourceUrl ?? '',
-      translations: resolved.translations.map((t) => ({ ...t })),
+      translations: normalizedTranslations.map((t) => ({ ...t })),
     });
     setPendingSourceUrls({});
     const titles: Record<number, string> = {};
     if (resolved.sourceUrlTitle) titles[0] = resolved.sourceUrlTitle;
-    resolved.translations.forEach((t, i) => {
+    normalizedTranslations.forEach((t, i) => {
       if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
     });
     setPendingPageTitles(titles);
@@ -296,7 +310,15 @@ export default function EditorScreen() {
 
   const handleSavingNewSong = async (resolved: ResolvedSourceData) => {
     skipMatchingRef.current = true;
-    const song = await saveSong(songName.trim(), artistName.trim(), originalLyrics, originalLanguages, resolved.translations, resolved.sourceUrl, resolved.sourceUrlTitle);
+
+    // Normalize apostrophes in lyrics before saving
+    const normalizedOriginalLyrics = normalizeApostrophes(originalLyrics);
+    const normalizedTranslations = resolved.translations.map((t) => ({
+      ...t,
+      lyrics: normalizeApostrophes(t.lyrics),
+    }));
+
+    const song = await saveSong(songName.trim(), artistName.trim(), normalizedOriginalLyrics, originalLanguages, normalizedTranslations, resolved.sourceUrl, resolved.sourceUrlTitle);
     setCurrentSongId(song.id);
     setEditSongId(song.id);
     navigation.setParams({ songId: song.id });

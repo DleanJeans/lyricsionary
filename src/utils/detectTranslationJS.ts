@@ -35,8 +35,8 @@ const _detectTranslationLogic = `
     // Also listen to input events which are more reliable for textarea changes
     targetTextarea.addEventListener('input', checkTranslation);
 
-    // Periodically check as a fallback (every 2 seconds)
-    setInterval(checkTranslation, 2000);
+    // Periodically check as a fallback (every 1 second)
+    setInterval(checkTranslation, 1000);
   }
 `;
 

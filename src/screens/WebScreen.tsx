@@ -43,19 +43,34 @@ export default function WebScreen() {
   const [webViewKey, setWebViewKey] = useState(0);
   const pendingPasteText = useRef<string | null>(null);
 
-  const injectDeepLScripts = (url: string) => {
-    webViewRef.current?.injectJavaScript(detectLyricsJS);
-
-    if (!url.includes('deepl.com')) return;
-    webViewRef.current?.injectJavaScript(detectTranslationJS);
-
-    if (pendingPasteText.current) {
-      webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
-      pendingPasteText.current = null;
-      setShowTranslationFab(true);
-      setWaitingForTranslation(true);
-    }
+  const injectDetectionScripts = (url: string) => {
+    injectLyricsDetectedScript();
+    injectDeepLScripts(url);
   };
+
+  const injectLyricsDetectedScript = () => {
+    webViewRef.current?.injectJavaScript(detectLyricsJS);
+  }
+
+  const injectDeepLScripts = (url: string) => {
+    if (!url.includes('deepl.com')) return;
+    
+    pasteIntoDeepL();
+    detectDeepLTranslationResult();
+  }
+
+  const pasteIntoDeepL = () => {
+    if (!pendingPasteText.current) return;
+
+    webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
+    pendingPasteText.current = null;
+    setShowTranslationFab(true);
+    setWaitingForTranslation(true);
+  }
+  
+  const detectDeepLTranslationResult = () => {
+    webViewRef.current?.injectJavaScript(detectTranslationJS);
+  }
 
   const handleNavigate = () => {
     let url = addressText.trim();
@@ -234,7 +249,7 @@ export default function WebScreen() {
             setShowTranslationFab(false);
           }
           if (!navState.loading) {
-            injectDeepLScripts(navState.url);
+            injectDetectionScripts(navState.url);
           }
         }}
         onLoadStart={() => {
@@ -243,13 +258,13 @@ export default function WebScreen() {
         }}
         onLoadEnd={() => {
           setLoading(false);
-          injectDeepLScripts(webUrl);
+          injectDetectionScripts(webUrl);
         }}
         onMessage={handleMessage}
         javaScriptEnabled
       />
       {loading && (
-        <View accessibilityLabel="loading-overlay" style={styles.loadingOverlay}>
+        <View accessibilityLabel="Loading Overlay" style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}

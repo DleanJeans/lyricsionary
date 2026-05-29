@@ -274,9 +274,12 @@ export default function LearnScreen() {
           const hasFrenchLanguage = song?.originalLanguages?.some(
             lang => lang.toLowerCase() === 'french' || lang.toLowerCase() === 'fr'
           );
+          const hasItalianLanguage = song?.originalLanguages?.some(
+            lang => lang.toLowerCase() === 'italian' || lang.toLowerCase() === 'it'
+          );
 
-          // Check if this word should be split for elision rendering (e.g., l'essence → l' + essence)
-          const elisionParts = cleanedWord && hasContractedPrefixWord && hasFrenchLanguage
+          // Check if this word should be split for elision rendering (e.g., l'essence → l' + essence, dell'umanità → dell' + umanità)
+          const elisionParts = cleanedWord && hasContractedPrefixWord && (hasFrenchLanguage || hasItalianLanguage)
             ? splitElisionParts(cleanedWord)
             : null;
 
@@ -387,6 +390,15 @@ export default function LearnScreen() {
             const hyphenIndex = cleanedWord.indexOf('-');
             const withoutPrefix = cleanedWord.slice(hyphenIndex + 1);
             wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
+          }
+
+          // Fallback for contracted prefixes (e.g., dell'umanità -> umanità)
+          if (!wordEntry && cleanedWord && hasContractedPrefixWord && (hasFrenchLanguage || hasItalianLanguage)) {
+            const apostropheIndex = cleanedWord.indexOf("'");
+            if (apostropheIndex !== -1) {
+              const withoutPrefix = cleanedWord.slice(apostropheIndex + 1);
+              wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
+            }
           }
 
           const isSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();

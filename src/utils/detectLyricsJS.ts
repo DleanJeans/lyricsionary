@@ -16,8 +16,21 @@ const _detectLyricsLogic = `
   }
   // Musixmatch
   else if (url.includes('musixmatch.com')) {
-    const musix = document.querySelector('h2[style="color: var(--mxm-contentSecondary);"]:not([data-testid]) + div');
-    hasLyrics = musix && musix.innerText && musix.innerText.length > 0;
+    const checkMusixmatch = () => {
+      const musix = document.querySelector('h2[style="color: var(--mxm-contentSecondary);"]:not([data-testid]) + div');
+      return musix && musix.innerText && musix.innerText.length > 0;
+    };
+    hasLyrics = checkMusixmatch();
+    if (!hasLyrics) {
+      const observer = new MutationObserver(() => {
+        if (checkMusixmatch()) {
+          observer.disconnect();
+          sendDetectionResult(true);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => observer.disconnect(), 5000);
+    }
   }
   // SongLyrics.com
   else if (url.includes('songlyrics.com')) {

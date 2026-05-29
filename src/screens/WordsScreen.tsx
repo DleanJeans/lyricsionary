@@ -15,7 +15,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import LanguageTabButtons from '../components/LanguageTabButtons';
+import SearchAndLanguageFilter from '../components/SearchAndLanguageFilter';
 
 interface PendingDeletion {
   id: string;
@@ -98,43 +98,21 @@ export default function WordsScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.titleRow}>
-        {showSearch ? (
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by word or language..."
-            placeholderTextColor={Colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus
-          />
-        ) : (
-          <Text style={styles.title}>Saved Words</Text>
-        )}
-        <TouchableOpacity
-          onPress={() => setShowLanguageTabs(!showLanguageTabs)}
-          style={styles.searchButton}
-        >
-          <Ionicons
-            name="language-outline"
-            size={22}
-            color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
-          <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
-        </TouchableOpacity>
-      </View>
-      {showLanguageTabs && availableLanguages.length > 0 && (
-        <View style={styles.languageTabsContainer}>
-          <LanguageTabButtons
-            selectedLanguages={selectedLanguages}
-            onLanguagesChange={setSelectedLanguages}
-            availableLanguages={availableLanguages}
-            languageCounts={languageCounts}
-          />
-        </View>
-      )}
+      <SearchAndLanguageFilter
+        title="Saved Words"
+        showSearch={showSearch}
+        searchQuery={searchQuery}
+        searchPlaceholder="Search by word or language..."
+        onSearchQueryChange={setSearchQuery}
+        onToggleSearch={toggleSearch}
+        showLanguageTabs={showLanguageTabs}
+        selectedLanguages={selectedLanguages}
+        availableLanguages={availableLanguages}
+        languageCounts={languageCounts}
+        onLanguagesChange={setSelectedLanguages}
+        onToggleLanguageTabs={() => setShowLanguageTabs(!showLanguageTabs)}
+        searchOnLeft={true}
+      />
       {searchedWords.length === 0 ? (
         <View style={styles.empty}>
           {words.length === 0 ? (
@@ -194,36 +172,6 @@ export default function WordsScreen() {
 }
 
 const styles = StyleSheet.create({
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    fontSize: 26,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  searchButton: {
-    padding: 4,
-  },
-  searchInput: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: Colors.text,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginRight: 8,
-  },
   list: {
     paddingBottom: 40,
   },
@@ -249,9 +197,5 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 8,
     zIndex: 1000,
-  },
-  languageTabsContainer: {
-    marginBottom: 12,
-    marginTop: -4,
   },
 });

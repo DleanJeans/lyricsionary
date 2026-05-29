@@ -15,7 +15,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import LanguageFilterModal from '../components/LanguageFilterModal';
+import LanguageTabButtons from '../components/LanguageTabButtons';
 
 interface PendingDeletion {
   id: string;
@@ -30,7 +30,7 @@ export default function WordsScreen() {
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showLanguageFilter, setShowLanguageFilter] = useState(false);
+  const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
@@ -53,9 +53,7 @@ export default function WordsScreen() {
 
   // Apply language filter
   const languageFilteredWords =
-    selectedLanguages.length > 0
-      ? filteredWords.filter((w) => selectedLanguages.includes(w.language))
-      : filteredWords;
+    selectedLanguages.length > 0 ? filteredWords.filter((w) => selectedLanguages.includes(w.language)) : filteredWords;
 
   // Apply search filter
   const searchedWords = searchQuery.trim()
@@ -63,14 +61,9 @@ export default function WordsScreen() {
         (w) =>
           w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
           w.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (w.pronunciation && w.pronunciation.toLowerCase().includes(searchQuery.toLowerCase()))
+          (w.pronunciation && w.pronunciation.toLowerCase().includes(searchQuery.toLowerCase())),
       )
     : languageFilteredWords;
-
-  const formatDate = (ts: number) => {
-    const d = new Date(ts);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  };
 
   const toggleSearch = () => {
     if (showSearch) setSearchQuery('');
@@ -96,35 +89,57 @@ export default function WordsScreen() {
     setPendingDeletions(prev => prev.filter(d => d.id !== itemId));
   };
 
+  const searchInput = (
+    <TextInput
+      style={[styles.searchInput, { opacity: showSearch ? 1 : 0 }]}
+      placeholder="Search by word or language..."
+      placeholderTextColor={Colors.textMuted}
+      value={searchQuery}
+      onChangeText={setSearchQuery}
+      autoFocus
+    />
+  );
+
+  const languageTabsToggle = (
+    <TouchableOpacity onPress={() => setShowLanguageTabs(!showLanguageTabs)} style={styles.toggleButtons}>
+      <Ionicons
+        name="language-outline"
+        size={22}
+        color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
+      />
+    </TouchableOpacity>
+  );
+
+  const openSearchButton = (
+    <TouchableOpacity
+      onPress={toggleSearch}
+      style={[styles.toggleButtons, showSearch ? styles.closeSearchButton : styles.openSearchButton]}
+    >
+      <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
+    </TouchableOpacity>
+  );
+
+  const title = <Text style={[styles.title, showSearch && { opacity: 0 }]}>Saved Words</Text>;
+
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        {showSearch ? (
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by word or language..."
-            placeholderTextColor={Colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus
-          />
-        ) : (
-          <Text style={styles.title}>Saved Words</Text>
-        )}
-        <TouchableOpacity
-          onPress={() => setShowLanguageFilter(true)}
-          style={styles.searchButton}
-        >
-          <Ionicons
-            name="funnel-outline"
-            size={22}
-            color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={toggleSearch} style={styles.searchButton}>
-          <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
-        </TouchableOpacity>
+        {searchInput}
+        {title}
+        {openSearchButton}
+        {languageTabsToggle}
       </View>
+
+      {showLanguageTabs && availableLanguages.length > 0 && (
+        <View style={styles.languageTabsContainer}>
+          <LanguageTabButtons
+            selectedLanguages={selectedLanguages}
+            onLanguagesChange={setSelectedLanguages}
+            availableLanguages={availableLanguages}
+            languageCounts={languageCounts}
+          />
+        </View>
+      )}
       {searchedWords.length === 0 ? (
         <View style={styles.empty}>
           {words.length === 0 ? (
@@ -179,14 +194,6 @@ export default function WordsScreen() {
           />
         ))}
       </View>
-      <LanguageFilterModal
-        visible={showLanguageFilter}
-        onClose={() => setShowLanguageFilter(false)}
-        selectedLanguages={selectedLanguages}
-        onLanguagesChange={setSelectedLanguages}
-        availableLanguages={availableLanguages}
-        languageCounts={languageCounts}
-      />
     </ScreenWrapper>
   );
 }
@@ -196,7 +203,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginBottom: 16,
   },
   title: {
     position: 'absolute',
@@ -207,8 +213,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  searchButton: {
+  toggleButtons: {
     padding: 4,
+  },
+  openSearchButton: {
+    marginRight: 0,
+  },
+  closeSearchButton: {
+    marginLeft: -42,
+    marginRight: 16,
   },
   searchInput: {
     flex: 1,
@@ -247,5 +260,8 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 8,
     zIndex: 1000,
+  },
+  languageTabsContainer: {
+    marginBottom: 12,
   },
 });

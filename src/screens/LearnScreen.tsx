@@ -355,7 +355,7 @@ export default function LearnScreen() {
                 <Text style={{ fontSize, lineHeight: fontSize * 1.6 }}>
                   {elisionParts.map((part, pi) => {
                     const partEntry = partEntries[pi];
-                    const isPartSelected = selectedWord && part.toLowerCase() === selectedWord.toLowerCase();
+                    const isPartSelected = selectedWord && word.toLowerCase() === selectedWord.toLowerCase();
                     const isPartActiveOccurrence = isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
                     const partColor = isPartSelected
                       ? Colors.primary
@@ -366,7 +366,7 @@ export default function LearnScreen() {
                     return (
                       <Text
                         key={pi}
-                        onPress={() => handleWordPress(displayPart, text, lineIndex, occurrenceMap[i] || 1)}
+                        onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
                         style={{
                           color: partColor,
                           fontWeight: isPartActiveOccurrence ? '700' : '400',

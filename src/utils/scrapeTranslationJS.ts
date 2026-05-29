@@ -1,4 +1,4 @@
-// Script to scrape translation from DeepL
+// Script to scrape translation from DeepL or LyricsTranslate
 const _scrapeTranslationLogic = `
   const url = window.location.href;
   let translation = '';
@@ -8,6 +8,16 @@ const _scrapeTranslationLogic = `
     const targetTextarea = document.querySelector('[name=target]');
     if (targetTextarea && targetTextarea.value) {
       translation = targetTextarea.value;
+      sendTranslation(translation);
+      return;
+    }
+  }
+
+  // LyricsTranslate
+  if (url.includes('lyricstranslate.com')) {
+    const translationBody = document.querySelector('#translation-body');
+    if (translationBody && translationBody.innerText.trim()) {
+      translation = translationBody.innerText;
       sendTranslation(translation);
       return;
     }

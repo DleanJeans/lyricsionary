@@ -43,6 +43,20 @@ export default function WebScreen() {
   const [webViewKey, setWebViewKey] = useState(0);
   const pendingPasteText = useRef<string | null>(null);
 
+  const injectDeepLScripts = (url: string) => {
+    webViewRef.current?.injectJavaScript(detectLyricsJS);
+
+    if (!url.includes('deepl.com')) return;
+    webViewRef.current?.injectJavaScript(detectTranslationJS);
+
+    if (pendingPasteText.current) {
+      webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
+      pendingPasteText.current = null;
+      setShowTranslationFab(true);
+      setWaitingForTranslation(true);
+    }
+  };
+
   const handleNavigate = () => {
     let url = addressText.trim();
     if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
@@ -220,18 +234,7 @@ export default function WebScreen() {
             setShowTranslationFab(false);
           }
           if (!navState.loading) {
-            webViewRef.current?.injectJavaScript(detectLyricsJS);
-
-            if (navState.url.includes('deepl.com')) {
-              webViewRef.current?.injectJavaScript(detectTranslationJS);
-
-              if (pendingPasteText.current) {
-                webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
-                pendingPasteText.current = null;
-                setShowTranslationFab(true);
-                setWaitingForTranslation(true);
-              }
-            }
+            injectDeepLScripts(navState.url);
           }
         }}
         onLoadStart={() => {
@@ -240,17 +243,7 @@ export default function WebScreen() {
         }}
         onLoadEnd={() => {
           setLoading(false);
-          webViewRef.current?.injectJavaScript(detectLyricsJS);
-
-          if (!webUrl.includes('deepl.com')) return;
-          webViewRef.current?.injectJavaScript(detectTranslationJS);
-
-          if (pendingPasteText.current) {
-            webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
-            pendingPasteText.current = null;
-            setShowTranslationFab(true);
-            setWaitingForTranslation(true);
-          }
+          injectDeepLScripts(webUrl);
         }}
         onMessage={handleMessage}
         javaScriptEnabled

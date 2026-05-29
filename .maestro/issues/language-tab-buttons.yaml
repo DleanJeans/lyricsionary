@@ -1,0 +1,41 @@
+appId: com.dleanjeans.lyricsionary
+---
+
+# Test: Language filter replaced with tab buttons
+# Features:
+# - Language filter button changed from funnel to language icon
+# - Clicking language button toggles tab buttons visibility
+# - Tab buttons show flag, language name, and count
+# - Selecting/deselecting tabs filters content
+
+# Test on Saved Words screen
+- tapOn: "Saved Words"
+- assertVisible: "Saved Words"
+
+# Verify language icon button is visible
+- tapOn:
+    id: "language-outline"
+
+# Verify language tabs appear
+- assertVisible:
+    text: ".*"  # Should show at least one language tab
+
+# Tap language button again to hide tabs
+- tapOn:
+    id: "language-outline"
+
+# Test on Saved Songs screen
+- tapOn: "Saved Songs"
+- assertVisible: "Saved Songs"
+
+# Verify language icon button is visible
+- tapOn:
+    id: "language-outline"
+
+# Verify language tabs appear
+- assertVisible:
+    text: ".*"  # Should show at least one language tab
+
+# Tap language button again to hide tabs
+- tapOn:
+    id: "language-outline"

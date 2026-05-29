@@ -19,10 +19,9 @@ export function getWordTransforms(word: string, language?: string): string[] {
   }
 
   // Handle contracted prefix (e.g., "j'aime" -> "j'", "aime")
-  // Also handles double contractions (e.g., "j't'aime" -> "j'", "aime")
+  // Also handles double contractions (e.g., "qu'c'est" -> "qu'", "c'", "est")
   if (hasContractedPrefix(word)) {
-    // Split into prefix and base word
-    const parts = splitContractedPrefix(word);
+    const parts = splitElisionParts(word) || splitContractedPrefix(word);
     if (parts.length >= 2) {
       transforms.push(parts[0].toLowerCase(), ...parts.slice(1));
     }

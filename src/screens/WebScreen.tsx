@@ -215,8 +215,23 @@ export default function WebScreen() {
           setPageTitle(navState.title ?? '');
           setShowUrlInput(false);
           setCanGoBack(navState.canGoBack);
+          setLoading(navState.loading);
           if (navState.url !== webUrl) {
             setShowTranslationFab(false);
+          }
+          if (!navState.loading) {
+            webViewRef.current?.injectJavaScript(detectLyricsJS);
+
+            if (navState.url.includes('deepl.com')) {
+              webViewRef.current?.injectJavaScript(detectTranslationJS);
+
+              if (pendingPasteText.current) {
+                webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
+                pendingPasteText.current = null;
+                setShowTranslationFab(true);
+                setWaitingForTranslation(true);
+              }
+            }
           }
         }}
         onLoadStart={() => {
@@ -225,13 +240,11 @@ export default function WebScreen() {
         }}
         onLoadEnd={() => {
           setLoading(false);
-          // Inject both detection scripts when page finishes loading
           webViewRef.current?.injectJavaScript(detectLyricsJS);
 
           if (!webUrl.includes('deepl.com')) return;
           webViewRef.current?.injectJavaScript(detectTranslationJS);
 
-          // If we have pending text to paste, inject it now that page is loaded
           if (pendingPasteText.current) {
             webViewRef.current?.injectJavaScript(pasteIntoDeepLJS(pendingPasteText.current));
             pendingPasteText.current = null;
@@ -243,7 +256,7 @@ export default function WebScreen() {
         javaScriptEnabled
       />
       {loading && (
-        <View style={styles.loadingOverlay}>
+        <View accessibilityLabel="loading-overlay" style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}

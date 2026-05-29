@@ -1,0 +1,17 @@
+appId: com.dleanjeans.lyricsionary
+---
+# 139: WebScreen stuck loading Musixmatch after closing translation
+- runFlow: ../00-launch-app.yaml
+
+- tapOn: "Song Name"
+- inputText: "Donne"
+- tapOn: "Artist Name"
+- inputText: "Giuseppe Frangola, Gaspard Sommer"
+- tapOn: "Google Search"
+
+- tapOn: "Donne (feat. Gaspard Sommer) - Giuseppe Frangola"
+- tapOn: "Accept All" # Cookies
+- scroll
+- tapOn: "English の翻訳" # Closes English translation
+
+- assertNotVisible: "loading-overlay"

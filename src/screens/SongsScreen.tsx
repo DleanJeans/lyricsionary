@@ -272,7 +272,7 @@ export default function SongsScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={[styles.titleRow, showSearch ? { marginBottom: 12 } : { marginTop: 6.5, marginBottom: 25 - 6.5 }]}>
+      <View style={[styles.titleRow, showSearch ? { marginBottom: 12 } : { marginBottom: 25 - 6.5 }]}>
         <TouchableOpacity
           onPress={cycleSortMode}
           style={styles.searchButton}

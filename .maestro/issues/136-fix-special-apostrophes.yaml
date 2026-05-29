@@ -1,0 +1,13 @@
+appId: com.dleanjeans.lyricsionary
+---
+# Test: Fix selecting words with apostrophes
+# Verifies that EditorScreen normalizes special apostrophes (′) to standard apostrophes (') when saving lyrics
+
+- runFlow: ./search-donne-musixmatch.yml
+
+- tapOn: "Get Lyrics"
+- tapOn: "Save"
+- tapOn: "dell'umanità"
+- tapOn: "Search New Word"
+- assertVisible: "umanità"
+- assertNotVisible: "dell'umanità"

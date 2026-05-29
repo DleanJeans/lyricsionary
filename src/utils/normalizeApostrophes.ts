@@ -5,17 +5,20 @@
  * This ensures consistent text formatting and better word matching.
  *
  * Examples:
- * - dell′umanità → dell'umanità
- * - l′homme → l'homme
- * - It's → It's (no change)
+ * - dell\u2032umanit\u00e0 → dell'umanit\u00e0
+ * - l\u2032homme → l'homme
+ * - It\u2019s → It's (normalized)
  *
  * Characters replaced:
- * - ′ (U+2032) Prime - often used as apostrophe
- * - ' (U+2018) Left single quotation mark
- * - ' (U+2019) Right single quotation mark (smart apostrophe)
- * - ‚ (U+201A) Single low-9 quotation mark
- * - ‛ (U+201B) Single high-reversed-9 quotation mark
- * - ` (U+0060) Grave accent - sometimes used as apostrophe
+ * - \u2032 Prime - often used as apostrophe
+ * - \u2035 Reverse prime
+ * - \u2018 Left single quotation mark
+ * - \u2019 Right single quotation mark (smart apostrophe)
+ * - \u201A Single low-9 quotation mark
+ * - \u201B Single high-reversed-9 quotation mark
+ * - \u02BC Modifier letter apostrophe
+ * - ` Grave accent - sometimes used as apostrophe
+ * - \uFF07 Fullwidth apostrophe
  *
  * @param text - The text to normalize
  * @returns Text with all apostrophe variants replaced with standard apostrophe
@@ -24,6 +27,5 @@ export function normalizeApostrophes(text: string): string {
   if (!text) return text;
 
   // Replace all special apostrophe characters with standard apostrophe
-  // This regex matches various Unicode apostrophe-like characters
-  return text.replace(/[′''‚‛`]/g, "'");
+  return text.replace(/[\u2032\u2035\u2018\u2019\u201A\u201B\u02BC`\uFF07]/g, "'");
 }

@@ -10,7 +10,8 @@
     "maestro:test": "maestro test",
     "maestro:test-all": "maestro test .maestro",
     "emulator": "$ANDROID_HOME/emulator/emulator -netdelay none -netspeed full -no-snapshot-load -avd maestro_test",
-    "emulator:stop": "adb emu kill"
+    "emulator:stop": "adb emu kill",
+    "android:rebuild": "npx expo run:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "^55.0.10",

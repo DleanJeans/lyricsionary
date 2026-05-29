@@ -20,7 +20,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
-import LanguageFilterModal from '../components/LanguageFilterModal';
+import LanguageTabButtons from '../components/LanguageTabButtons';
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
@@ -34,7 +34,7 @@ export default function SongsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInLyrics, setSearchInLyrics] = useState(false);
   const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
-  const [showLanguageFilter, setShowLanguageFilter] = useState(false);
+  const [showLanguageTabs, setShowLanguageTabs] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
 
@@ -332,17 +332,28 @@ export default function SongsScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            onPress={() => setShowLanguageFilter(true)}
+            onPress={() => setShowLanguageTabs(!showLanguageTabs)}
             style={styles.searchButton}
           >
             <Ionicons
-              name="funnel-outline"
+              name="language-outline"
               size={22}
               color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
             />
           </TouchableOpacity>
         </View>
       </View>
+
+      {showLanguageTabs && availableLanguages.length > 0 && (
+        <View style={styles.languageTabsContainer}>
+          <LanguageTabButtons
+            selectedLanguages={selectedLanguages}
+            onLanguagesChange={setSelectedLanguages}
+            availableLanguages={availableLanguages}
+            languageCounts={languageCounts}
+          />
+        </View>
+      )}
 
       {filteredSongs.length === 0 ? (
         <View style={styles.empty}>
@@ -393,14 +404,6 @@ export default function SongsScreen() {
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
         destructive
-      />
-      <LanguageFilterModal
-        visible={showLanguageFilter}
-        onClose={() => setShowLanguageFilter(false)}
-        selectedLanguages={selectedLanguages}
-        onLanguagesChange={setSelectedLanguages}
-        availableLanguages={availableLanguages}
-        languageCounts={languageCounts}
       />
     </ScreenWrapper>
   );
@@ -537,5 +540,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 24,
+  },
+  languageTabsContainer: {
+    marginBottom: 12,
   },
 });

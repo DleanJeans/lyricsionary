@@ -15,7 +15,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import LanguageFilterModal from '../components/LanguageFilterModal';
+import LanguageTabButtons from '../components/LanguageTabButtons';
 
 interface PendingDeletion {
   id: string;
@@ -30,7 +30,7 @@ export default function WordsScreen() {
   const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showLanguageFilter, setShowLanguageFilter] = useState(false);
+  const [showLanguageTabs, setShowLanguageTabs] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
@@ -112,11 +112,11 @@ export default function WordsScreen() {
           <Text style={styles.title}>Saved Words</Text>
         )}
         <TouchableOpacity
-          onPress={() => setShowLanguageFilter(true)}
+          onPress={() => setShowLanguageTabs(!showLanguageTabs)}
           style={styles.searchButton}
         >
           <Ionicons
-            name="funnel-outline"
+            name="language-outline"
             size={22}
             color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
           />
@@ -125,6 +125,16 @@ export default function WordsScreen() {
           <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
         </TouchableOpacity>
       </View>
+      {showLanguageTabs && availableLanguages.length > 0 && (
+        <View style={styles.languageTabsContainer}>
+          <LanguageTabButtons
+            selectedLanguages={selectedLanguages}
+            onLanguagesChange={setSelectedLanguages}
+            availableLanguages={availableLanguages}
+            languageCounts={languageCounts}
+          />
+        </View>
+      )}
       {searchedWords.length === 0 ? (
         <View style={styles.empty}>
           {words.length === 0 ? (
@@ -179,14 +189,6 @@ export default function WordsScreen() {
           />
         ))}
       </View>
-      <LanguageFilterModal
-        visible={showLanguageFilter}
-        onClose={() => setShowLanguageFilter(false)}
-        selectedLanguages={selectedLanguages}
-        onLanguagesChange={setSelectedLanguages}
-        availableLanguages={availableLanguages}
-        languageCounts={languageCounts}
-      />
     </ScreenWrapper>
   );
 }
@@ -247,5 +249,9 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 8,
     zIndex: 1000,
+  },
+  languageTabsContainer: {
+    marginBottom: 12,
+    marginTop: -4,
   },
 });

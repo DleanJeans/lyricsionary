@@ -30,7 +30,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { Translation } from '../types';
 import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
-import { deduplicateLines } from '../utils/deeplTranslation';
+import { deduplicateLines, splitIntoChunks } from '../utils/deeplTranslation';
 import LyricsEditor from '../components/LyricsEditor';
 import { normalizeApostrophes } from '../utils/normalizeApostrophes';
 
@@ -53,6 +53,8 @@ export default function EditorScreen() {
     matchedSongsSearchQuery,
     matchedSongsCount,
     setDeeplLineMap,
+    setDeeplChunks,
+    resetDeeplTranslation,
   } = useStore();
 
   const paramSongId = route.params?.songId as string | undefined;
@@ -387,15 +389,22 @@ export default function EditorScreen() {
   const handleGetTranslation = () => {
     if (activeTab === 0 || !originalLyrics) return; // Only works for translation tabs
 
+    // Reset any previous translation state
+    resetDeeplTranslation();
+
     // Deduplicate lines to fit within DeepL's 1500 character limit
     const { deduplicated, lineMap } = deduplicateLines(originalLyrics);
 
-    // Store the line map in the store so WebScreen can remap the translation
+    // Split deduplicated text into chunks if it exceeds the limit
+    const chunks = splitIntoChunks(deduplicated);
+
+    // Store the chunks and line map in the store
+    setDeeplChunks(chunks);
     setDeeplLineMap(lineMap);
 
-    // Navigate to DeepL
+    // Navigate to DeepL with the first chunk
     setWebUrl(DEEPL_URL);
-    navigation.navigate('Web', { pasteIntoDeepL: deduplicated });
+    navigation.navigate('Web', { pasteIntoDeepL: chunks[0] });
   };
 
   const handleAddTranslation = () => {

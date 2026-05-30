@@ -14,6 +14,9 @@ interface AppState {
   webUrl: string;
   scrapeTargetTab: number;
   deeplLineMap: number[] | null;  // Stores line mapping for DeepL translation
+  deeplChunks: string[] | null;  // Stores chunks for multi-chunk DeepL translation
+  deeplCurrentChunk: number;  // Current chunk index being translated
+  deeplTranslatedChunks: string[];  // Stores translated chunks
   fontSize: number;
   showTranslations: boolean;
   selectedTranslationLanguages: string[];
@@ -37,6 +40,10 @@ interface AppState {
   setWebUrl: (url: string) => void;
   setScrapeTargetTab: (tab: number) => void;
   setDeeplLineMap: (lineMap: number[] | null) => void;
+  setDeeplChunks: (chunks: string[] | null) => void;
+  setDeeplCurrentChunk: (index: number) => void;
+  addDeeplTranslatedChunk: (translation: string) => void;
+  resetDeeplTranslation: () => void;
 
   // Learn actions
   setFontSize: (size: number) => void;
@@ -65,6 +72,9 @@ export const useStore = create<AppState>((set, get) => ({
   webUrl: GOOGLE_SEARCH_URL,
   scrapeTargetTab: 0,
   deeplLineMap: null,
+  deeplChunks: null,
+  deeplCurrentChunk: 0,
+  deeplTranslatedChunks: [],
   fontSize: 18,
   showTranslations: true,
   selectedTranslationLanguages: [],
@@ -147,6 +157,17 @@ export const useStore = create<AppState>((set, get) => ({
   setWebUrl: (url) => set({ webUrl: url }),
   setScrapeTargetTab: (tab) => set({ scrapeTargetTab: tab }),
   setDeeplLineMap: (lineMap) => set({ deeplLineMap: lineMap }),
+  setDeeplChunks: (chunks) => set({ deeplChunks: chunks }),
+  setDeeplCurrentChunk: (index) => set({ deeplCurrentChunk: index }),
+  addDeeplTranslatedChunk: (translation) => set((state) => ({
+    deeplTranslatedChunks: [...state.deeplTranslatedChunks, translation],
+  })),
+  resetDeeplTranslation: () => set({
+    deeplChunks: null,
+    deeplCurrentChunk: 0,
+    deeplTranslatedChunks: [],
+    deeplLineMap: null,
+  }),
 
   setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
 

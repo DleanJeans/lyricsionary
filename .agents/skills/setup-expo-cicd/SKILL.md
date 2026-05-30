@@ -50,25 +50,22 @@ pnpm add -D @expo/config-plugins
   },
   "build": {
     "development": {
+      "developmentClient": true,
+      "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "channel": "development",
-      "node": "22.22.2"
+      }
     },
     "preview": {
       "android": {
         "buildType": "apk"
       },
-      "channel": "preview",
-      "node": "22.22.2"
+      "channel": "preview"
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
-      },
-      "channel": "production",
-      "node": "22.22.2"
+      }
     }
   },
   "submit": {
@@ -311,7 +308,7 @@ jobs:
               // For PR events, check current PR labels
               const labels = context.payload.pull_request.labels.map(label => label.name);
               shouldBuildApk = labels.includes('rebuild apk');
-              shouldOtaUpdate = labels.includes('expo ota');
+              shouldOtaUpdate = labels.includes('send ota');
               console.log('PR labels:', labels);
             } else if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
               const commits = context.payload.commits || [];
@@ -491,7 +488,7 @@ jobs:
 
 Create these labels in your GitHub repository:
 
-- **`expo ota`** - Triggers OTA update job (for PRs and main branch merges)
+- **`send ota`** - Triggers OTA update job (for PRs and main branch merges)
 - **`rebuild apk`** - Triggers APK build job (for PRs and main branch merges)
 - **`skip ota`** - Skips OTA update even on main branch
 
@@ -527,7 +524,7 @@ eas project:info
 
 ### For Pull Requests
 
-1. **OTA Update Only**: Add `expo ota` label to PR
+1. **OTA Update Only**: Add `send ota` label to PR
 2. **APK Build Only**: Add `rebuild apk` label to PR
 3. **Both**: Add both labels to PR
 4. **Skip OTA**: Add `skip ota` label to prevent OTA updates
@@ -590,7 +587,7 @@ adb shell am start -a android.intent.action.VIEW -d "exp+yourapp://expo-developm
 2. **Label-based triggers** - Saves CI minutes by only building/updating when needed
 3. **Development channel for PRs** - Keeps preview updates separate from production
 4. **Always comment PR with links** - Makes testing easier for reviewers
-5. **Test OTA before merging** - Add `expo ota` label to PR and test on device
+5. **Test OTA before merging** - Add `send ota` label to PR and test on device
 
 ## References
 

@@ -11,11 +11,20 @@
       "quoteStyle": "single",
       "trailingCommas": "all",
       "arrowParentheses": "always",
-      "attributePosition": "multiline"
+      "attributePosition": "multiline",
+      "expand": "always"
     }
   },
   "linter": {
     "enabled": false
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "recommended": true
+      }
+    }
   },
   "files": {
     "includes": ["**", "!node_modules/**", "!android/**", "!build/**", "!.expo/**"]

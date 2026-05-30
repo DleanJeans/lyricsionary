@@ -1,0 +1,20 @@
+appId: com.dleanjeans.lyricsionary
+---
+- runFlow: ../00-launch-app.yaml
+
+- tapOn: Song Name
+- inputText: Carpe DIem
+- tapOn: Artist Name
+- inputText: Fraulein Luise
+- tapOn: Google Search
+
+- tapOn: Get Lyrics
+
+- tapOn: Add Translation
+- tapOn: Add
+- tapOn: Get Translation
+
+- tapOn: Get Translation (1/2)
+- tapOn: Get Translation (2/2)
+
+- tapOn: Save

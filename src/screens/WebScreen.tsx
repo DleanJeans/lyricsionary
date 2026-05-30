@@ -256,9 +256,16 @@ export default function WebScreen() {
           setLoading(true);
           setShowFab(false);
         }}
-        onLoadEnd={() => {
+        onLoadProgress={({ nativeEvent }) => {
+          if (nativeEvent.progress >= 1) {
+            setLoading(false);
+            injectDetectionScripts(nativeEvent.url);
+          }
+        }}
+        onLoadEnd={(event) => {
           setLoading(false);
-          injectDetectionScripts(webUrl);
+          const actualUrl = event?.nativeEvent?.url || currentUrl;
+          injectDetectionScripts(actualUrl);
         }}
         onMessage={handleMessage}
         javaScriptEnabled

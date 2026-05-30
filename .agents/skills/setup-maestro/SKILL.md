@@ -229,7 +229,7 @@ maestro studio
 ### Element not found
 - Check that the text exactly matches what's displayed in the app
 - Use Maestro Studio to inspect elements: `maestro studio`
-- Consider adding testID props to components for more reliable selection
+- Consider adding `accessibilityLabel` props to components for more reliable selection
 
 ## Resources
 
@@ -553,7 +553,7 @@ maestro studio
 3. **Use reusable flows** - Create common flows like `00-launch-app.yaml`
 4. **Add explicit waits** - When needed, use `- wait: 1000` to handle loading states
 5. **Test on real devices** - Emulators can behave differently than real devices
-6. **Use testID props** - For React Native, add `testID` props for reliable element selection
+6. **Prefer accessibilityLabel over testID** - For React Native, use `accessibilityLabel` props for reliable element selection. Maestro can target elements by accessibilityLabel which is more semantic than testID
 7. **Keep tests maintainable** - Use clear naming and comments
 8. **Run tests frequently** - Add `run maestro tests` label to PRs early
 
@@ -570,7 +570,7 @@ maestro --version
 ### Element Not Found
 
 - Use `maestro studio` to inspect the UI hierarchy
-- Check exact text/testID matching
+- Check exact text/accessibilityLabel matching
 - Add waits for async loading: `- wait: 2000`
 
 ### Emulator Not Starting

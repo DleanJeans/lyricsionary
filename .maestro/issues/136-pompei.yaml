@@ -1,0 +1,19 @@
+appId: com.dleanjeans.lyricsionary
+---
+- runFlow: ../00-launch-app.yaml
+
+- tapOn: Song Name
+- inputText: Pompei HDX Genius
+- tapOn: Google Search
+- tapOn: HDX – Pompei Lyrics
+- tapOn: Verify you are human
+# - extendedWaitUntil:
+#     visible: Get Lyrics
+#     timeout: 30000
+- tapOn: Get Lyrics
+- tapOn: Save
+
+- tapOn: qu'c'est
+- tapOn: Search New Word
+- assertVisible: qu'c'est
+- assertVisible: c'

@@ -8,6 +8,7 @@ import {
   Modal,
   FlatList,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Text } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,8 +77,9 @@ export default function EditorScreen() {
   const [pendingPageTitles, setPendingPageTitles] = useState<Record<number, string>>({});
   const [isEditingMetadata, setIsEditingMetadata] = useState(true);
   const [isShowingOriginal, setIsShowingOriginal] = useState(false);
-  
-  
+  const [isSaving, setIsSaving] = useState(false);
+
+
   const skipMatchingRef = useRef(false);
 
   // Track original state for Reset button
@@ -244,11 +246,16 @@ export default function EditorScreen() {
       Alert.alert('Missing Info', 'Please enter a song name.');
       return;
     }
-    const resolved = resolveSourceUrls();
-    if (isEditMode && editSong) {
-      await handleUpdatingSavedSong(resolved);
-    } else {
-      await handleSavingNewSong(resolved);
+    setIsSaving(true);
+    try {
+      const resolved = resolveSourceUrls();
+      if (isEditMode && editSong) {
+        await handleUpdatingSavedSong(resolved);
+      } else {
+        await handleSavingNewSong(resolved);
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -651,12 +658,18 @@ export default function EditorScreen() {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.actionButton, styles.saveButton, isEditMode && !hasChanges && styles.disabled]}
-              disabled={isEditMode && !hasChanges}
+              style={[styles.actionButton, styles.saveButton, (isEditMode && !hasChanges) || isSaving ? styles.disabled : null]}
+              disabled={isSaving || (isEditMode && !hasChanges)}
               onPress={handleSave}
             >
-              <Ionicons name="checkmark" size={20} color={Colors.white} />
-              <Text style={styles.actionButtonText}>Save</Text>
+              {isSaving ? (
+                <ActivityIndicator color={Colors.white} size="small" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={20} color={Colors.white} />
+                  <Text style={styles.actionButtonText}>Save</Text>
+                </>
+              )}
             </TouchableOpacity>
           )}
           {isEditMode ? (
@@ -721,12 +734,18 @@ export default function EditorScreen() {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[styles.actionButton, styles.saveButton, isEditMode && !hasChanges && styles.disabled]}
-                disabled={isEditMode && !hasChanges}
+                style={[styles.actionButton, styles.saveButton, (isEditMode && !hasChanges) || isSaving ? styles.disabled : null]}
+                disabled={isSaving || (isEditMode && !hasChanges)}
                 onPress={handleSave}
               >
-                <Ionicons name="checkmark" size={20} color={Colors.white} />
-                <Text style={styles.actionButtonText}>Save</Text>
+                {isSaving ? (
+                  <ActivityIndicator color={Colors.white} size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={20} color={Colors.white} />
+                    <Text style={styles.actionButtonText}>Save</Text>
+                  </>
+                )}
               </TouchableOpacity>
             )}
             {isEditMode ? (

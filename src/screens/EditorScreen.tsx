@@ -247,16 +247,19 @@ export default function EditorScreen() {
       return;
     }
     setIsSaving(true);
-    try {
-      const resolved = resolveSourceUrls();
-      if (isEditMode && editSong) {
-        await handleUpdatingSavedSong(resolved);
-      } else {
-        await handleSavingNewSong(resolved);
+    // Defer the actual save work to allow loading indicator to render immediately
+    setTimeout(async () => {
+      try {
+        const resolved = resolveSourceUrls();
+        if (isEditMode && editSong) {
+          await handleUpdatingSavedSong(resolved);
+        } else {
+          await handleSavingNewSong(resolved);
+        }
+      } finally {
+        setIsSaving(false);
       }
-    } finally {
-      setIsSaving(false);
-    }
+    }, 0);
   };
 
   const resolveSourceUrls = (): ResolvedSourceData => {

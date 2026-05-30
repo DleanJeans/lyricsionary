@@ -160,17 +160,11 @@ export default function WebScreen() {
 
             // Reload the page to clear and paste next chunk
             webViewRef.current?.reload();
-
-            // Show toast to indicate progress
-            setToast(`Translating chunk ${nextChunkIndex + 1} of ${deeplChunks.length}`);
             return; // Don't navigate back yet
           } else {
             // All chunks translated - join them
             const allTranslations = [...deeplTranslatedChunks, translation];
             translation = joinChunks(allTranslations);
-
-            // Show completion toast
-            setToast(`Translation complete! (${deeplChunks.length} chunks)`);
           }
         }
 

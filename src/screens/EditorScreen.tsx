@@ -677,8 +677,8 @@ export default function EditorScreen() {
           )}
           {isEditMode ? (
             <TouchableOpacity
-              style={[styles.actionButton, styles.dangerButton, !hasChanges && styles.disabled]}
-              disabled={!hasChanges}
+              style={[styles.actionButton, styles.dangerButton, (!hasChanges || isSaving) && styles.disabled]}
+              disabled={!hasChanges || isSaving}
               onPress={handleReset}
             >
               <Ionicons name="refresh" size={20} color={Colors.white} />
@@ -753,8 +753,8 @@ export default function EditorScreen() {
             )}
             {isEditMode ? (
               <TouchableOpacity
-                style={[styles.actionButton, styles.dangerButton, !hasChanges && styles.disabled]}
-                disabled={!hasChanges}
+                style={[styles.actionButton, styles.dangerButton, (!hasChanges || isSaving) && styles.disabled]}
+                disabled={!hasChanges || isSaving}
                 onPress={handleReset}
               >
                 <Ionicons name="refresh" size={20} color={Colors.white} />

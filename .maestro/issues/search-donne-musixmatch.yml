@@ -2,15 +2,15 @@ appId: com.dleanjeans.lyricsionary
 ---
 - runFlow: ../00-launch-app.yaml
 
-- tapOn: "Song Name"
-- inputText: "Donne"
-- tapOn: "Artist Name"
-- inputText: "Giuseppe Frangola, Gaspard Sommer"
-- tapOn: "Google Search"
+- tapOn: Song Name
+- inputText: Donne
+- tapOn: Artist Name
+- inputText: Giuseppe Frangola, Gaspard Sommer
+- tapOn: Google Search
 
-- tapOn: "Donne (feat. Gaspard Sommer) - Giuseppe Frangola"
+- tapOn: Donne (feat. Gaspard Sommer) - Giuseppe Frangola
 - tapOn: 
-    text: "Accept All"
+    text: Accept All
     optional: true
 - scroll
-- tapOn: "English の翻訳" # Closes English translation
+- tapOn: English の翻訳 # Closes English translation

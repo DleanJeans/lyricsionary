@@ -5,12 +5,12 @@ appId: com.dleanjeans.lyricsionary
 
 - runFlow: ../00-launch-app.yaml
 
-- tapOn: "Song Name"
-- inputText: "#129 - Editor Retains"
-- pressKey: "Back"
+- tapOn: Song Name
+- inputText: #129 - Editor Retains
+- pressKey: Back
 
-- tapOn: "Save"
+- tapOn: Save
 
-- tapOn: "Editor"
+- tapOn: Editor
 
-- assertVisible: "#129 - Editor Retains"
+- assertVisible: #129 - Editor Retains

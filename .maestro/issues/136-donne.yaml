@@ -4,15 +4,15 @@ appId: com.dleanjeans.lyricsionary
 - runFlow: ./search-donne-musixmatch.yml
 
 # 139: WebScreen stuck loading Musixmatch after closing translation
-- assertNotVisible: "Loading Overlay"
+- assertNotVisible: Loading Overlay
 
-- tapOn: "Get Lyrics"
+- tapOn: Get Lyrics
 
 # 136: Fix selecting words with special apostrophes (e.g. dell′umanità)
 # Verifies that EditorScreen normalizes special apostrophes (′) to standard apostrophes (') when saving lyrics
-- tapOn: "Save"
+- tapOn: Save
 # Also verifies that the word gets split correctly on the apostrophe
-- tapOn: "dell'umanità"
-- tapOn: "Search New Word"
-- assertVisible: "umanità"
-- assertNotVisible: "dell'umanità"
+- tapOn: dell'umanità
+- tapOn: Search New Word
+- assertVisible: umanità
+- assertNotVisible: dell'umanità

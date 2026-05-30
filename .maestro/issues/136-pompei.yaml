@@ -7,9 +7,6 @@ appId: com.dleanjeans.lyricsionary
 - tapOn: Google Search
 - tapOn: HDX – Pompei Lyrics
 - tapOn: Verify you are human
-# - extendedWaitUntil:
-#     visible: Get Lyrics
-#     timeout: 30000
 - tapOn: Get Lyrics
 - tapOn: Save
 

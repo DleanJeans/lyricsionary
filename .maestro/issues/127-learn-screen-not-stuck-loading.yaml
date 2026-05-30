@@ -4,11 +4,11 @@ appId: com.dleanjeans.lyricsionary
 
 - runFlow: ../00-launch-app.yaml
 
-- tapOn: "Song Name"
-- inputText: "#127 - Not Stuck Loading"
-- pressKey: "Back"
+- tapOn: Song Name
+- inputText: #127 - Not Stuck Loading
+- pressKey: Back
 
-- tapOn: "Save"
+- tapOn: Save
 
-- assertVisible: "1 lines"
-- assertNotVisible: "Loading song..."
+- assertVisible: 1 lines
+- assertNotVisible: Loading song...

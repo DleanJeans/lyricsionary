@@ -24,7 +24,7 @@ import { detectLyricsJS } from '../utils/detectLyricsJS';
 import { detectTranslationJS } from '../utils/detectTranslationJS';
 import { scrapeTranslationJS } from '../utils/scrapeTranslationJS';
 import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
-import { remapTranslation } from '../utils/deeplTranslation';
+import { remapTranslation, joinChunks } from '../utils/deeplTranslation';
 import Toast from '../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FabBubble from '../components/FabBubble';
@@ -32,7 +32,19 @@ import FabBubble from '../components/FabBubble';
 export default function WebScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { webUrl, setWebUrl, scrapeTargetTab, deeplLineMap, setDeeplLineMap } = useStore();
+  const {
+    webUrl,
+    setWebUrl,
+    scrapeTargetTab,
+    deeplLineMap,
+    setDeeplLineMap,
+    deeplChunks,
+    deeplCurrentChunk,
+    deeplTranslatedChunks,
+    setDeeplCurrentChunk,
+    addDeeplTranslatedChunk,
+    resetDeeplTranslation,
+  } = useStore();
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
   const insets = useSafeAreaInsets();
@@ -130,11 +142,47 @@ export default function WebScreen() {
       }
       if (data.type === 'translation' && data.text) {
         let translation = data.text.trim();
+
+        // Handle multi-chunk translation workflow
+        if (deeplChunks && deeplChunks.length > 1) {
+          // Store this chunk's translation
+          addDeeplTranslatedChunk(translation);
+
+          const nextChunkIndex = deeplCurrentChunk + 1;
+
+          // Check if there are more chunks to translate
+          if (nextChunkIndex < deeplChunks.length) {
+            // Move to next chunk
+            setDeeplCurrentChunk(nextChunkIndex);
+
+            // Paste the next chunk into DeepL
+            pendingPasteText.current = deeplChunks[nextChunkIndex];
+
+            // Reload the page to clear and paste next chunk
+            webViewRef.current?.reload();
+
+            // Show toast to indicate progress
+            setToast(`Translating chunk ${nextChunkIndex + 1} of ${deeplChunks.length}`);
+            return; // Don't navigate back yet
+          } else {
+            // All chunks translated - join them
+            const allTranslations = [...deeplTranslatedChunks, translation];
+            translation = joinChunks(allTranslations);
+
+            // Show completion toast
+            setToast(`Translation complete! (${deeplChunks.length} chunks)`);
+          }
+        }
+
         // Remap translation using the line map if available
         if (deeplLineMap) {
           translation = remapTranslation(translation, deeplLineMap);
-          setDeeplLineMap(null); // Clear the line map after use
         }
+
+        // Clear DeepL state
+        resetDeeplTranslation();
+
+        // Navigate back to editor with complete translation
         navigation.navigate('Editor', {
           scrapedLyrics: translation,
           scrapedSourceUrl: currentUrl,
@@ -317,7 +365,15 @@ export default function WebScreen() {
       {showTranslationFab && (
         <FabBubble
           icon="download-outline"
-          text={waitingForTranslation ? 'Waiting for Translation...' : 'Get Translation'}
+          text={
+            waitingForTranslation
+              ? deeplChunks && deeplChunks.length > 1
+                ? `Waiting for Translation... (${deeplCurrentChunk + 1}/${deeplChunks.length})`
+                : 'Waiting for Translation...'
+              : deeplChunks && deeplChunks.length > 1
+                ? `Get Translation (${deeplCurrentChunk + 1}/${deeplChunks.length})`
+                : 'Get Translation'
+          }
           onPress={handleScrapeTranslation}
           tailPosition="left"
           left={10}

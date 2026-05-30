@@ -1,5 +1,15 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, useWindowDimensions, BackHandler, ToastAndroid, Platform, Image } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  useWindowDimensions,
+  BackHandler,
+  ToastAndroid,
+  Platform,
+  Image,
+} from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +28,6 @@ import { remapTranslation } from '../utils/deeplTranslation';
 import Toast from '../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FabBubble from '../components/FabBubble';
-
 
 export default function WebScreen() {
   const navigation = useNavigation<any>();
@@ -50,14 +59,14 @@ export default function WebScreen() {
 
   const injectLyricsDetectedScript = () => {
     webViewRef.current?.injectJavaScript(detectLyricsJS);
-  }
+  };
 
   const injectDeepLScripts = (url: string) => {
     if (!url.includes('deepl.com')) return;
-    
+
     pasteIntoDeepL();
     detectDeepLTranslationResult();
-  }
+  };
 
   const pasteIntoDeepL = () => {
     if (!pendingPasteText.current) return;
@@ -66,11 +75,11 @@ export default function WebScreen() {
     pendingPasteText.current = null;
     setShowTranslationFab(true);
     setWaitingForTranslation(true);
-  }
-  
+  };
+
   const detectDeepLTranslationResult = () => {
     webViewRef.current?.injectJavaScript(detectTranslationJS);
-  }
+  };
 
   const handleNavigate = () => {
     let url = addressText.trim();
@@ -116,7 +125,7 @@ export default function WebScreen() {
           scrapedSourceUrl: currentUrl,
           scrapedPageTitle: data.title ?? '',
           scrapedTargetTab: scrapeTargetTab,
-          scrapedLanguageCode: data.languageCode || ''
+          scrapedLanguageCode: data.languageCode || '',
         });
       }
       if (data.type === 'translation' && data.text) {
@@ -126,7 +135,12 @@ export default function WebScreen() {
           translation = remapTranslation(translation, deeplLineMap);
           setDeeplLineMap(null); // Clear the line map after use
         }
-        navigation.navigate('Editor', { scrapedLyrics: translation, scrapedSourceUrl: currentUrl, scrapedPageTitle: data.title ?? '', scrapedTargetTab: scrapeTargetTab });
+        navigation.navigate('Editor', {
+          scrapedLyrics: translation,
+          scrapedSourceUrl: currentUrl,
+          scrapedPageTitle: data.title ?? '',
+          scrapedTargetTab: scrapeTargetTab,
+        });
       }
       if (data.type === 'error') {
         setToast(data.message || 'Failed to scrape lyrics');
@@ -202,7 +216,10 @@ export default function WebScreen() {
               style={styles.addressInput}
               value={addressText}
               onChangeText={setAddressText}
-              onSubmitEditing={() => { handleNavigate(); setShowUrlInput(false); }}
+              onSubmitEditing={() => {
+                handleNavigate();
+                setShowUrlInput(false);
+              }}
               onBlur={() => setShowUrlInput(false)}
               autoCapitalize="none"
               autoCorrect={false}
@@ -213,7 +230,13 @@ export default function WebScreen() {
               placeholderTextColor={Colors.textMuted}
               placeholder="Enter URL"
             />
-            <TouchableOpacity onPress={() => { handleNavigate(); setShowUrlInput(false); }} style={styles.goButton}>
+            <TouchableOpacity
+              onPress={() => {
+                handleNavigate();
+                setShowUrlInput(false);
+              }}
+              style={styles.goButton}
+            >
               <Ionicons name="arrow-forward-circle" size={28} color={Colors.primary} />
             </TouchableOpacity>
           </>
@@ -228,7 +251,9 @@ export default function WebScreen() {
               {getFaviconUrl(currentUrl) && (
                 <Image source={{ uri: getFaviconUrl(currentUrl)! }} style={styles.favicon} />
               )}
-              <Text style={styles.titleText} numberOfLines={1}>{pageTitle || addressText}</Text>
+              <Text style={styles.titleText} numberOfLines={1}>
+                {pageTitle || addressText}
+              </Text>
             </TouchableOpacity>
           </>
         )}
@@ -292,7 +317,7 @@ export default function WebScreen() {
       {showTranslationFab && (
         <FabBubble
           icon="download-outline"
-          text={waitingForTranslation ? "Waiting for Translation..." : "Get Translation"}
+          text={waitingForTranslation ? 'Waiting for Translation...' : 'Get Translation'}
           onPress={handleScrapeTranslation}
           tailPosition="left"
           left={10}

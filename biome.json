@@ -18,6 +18,6 @@
     "enabled": false
   },
   "files": {
-    "ignore": ["node_modules", "android", "build", ".expo"]
+    "includes": ["**", "!node_modules/**", "!android/**", "!build/**", "!.expo/**"]
   }
 }

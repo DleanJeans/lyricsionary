@@ -182,11 +182,9 @@ export default function LearnScreen() {
     }
   }, [currentSongId]);
 
-  // Reset unblurred translations when blur is toggled off or song changes
+  // Reset unblurred translations when blur toggle changes or song changes
   useEffect(() => {
-    if (!blurTranslations) {
-      setUnblurredTranslations(new Set());
-    }
+    setUnblurredTranslations(new Set());
   }, [blurTranslations, currentSongId]);
 
   // Close word panel when switching songs

@@ -1,33 +1,33 @@
-import React, { useRef, useState, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  useWindowDimensions,
-  BackHandler,
-  ToastAndroid,
-  Platform,
-  Image,
-} from 'react-native';
-import { Text, TextInput } from '../components/Text';
-import { WebView } from '../components/WebView';
 import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '../store/useStore';
-import { Colors } from '../constants/theme';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
-import { cleanGeniusLyrics } from '../utils/cleanLyrics';
-import { getFaviconUrl } from '../utils/getFaviconUrl';
-import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
-import { detectLyricsJS } from '../utils/detectLyricsJS';
-import { detectTranslationJS } from '../utils/detectTranslationJS';
-import { scrapeTranslationJS } from '../utils/scrapeTranslationJS';
-import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
-import { remapTranslation, joinChunks } from '../utils/deeplTranslation';
-import Toast from '../components/Toast';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  BackHandler,
+  Image,
+  Platform,
+  StyleSheet,
+  ToastAndroid,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FabBubble from '../components/FabBubble';
+import { Text, TextInput } from '../components/Text';
+import Toast from '../components/Toast';
+import { WebView } from '../components/WebView';
+import { Colors } from '../constants/theme';
+import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
+import { useStore } from '../store/useStore';
+import { cleanGeniusLyrics } from '../utils/cleanLyrics';
+import { joinChunks, remapTranslation } from '../utils/deeplTranslation';
+import { detectLyricsJS } from '../utils/detectLyricsJS';
+import { detectTranslationJS } from '../utils/detectTranslationJS';
+import { getFaviconUrl } from '../utils/getFaviconUrl';
+import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
+import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
+import { scrapeTranslationJS } from '../utils/scrapeTranslationJS';
 
 export default function WebScreen() {
   const navigation = useNavigation<any>();
@@ -164,7 +164,10 @@ export default function WebScreen() {
             return; // Don't navigate back yet
           } else {
             // All chunks translated - join them
-            const allTranslations = [...deeplTranslatedChunks, translation];
+            const allTranslations = [
+              ...deeplTranslatedChunks,
+              translation,
+            ];
             translation = joinChunks(allTranslations);
           }
         }
@@ -233,7 +236,9 @@ export default function WebScreen() {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [canGoBack]);
+  }, [
+    canGoBack,
+  ]);
 
   // Handle pasting into DeepL
   useEffect(() => {
@@ -241,14 +246,20 @@ export default function WebScreen() {
     if (pasteText) {
       // Store the text to paste, will be injected after page loads
       pendingPasteText.current = pasteText;
-      navigation.setParams({ pasteIntoDeepL: undefined });
+      navigation.setParams({
+        pasteIntoDeepL: undefined,
+      });
     }
-  }, [route.params?.pasteIntoDeepL]);
+  }, [
+    route.params?.pasteIntoDeepL,
+  ]);
 
   // Force WebView to reload when URL changes, even if it's the same URL
   useEffect(() => {
     setWebViewKey((prev) => prev + 1);
-  }, [webUrl]);
+  }, [
+    webUrl,
+  ]);
 
   // Auto-scrape translation when it becomes ready
   useEffect(() => {
@@ -262,11 +273,29 @@ export default function WebScreen() {
 
     // Update previous state
     previousWaitingForTranslation.current = waitingForTranslation;
-  }, [waitingForTranslation, showTranslationFab, currentUrl]);
+  }, [
+    waitingForTranslation,
+    showTranslationFab,
+    currentUrl,
+  ]);
 
   return (
-    <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>
-      <View style={[styles.addressBar, { paddingTop: insets.top || 6 }]}>
+    <View
+      style={[
+        styles.container,
+        isWide && {
+          paddingLeft: SIDE_NAV_WIDTH,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.addressBar,
+          {
+            paddingTop: insets.top || 6,
+          },
+        ]}
+      >
         {showUrlInput ? (
           <>
             <TextInput
@@ -294,21 +323,43 @@ export default function WebScreen() {
               }}
               style={styles.goButton}
             >
-              <Ionicons name="arrow-forward-circle" size={28} color={Colors.primary} />
+              <Ionicons
+                name="arrow-forward-circle"
+                size={28}
+                color={Colors.primary}
+              />
             </TouchableOpacity>
           </>
         ) : (
           <>
             {canGoBack && (
-              <TouchableOpacity onPress={() => webViewRef.current?.goBack()} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+              <TouchableOpacity
+                onPress={() => webViewRef.current?.goBack()}
+                style={styles.backButton}
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={22}
+                  color={Colors.primary}
+                />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.titleButton} onPress={() => setShowUrlInput(true)}>
+            <TouchableOpacity
+              style={styles.titleButton}
+              onPress={() => setShowUrlInput(true)}
+            >
               {getFaviconUrl(currentUrl) && (
-                <Image source={{ uri: getFaviconUrl(currentUrl)! }} style={styles.favicon} />
+                <Image
+                  source={{
+                    uri: getFaviconUrl(currentUrl)!,
+                  }}
+                  style={styles.favicon}
+                />
               )}
-              <Text style={styles.titleText} numberOfLines={1}>
+              <Text
+                style={styles.titleText}
+                numberOfLines={1}
+              >
                 {pageTitle || addressText}
               </Text>
             </TouchableOpacity>
@@ -318,7 +369,9 @@ export default function WebScreen() {
       <WebView
         key={webViewKey}
         ref={webViewRef}
-        source={{ uri: webUrl }}
+        source={{
+          uri: webUrl,
+        }}
         style={styles.webview}
         onNavigationStateChange={(navState) => {
           setCurrentUrl(navState.url);
@@ -353,8 +406,14 @@ export default function WebScreen() {
         javaScriptEnabled
       />
       {loading && (
-        <View accessibilityLabel="Loading Overlay" style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+        <View
+          accessibilityLabel="Loading Overlay"
+          style={styles.loadingOverlay}
+        >
+          <ActivityIndicator
+            size="large"
+            color={Colors.primary}
+          />
         </View>
       )}
 

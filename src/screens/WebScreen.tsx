@@ -63,6 +63,7 @@ export default function WebScreen() {
   const timeoutRef = useRef<number | null>(null);
   const [webViewKey, setWebViewKey] = useState(0);
   const pendingPasteText = useRef<string | null>(null);
+  const previousWaitingForTranslation = useRef<boolean>(false);
 
   const injectDetectionScripts = (url: string) => {
     injectLyricsDetectedScript();
@@ -248,6 +249,20 @@ export default function WebScreen() {
   useEffect(() => {
     setWebViewKey((prev) => prev + 1);
   }, [webUrl]);
+
+  // Auto-scrape translation when it becomes ready
+  useEffect(() => {
+    // Check if translation just became ready (changed from waiting to ready)
+    const translationJustBecameReady = previousWaitingForTranslation.current && !waitingForTranslation;
+
+    if (translationJustBecameReady && showTranslationFab && currentUrl.includes('deepl.com')) {
+      // Automatically scrape the translation
+      handleScrapeTranslation();
+    }
+
+    // Update previous state
+    previousWaitingForTranslation.current = waitingForTranslation;
+  }, [waitingForTranslation, showTranslationFab, currentUrl]);
 
   return (
     <View style={[styles.container, isWide && { paddingLeft: SIDE_NAV_WIDTH }]}>

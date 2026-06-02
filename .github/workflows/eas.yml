@@ -10,6 +10,9 @@ on:
 jobs:
   eas:
     uses: DleanJeans/expo-workflows/.github/workflows/eas.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
     with:
       app-name: lyricsionary
       expo-project-slug: lyricsionary

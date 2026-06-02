@@ -10,3 +10,7 @@ on:
 jobs:
   maestro:
     uses: DleanJeans/expo-workflows/.github/workflows/maestro-tests.yml@main
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write

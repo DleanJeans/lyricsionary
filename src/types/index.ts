@@ -40,7 +40,6 @@ export interface WordEntry {
   language: string;
   pronunciation: string;
   contexts: WordContext[];
-  lookupCount: number;
   lastLookedUp: number;
   masteryLevel?: MasteryLevel;
   emoji?: string;

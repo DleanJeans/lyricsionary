@@ -62,7 +62,6 @@ interface AppState {
     masteryLevel?: MasteryLevel
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
-  incrementWordLookupCount: (id: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -257,7 +256,6 @@ export const useStore = create<AppState>((set, get) => ({
         w.id === existing.id
           ? {
               ...w,
-              lookupCount: w.lookupCount + 1,
               lastLookedUp: Date.now(),
               pronunciation: pronunciation || w.pronunciation,
               contexts: updatedContexts,
@@ -272,7 +270,6 @@ export const useStore = create<AppState>((set, get) => ({
         language,
         pronunciation,
         contexts: contexts.filter(c => c.context),
-        lookupCount: 1,
         lastLookedUp: Date.now(),
         masteryLevel: masteryLevel || 'New',
       };
@@ -288,11 +285,4 @@ export const useStore = create<AppState>((set, get) => ({
     await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
   },
 
-  incrementWordLookupCount: async (id) => {
-    const words = get().words.map((w) =>
-      w.id === id ? { ...w, lookupCount: w.lookupCount + 1, lastLookedUp: Date.now() } : w
-    );
-    set({ words });
-    await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
-  },
 }));

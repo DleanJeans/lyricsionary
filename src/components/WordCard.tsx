@@ -1,14 +1,13 @@
-import React, { useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import React, { useRef } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
+import { Colors } from '../constants/theme';
 import { WordEntry } from '../types';
 import HighlightedText from './HighlightedText';
-import { useNavigation } from '@react-navigation/native';
-import { useStore } from '../store/useStore';
+import { Text } from './Text';
 
 interface WordCardProps {
   item: WordEntry;
@@ -47,16 +46,9 @@ export default function WordCard({
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const swipeableRef = useRef<Swipeable>(null);
-  const { incrementWordLookupCount } = useStore();
   const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
 
-  const formatDate = (ts: number) => {
-    const d = new Date(ts);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
   const handleCardPress = () => {
-    incrementWordLookupCount(item.id);
     navigation.navigate('WordLookup', {
       word: item.word,
       songId,
@@ -117,12 +109,7 @@ export default function WordCard({
               />
             ) : null}
           </View>
-          <View style={styles.cardRight}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{item.lookupCount}×</Text>
-            </View>
-            {/* <Text style={styles.date}>{formatDate(item.lastLookedUp)}</Text> */}
-          </View>
+
         </View>
       </TouchableOpacity>
     </Swipeable>
@@ -168,27 +155,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 2,
-  },
-  cardRight: {
-    display: 'flex',
-    flexDirection: 'row',
-    
-  },
-  badge: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 20,
-  },
-  badgeText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: 700,
-  },
-  date: {
-    fontSize: 12,
-    color: Colors.textMuted,
   },
   deleteButton: {
     backgroundColor: Colors.dangerDark,

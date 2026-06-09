@@ -7,16 +7,16 @@ on:
     types: labeled
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   eas:
     uses: DleanJeans/expo-workflows/.github/workflows/eas.yml@main
-    permissions:
-      contents: write
-      pull-requests: write
     with:
       app-name: lyricsionary
       expo-project-slug: lyricsionary
-      ota-push-branch: production
       ota-label: expo ota
     secrets:
       expo-token: ${{ secrets.EXPO_TOKEN }}

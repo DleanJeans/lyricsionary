@@ -1,32 +1,32 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
+  BackHandler,
+  Image,
   KeyboardAvoidingView,
   Platform,
-  Image,
-  BackHandler,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
+import ConfirmDialog from '../components/ConfirmDialog';
+import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
-import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '../store/useStore';
-import { Colors } from '../constants/theme';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { RootTabParamList, MasteryLevel, WordContext } from '../types';
-import { getFaviconUrl } from '../utils/getFaviconUrl';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LanguageSelect from '../components/LanguageSelect';
-import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
-import { removeSpecialChars } from '../utils/cleanLyrics';
-import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
-import WordTransformButtons from '../components/WordTransformButtons';
 import WordSenseCard from '../components/WordSenseCard';
-import SongContextBlock from '../components/SongContextBlock';
-import ConfirmDialog from '../components/ConfirmDialog';
+import WordTransformButtons from '../components/WordTransformButtons';
+import { Colors } from '../constants/theme';
+import { useStore } from '../store/useStore';
+import { MasteryLevel, RootTabParamList, WordContext } from '../types';
+import { removeSpecialChars } from '../utils/cleanLyrics';
+import { emojiData } from '../utils/emojiData';
+import { getFaviconUrl } from '../utils/getFaviconUrl';
+import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -676,6 +676,7 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
         open={emojiPickerIndex !== null}
         onClose={() => setEmojiPickerIndex(null)}
         enableSearchBar={true}
+        emojisByCategory={emojiData}
         theme={{
           backdrop: 'rgba(0, 0, 0, 0.6)',
           knob: Colors.textMuted,

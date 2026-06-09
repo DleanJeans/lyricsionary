@@ -1,9 +1,12 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
+import { useStore } from '../store/useStore';
+import { MasteryLevel } from '../types';
+import MasteryLevelDropdown from './MasteryLevelDropdown';
+import { Text } from './Text';
 import WordTransformButtons from './WordTransformButtons';
 
 interface NewWordCardProps {
@@ -32,6 +35,12 @@ export default function NewWordCard({
   occurrence,
 }: NewWordCardProps) {
   const navigation = useNavigation<any>();
+  const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+
+  const handleMasterySelect = async (level: MasteryLevel) => {
+    await addOrUpdateWord(word, originalLanguages?.[0] || 'unknown', '', [], level);
+    onClose();
+  };
 
   const handleLookupOriginalWord = () => {
     navigation.navigate('WordLookup', {
@@ -58,22 +67,23 @@ export default function NewWordCard({
           <TouchableOpacity accessibilityLabel="Search New Word" style={styles.searchButton} onPress={handleLookupOriginalWord}>
             <Ionicons name="search" size={16} color={Colors.primary} />
           </TouchableOpacity>
+          <MasteryLevelDropdown onSelect={handleMasterySelect} />
         </View>
         <TouchableOpacity onPress={onClose}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
-        <WordTransformButtons
-          word={word}
-          songId={songId}
-          songName={songName}
-          artistName={artistName}
-          lyricsLine={lyricsLine}
-          translationLine={translationLine}
-          originalLanguages={originalLanguages}
-          source="Learn"
-          hideOriginalWord
-        />
+      <WordTransformButtons
+        word={word}
+        songId={songId}
+        songName={songName}
+        artistName={artistName}
+        lyricsLine={lyricsLine}
+        translationLine={translationLine}
+        originalLanguages={originalLanguages}
+        source="Learn"
+        hideOriginalWord
+      />
     </View>
   );
 }

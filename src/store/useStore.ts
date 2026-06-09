@@ -1,8 +1,8 @@
-import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Song, Translation, WordEntry, WordContext, MasteryLevel } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { create } from 'zustand';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import { MasteryLevel, Song, Translation, WordContext, WordEntry } from '../types';
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
@@ -78,7 +78,7 @@ export const useStore = create<AppState>((set, get) => ({
   showTranslations: true,
   selectedTranslationLanguages: [],
   blurTranslations: true,
-  showMasteryLevelColors: false,
+  showMasteryLevelColors: true,
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,

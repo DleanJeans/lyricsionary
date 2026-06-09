@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
-import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/theme';
+import React from 'react';
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LANGUAGES } from '../constants/languages';
+import { Colors } from '../constants/theme';
 import { DisplayMode } from '../screens/LearnScreen';
+import { Text } from './Text';
 
 interface LearnSettingsMenuProps {
   visible: boolean;

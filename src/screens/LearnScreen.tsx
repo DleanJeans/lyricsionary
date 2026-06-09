@@ -1,23 +1,23 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
-import { Text } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '../store/useStore';
-import { Colors, getMasteryLevelColor } from '../constants/theme';
-import { getFlagForLanguage } from '../constants/languages';
 import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import LearnSettingsMenu from '../components/LearnSettingsMenu';
+import NewWordCard from '../components/NewWordCard';
 import ScreenWrapper from '../components/ScreenWrapper';
-import { useIsWide } from '../hooks/useLayout';
-import { useBackToQuit } from '../hooks/useBackToQuit';
+import SongMetadataHeader from '../components/SongMetadataHeader';
+import { Text } from '../components/Text';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import LearnSettingsMenu from '../components/LearnSettingsMenu';
-import { removeSpecialChars } from '../utils/cleanLyrics';
-import SongMetadataHeader from '../components/SongMetadataHeader';
-import { hyphenatedPrefixRegex, contractedPrefixRegex } from '../utils/regex';
-import { splitElisionParts } from '../utils/wordTransform';
-import NewWordCard from '../components/NewWordCard';
+import { getFlagForLanguage } from '../constants/languages';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
+import { useBackToQuit } from '../hooks/useBackToQuit';
+import { useIsWide } from '../hooks/useLayout';
+import { useStore } from '../store/useStore';
 import { WordContext } from '../types';
+import { removeSpecialChars } from '../utils/cleanLyrics';
+import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
+import { splitElisionParts } from '../utils/wordTransform';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
 
@@ -59,8 +59,8 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('none');
-  const [showEmoji, setShowEmoji] = useState(false);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('ipa');
+  const [showEmoji, setShowEmoji] = useState(true);
   const [enableAnnotations, setEnableAnnotations] = useState(true);
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());

@@ -1,6 +1,10 @@
 // Script to detect if DeepL translation is complete
 // This is injected on page load to determine if the Get Translation button should be shown
 const _detectTranslationLogic = `
+  if (window.__lyricsionaryTranslationDetectionCleanup) {
+    window.__lyricsionaryTranslationDetectionCleanup();
+  }
+
   let lastSentState = false;
 
   const checkTranslation = () => {
@@ -36,7 +40,13 @@ const _detectTranslationLogic = `
     targetTextarea.addEventListener('input', checkTranslation);
 
     // Periodically check as a fallback (every 1 second)
-    setInterval(checkTranslation, 1000);
+    const intervalId = setInterval(checkTranslation, 1000);
+    window.__lyricsionaryTranslationDetectionCleanup = () => {
+      observer.disconnect();
+      targetTextarea.removeEventListener('input', checkTranslation);
+      clearInterval(intervalId);
+      delete window.__lyricsionaryTranslationDetectionCleanup;
+    };
   }
 `;
 

@@ -40,21 +40,19 @@ export default function EditorScreen() {
   const isWide = useIsWide();
   useBackToQuit();
 
-  const {
-    songs,
-    saveSong,
-    updateSong,
-    currentSongId,
-    setCurrentSongId,
-    setWebUrl,
-    setScrapeTargetTab,
-    setMatchedSongs,
-    matchedSongsSearchQuery,
-    matchedSongsCount,
-    setDeeplLineMap,
-    setDeeplChunks,
-    resetDeeplTranslation,
-  } = useStore();
+  const songs = useStore((s) => s.songs);
+  const saveSong = useStore((s) => s.saveSong);
+  const updateSong = useStore((s) => s.updateSong);
+  const currentSongId = useStore((s) => s.currentSongId);
+  const setCurrentSongId = useStore((s) => s.setCurrentSongId);
+  const setWebUrl = useStore((s) => s.setWebUrl);
+  const setScrapeTargetTab = useStore((s) => s.setScrapeTargetTab);
+  const setMatchedSongs = useStore((s) => s.setMatchedSongs);
+  const matchedSongsSearchQuery = useStore((s) => s.matchedSongsSearchQuery);
+  const matchedSongsCount = useStore((s) => s.matchedSongsCount);
+  const setDeeplLineMap = useStore((s) => s.setDeeplLineMap);
+  const setDeeplChunks = useStore((s) => s.setDeeplChunks);
+  const resetDeeplTranslation = useStore((s) => s.resetDeeplTranslation);
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);

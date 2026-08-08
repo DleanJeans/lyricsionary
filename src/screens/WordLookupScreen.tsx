@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,6 +34,7 @@ type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
+  const isFocused = useIsFocused();
   const { word, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence } = route.params || {};
   const insets = useSafeAreaInsets();
 
@@ -224,7 +225,7 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
   }, [displayWord, lookupSource]);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') {
+    if (Platform.OS !== 'android' || !isFocused) {
       return;
     }
 
@@ -247,7 +248,7 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
     return () => {
       backHandler.remove();
     };
-  }, [canGoBackInWebView, navigation, source, songId]);
+  }, [canGoBackInWebView, isFocused, navigation, source, songId]);
 
   const updateWordSense = (index: number, field: keyof WordSenseData, value: string | number) => {
     setUndoData(null);

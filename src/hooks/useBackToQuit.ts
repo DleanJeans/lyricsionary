@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { BackHandler, ToastAndroid, Platform } from 'react-native';
 
 /**
@@ -8,11 +9,12 @@ import { BackHandler, ToastAndroid, Platform } from 'react-native';
  * @param enabled - Whether the hook should be active
  */
 export function useBackToQuit(enabled: boolean = true) {
+  const isFocused = useIsFocused();
   const backPressedOnce = useRef(false);
   const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!enabled || Platform.OS !== 'android') {
+    if (!enabled || !isFocused || Platform.OS !== 'android') {
       return;
     }
 
@@ -43,5 +45,5 @@ export function useBackToQuit(enabled: boolean = true) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [enabled]);
+  }, [enabled, isFocused]);
 }

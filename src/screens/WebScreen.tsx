@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -32,6 +32,7 @@ import { scrapeTranslationJS } from '../utils/scrapeTranslationJS';
 export default function WebScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const isFocused = useIsFocused();
   const {
     webUrl,
     setWebUrl,
@@ -198,7 +199,7 @@ export default function WebScreen() {
 
   // Handle Android back button
   useEffect(() => {
-    if (Platform.OS !== 'android') {
+    if (Platform.OS !== 'android' || !isFocused) {
       return;
     }
 
@@ -238,6 +239,7 @@ export default function WebScreen() {
     };
   }, [
     canGoBack,
+    isFocused,
   ]);
 
   // Handle pasting into DeepL

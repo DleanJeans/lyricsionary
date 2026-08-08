@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import LearnActionBar from '../components/LearnActionBar';
 import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
@@ -45,20 +45,26 @@ export default function LearnScreen() {
 
   const activeSongId = route.params?.songId ?? currentSongId;
   const song = songs.find((s) => s.id === activeSongId);
-  const findWordEntry = useCallback((candidate: string) => {
-    const normalizedCandidate = candidate.toLowerCase();
+  const wordEntryIndex = useMemo(() => {
     const songLanguages = new Set(
       (song?.originalLanguages ?? []).map((language) =>
         (getLanguageNameFromCode(language) ?? language).toLowerCase()
       )
     );
-    return words.find((entry) =>
-      entry.word.toLowerCase() === normalizedCandidate &&
-      (songLanguages.size === 0 || songLanguages.has(
-        (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase()
-      ))
-    );
+    const index = new Map<string, (typeof words)[number]>();
+    for (const entry of words) {
+      const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
+      if (songLanguages.size === 0 || songLanguages.has(language)) {
+        const key = entry.word.toLowerCase();
+        if (!index.has(key)) index.set(key, entry);
+      }
+    }
+    return index;
   }, [song?.originalLanguages, words]);
+  const findWordEntry = useCallback(
+    (candidate: string) => wordEntryIndex.get(candidate.toLowerCase()),
+    [wordEntryIndex]
+  );
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);

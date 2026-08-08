@@ -23,7 +23,8 @@ interface PendingDeletion {
 }
 
 export default function WordsScreen() {
-  const { words, deleteWord } = useStore();
+  const words = useStore((s) => s.words);
+  const deleteWord = useStore((s) => s.deleteWord);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;

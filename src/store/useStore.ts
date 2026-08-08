@@ -239,36 +239,23 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addOrUpdateWord: async (word, language, pronunciation = '', contexts: WordContext[] = [], masteryLevel) => {
+  addOrUpdateWord: async (word, language, pronunciation, contexts, masteryLevel) => {
     const existing = get().words.find(
       (w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language
     );
     let words: WordEntry[];
     if (existing) {
-      const updatedContexts = [...(existing.contexts || [])];
-
-      for (const ctx of contexts) {
-        if (!ctx.context) continue;
-        const contextIndex = updatedContexts.findIndex(c =>
-          c.songId === ctx.songId && c.context === ctx.context && (c.occurrence || 1) === (ctx.occurrence || 1)
-        );
-        if (contextIndex >= 0) {
-          updatedContexts[contextIndex] = {
-            ...updatedContexts[contextIndex],
-            ...ctx,
-          };
-        } else {
-          updatedContexts.push(ctx);
-        }
-      }
-
       words = get().words.map((w) =>
         w.id === existing.id
           ? {
               ...w,
               lastLookedUp: Date.now(),
-              pronunciation: pronunciation || w.pronunciation,
-              contexts: updatedContexts,
+              // An editor save is authoritative: removed contexts stay removed,
+              // and an explicitly cleared pronunciation stays cleared.
+              pronunciation: pronunciation !== undefined ? pronunciation : w.pronunciation,
+              contexts: contexts !== undefined
+                ? contexts.filter(c => c.context || c.emoji || c.ipa || c.definition)
+                : w.contexts,
               masteryLevel: masteryLevel !== undefined ? masteryLevel : w.masteryLevel,
             }
           : w
@@ -278,8 +265,8 @@ export const useStore = create<AppState>((set, get) => ({
         id: uuidv4(),
         word,
         language,
-        pronunciation,
-        contexts: contexts.filter(c => c.context),
+        pronunciation: pronunciation ?? '',
+        contexts: (contexts ?? []).filter(c => c.context || c.emoji || c.ipa || c.definition),
         lastLookedUp: Date.now(),
         masteryLevel: masteryLevel || 'New',
       };

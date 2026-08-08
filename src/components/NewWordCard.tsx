@@ -38,7 +38,7 @@ export default function NewWordCard({
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
 
   const handleMasterySelect = async (level: MasteryLevel) => {
-    await addOrUpdateWord(word, originalLanguages?.[0] || 'unknown', '', [], level);
+    await addOrUpdateWord(word, originalLanguages?.[0] || 'unknown', undefined, undefined, level);
     onClose();
   };
 

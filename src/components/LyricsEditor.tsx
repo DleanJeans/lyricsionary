@@ -54,6 +54,7 @@ export default function LyricsEditor({
       if (cursorPos === 0 && i > 0) {
         e.preventDefault?.();
         const newLines = [...lines];
+        const previousLineLength = newLines[i - 1].length;
         if (line === '') {
           newLines.splice(i, 1);
         } else {
@@ -61,7 +62,7 @@ export default function LyricsEditor({
           newLines.splice(i, 1);
         }
         onLyricsChange(newLines.join('\n'));
-        setFocusTarget({ lineIndex: i - 1, cursorPos: 0 });
+        setFocusTarget({ lineIndex: i - 1, cursorPos: previousLineLength });
       }
     }
   };

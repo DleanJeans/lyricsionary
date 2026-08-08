@@ -15,8 +15,23 @@ jobs:
   eas:
     uses: DleanJeans/expo-workflows/.github/workflows/eas.yml@main
     with:
-      app-name: lyricsionary
+      app-name: lyricsionary-dev
       expo-project-slug: lyricsionary
       ota-label: expo ota
     secrets:
       expo-token: ${{ secrets.EXPO_TOKEN }}
+
+  preview-build:
+    name: Build Preview APK
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'build-apk'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: DleanJeans/expo-workflows/.github/actions/pnpm-expo@main
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Queue preview APK
+        run: eas build --platform android --profile preview --non-interactive --no-wait --message "Lyricsionary preview APK"

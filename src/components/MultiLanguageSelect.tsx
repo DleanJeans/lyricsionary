@@ -84,6 +84,8 @@ export default function MultiLanguageSelect({
       {!hideInput && (
         <TouchableOpacity
           style={styles.selectButton}
+          accessibilityRole="button"
+          accessibilityLabel={value.length ? `Original languages: ${value.join(', ')}` : placeholder}
           onPress={() => {
             setSelectedLanguages(value);
             setInternalShowModal(true);
@@ -106,6 +108,9 @@ export default function MultiLanguageSelect({
                 return (
                   <TouchableOpacity
                     style={[styles.modalItem, isSelected && styles.modalItemSelected]}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={item.name}
+                    accessibilityState={{ checked: isSelected }}
                     onPress={() => toggleLanguage(item.name)}
                   >
                     <Text style={styles.modalItemEmoji}>{item.flag}</Text>

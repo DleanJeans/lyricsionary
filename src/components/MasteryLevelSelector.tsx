@@ -52,6 +52,9 @@ export default function MasteryLevelSelector({ value, onChange }: MasteryLevelSe
               },
             ]}
             onPress={() => onChange(level.value)}
+            accessibilityRole="radio"
+            accessibilityLabel={level.label}
+            accessibilityState={{ selected: isActive }}
           >
             <Text
               style={[

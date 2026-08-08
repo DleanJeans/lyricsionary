@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface MediaInfo {
   songName: string;
   artistName: string;
+  receivedAt: number;
 }
 
 // Import the native module once at the top
@@ -51,6 +52,7 @@ export async function handleNotificationEvent(notification: {
     const info: MediaInfo = {
       songName: notification.title,
       artistName: notification.text,
+      receivedAt: Date.now(),
     };
     await AsyncStorage.setItem(LAST_MEDIA_KEY, JSON.stringify(info));
   }
@@ -124,5 +126,12 @@ export async function getCurrentlyPlayingMedia(): Promise<MediaInfo | null> {
   }
 
   const raw = await AsyncStorage.getItem(LAST_MEDIA_KEY);
-  return raw ? (JSON.parse(raw) as MediaInfo) : null;
+  if (!raw) return null;
+
+  const info = JSON.parse(raw) as Partial<MediaInfo>;
+  const maxAgeMs = 15 * 60 * 1000;
+  if (!info.receivedAt || Date.now() - info.receivedAt > maxAgeMs) {
+    return null;
+  }
+  return info as MediaInfo;
 }

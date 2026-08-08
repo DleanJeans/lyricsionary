@@ -115,6 +115,8 @@ export default function WordsScreen() {
     <TouchableOpacity
       onPress={toggleSearch}
       style={[styles.toggleButtons, showSearch ? styles.closeSearchButton : styles.openSearchButton]}
+      accessibilityRole="button"
+      accessibilityLabel={showSearch ? 'Close word search' : 'Open word search'}
     >
       <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
     </TouchableOpacity>

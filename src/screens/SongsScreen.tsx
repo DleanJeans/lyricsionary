@@ -290,7 +290,12 @@ export default function SongsScreen() {
   );
 
   const lyricsSearchToggle = (
-    <TouchableOpacity onPress={() => setSearchInLyrics(!searchInLyrics)}>
+    <TouchableOpacity
+      onPress={() => setSearchInLyrics(!searchInLyrics)}
+      accessibilityRole="button"
+      accessibilityLabel="Search in lyrics"
+      accessibilityState={{ selected: searchInLyrics }}
+    >
       <Ionicons
         name={searchInLyrics ? 'musical-notes' : 'musical-notes-outline'}
         size={22}
@@ -300,13 +305,13 @@ export default function SongsScreen() {
   );
 
   const closeSearchButton = (
-    <TouchableOpacity onPress={toggleSearch}>
+    <TouchableOpacity onPress={toggleSearch} accessibilityRole="button" accessibilityLabel="Close song search">
       <Ionicons name={'close'} size={22} color={Colors.textMuted} />
     </TouchableOpacity>
   );
 
   const searchToggleButton = (
-    <TouchableOpacity onPress={toggleSearch} style={styles.openSearchButton}>
+    <TouchableOpacity onPress={toggleSearch} style={styles.openSearchButton} accessibilityRole="button" accessibilityLabel="Open song search">
       <Ionicons name={'search'} size={22} color={Colors.textMuted} />
     </TouchableOpacity>
   );

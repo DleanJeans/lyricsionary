@@ -245,7 +245,9 @@ export default function LearnScreen() {
   };
 
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
-    const textWords = text.split(/(\s+)/);
+    // CJK scripts do not separate words with spaces. Keep whitespace and
+    // Latin words intact, but expose each CJK character as a selectable token.
+    const textWords = text.match(/\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}|[^\s]+|\s+/gu) ?? [];
     const occurrenceMap: Record<number, number> = {};
     const wordCountMap: Record<string, number> = {};
     textWords.forEach((w, i) => {

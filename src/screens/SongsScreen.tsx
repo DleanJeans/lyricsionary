@@ -284,7 +284,7 @@ export default function SongsScreen() {
       placeholderTextColor={Colors.textMuted}
       value={searchQuery}
       onChangeText={setSearchQuery}
-      autoFocus
+      autoFocus={showSearch}
     />
   );
 

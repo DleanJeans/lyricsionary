@@ -97,7 +97,7 @@ export default function WordsScreen() {
       placeholderTextColor={Colors.textMuted}
       value={searchQuery}
       onChangeText={setSearchQuery}
-      autoFocus
+      autoFocus={showSearch}
     />
   );
 

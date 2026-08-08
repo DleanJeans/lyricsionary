@@ -662,7 +662,7 @@ export default function EditorScreen() {
       )}
       {isWide && (
         <EditorActionButtons
-          showPasteAction={currentLyrics.split('\n').length === 0}
+          showPasteAction={!currentLyrics.trim()}
           isEditMode={isEditMode}
           hasChanges={hasChanges}
           isSaving={isSaving}
@@ -707,7 +707,7 @@ export default function EditorScreen() {
           {infoPanel}
           {lyricsPanel}
           <EditorActionButtons
-            showPasteAction={currentLyrics.split('\n').length === 0}
+            showPasteAction={!currentLyrics.trim()}
             isEditMode={isEditMode}
             hasChanges={hasChanges}
             isSaving={isSaving}

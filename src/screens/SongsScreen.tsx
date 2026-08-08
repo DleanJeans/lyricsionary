@@ -140,11 +140,10 @@ export default function SongsScreen() {
     setLoadingSongId(song.id);
     // Defer expensive operations to next tick to avoid blocking navigation
     setTimeout(() => {
-      navigation.navigate('Editor', { songId: song.id });
-      navigation.navigate('Learn');
-
       setCurrentSongId(song.id);
-      trackSongOpen(song.id);
+      void trackSongOpen(song.id);
+      navigation.navigate('Editor', { songId: song.id });
+      navigation.navigate('Learn', { songId: song.id });
     }, 0);
   };
 

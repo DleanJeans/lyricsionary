@@ -251,17 +251,22 @@ export default function EditorScreen() {
     }
     setIsSaving(true);
     // Defer the actual save work to allow loading indicator to render immediately
-    setTimeout(async () => {
-      try {
-        const resolved = resolveSourceUrls();
-        if (isEditMode && editSong) {
-          await handleUpdatingSavedSong(resolved);
-        } else {
-          await handleSavingNewSong(resolved);
+    setTimeout(() => {
+      void (async () => {
+        try {
+          const resolved = resolveSourceUrls();
+          if (isEditMode && editSong) {
+            await handleUpdatingSavedSong(resolved);
+          } else {
+            await handleSavingNewSong(resolved);
+          }
+        } catch (error) {
+          console.error('Failed to save song:', error);
+          Alert.alert('Save Failed', 'The song could not be saved. Please try again.');
+        } finally {
+          setIsSaving(false);
         }
-      } finally {
-        setIsSaving(false);
-      }
+      })();
     }, 0);
   };
 

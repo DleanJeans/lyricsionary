@@ -64,6 +64,12 @@ export default function WebScreen() {
   const pendingPasteText = useRef<string | null>(null);
   const previousWaitingForTranslation = useRef<boolean>(false);
 
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timeout);
+  }, [toast]);
+
   const injectDetectionScripts = (url: string) => {
     injectLyricsDetectedScript();
     injectDeepLScripts(url);

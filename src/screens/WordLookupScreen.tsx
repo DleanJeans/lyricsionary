@@ -18,8 +18,9 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
-import WordSenseCard from '../components/WordSenseCard';
 import WordTransformButtons from '../components/WordTransformButtons';
+import MasteryLevelSelector from '../components/MasteryLevelSelector';
+import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
@@ -29,20 +30,6 @@ import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
-
-interface WordSenseData {
-  uid: number;
-  context: string;
-  emoji: string;
-  ipa: string;
-  definition: string;
-  songId?: string;
-  songName?: string;
-  translation?: string;
-  fromSong?: boolean;
-  occurrence?: number;
-  isNew?: boolean;
-}
 
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
@@ -443,119 +430,23 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Level</Text>
-            <View style={styles.masteryLevelSelector}>
-              <TouchableOpacity
-                style={[
-                  styles.masteryLevelButton,
-                  masteryLevel === 'New' && styles.masteryLevelButtonActive,
-                  masteryLevel === 'New' && { backgroundColor: Colors.masteryNew }
-                ]}
-                onPress={() => setMasteryLevel('New')}
-              >
-                <Text style={[
-                  styles.masteryLevelButtonText,
-                  masteryLevel === 'New' && styles.masteryLevelButtonTextActive
-                ]}>New</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.masteryLevelButton,
-                  masteryLevel === 'Learning' && styles.masteryLevelButtonActive,
-                  masteryLevel === 'Learning' && { backgroundColor: Colors.masteryLearning }
-                ]}
-                onPress={() => setMasteryLevel('Learning')}
-              >
-                <Text style={[
-                  styles.masteryLevelButtonText,
-                  masteryLevel === 'Learning' && styles.masteryLevelButtonTextActive
-                ]}>Learning</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.masteryLevelButton,
-                  masteryLevel === 'Mastered' && styles.masteryLevelButtonActive,
-                  masteryLevel === 'Mastered' && { backgroundColor: Colors.masteryMastered }
-                ]}
-                onPress={() => setMasteryLevel('Mastered')}
-              >
-                <Text style={[
-                  styles.masteryLevelButtonText,
-                  masteryLevel === 'Mastered' && styles.masteryLevelButtonTextActive
-                ]}>Mastered</Text>
-              </TouchableOpacity>
-            </View>
+            <MasteryLevelSelector value={masteryLevel} onChange={setMasteryLevel} />
           </View>
 
           <Text style={styles.fieldLabel}>Contexts</Text>
-
-          {(() => {
-            const items: ({ type: 'sense'; block: WordSenseData; senseIndex: number } | { type: 'removed'; block: WordSenseData })[] = [];
-            let senseIdx = 0;
-            const totalSlots = wordSenses.length + (undoData ? 1 : 0);
-            const removedPos = undoData ? undoData.index : -1;
-            for (let pos = 0; pos < totalSlots; pos++) {
-              if (pos === removedPos && undoData) {
-                items.push({ type: 'removed', block: undoData.block });
-              } else {
-                items.push({ type: 'sense', block: wordSenses[senseIdx], senseIndex: senseIdx });
-                senseIdx++;
-              }
-            }
-            return items.map((item, pos) => {
-              if (item.type === 'removed') {
-                return (
-                  <View key="removed" style={styles.wordSenseWrapper}>
-                    {totalSlots > 1 && pos > 0 && <View style={styles.contextDivider} />}
-                    <WordSenseCard
-                      context={item.block.context}
-                      onContextChange={() => {}}
-                      emoji={item.block.emoji}
-                      onEmojiPress={() => {}}
-                      ipa={item.block.ipa}
-                      onIpaChange={() => {}}
-                      ipaPlaceholder={ipaPlaceholder}
-                      definition={item.block.definition}
-                      onDefinitionChange={() => {}}
-                      onUndoRemove={undoRemoveWordSense}
-                      word={displayWord}
-                      occurrence={item.block.occurrence}
-                      translation={item.block.translation}
-                      fromSong={item.block.fromSong}
-                      songName={songName}
-                      artistName={artistName}
-                      isRemoved
-                    />
-                  </View>
-                );
-              }
-              const { block, senseIndex } = item;
-              return (
-                <View key={block.uid} style={styles.wordSenseWrapper}>
-                  {totalSlots > 1 && pos > 0 && <View style={styles.contextDivider} />}
-                  <WordSenseCard
-                    context={block.context}
-                    onContextChange={(v) => updateWordSense(senseIndex, 'context', v)}
-                    emoji={block.emoji}
-                    onEmojiPress={() => setEmojiPickerIndex(senseIndex)}
-                    ipa={block.ipa}
-                    onIpaChange={(v) => updateWordSense(senseIndex, 'ipa', v)}
-                    ipaPlaceholder={ipaPlaceholder}
-                    definition={block.definition}
-                    onDefinitionChange={(v) => updateWordSense(senseIndex, 'definition', v)}
-                    onRemove={wordSenses.length > 1 ? () => removeWordSense(senseIndex) : undefined}
-                    word={displayWord}
-                    occurrence={block.occurrence}
-                    onOccurrenceChange={(isNewWord || !block.fromSong) ? (v) => updateWordSense(senseIndex, 'occurrence', v) : undefined}
-                    translation={block.translation}
-                    fromSong={block.fromSong}
-                    songName={songName}
-                    artistName={artistName}
-                    isNew={!!block.isNew}
-                  />
-                </View>
-              );
-            });
-          })()}
+          <WordSenseList
+            wordSenses={wordSenses}
+            undoData={undoData}
+            displayWord={displayWord}
+            songName={songName}
+            artistName={artistName}
+            ipaPlaceholder={ipaPlaceholder}
+            isNewWord={!!isNewWord}
+            onUpdateWordSense={updateWordSense}
+            onEmojiPress={setEmojiPickerIndex}
+            onRemoveWordSense={removeWordSense}
+            onUndoRemove={undoRemoveWordSense}
+          />
 
           <TouchableOpacity style={styles.addContextButton} onPress={addWordSense}>
             <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
@@ -819,15 +710,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 14,
   },
-  wordSenseWrapper: {
-    gap: 0,
-  },
-  contextDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginBottom: 8,
-    marginTop: -8,
-  },
   addContextButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -928,31 +810,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  masteryLevelSelector: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  masteryLevelButton: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  masteryLevelButtonActive: {
-    borderColor: 'transparent',
-  },
-  masteryLevelButtonText: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  masteryLevelButtonTextActive: {
-    color: Colors.background,
   },
 });

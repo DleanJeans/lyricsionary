@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,10 @@ export default function LanguageSelect({ value, onValueChange, placeholder = 'Se
   const [showModal, setShowModal] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(value);
 
+  useEffect(() => {
+    setSelectedLanguage(value);
+  }, [value]);
+
   const handleSelect = () => {
     onValueChange(selectedLanguage);
     setShowModal(false);
@@ -26,7 +30,13 @@ export default function LanguageSelect({ value, onValueChange, placeholder = 'Se
 
   return (
     <>
-      <TouchableOpacity style={styles.selectButton} onPress={() => setShowModal(true)}>
+      <TouchableOpacity
+        style={styles.selectButton}
+        onPress={() => {
+          setSelectedLanguage(value);
+          setShowModal(true);
+        }}
+      >
         <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>
           {displayText}
         </Text>

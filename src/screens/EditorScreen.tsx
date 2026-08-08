@@ -487,7 +487,12 @@ export default function EditorScreen() {
     <View style={[styles.infoPanel, isWide && styles.infoPanelWide]}>
       <View style={[styles.header, { justifyContent: buttonDisplayPositions }]}>
         {!isEditMode && currentSongId && (
-          <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Back to song"
+          >
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
         )}
@@ -505,12 +510,22 @@ export default function EditorScreen() {
         )}
         <View style={styles.headerRight}>
           {isEditMode && (
-            <TouchableOpacity style={styles.iconButton} onPress={handleNew}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleNew}
+              accessibilityRole="button"
+              accessibilityLabel="Create new song"
+            >
               <Ionicons name="add" size={22} color={Colors.primary} />
             </TouchableOpacity>
           )}
           {!isEditMode && Platform.OS === 'android' && (
-            <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleGetCurrentlyPlaying}
+              accessibilityRole="button"
+              accessibilityLabel="Use currently playing song"
+            >
               <Ionicons name="musical-note" size={22} color={Colors.primary} />
             </TouchableOpacity>
           )}
@@ -592,6 +607,8 @@ export default function EditorScreen() {
             </Text>
             <TouchableOpacity
               style={styles.deleteButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${t.language} translation`}
               onPress={() => {
                 Alert.alert(
                   'Delete Translation',

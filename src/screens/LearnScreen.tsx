@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import LearnActionBar from '../components/LearnActionBar';
@@ -16,7 +16,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { useStore } from '../store/useStore';
-import { WordContext } from '../types';
+import { RootTabParamList, WordContext } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
 import { splitElisionParts } from '../utils/wordTransform';
@@ -25,6 +25,7 @@ export type DisplayMode = 'ipa' | 'definition' | 'none';
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<RootTabParamList, 'Learn'>>();
   const isWide = useIsWide();
   useBackToQuit();
   const {
@@ -44,7 +45,8 @@ export default function LearnScreen() {
     setIsLoadingSong,
   } = useStore();
 
-  const song = songs.find((s) => s.id === currentSongId);
+  const activeSongId = route.params?.songId ?? currentSongId;
+  const song = songs.find((s) => s.id === activeSongId);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
@@ -174,15 +176,15 @@ export default function LearnScreen() {
 
   // Reset rendering state when song changes
   useEffect(() => {
-    if (currentSongId) {
+    if (activeSongId) {
       setIsRendering(true);
     }
-  }, [currentSongId]);
+  }, [activeSongId]);
 
   // Reset unblurred translations when blur toggle changes or song changes
   useEffect(() => {
     setUnblurredTranslations(new Set());
-  }, [blurTranslations, currentSongId]);
+  }, [blurTranslations, activeSongId]);
 
   // Close word panel when switching songs
   useEffect(() => {
@@ -190,7 +192,7 @@ export default function LearnScreen() {
     setSelectedLine(null);
     setSelectedLineIndex(null);
     setSelectedOccurrence(1);
-  }, [currentSongId]);
+  }, [activeSongId]);
 
   // Auto-hide toast after 2 seconds
   useEffect(() => {

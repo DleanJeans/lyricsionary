@@ -105,6 +105,9 @@ export const useStore = create<AppState>((set, get) => ({
           openCount: song.openCount ?? 0,
         }));
         set({ songs: migratedSongs });
+        if (JSON.stringify(migratedSongs) !== JSON.stringify(songs)) {
+          await persist(SONGS_KEY, JSON.stringify(migratedSongs));
+        }
       }
     } catch (e) {
       console.error('Failed to load songs', e);

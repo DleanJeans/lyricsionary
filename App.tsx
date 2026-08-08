@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,6 +28,7 @@ const linking = {
 export default function App() {
   const loadSongs = useStore((s) => s.loadSongs);
   const loadWords = useStore((s) => s.loadWords);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({
@@ -36,9 +37,6 @@ export default function App() {
   });
 
   useEffect(() => {
-    loadSongs();
-    loadWords();
-
     // Check for expo-updates on mount
     async function checkForUpdates() {
       try {
@@ -55,18 +53,28 @@ export default function App() {
       }
     }
 
-    checkForUpdates();
-  }, []);
+    let mounted = true;
+    async function initialize() {
+      await Promise.all([loadSongs(), loadWords()]);
+      if (mounted) setDataLoaded(true);
+      await checkForUpdates();
+    }
+
+    void initialize();
+    return () => {
+      mounted = false;
+    };
+  }, [loadSongs, loadWords]);
 
   // Hide splash screen when fonts are loaded
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if ((fontsLoaded || fontError) && dataLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, dataLoaded]);
 
-  // Don't render the app until fonts are loaded
-  if (!fontsLoaded && !fontError) {
+  // Don't render the app until fonts and persisted data are loaded
+  if ((!fontsLoaded && !fontError) || !dataLoaded) {
     return null;
   }
 

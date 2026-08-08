@@ -7,6 +7,16 @@ import { MasteryLevel, Song, Translation, WordContext, WordEntry } from '../type
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
 
+// AsyncStorage has no transaction primitive. Serialize writes so a slower
+// earlier operation cannot finish after and overwrite a newer in-memory state.
+let storageWriteQueue: Promise<void> = Promise.resolve();
+
+function persist(key: string, value: string): Promise<void> {
+  const write = storageWriteQueue.then(() => AsyncStorage.setItem(key, value));
+  storageWriteQueue = write.catch(() => {});
+  return write;
+}
+
 interface AppState {
   songs: Song[];
   words: WordEntry[];
@@ -118,7 +128,7 @@ export const useStore = create<AppState>((set, get) => ({
     };
     const songs = [...get().songs, song];
     set({ songs, currentSongId: song.id });
-    await AsyncStorage.setItem(SONGS_KEY, JSON.stringify(songs));
+    await persist(SONGS_KEY, JSON.stringify(songs));
     return song;
   },
 
@@ -127,14 +137,14 @@ export const useStore = create<AppState>((set, get) => ({
       s.id === id ? { ...s, ...updates, updatedAt: Date.now() } : s
     );
     set({ songs });
-    await AsyncStorage.setItem(SONGS_KEY, JSON.stringify(songs));
+    await persist(SONGS_KEY, JSON.stringify(songs));
   },
 
   deleteSong: async (id) => {
     const songs = get().songs.filter((s) => s.id !== id);
     set({ songs });
     if (get().currentSongId === id) set({ currentSongId: null });
-    await AsyncStorage.setItem(SONGS_KEY, JSON.stringify(songs));
+    await persist(SONGS_KEY, JSON.stringify(songs));
   },
 
   setCurrentSongId: (id) => set({ currentSongId: id }),
@@ -146,7 +156,7 @@ export const useStore = create<AppState>((set, get) => ({
         : s
     );
     set({ songs });
-    await AsyncStorage.setItem(SONGS_KEY, JSON.stringify(songs));
+    await persist(SONGS_KEY, JSON.stringify(songs));
   },
 
   setMatchedSongs: (searchQuery, count) => set({ matchedSongsSearchQuery: searchQuery, matchedSongsCount: count }),
@@ -276,13 +286,13 @@ export const useStore = create<AppState>((set, get) => ({
       words = [...get().words, entry];
     }
     set({ words });
-    await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, JSON.stringify(words));
   },
 
   deleteWord: async (id) => {
     const words = get().words.filter((w) => w.id !== id);
     set({ words });
-    await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, JSON.stringify(words));
   },
 
 }));

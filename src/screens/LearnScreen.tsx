@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import LearnActionBar from '../components/LearnActionBar';
+import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import NewWordCard from '../components/NewWordCard';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -20,15 +22,6 @@ import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
 import { splitElisionParts } from '../utils/wordTransform';
 
 export type DisplayMode = 'ipa' | 'definition' | 'none';
-
-interface ComputedLine {
-  original: string;
-  translations: {
-    language: string;
-    text: string;
-    show: boolean;
-  }[];
-}
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -66,7 +59,7 @@ export default function LearnScreen() {
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [languagesInitialized, setLanguagesInitialized] = useState(false);
   const [isRendering, setIsRendering] = useState(true);
-  const [computedLines, setComputedLines] = useState<ComputedLine[]>([]);
+  const [computedLines, setComputedLines] = useState<LearnLine[]>([]);
 
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -530,56 +523,26 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
       />
     ) : null;
 
-  /* ─── Action bar ──────────────────────────────────────── */
   const actionBar = (
-    <View style={styles.actionBar}>
-      <View style={styles.fontSizeControl}>
-        <Ionicons name="text-outline" size={18} color={Colors.textSecondary} />
-        <TouchableOpacity onPress={() => setFontSize(fontSize - 1)} style={styles.fontBtn}>
-          <Ionicons name="remove" size={18} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.fontSizeText}>{fontSize}</Text>
-        <TouchableOpacity onPress={() => setFontSize(fontSize + 1)} style={styles.fontBtn}>
-          <Ionicons name="add" size={18} color={Colors.text} />
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.lineCounter}>{lineCount} lines</Text>
-    </View>
+    <LearnActionBar
+      fontSize={fontSize}
+      lineCount={lineCount}
+      onDecreaseFontSize={() => setFontSize(fontSize - 1)}
+      onIncreaseFontSize={() => setFontSize(fontSize + 1)}
+    />
   );
 
-  /* ─── Lyrics scroll ────────────────────────────────────── */
   const lyricsView = (
-    <ScrollView style={styles.lyricsScroll} contentContainerStyle={styles.lyricsContent}>
-      {lines.map((line, i) => (
-        <View key={i} style={styles.lineBlock}>
-          {renderPressableText(line.original, i)}
-          {showTranslations &&
-            line.translations
-              .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
-              .map((tl, ti) => {
-                const translationKey = `${i}-${ti}`;
-                const isBlurred = blurTranslations && !unblurredTranslations.has(translationKey);
-                return tl.text ? (
-                  <TouchableOpacity
-                    key={ti}
-                    onPress={() => handleTranslationPress(i, ti)}
-                    activeOpacity={blurTranslations ? 0.7 : 1}
-                  >
-                    <Text
-                      style={[
-                        styles.translationLine,
-                        { fontSize: fontSize - 2 },
-                        isBlurred && styles.blurredText,
-                      ]}
-                    >
-                      {tl.text}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null;
-              })}
-        </View>
-      ))}
-    </ScrollView>
+    <LearnLyricsView
+      lines={lines}
+      fontSize={fontSize}
+      showTranslations={showTranslations}
+      selectedLanguages={localSelectedLanguages}
+      blurTranslations={blurTranslations}
+      unblurredTranslations={unblurredTranslations}
+      renderPressableText={renderPressableText}
+      onTranslationPress={handleTranslationPress}
+    />
   );
 
   return (
@@ -788,47 +751,6 @@ const styles = StyleSheet.create({
   wordCardContainer: {
     marginHorizontal: 16,
   },
-  actionBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  fontSizeControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  fontBtn: {
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    padding: 6,
-  },
-  fontSizeText: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-    minWidth: 24,
-    textAlign: 'center',
-  },
-  lineCounter: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-  },
-  lyricsScroll: {
-    flex: 1,
-  },
-  lyricsContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 40,
-  },
-  lineBlock: {
-    marginBottom: 6,
-  },
   annotationSpace: {
     minHeight: 14,
     marginBottom: -6,
@@ -839,13 +761,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.textSecondary,
     maxWidth: 100,
-  },
-  translationLine: {
-    color: Colors.primaryLight,
-    marginTop: 2,
-  },
-  blurredText: {
-    filter: 'blur(5px)',
   },
   toastContainer: {
     position: 'absolute',

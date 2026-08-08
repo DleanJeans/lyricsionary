@@ -25,7 +25,13 @@ import LanguageTabButtons from '../components/LanguageTabButtons';
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RootTabParamList, 'Songs'>>();
-  const { songs, setCurrentSongId, deleteSong, trackSongOpen, setMatchedSongs, setIsLoadingSong, isLoadingSong } = useStore();
+  const songs = useStore((s) => s.songs);
+  const setCurrentSongId = useStore((s) => s.setCurrentSongId);
+  const deleteSong = useStore((s) => s.deleteSong);
+  const trackSongOpen = useStore((s) => s.trackSongOpen);
+  const setMatchedSongs = useStore((s) => s.setMatchedSongs);
+  const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
+  const isLoadingSong = useStore((s) => s.isLoadingSong);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;

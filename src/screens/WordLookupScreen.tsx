@@ -38,7 +38,9 @@ export default function WordLookupScreen() {
   const { word, wordId, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence } = route.params || {};
   const insets = useSafeAreaInsets();
 
-  const { words, addOrUpdateWord, deleteWord } = useStore();
+  const words = useStore((s) => s.words);
+  const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  const deleteWord = useStore((s) => s.deleteWord);
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);

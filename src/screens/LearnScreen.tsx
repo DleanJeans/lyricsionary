@@ -11,7 +11,7 @@ import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import { getFlagForLanguage } from '../constants/languages';
+import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
@@ -45,6 +45,20 @@ export default function LearnScreen() {
 
   const activeSongId = route.params?.songId ?? currentSongId;
   const song = songs.find((s) => s.id === activeSongId);
+  const findWordEntry = useCallback((candidate: string) => {
+    const normalizedCandidate = candidate.toLowerCase();
+    const songLanguages = new Set(
+      (song?.originalLanguages ?? []).map((language) =>
+        (getLanguageNameFromCode(language) ?? language).toLowerCase()
+      )
+    );
+    return words.find((entry) =>
+      entry.word.toLowerCase() === normalizedCandidate &&
+      (songLanguages.size === 0 || songLanguages.has(
+        (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase()
+      ))
+    );
+  }, [song?.originalLanguages, words]);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
@@ -303,7 +317,7 @@ export default function LearnScreen() {
             }
 
             const partEntries = elisionParts.map(part =>
-              part ? words.find(w => w.word.toLowerCase() === part.toLowerCase()) : null
+              part ? findWordEntry(part) ?? null : null
             );
 
             const mainEntry = [...partEntries].reverse().find(e => e !== null) || null;
@@ -381,12 +395,12 @@ export default function LearnScreen() {
           }
 
           // Standard rendering for non-elision words
-          let wordEntry = cleanedWord ? words.find((w) => w.word.toLowerCase() === cleanedWord.toLowerCase()) : null;
+          let wordEntry = cleanedWord ? findWordEntry(cleanedWord) : null;
 
           if (!wordEntry && cleanedWord && hasHyphenatedPrefixWord && hasFrenchLanguage) {
             const hyphenIndex = cleanedWord.indexOf('-');
             const withoutPrefix = cleanedWord.slice(hyphenIndex + 1);
-            wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
+            wordEntry = findWordEntry(withoutPrefix) ?? null;
           }
 
           // Fallback for contracted prefixes (e.g., dell'umanità -> umanità)
@@ -394,7 +408,7 @@ export default function LearnScreen() {
             const apostropheIndex = cleanedWord.indexOf("'");
             if (apostropheIndex !== -1) {
               const withoutPrefix = cleanedWord.slice(apostropheIndex + 1);
-              wordEntry = words.find((w) => w.word.toLowerCase() === withoutPrefix.toLowerCase());
+              wordEntry = findWordEntry(withoutPrefix) ?? null;
             }
           }
 
@@ -464,7 +478,7 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
         })}
       </View>
     );
-  }, [words, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [findWordEntry, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
 
   if (!song) {
     return (
@@ -484,7 +498,7 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
 
   /* ─── Word panel ──────────────────────────────────────── */
   const selectedWordEntry = selectedWord
-    ? words.find((w) => w.word.toLowerCase() === selectedWord.toLowerCase())
+    ? findWordEntry(selectedWord)
     : null;
 
   // Get translation line for the selected line

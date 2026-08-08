@@ -63,7 +63,7 @@ export default function WordCard({
     });
   };
 
-  const renderLeftActions = () => {
+  const renderDeleteActions = () => {
     if (!showDelete) return null;
 
     return (
@@ -81,8 +81,8 @@ export default function WordCard({
   return (
     <Swipeable
       ref={swipeableRef}
-      renderLeftActions={renderLeftActions}
-      overshootLeft={false}
+      renderRightActions={renderDeleteActions}
+      overshootRight={false}
     >
       <TouchableOpacity
         style={[styles.card, isWide && styles.cardWide]}

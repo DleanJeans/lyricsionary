@@ -5,7 +5,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { MasteryLevel } from '../types';
 import { Text } from './Text';
 
-const MASTERY_LEVELS: MasteryLevel[] = ['New', 'Learning', 'Mastered'];
+const MASTERY_LEVELS: MasteryLevel[] = ['Unknown', 'New', 'Learning', 'Mastered'];
 
 interface MasteryLevelDropdownProps {
   onSelect: (level: MasteryLevel) => void;

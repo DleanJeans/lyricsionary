@@ -15,6 +15,11 @@ const levels: {
   color: string;
 }[] = [
   {
+    value: 'Unknown',
+    label: 'Unknown',
+    color: Colors.masteryUnknown,
+  },
+  {
     value: 'New',
     label: 'New',
     color: Colors.masteryNew,

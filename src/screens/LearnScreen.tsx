@@ -57,20 +57,24 @@ export default function LearnScreen() {
   const [enableAnnotations, setEnableAnnotations] = useState(true);
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
-  const [languagesInitialized, setLanguagesInitialized] = useState(false);
   const [isRendering, setIsRendering] = useState(true);
   const [computedLines, setComputedLines] = useState<LearnLine[]>([]);
 
   // Initialize selected languages when song changes
   useEffect(() => {
-    if (song && song.translations.length > 0 && !languagesInitialized) {
-      // Auto-select all available translation languages by default
-      const availableLanguages = song.translations.map(t => t.language);
-      setLocalSelectedLanguages(availableLanguages);
-      setSelectedTranslationLanguages(availableLanguages);
-      setLanguagesInitialized(true);
+    if (!song) {
+      setLocalSelectedLanguages([]);
+      setSelectedTranslationLanguages([]);
+      return;
     }
-  }, [song, languagesInitialized]);
+
+    // A language selection belongs to the current song. Reset it when the
+    // route changes so the previous song's translations are not carried over.
+    const availableLanguages = song.translations.map(t => t.language);
+    setLocalSelectedLanguages(availableLanguages);
+    setSelectedTranslationLanguages(availableLanguages);
+    setUnblurredTranslations(new Set());
+  }, [song?.id, setSelectedTranslationLanguages]);
 
   // Helper function to normalize text for comparison (remove punctuation, compare words only)
   const normalizeText = (text: string): string => {

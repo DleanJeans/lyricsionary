@@ -90,6 +90,7 @@ export default function EditorScreen() {
     originalLyrics: string;
     originalLanguages: string[];
     songSourceUrl: string;
+    songSourceUrlTitle: string;
     translations: Translation[];
   } | null>(null);
 
@@ -115,6 +116,7 @@ export default function EditorScreen() {
         originalLyrics: editSong.originalLyrics,
         originalLanguages: editSong.originalLanguages ?? [],
         songSourceUrl: editSong.sourceUrl ?? '',
+        songSourceUrlTitle: editSong.sourceUrlTitle ?? '',
         translations: editSong.translations.map((t) => ({ ...t })),
       });
       // Set metadata to not editing when loading an existing song
@@ -213,6 +215,7 @@ export default function EditorScreen() {
     originalLyrics !== originalState.originalLyrics ||
     JSON.stringify(originalLanguages) !== JSON.stringify(originalState.originalLanguages) ||
     songSourceUrl !== originalState.songSourceUrl ||
+    (pendingPageTitles[0] ?? '') !== originalState.songSourceUrlTitle ||
     JSON.stringify(translations) !== JSON.stringify(originalState.translations)
   ) : false;
 
@@ -308,6 +311,7 @@ export default function EditorScreen() {
       originalLyrics: normalizedOriginalLyrics,
       originalLanguages: [...originalLanguages],
       songSourceUrl: resolved.sourceUrl ?? '',
+      songSourceUrlTitle: resolved.sourceUrlTitle ?? '',
       translations: normalizedTranslations.map((t) => ({ ...t })),
     });
     setPendingSourceUrls({});
@@ -363,7 +367,9 @@ export default function EditorScreen() {
       setTranslations(originalState.translations.map((t) => ({ ...t })));
       setActiveTab(0);
       setPendingSourceUrls({});
-      setPendingPageTitles({});
+      setPendingPageTitles(
+        originalState.songSourceUrlTitle ? { 0: originalState.songSourceUrlTitle } : {}
+      );
     }
   };
 

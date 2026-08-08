@@ -100,11 +100,13 @@ export default function SongsScreen() {
   // Helper function to find matched line in lyrics
   const findMatchedLine = (song: Song, query: string): string | null => {
     if (!query.trim()) return null;
-    const lines = song.originalLyrics.split('\n');
     const lowerQuery = query.toLowerCase();
-    for (const line of lines) {
-      if (line.toLowerCase().includes(lowerQuery)) {
-        return line.trim();
+    const lyricSources = [song.originalLyrics, ...song.translations.map((translation) => translation.lyrics)];
+    for (const lyrics of lyricSources) {
+      for (const line of lyrics.split('\n')) {
+        if (line.toLowerCase().includes(lowerQuery)) {
+          return line.trim();
+        }
       }
     }
     return null;

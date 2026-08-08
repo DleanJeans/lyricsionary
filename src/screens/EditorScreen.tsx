@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   Image,
+  Platform,
 } from 'react-native';
 import { Text } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
@@ -503,7 +504,7 @@ export default function EditorScreen() {
               <Ionicons name="add" size={22} color={Colors.primary} />
             </TouchableOpacity>
           )}
-          {!isEditMode && (
+          {!isEditMode && Platform.OS === 'android' && (
             <TouchableOpacity style={styles.iconButton} onPress={handleGetCurrentlyPlaying}>
               <Ionicons name="musical-note" size={22} color={Colors.primary} />
             </TouchableOpacity>

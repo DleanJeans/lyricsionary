@@ -32,6 +32,8 @@ export default function LanguageSelect({ value, onValueChange, placeholder = 'Se
     <>
       <TouchableOpacity
         style={styles.selectButton}
+        accessibilityRole="button"
+        accessibilityLabel={value ? `Language: ${value}` : placeholder}
         onPress={() => {
           setSelectedLanguage(value);
           setShowModal(true);
@@ -56,6 +58,9 @@ export default function LanguageSelect({ value, onValueChange, placeholder = 'Se
                     styles.modalItem,
                     selectedLanguage === item.name && styles.modalItemSelected,
                   ]}
+                  accessibilityRole="radio"
+                  accessibilityLabel={item.name}
+                  accessibilityState={{ selected: selectedLanguage === item.name }}
                   onPress={() => setSelectedLanguage(item.name)}
                 >
                   <Text style={styles.modalItemEmoji}>{item.flag}</Text>

@@ -62,6 +62,9 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               style={[styles.sideItem, focused && styles.sideItemActive]}
               onPress={() => handlePress(route.name, route.key, focused)}
               activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityLabel={meta.label}
+              accessibilityState={{ selected: focused }}
             >
               <Ionicons
                 name={focused ? meta.iconFocused : meta.icon}
@@ -97,6 +100,9 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             style={styles.bottomItem}
             onPress={() => handlePress(route.name, route.key, focused)}
             activeOpacity={0.7}
+            accessibilityRole="tab"
+            accessibilityLabel={meta.label}
+            accessibilityState={{ selected: focused }}
           >
             <Ionicons
               name={focused ? meta.iconFocused : meta.icon}

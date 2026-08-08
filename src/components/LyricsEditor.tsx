@@ -77,7 +77,10 @@ export default function LyricsEditor({
       const newLines = [...lines];
       newLines.splice(i, 1, ...parts);
       onLyricsChange(newLines.join('\n'));
-      setFocusTarget({ lineIndex: i + 1, cursorPos: 0 });
+      setFocusTarget({
+        lineIndex: i + parts.length - 1,
+        cursorPos: parts[parts.length - 1].length,
+      });
       setLineGenerations(prev => ({ ...prev, [i]: (prev[i] || 0) + 1 }));
       return;
     }

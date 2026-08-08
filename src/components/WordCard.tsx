@@ -69,6 +69,8 @@ export default function WordCard({
     return (
       <TouchableOpacity
         style={styles.deleteButton}
+        accessibilityRole="button"
+        accessibilityLabel={`Delete ${item.word}`}
         onPress={() => onDelete?.(item, () => swipeableRef.current?.close())}
         activeOpacity={0.7}
       >
@@ -88,9 +90,16 @@ export default function WordCard({
         style={[styles.card, isWide && styles.cardWide]}
         onPress={handleCardPress}
         activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${item.word}`}
       >
         {showClose && (
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel={`Close ${item.word}`}
+          >
             <Ionicons name="close" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
         )}

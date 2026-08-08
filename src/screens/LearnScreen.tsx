@@ -28,22 +28,20 @@ export default function LearnScreen() {
   const route = useRoute<RouteProp<RootTabParamList, 'Learn'>>();
   const isWide = useIsWide();
   useBackToQuit();
-  const {
-    songs,
-    words,
-    currentSongId,
-    fontSize,
-    setFontSize,
-    showTranslations,
-    toggleTranslations,
-    setSelectedTranslationLanguages,
-    blurTranslations,
-    toggleBlurTranslations,
-    showMasteryLevelColors,
-    toggleShowMasteryLevelColors,
-    isLoadingSong,
-    setIsLoadingSong,
-  } = useStore();
+  const songs = useStore((s) => s.songs);
+  const words = useStore((s) => s.words);
+  const currentSongId = useStore((s) => s.currentSongId);
+  const fontSize = useStore((s) => s.fontSize);
+  const setFontSize = useStore((s) => s.setFontSize);
+  const showTranslations = useStore((s) => s.showTranslations);
+  const toggleTranslations = useStore((s) => s.toggleTranslations);
+  const setSelectedTranslationLanguages = useStore((s) => s.setSelectedTranslationLanguages);
+  const blurTranslations = useStore((s) => s.blurTranslations);
+  const toggleBlurTranslations = useStore((s) => s.toggleBlurTranslations);
+  const showMasteryLevelColors = useStore((s) => s.showMasteryLevelColors);
+  const toggleShowMasteryLevelColors = useStore((s) => s.toggleShowMasteryLevelColors);
+  const isLoadingSong = useStore((s) => s.isLoadingSong);
+  const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
 
   const activeSongId = route.params?.songId ?? currentSongId;
   const song = songs.find((s) => s.id === activeSongId);

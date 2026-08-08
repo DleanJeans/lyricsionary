@@ -54,6 +54,7 @@ export type RootTabParamList = {
   Words: undefined;
   WordLookup: {
     word: string;
+    wordId?: string;
     songId?: string;
     songName?: string;
     artistName?: string;

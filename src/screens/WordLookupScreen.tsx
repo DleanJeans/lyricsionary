@@ -35,7 +35,7 @@ export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
   const isFocused = useIsFocused();
-  const { word, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence } = route.params || {};
+  const { word, wordId, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence } = route.params || {};
   const insets = useSafeAreaInsets();
 
   const { words, addOrUpdateWord, deleteWord } = useStore();
@@ -113,6 +113,12 @@ export default function WordLookupScreen() {
 
   const [displayWord, setDisplayWord] = useState(word);
 
+  const findExistingWord = () => words.find((entry) =>
+    wordId
+      ? entry.id === wordId
+      : entry.word.toLowerCase() === displayWord?.toLowerCase() && entry.language === language
+  );
+
   useEffect(() => {
     setDisplayWord(word);
   }, [word]);
@@ -123,9 +129,7 @@ export default function WordLookupScreen() {
 
   useEffect(() => {
     if (displayWord) {
-      const existingWord = words.find(
-        (w) => w.word.toLowerCase() === displayWord.toLowerCase()
-      );
+      const existingWord = findExistingWord();
       if (existingWord) {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation);
@@ -188,14 +192,14 @@ export default function WordLookupScreen() {
         }
       }
     }
-  }, [displayWord, words, songId, lyricsLine, originalLanguages, routeOccurrence, source]);
+  }, [displayWord, wordId, language, words, songId, lyricsLine, originalLanguages, routeOccurrence, source]);
 
-const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
+  const isNewWord = displayWord && !findExistingWord();
 
   const hasChanges = useMemo(() => {
     if (!displayWord) return false;
     if (isNewWord) return true;
-    const existing = words.find((w) => w.word.toLowerCase() === displayWord.toLowerCase());
+    const existing = findExistingWord();
     if (!existing) return true;
     if (language !== existing.language) return true;
     if (pronunciation !== existing.pronunciation) return true;
@@ -318,7 +322,7 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    const existing = words.find(w => w.word.toLowerCase() === displayWord?.toLowerCase());
+    const existing = findExistingWord();
     if (existing) {
       await deleteWord(existing.id);
     }

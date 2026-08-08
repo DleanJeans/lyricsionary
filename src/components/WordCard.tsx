@@ -51,6 +51,7 @@ export default function WordCard({
   const handleCardPress = () => {
     navigation.navigate('WordLookup', {
       word: item.word,
+      wordId: item.id,
       songId,
       songName,
       artistName,

@@ -5,10 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  Modal,
-  FlatList,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import { Text } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +30,8 @@ import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines, splitIntoChunks } from '../utils/deeplTranslation';
 import LyricsEditor from '../components/LyricsEditor';
 import { normalizeApostrophes } from '../utils/normalizeApostrophes';
+import EditorActionButtons from '../components/EditorActionButtons';
+import AddTranslationModal from '../components/AddTranslationModal';
 
 
 export default function EditorScreen() {
@@ -662,48 +661,17 @@ export default function EditorScreen() {
         </TouchableOpacity>
       )}
       {isWide && (
-        <View style={styles.actions}>
-          {currentLyrics.split('\n').length === 0 ? (
-            <TouchableOpacity style={styles.actionButton} onPress={handlePaste}>
-              <Ionicons name="clipboard-outline" size={20} color={Colors.white} />
-              <Text style={styles.actionButtonText}>Paste</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.saveButton, (isEditMode && !hasChanges) || isSaving ? styles.disabled : null]}
-              disabled={isSaving || (isEditMode && !hasChanges)}
-              onPress={handleSave}
-            >
-              {isSaving ? (
-                <ActivityIndicator color={Colors.white} size="small" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark" size={20} color={Colors.white} />
-                  <Text style={styles.actionButtonText}>Save</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
-          {isEditMode ? (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.dangerButton, (!hasChanges || isSaving) && styles.disabled]}
-              disabled={!hasChanges || isSaving}
-              onPress={handleReset}
-            >
-              <Ionicons name="refresh" size={20} color={Colors.white} />
-              <Text style={styles.actionButtonText}>Reset</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.dangerButton, allEmpty && styles.disabled]}
-              disabled={allEmpty}
-              onPress={handleClear}
-            >
-              <Ionicons name="close" size={20} color={Colors.white} />
-              <Text style={styles.actionButtonText}>Clear</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <EditorActionButtons
+          showPasteAction={currentLyrics.split('\n').length === 0}
+          isEditMode={isEditMode}
+          hasChanges={hasChanges}
+          isSaving={isSaving}
+          allEmpty={allEmpty}
+          onPaste={handlePaste}
+          onSave={handleSave}
+          onReset={handleReset}
+          onClear={handleClear}
+        />
       )}
     </View>
   );
@@ -738,87 +706,28 @@ export default function EditorScreen() {
         <View style={styles.narrowLayout}>
           {infoPanel}
           {lyricsPanel}
-          <View style={styles.actions}>
-            {currentLyrics.split('\n').length === 0 ? (
-              <TouchableOpacity style={styles.actionButton} onPress={handlePaste}>
-                <Ionicons name="clipboard-outline" size={20} color={Colors.white} />
-                <Text style={styles.actionButtonText}>Paste</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.saveButton, (isEditMode && !hasChanges) || isSaving ? styles.disabled : null]}
-                disabled={isSaving || (isEditMode && !hasChanges)}
-                onPress={handleSave}
-              >
-                {isSaving ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark" size={20} color={Colors.white} />
-                    <Text style={styles.actionButtonText}>Save</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-            {isEditMode ? (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.dangerButton, (!hasChanges || isSaving) && styles.disabled]}
-                disabled={!hasChanges || isSaving}
-                onPress={handleReset}
-              >
-                <Ionicons name="refresh" size={20} color={Colors.white} />
-                <Text style={styles.actionButtonText}>Reset</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.dangerButton, allEmpty && styles.disabled]}
-                disabled={allEmpty}
-                onPress={handleClear}
-              >
-                <Ionicons name="close" size={20} color={Colors.white} />
-                <Text style={styles.actionButtonText}>Clear</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <EditorActionButtons
+            showPasteAction={currentLyrics.split('\n').length === 0}
+            isEditMode={isEditMode}
+            hasChanges={hasChanges}
+            isSaving={isSaving}
+            allEmpty={allEmpty}
+            onPaste={handlePaste}
+            onSave={handleSave}
+            onReset={handleReset}
+            onClear={handleClear}
+          />
         </View>
       )}
 
-      {/* Add Translation Modal */}
-      <Modal visible={showAddDialog} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Translation</Text>
-            <FlatList
-              data={LANGUAGES}
-              keyExtractor={(item) => item.code}
-              style={styles.languageList}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.languageItem,
-                    selectedLanguage === item.name && styles.languageItemSelected,
-                  ]}
-                  onPress={() => setSelectedLanguage(item.name)}
-                >
-                  <Text style={styles.languageFlag}>{item.flag}</Text>
-                  <Text style={styles.languageName}>{item.name}</Text>
-                  {selectedLanguage === item.name && (
-                    <Ionicons name="checkmark" size={18} color={Colors.primary} />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowAddDialog(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalAdd} onPress={handleAddTranslation}>
-                <Text style={styles.modalAddText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <AddTranslationModal
+        visible={showAddDialog}
+        languages={LANGUAGES}
+        selectedLanguage={selectedLanguage}
+        onSelectLanguage={setSelectedLanguage}
+        onCancel={() => setShowAddDialog(false)}
+        onAdd={handleAddTranslation}
+      />
 
       {/* FAB for matched songs */}
       {!isEditMode && matchedSongsSearchQuery && matchedSongsCount > 0 && (
@@ -1035,101 +944,5 @@ const styles = StyleSheet.create({
   },
   toggleTextActive: {
     color: Colors.white,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingBottom: 16,
-  },
-  actionButton: {
-    flex: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingVertical: 14,
-    gap: 8,
-  },
-  saveButton: {
-    backgroundColor: Colors.success,
-  },
-  dangerButton: {
-    flex: 4,
-    backgroundColor: Colors.danger,
-  },
-  actionButtonText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    width: '85%',
-    maxWidth: 440,
-    maxHeight: '70%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 16,
-  },
-  languageList: {
-    maxHeight: 300,
-  },
-  languageItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    gap: 12,
-  },
-  languageItemSelected: {
-    backgroundColor: Colors.surfaceLight,
-  },
-  languageFlag: {
-    fontSize: 22,
-  },
-  languageName: {
-    flex: 1,
-    color: Colors.text,
-    fontSize: 16,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 16,
-  },
-  modalCancel: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-  },
-  modalCancelText: {
-    color: Colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  modalAdd: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-  },
-  modalAddText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: '600',
   },
 });

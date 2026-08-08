@@ -233,6 +233,9 @@ export const useStore = create<AppState>((set, get) => ({
           };
         });
         set({ words: migratedWords });
+        if (JSON.stringify(migratedWords) !== JSON.stringify(loadedWords)) {
+          await persist(WORDS_KEY, JSON.stringify(migratedWords));
+        }
       }
     } catch (e) {
       console.error('Failed to load words', e);

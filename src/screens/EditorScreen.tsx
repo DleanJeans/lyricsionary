@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
   Alert,
-  Modal,
-  FlatList,
   Image,
   ActivityIndicator,
 } from 'react-native';
@@ -33,6 +31,7 @@ import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines, splitIntoChunks } from '../utils/deeplTranslation';
 import LyricsEditor from '../components/LyricsEditor';
 import { normalizeApostrophes } from '../utils/normalizeApostrophes';
+import LanguageSelect from '../components/LanguageSelect';
 
 
 export default function EditorScreen() {
@@ -64,6 +63,16 @@ export default function EditorScreen() {
   }, [paramSongId]);
   const editSong = editSongId ? songs.find((s) => s.id === editSongId) : null;
   const isEditMode = !!editSong;
+
+  // Compute all languages used in saved songs for sorting
+  const songLanguages = useMemo(() => {
+    const langs = new Set<string>();
+    songs.forEach(song => {
+      song.originalLanguages?.forEach(lang => langs.add(lang));
+      song.translations?.forEach(t => langs.add(t.language));
+    });
+    return Array.from(langs);
+  }, [songs]);
 
   const [songName, setSongName] = useState('');
   const [artistName, setArtistName] = useState('');
@@ -517,6 +526,7 @@ export default function EditorScreen() {
           onArtistNameChange={setArtistName}
           onLanguagesChange={setOriginalLanguages}
           showLanguageSelect={true}
+          songLanguages={songLanguages}
         />
       )}
       {!currentLyrics && (
@@ -784,41 +794,28 @@ export default function EditorScreen() {
       )}
 
       {/* Add Translation Modal */}
-      <Modal visible={showAddDialog} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Translation</Text>
-            <FlatList
-              data={LANGUAGES}
-              keyExtractor={(item) => item.code}
-              style={styles.languageList}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.languageItem,
-                    selectedLanguage === item.name && styles.languageItemSelected,
-                  ]}
-                  onPress={() => setSelectedLanguage(item.name)}
-                >
-                  <Text style={styles.languageFlag}>{item.flag}</Text>
-                  <Text style={styles.languageName}>{item.name}</Text>
-                  {selectedLanguage === item.name && (
-                    <Ionicons name="checkmark" size={18} color={Colors.primary} />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowAddDialog(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalAdd} onPress={handleAddTranslation}>
-                <Text style={styles.modalAddText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <LanguageSelect
+        showModal={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        hideInput={true}
+        value={selectedLanguage}
+        onValueChange={(lang) => {
+          // Update selection and close will call handleAddTranslation
+          setSelectedLanguage(lang);
+          const alreadyAdded = translations.some((t) => t.language === lang);
+          if (alreadyAdded) {
+            Alert.alert('Duplicate', `${lang} translation already exists.`);
+            setShowAddDialog(false);
+            return;
+          }
+          setTranslations([...translations, { language: lang, lyrics: '' }]);
+          setActiveTab(translations.length + 1);
+          setShowAddDialog(false);
+        }}
+        modalTitle="Add Translation"
+        confirmButtonText="Add"
+        songLanguages={songLanguages}
+      />
 
       {/* FAB for matched songs */}
       {!isEditMode && matchedSongsSearchQuery && matchedSongsCount > 0 && (

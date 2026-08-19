@@ -1,76 +1,263 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, TouchableOpacity, Modal, FlatList, StyleSheet, TextInput } from 'react-native';
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
-import { LANGUAGES } from '../constants/languages';
+import { LANGUAGES, getSortedLanguages, Language } from '../constants/languages';
 
 interface LanguageSelectProps {
-  value: string;
-  onValueChange: (language: string) => void;
+  // Common props
   placeholder?: string;
+  availableLanguages?: string[];
+  showModal?: boolean;
+  hideInput?: boolean;
+  onClose?: () => void;
+  modalTitle?: string;
+
+  // Button text props
+  cancelButtonText?: string;
+  confirmButtonText?: string;
+
+  // Single select mode props (when multiSelect is false or undefined)
+  value?: string;
+  onValueChange?: (language: string) => void;
+
+  // Multi select mode props (when multiSelect is true)
+  multiSelect?: boolean;
+  values?: string[];
+  onValuesChange?: (languages: string[]) => void;
+
+  // Sorting languages by usage
+  songLanguages?: string[];
 }
 
+export default function LanguageSelect({
+  placeholder,
+  availableLanguages,
+  showModal: externalShowModal,
+  hideInput,
+  onClose,
+  modalTitle,
+  cancelButtonText = 'Cancel',
+  confirmButtonText,
+  value,
+  onValueChange,
+  multiSelect = false,
+  values = [],
+  onValuesChange,
+  songLanguages,
+}: LanguageSelectProps) {
+  const [internalShowModal, setInternalShowModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-export default function LanguageSelect({ value, onValueChange, placeholder = 'Select Language' }: LanguageSelectProps) {
-  const [showModal, setShowModal] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState(value);
+  // Single select state
+  const [selectedLanguage, setSelectedLanguage] = useState(value || '');
 
-  const handleSelect = () => {
-    onValueChange(selectedLanguage);
-    setShowModal(false);
+  // Multi select state
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(values);
+
+  // Use external control if provided, otherwise use internal state
+  const showModal = externalShowModal !== undefined ? externalShowModal : internalShowModal;
+
+  // Update state when value/values prop changes
+  React.useEffect(() => {
+    if (multiSelect) {
+      setSelectedLanguages(values);
+    } else {
+      setSelectedLanguage(value || '');
+    }
+  }, [value, values, multiSelect]);
+
+  // Get sorted and filtered languages
+  const sortedLanguages = useMemo(() => {
+    return getSortedLanguages(songLanguages);
+  }, [songLanguages]);
+
+  // Filter languages based on availableLanguages prop and search query
+  const filteredLanguages = useMemo(() => {
+    let langs = availableLanguages
+      ? sortedLanguages.filter((lang) => availableLanguages.includes(lang.name))
+      : sortedLanguages;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      langs = langs.filter((lang) =>
+        lang.name.toLowerCase().includes(query) ||
+        lang.native.toLowerCase().includes(query) ||
+        lang.code.toLowerCase().includes(query)
+      );
+    }
+
+    return langs;
+  }, [sortedLanguages, availableLanguages, searchQuery]);
+
+  const handleConfirm = () => {
+    if (multiSelect) {
+      if (onValuesChange) {
+        onValuesChange(selectedLanguages);
+      }
+    } else {
+      if (onValueChange) {
+        onValueChange(selectedLanguage);
+      }
+    }
+
+    setSearchQuery(''); // Clear search on close
+    if (onClose) {
+      onClose();
+    } else {
+      setInternalShowModal(false);
+    }
   };
 
-  const selectedLang = LANGUAGES.find(l => l.name === value);
-  const displayText = selectedLang ? `${selectedLang.flag} ${selectedLang.name}` : value || placeholder;
+  const handleCancel = () => {
+    // Reset to original value
+    if (multiSelect) {
+      setSelectedLanguages(values);
+    } else {
+      setSelectedLanguage(value || '');
+    }
+
+    setSearchQuery(''); // Clear search on close
+    if (onClose) {
+      onClose();
+    } else {
+      setInternalShowModal(false);
+    }
+  };
+
+  const handleOpen = () => {
+    if (multiSelect) {
+      setSelectedLanguages(values);
+    } else {
+      setSelectedLanguage(value || '');
+    }
+    setSearchQuery(''); // Clear search on open
+    setInternalShowModal(true);
+  };
+
+  const toggleLanguage = (langName: string) => {
+    if (multiSelect) {
+      if (selectedLanguages.includes(langName)) {
+        setSelectedLanguages(selectedLanguages.filter((l) => l !== langName));
+      } else {
+        setSelectedLanguages([...selectedLanguages, langName]);
+      }
+    } else {
+      setSelectedLanguage(langName);
+    }
+  };
+
+  const getDisplayText = () => {
+    if (multiSelect) {
+      if (values.length === 0) {
+        return placeholder || 'Select Languages';
+      }
+      const flags = values
+        .map((langName) => LANGUAGES.find((l) => l.name === langName)?.flag)
+        .filter(Boolean)
+        .join(' ');
+      return flags;
+    } else {
+      if (!value) {
+        return placeholder || 'Select Language';
+      }
+      const selectedLang = LANGUAGES.find(l => l.name === value);
+      return selectedLang ? `${selectedLang.flag} ${selectedLang.name}` : value;
+    }
+  };
+
+  const isSelected = (langName: string) => {
+    if (multiSelect) {
+      return selectedLanguages.includes(langName);
+    }
+    return selectedLanguage === langName;
+  };
+
+  // Determine default modal title and confirm button text
+  const defaultModalTitle = multiSelect
+    ? 'Select Original Languages'
+    : 'Select Language';
+  const defaultConfirmText = multiSelect ? 'Done' : 'Select';
 
   return (
     <>
-      <TouchableOpacity style={styles.selectButton} onPress={() => setShowModal(true)}>
-        <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>
-          {displayText}
-        </Text>
-        <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
-      </TouchableOpacity>
+      {!hideInput && (
+        <TouchableOpacity
+          style={multiSelect ? styles.selectButtonMulti : styles.selectButton}
+          onPress={handleOpen}
+        >
+          <Text style={[
+            styles.selectText,
+            (multiSelect ? values.length === 0 : !value) && styles.selectPlaceholder
+          ]}>
+            {getDisplayText()}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
+        </TouchableOpacity>
+      )}
 
       <Modal visible={showModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Language</Text>
-            <FlatList
-              data={LANGUAGES}
-              keyExtractor={(item) => item.code}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.modalItem,
-                    selectedLanguage === item.name && styles.modalItemSelected,
-                  ]}
-                  onPress={() => setSelectedLanguage(item.name)}
-                >
-                  <Text style={styles.modalItemEmoji}>{item.flag}</Text>
-                  <Text
-                    style={[
-                      styles.modalItemText,
-                      selectedLanguage === item.name && styles.modalItemTextSelected,
-                    ]}
-                  >
-                    {item.name}
-                  </Text>
-                  {selectedLanguage === item.name && (
-                    <Ionicons name="checkmark" size={20} color={Colors.primary} />
-                  )}
+            <Text style={styles.modalTitle}>{modalTitle || defaultModalTitle}</Text>
+
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={Colors.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search languages..."
+                placeholderTextColor={Colors.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClear}>
+                  <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
                 </TouchableOpacity>
               )}
+            </View>
+
+            <FlatList
+              data={filteredLanguages}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => {
+                const selected = isSelected(item.name);
+                return (
+                  <TouchableOpacity
+                    style={[styles.modalItem, selected && styles.modalItemSelected]}
+                    onPress={() => toggleLanguage(item.name)}
+                  >
+                    <Text style={styles.modalItemEmoji}>{item.flag}</Text>
+                    <View style={styles.modalItemTextContainer}>
+                      <Text style={[styles.modalItemText, selected && styles.modalItemTextSelected]}>
+                        {item.name}
+                      </Text>
+                      {item.native !== item.name && (
+                        <Text style={styles.modalItemNative}>{item.native}</Text>
+                      )}
+                    </View>
+                    {selected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+                  </TouchableOpacity>
+                );
+              }}
               style={styles.modalList}
               showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No languages found</Text>
+                </View>
+              }
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowModal(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
+              <TouchableOpacity style={styles.modalCancel} onPress={handleCancel}>
+                <Text style={styles.modalCancelText}>{cancelButtonText}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalAdd} onPress={handleSelect}>
-                <Text style={styles.modalAddText}>Select</Text>
+              <TouchableOpacity style={styles.modalAdd} onPress={handleConfirm}>
+                <Text style={styles.modalAddText}>{confirmButtonText || defaultConfirmText}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -92,8 +279,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  selectButtonMulti: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flex: 1,
+    paddingVertical: 14,
+  },
   selectText: {
-    fontSize: 15,
+    fontSize: 16,
     color: Colors.text,
     flex: 1,
   },
@@ -108,8 +302,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '85%',
-    maxWidth: 400,
-    maxHeight: '70%',
+    maxWidth: 440,
+    maxHeight: '80%',
     backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 20,
@@ -119,7 +313,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
     marginBottom: 16,
-    textAlign: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.text,
+    padding: 0,
+  },
+  searchClear: {
+    padding: 4,
   },
   modalList: {
     maxHeight: 400,
@@ -127,20 +343,21 @@ const styles = StyleSheet.create({
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 10,
-    marginBottom: 6,
+    gap: 12,
   },
   modalItemSelected: {
     backgroundColor: Colors.surfaceLight,
   },
   modalItemEmoji: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: 22,
+  },
+  modalItemTextContainer: {
+    flex: 1,
   },
   modalItemText: {
-    flex: 1,
     fontSize: 16,
     color: Colors.text,
   },
@@ -148,33 +365,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primary,
   },
+  modalItemNative: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  emptyContainer: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.textMuted,
+  },
   modalActions: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'flex-end',
+    gap: 12,
     marginTop: 16,
   },
   modalCancel: {
-    flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 10,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
   },
   modalCancelText: {
-    color: Colors.text,
-    fontSize: 16,
+    color: Colors.textSecondary,
+    fontSize: 15,
     fontWeight: '600',
   },
   modalAdd: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
     backgroundColor: Colors.primary,
-    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
   },
   modalAddText: {
     color: Colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

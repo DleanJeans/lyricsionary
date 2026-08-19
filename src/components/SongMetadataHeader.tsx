@@ -5,7 +5,7 @@ import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
-import MultiLanguageSelect from './MultiLanguageSelect';
+import LanguageSelect from './LanguageSelect';
 
 interface SongMetadataHeaderProps {
   songName: string;
@@ -17,6 +17,7 @@ interface SongMetadataHeaderProps {
   onArtistNameChange?: (text: string) => void;
   onLanguagesChange?: (languages: string[]) => void;
   showLanguageSelect?: boolean;
+  songLanguages?: string[]; // For sorting
 }
 
 export default function SongMetadataHeader({
@@ -29,6 +30,7 @@ export default function SongMetadataHeader({
   onArtistNameChange,
   onLanguagesChange,
   showLanguageSelect = false,
+  songLanguages,
 }: SongMetadataHeaderProps) {
   if (isEditing) {
     return (
@@ -56,10 +58,12 @@ export default function SongMetadataHeader({
         {showLanguageSelect && (
           <View style={[styles.inputRow, { gap: 14 }]}>
             <Ionicons name="language-outline" size={20} color={Colors.textSecondary} />
-            <MultiLanguageSelect
-              value={originalLanguages}
-              onValueChange={onLanguagesChange}
+            <LanguageSelect
+              multiSelect={true}
+              values={originalLanguages}
+              onValuesChange={onLanguagesChange}
               placeholder="Original Language(s)"
+              songLanguages={songLanguages}
             />
           </View>
         )}

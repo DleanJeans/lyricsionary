@@ -18,6 +18,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
+import IconButton from '../components/IconButton';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
@@ -208,6 +209,21 @@ export default function SongsScreen() {
     }
   };
 
+  const getSortLabel = () => {
+    switch (sortMode) {
+      case 'lastOpened':
+        return 'recently opened';
+      case 'openCount':
+        return 'most opened';
+      case 'aZ':
+        return 'title A to Z';
+      case 'zA':
+        return 'title Z to A';
+      default:
+        return 'recently opened';
+    }
+  };
+
   const renderSong = ({ item }: { item: Song }) => {
     const matchedLine = searchInLyrics && searchQuery.trim() ? findMatchedLine(item, searchQuery) : null;
     const isLoadingThisSong = loadingSongId === item.id;
@@ -271,17 +287,16 @@ export default function SongsScreen() {
   };
 
   const sortButton = (
-    <TouchableOpacity onPress={cycleSortMode} style={styles.openSearchButton}>
-      <Ionicons name={getSortIcon()} size={22} color={Colors.textMuted} />
-    </TouchableOpacity>
+    <IconButton
+      icon={getSortIcon()}
+      label={'Sort songs by ' + getSortLabel()}
+      onPress={cycleSortMode}
+    />
   );
-
-  const showIfSearchIsActive = { opacity: showSearch ? 1 : 0 };
-  const hideIfSearchIsActive = { opacity: showSearch ? 0 : 1 };
 
   const searchInput = (
     <TextInput
-      style={[styles.searchInput, showIfSearchIsActive]}
+      style={styles.searchInput}
       placeholder={searchInLyrics ? 'Search lyrics' : 'Search title or artist'}
       placeholderTextColor={Colors.textMuted}
       value={searchQuery}
@@ -291,59 +306,52 @@ export default function SongsScreen() {
   );
 
   const lyricsSearchToggle = (
-    <TouchableOpacity
+    <IconButton
+      icon={searchInLyrics ? 'musical-notes' : 'musical-notes-outline'}
+      label={searchInLyrics ? 'Searching in lyrics' : 'Search in lyrics'}
       onPress={() => setSearchInLyrics(!searchInLyrics)}
-      accessibilityRole="button"
-      accessibilityLabel="Search in lyrics"
-      accessibilityState={{ selected: searchInLyrics }}
-    >
-      <Ionicons
-        name={searchInLyrics ? 'musical-notes' : 'musical-notes-outline'}
-        size={22}
-        color={searchInLyrics ? Colors.primary : Colors.textMuted}
-      />
-    </TouchableOpacity>
+      selected={searchInLyrics}
+    />
   );
 
   const closeSearchButton = (
-    <TouchableOpacity onPress={toggleSearch} accessibilityRole="button" accessibilityLabel="Close song search">
-      <Ionicons name={'close'} size={22} color={Colors.textMuted} />
-    </TouchableOpacity>
+    <IconButton icon="close" label="Close song search" onPress={toggleSearch} />
   );
 
   const searchToggleButton = (
-    <TouchableOpacity onPress={toggleSearch} style={styles.openSearchButton} accessibilityRole="button" accessibilityLabel="Open song search">
-      <Ionicons name={'search'} size={22} color={Colors.textMuted} />
-    </TouchableOpacity>
+    <IconButton icon="search" label="Open song search" onPress={toggleSearch} />
   );
 
   const languageTabsToggle = (
-    <TouchableOpacity onPress={() => setShowLanguageTabs(!showLanguageTabs)} style={styles.openSearchButton}>
-      <Ionicons
-        name="language-outline"
-        size={22}
-        color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
-      />
-    </TouchableOpacity>
+    <IconButton
+      icon="language-outline"
+      label={showLanguageTabs ? 'Hide language filters' : 'Show language filters'}
+      onPress={() => setShowLanguageTabs(!showLanguageTabs)}
+      selected={selectedLanguages.length > 0}
+    />
   );
-
-  const title = <Text style={[styles.title, hideIfSearchIsActive]}>Saved Songs</Text>;
 
   return (
     <ScreenWrapper>
-      <View style={[styles.titleRow]}>
+      <View style={styles.titleRow}>
         {sortButton}
-        {title}
-        {searchInput}
-        <View style={[styles.searchButtons, showIfSearchIsActive]}>
-          {closeSearchButton}
-          {lyricsSearchToggle}
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {!showSearch && searchToggleButton}
-          {languageTabsToggle}
-        </View>
+        {showSearch ? (
+          <>
+            {searchInput}
+            <View style={styles.searchButtons}>
+              {closeSearchButton}
+              {lyricsSearchToggle}
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Saved Songs</Text>
+            <View style={styles.headerActions}>
+              {searchToggleButton}
+              {languageTabsToggle}
+            </View>
+          </>
+        )}
       </View>
 
       {showLanguageTabs && availableLanguages.length > 0 && (
@@ -424,16 +432,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  openSearchButton: {
-    padding: 4,
-    zIndex: 1,
-    marginLeft: -8,
-  },
   searchButtons: {
     flexDirection: 'row',
     gap: 8,
-    marginRight: 16,
-    marginLeft: -60,
+    marginLeft: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   searchInput: {
     flex: 1,

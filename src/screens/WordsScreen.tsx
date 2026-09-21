@@ -2,11 +2,9 @@ import React, { useState, useRef } from 'react';
 import {
   View,
   FlatList,
-  TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
@@ -18,6 +16,7 @@ import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
 import LanguageTabButtons from '../components/LanguageTabButtons';
 import EmptyState from '../components/EmptyState';
+import IconButton from '../components/IconButton';
 
 interface PendingDeletion {
   id: string;
@@ -95,7 +94,7 @@ export default function WordsScreen() {
 
   const searchInput = (
     <TextInput
-      style={[styles.searchInput, { opacity: showSearch ? 1 : 0 }]}
+      style={styles.searchInput}
       placeholder="Search by word or language..."
       placeholderTextColor={Colors.textMuted}
       value={searchQuery}
@@ -105,35 +104,30 @@ export default function WordsScreen() {
   );
 
   const languageTabsToggle = (
-    <TouchableOpacity onPress={() => setShowLanguageTabs(!showLanguageTabs)} style={styles.toggleButtons}>
-      <Ionicons
-        name="language-outline"
-        size={22}
-        color={selectedLanguages.length > 0 ? Colors.primary : Colors.textMuted}
-      />
-    </TouchableOpacity>
+    <IconButton
+      icon="language-outline"
+      label={showLanguageTabs ? 'Hide language filters' : 'Show language filters'}
+      onPress={() => setShowLanguageTabs(!showLanguageTabs)}
+      selected={selectedLanguages.length > 0}
+    />
   );
 
   const openSearchButton = (
-    <TouchableOpacity
+    <IconButton
+      icon={showSearch ? 'close' : 'search'}
+      label={showSearch ? 'Close word search' : 'Open word search'}
       onPress={toggleSearch}
-      style={[styles.toggleButtons, showSearch ? styles.closeSearchButton : styles.openSearchButton]}
-      accessibilityRole="button"
-      accessibilityLabel={showSearch ? 'Close word search' : 'Open word search'}
-    >
-      <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={Colors.textMuted} />
-    </TouchableOpacity>
+    />
   );
-
-  const title = <Text style={[styles.title, showSearch && { opacity: 0 }]}>Saved Words</Text>;
 
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        {searchInput}
-        {title}
-        {openSearchButton}
-        {languageTabsToggle}
+        {showSearch ? searchInput : <Text style={styles.title}>Saved Words</Text>}
+        <View style={styles.headerActions}>
+          {openSearchButton}
+          {languageTabsToggle}
+        </View>
       </View>
 
       {showLanguageTabs && availableLanguages.length > 0 && (
@@ -222,15 +216,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  toggleButtons: {
-    padding: 4,
-  },
-  openSearchButton: {
-    marginRight: 0,
-  },
-  closeSearchButton: {
-    marginLeft: -42,
-    marginRight: 16,
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   searchInput: {
     flex: 1,

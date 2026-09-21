@@ -15,11 +15,6 @@ const levels: {
   color: string;
 }[] = [
   {
-    value: 'Unknown',
-    label: 'Unknown',
-    color: Colors.masteryUnknown,
-  },
-  {
     value: 'New',
     label: 'New',
     color: Colors.masteryNew,
@@ -81,15 +76,17 @@ export default function MasteryLevelSelector({ value, onChange }: MasteryLevelSe
 const styles = StyleSheet.create({
   selector: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   button: {
     flex: 1,
+    minWidth: 76,
     backgroundColor: Colors.surface,
     borderRadius: 8,
     minHeight: 44,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

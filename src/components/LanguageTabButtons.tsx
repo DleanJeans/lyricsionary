@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
 import { LANGUAGES } from '../constants/languages';
@@ -9,6 +9,46 @@ interface LanguageTabButtonsProps {
   onLanguagesChange: (languages: string[]) => void;
   availableLanguages: string[];
   languageCounts?: Record<string, number>;
+}
+
+interface LanguageFilterChipProps {
+  language: (typeof LANGUAGES)[number];
+  count: number;
+  selected: boolean;
+  onPress: () => void;
+}
+
+function LanguageFilterChip({
+  language,
+  count,
+  selected,
+  onPress,
+}: LanguageFilterChipProps) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.tabButton,
+        selected && styles.tabButtonSelected,
+        pressed && styles.tabButtonPressed,
+      ]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={language.name + ' language filter'}
+      accessibilityState={{ selected }}
+    >
+      <Text style={styles.flag}>{language.flag}</Text>
+      <Text style={[styles.languageName, selected && styles.languageNameSelected]}>
+        {language.name}
+      </Text>
+      {count > 0 && (
+        <View style={[styles.badge, selected && styles.badgeSelected]}>
+          <Text style={[styles.badgeText, selected && styles.badgeTextSelected]}>
+            {count}
+          </Text>
+        </View>
+      )}
+    </Pressable>
+  );
 }
 
 export default function LanguageTabButtons({
@@ -43,31 +83,15 @@ export default function LanguageTabButtons({
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
-      {languagesToShow.map((lang) => {
-        const isSelected = selectedLanguages.includes(lang.name);
-        const count = languageCounts[lang.name] ?? 0;
-
-        return (
-          <TouchableOpacity
-            key={lang.code}
-            style={[styles.tabButton, isSelected && styles.tabButtonSelected]}
-            onPress={() => toggleLanguage(lang.name)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.flag}>{lang.flag}</Text>
-            <Text style={[styles.languageName, isSelected && styles.languageNameSelected]}>
-              {lang.name}
-            </Text>
-            {count > 0 && (
-              <View style={[styles.badge, isSelected && styles.badgeSelected]}>
-                <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>
-                  {count}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
+      {languagesToShow.map((language) => (
+        <LanguageFilterChip
+          key={language.code}
+          language={language}
+          count={languageCounts[language.name] ?? 0}
+          selected={selectedLanguages.includes(language.name)}
+          onPress={() => toggleLanguage(language.name)}
+        />
+      ))}
     </ScrollView>
   );
 }
@@ -84,6 +108,7 @@ const styles = StyleSheet.create({
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -95,6 +120,9 @@ const styles = StyleSheet.create({
   tabButtonSelected: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
+  },
+  tabButtonPressed: {
+    opacity: 0.72,
   },
   flag: {
     fontSize: 18,

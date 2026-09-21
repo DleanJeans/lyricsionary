@@ -2,7 +2,7 @@ import React from 'react';
 import {
   View,
   Modal,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
@@ -33,26 +33,49 @@ export default function ConfirmDialog({
   loading = false,
 }: ConfirmDialogProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>{title}</Text>
           <Text style={styles.modalMessage}>{message}</Text>
           <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.modalCancel} onPress={onCancel} disabled={loading}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalCancel,
+                pressed && !loading && styles.modalButtonPressed,
+              ]}
+              onPress={onCancel}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel={cancelText}
+              accessibilityState={{ disabled: loading }}
+            >
               <Text style={[styles.modalCancelText, loading && styles.modalButtonTextDisabled]}>{cancelText}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalConfirm, destructive && styles.modalConfirmDestructive, loading && styles.modalButtonDisabled]}
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalConfirm,
+                destructive && styles.modalConfirmDestructive,
+                loading && styles.modalButtonDisabled,
+                pressed && !loading && styles.modalButtonPressed,
+              ]}
               onPress={onConfirm}
               disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel={confirmText}
+              accessibilityState={{ disabled: loading }}
             >
               {loading ? (
                 <ActivityIndicator color={Colors.white} size="small" />
               ) : (
                 <Text style={styles.modalConfirmText}>{confirmText}</Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -92,6 +115,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalCancel: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 10,
@@ -102,6 +128,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   modalConfirm: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.primary,
     paddingVertical: 10,
     paddingHorizontal: 24,
@@ -115,6 +144,9 @@ const styles = StyleSheet.create({
   },
   modalButtonTextDisabled: {
     opacity: 0.5,
+  },
+  modalButtonPressed: {
+    opacity: 0.8,
   },
   modalConfirmText: {
     color: Colors.white,

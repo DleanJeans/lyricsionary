@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Updates from 'expo-updates';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { Colors } from './src/constants/theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useStore } from './src/store/useStore';
 
@@ -79,7 +80,12 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView
+      style={{
+        flex: 1,
+        backgroundColor: Colors.background,
+      }}
+    >
       <StatusBar style="light" />
       <SafeAreaProvider>
         <NavigationContainer linking={linking}>

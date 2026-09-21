@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
+import IconButton from './IconButton';
 import { Text } from './Text';
 
 interface LearnActionBarProps {
@@ -17,6 +18,9 @@ export default function LearnActionBar({
   onDecreaseFontSize,
   onIncreaseFontSize,
 }: LearnActionBarProps) {
+  const canDecrease = fontSize > 12;
+  const canIncrease = fontSize < 32;
+
   return (
     <View style={styles.actionBar}>
       <View style={styles.fontSizeControl}>
@@ -25,27 +29,21 @@ export default function LearnActionBar({
           size={18}
           color={Colors.textSecondary}
         />
-        <TouchableOpacity
+        <IconButton
+          icon="remove"
+          label="Decrease text size"
           onPress={onDecreaseFontSize}
-          style={styles.fontBtn}
-        >
-          <Ionicons
-            name="remove"
-            size={18}
-            color={Colors.text}
-          />
-        </TouchableOpacity>
+          disabled={!canDecrease}
+          style={styles.fontButton}
+        />
         <Text style={styles.fontSizeText}>{fontSize}</Text>
-        <TouchableOpacity
+        <IconButton
+          icon="add"
+          label="Increase text size"
           onPress={onIncreaseFontSize}
-          style={styles.fontBtn}
-        >
-          <Ionicons
-            name="add"
-            size={18}
-            color={Colors.text}
-          />
-        </TouchableOpacity>
+          disabled={!canIncrease}
+          style={styles.fontButton}
+        />
       </View>
       <Text style={styles.lineCounter}>{lineCount} lines</Text>
     </View>
@@ -67,10 +65,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  fontBtn: {
+  fontButton: {
     backgroundColor: Colors.surface,
-    borderRadius: 8,
-    padding: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   fontSizeText: {
     color: Colors.text,
@@ -78,9 +77,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     minWidth: 24,
     textAlign: 'center',
+    fontVariant: ['tabular-nums'],
   },
   lineCounter: {
     color: Colors.textSecondary,
     fontSize: 13,
+    fontVariant: ['tabular-nums'],
   },
 });

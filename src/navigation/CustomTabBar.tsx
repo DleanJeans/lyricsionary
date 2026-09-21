@@ -1,26 +1,48 @@
-import React from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
-import { Text } from '../components/Text';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/theme';
-import { WIDE_BREAKPOINT, SIDE_NAV_WIDTH } from '../hooks/useLayout';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import React from 'react';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from '../components/Text';
 import VersionInfo from '../components/VersionInfo';
+import { Colors } from '../constants/theme';
+import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
-const TAB_META: Record<string, { icon: IoniconName; iconFocused: IoniconName; label: string }> = {
-  Editor:  { icon: 'create-outline',         iconFocused: 'create',         label: 'Editor'  },
-  Web:     { icon: 'globe-outline',           iconFocused: 'globe',          label: 'Web'     },
-  Learn:   { icon: 'school-outline',          iconFocused: 'school',         label: 'Learn'   },
-  Songs:  { icon: 'musical-notes-outline',   iconFocused: 'musical-notes',  label: 'Songs'   },
-  Words:   { icon: 'book-outline',            iconFocused: 'book',           label: 'Words'   },
+const TAB_META: Record<
+  string,
+  {
+    icon: IoniconName;
+    iconFocused: IoniconName;
+    label: string;
+  }
+> = {
+  Editor: {
+    icon: 'create-outline',
+    iconFocused: 'create',
+    label: 'Editor',
+  },
+  Web: {
+    icon: 'globe-outline',
+    iconFocused: 'globe',
+    label: 'Web',
+  },
+  Learn: {
+    icon: 'school-outline',
+    iconFocused: 'school',
+    label: 'Learn',
+  },
+  Songs: {
+    icon: 'musical-notes-outline',
+    iconFocused: 'musical-notes',
+    label: 'Songs',
+  },
+  Words: {
+    icon: 'book-outline',
+    iconFocused: 'book',
+    label: 'Words',
+  },
 };
 
 export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
@@ -42,10 +64,22 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   /* ─── Wide: left sidebar ─────────────────────────────────────── */
   if (isWide) {
     return (
-      <View style={styles.sidebar}>
+      <View
+        style={[
+          styles.sidebar,
+          {
+            paddingTop: Math.max(insets.top, 20),
+            paddingBottom: Math.max(insets.bottom, 12),
+          },
+        ]}
+      >
         {/* Logo */}
         <View style={styles.logoRow}>
-          <Ionicons name="musical-notes" size={26} color={Colors.primary} />
+          <Ionicons
+            name="musical-notes"
+            size={26}
+            color={Colors.primary}
+          />
           <Text style={styles.appName}>Lyricsionary</Text>
         </View>
 
@@ -57,24 +91,35 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
           if (!meta) return null;
           const focused = index === state.index;
           return (
-            <TouchableOpacity
+            <Pressable
               key={route.key}
-              style={[styles.sideItem, focused && styles.sideItemActive]}
+              style={({ pressed }) => [
+                styles.sideItem,
+                focused && styles.sideItemActive,
+                pressed && styles.itemPressed,
+              ]}
               onPress={() => handlePress(route.name, route.key, focused)}
-              activeOpacity={0.7}
               accessibilityRole="tab"
               accessibilityLabel={meta.label}
-              accessibilityState={{ selected: focused }}
+              accessibilityHint={`Switch to ${meta.label}`}
+              accessibilityState={{
+                selected: focused,
+              }}
             >
               <Ionicons
                 name={focused ? meta.iconFocused : meta.icon}
                 size={20}
                 color={focused ? Colors.primary : Colors.textMuted}
               />
-              <Text style={[styles.sideLabel, focused && styles.sideLabelActive]}>
+              <Text
+                style={[
+                  styles.sideLabel,
+                  focused && styles.sideLabelActive,
+                ]}
+              >
                 {meta.label}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
 
@@ -89,30 +134,48 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
   /* ─── Narrow: bottom bar ─────────────────────────────────────── */
   return (
-    <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 8 }]}>
+    <View
+      style={[
+        styles.bottomBar,
+        {
+          paddingBottom: Math.max(insets.bottom, 8),
+        },
+      ]}
+    >
       {state.routes.map((route, index) => {
         const meta = TAB_META[route.name];
         if (!meta) return null;
         const focused = index === state.index;
         return (
-          <TouchableOpacity
+          <Pressable
             key={route.key}
-            style={styles.bottomItem}
+            style={({ pressed }) => [
+              styles.bottomItem,
+              focused && styles.bottomItemActive,
+              pressed && styles.itemPressed,
+            ]}
             onPress={() => handlePress(route.name, route.key, focused)}
-            activeOpacity={0.7}
             accessibilityRole="tab"
             accessibilityLabel={meta.label}
-            accessibilityState={{ selected: focused }}
+            accessibilityHint={`Switch to ${meta.label}`}
+            accessibilityState={{
+              selected: focused,
+            }}
           >
             <Ionicons
               name={focused ? meta.iconFocused : meta.icon}
               size={22}
               color={focused ? Colors.primary : Colors.textMuted}
             />
-            <Text style={[styles.bottomLabel, focused && styles.bottomLabelActive]}>
+            <Text
+              style={[
+                styles.bottomLabel,
+                focused && styles.bottomLabelActive,
+              ]}
+            >
               {meta.label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>
@@ -130,7 +193,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRightWidth: 1,
     borderRightColor: Colors.border,
-    paddingTop: 28,
     paddingHorizontal: 12,
     zIndex: 100,
   },
@@ -155,14 +217,18 @@ const styles = StyleSheet.create({
   sideItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    minHeight: 48,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
     gap: 12,
     marginBottom: 4,
   },
   sideItemActive: {
     backgroundColor: `${Colors.primary}22`,
+    borderLeftColor: Colors.primary,
   },
   sideLabel: {
     fontSize: 15,
@@ -185,12 +251,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+    paddingHorizontal: 8,
     paddingTop: 8,
+    gap: 4,
   },
   bottomItem: {
     flex: 1,
+    minHeight: 48,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
     gap: 3,
+  },
+  bottomItemActive: {
+    backgroundColor: `${Colors.primary}22`,
+  },
+  itemPressed: {
+    opacity: 0.72,
   },
   bottomLabel: {
     fontSize: 10,

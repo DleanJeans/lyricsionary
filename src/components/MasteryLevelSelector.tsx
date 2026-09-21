@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { MasteryLevel } from '../types';
 import { Text } from './Text';
@@ -36,37 +36,44 @@ const levels: {
   },
 ];
 
+interface MasteryOptionProps {
+  level: (typeof levels)[number];
+  active: boolean;
+  onPress: () => void;
+}
+
+function MasteryOption({ level, active, onPress }: MasteryOptionProps) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.button,
+        active && styles.buttonActive,
+        active && { backgroundColor: level.color },
+        pressed && styles.buttonPressed,
+      ]}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityLabel={level.label + ' mastery level'}
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[styles.buttonText, active && styles.buttonTextActive]}>
+        {level.label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function MasteryLevelSelector({ value, onChange }: MasteryLevelSelectorProps) {
   return (
     <View style={styles.selector}>
-      {levels.map((level) => {
-        const isActive = value === level.value;
-        return (
-          <TouchableOpacity
-            key={level.value}
-            style={[
-              styles.button,
-              isActive && styles.buttonActive,
-              isActive && {
-                backgroundColor: level.color,
-              },
-            ]}
-            onPress={() => onChange(level.value)}
-            accessibilityRole="radio"
-            accessibilityLabel={level.label}
-            accessibilityState={{ selected: isActive }}
-          >
-            <Text
-              style={[
-                styles.buttonText,
-                isActive && styles.buttonTextActive,
-              ]}
-            >
-              {level.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+      {levels.map((level) => (
+        <MasteryOption
+          key={level.value}
+          level={level}
+          active={value === level.value}
+          onPress={() => onChange(level.value)}
+        />
+      ))}
     </View>
   );
 }
@@ -80,12 +87,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.surface,
     borderRadius: 8,
+    minHeight: 44,
     paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  buttonPressed: {
+    opacity: 0.72,
   },
   buttonActive: {
     borderColor: 'transparent',

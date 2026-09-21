@@ -17,6 +17,7 @@ import { Song, RootTabParamList } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
@@ -357,23 +358,27 @@ export default function SongsScreen() {
       )}
 
       {filteredSongs.length === 0 ? (
-        <View style={styles.empty}>
-          {songs.length === 0 ? (
-            <>
-              <Ionicons name="library-outline" size={64} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No saved songs yet.{'\n'}Go to Editor to add some!</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="search-outline" size={64} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>
-                {selectedLanguages.length > 0 || searchQuery.trim()
-                  ? 'No songs match your filters.'
-                  : 'No songs match your search.'}
-              </Text>
-            </>
-          )}
-        </View>
+        songs.length === 0 ? (
+          <EmptyState
+            icon="library-outline"
+            title="Your library is empty"
+            message="Add a song to start practicing lyrics and looking up words."
+            actionLabel="Create New Lyrics"
+            onAction={() => navigation.navigate('Editor')}
+          />
+        ) : (
+          <EmptyState
+            icon="search-outline"
+            title="No songs found"
+            message="Try a different search or clear the active filters."
+            actionLabel="Clear filters"
+            onAction={() => {
+              setSearchQuery('');
+              setSearchInLyrics(false);
+              setSelectedLanguages([]);
+            }}
+          />
+        )
       ) : (
         <FlatList
           key={numColumns}
@@ -518,18 +523,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     fontStyle: 'italic',
-  },
-  empty: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 24,
   },
   languageTabsContainer: {
     marginBottom: 12,

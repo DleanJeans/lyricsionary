@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-nat
 import LearnActionBar from '../components/LearnActionBar';
 import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
+import EmptyState from '../components/EmptyState';
 import NewWordCard from '../components/NewWordCard';
 import ScreenWrapper from '../components/ScreenWrapper';
 import SongMetadataHeader from '../components/SongMetadataHeader';
@@ -489,15 +490,13 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
   if (!song) {
     return (
       <ScreenWrapper>
-        <View style={styles.emptyInner}>
-          <Ionicons name="musical-notes-outline" size={64} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>
-            No lyrics to display.{'\n'}Go to Editor to add lyrics.
-          </Text>
-          <TouchableOpacity style={styles.goButton} onPress={() => navigation.navigate('Editor')}>
-            <Text style={styles.goButtonText}>Go to Editor</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon="musical-notes-outline"
+          title="No lyrics to display"
+          message="Add a song in Editor to start practicing and looking up words."
+          actionLabel="Go to Editor"
+          onAction={() => navigation.navigate('Editor')}
+        />
       </ScreenWrapper>
     );
   }
@@ -698,12 +697,6 @@ const styles = StyleSheet.create({
   narrowMain: {
     flex: 1,
   },
-  emptyInner: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
   wordPlaceholder: {
     flex: 1,
     justifyContent: 'center',
@@ -714,25 +707,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: 14,
     textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 24,
-  },
-  goButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    marginTop: 24,
-  },
-  goButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',

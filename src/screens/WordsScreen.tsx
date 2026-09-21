@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { WordEntry } from '../types';
@@ -16,6 +17,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
 import LanguageTabButtons from '../components/LanguageTabButtons';
+import EmptyState from '../components/EmptyState';
 
 interface PendingDeletion {
   id: string;
@@ -23,6 +25,7 @@ interface PendingDeletion {
 }
 
 export default function WordsScreen() {
+  const navigation = useNavigation<any>();
   const words = useStore((s) => s.words);
   const deleteWord = useStore((s) => s.deleteWord);
   const isWide = useIsWide();
@@ -144,23 +147,26 @@ export default function WordsScreen() {
         </View>
       )}
       {searchedWords.length === 0 ? (
-        <View style={styles.empty}>
-          {words.length === 0 ? (
-            <>
-              <Ionicons name="book-outline" size={64} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No saved words yet.{'\n'}Tap words in Learn to look them up!</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="search-outline" size={64} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>
-                {selectedLanguages.length > 0 || searchQuery.trim()
-                  ? 'No words match your filters.'
-                  : 'No words match your search.'}
-              </Text>
-            </>
-          )}
-        </View>
+        words.length === 0 ? (
+          <EmptyState
+            icon="book-outline"
+            title="Build your word bank"
+            message="Tap a word in Learn to save its pronunciation and meaning."
+            actionLabel="Open Learn"
+            onAction={() => navigation.navigate('Learn')}
+          />
+        ) : (
+          <EmptyState
+            icon="search-outline"
+            title="No words found"
+            message="Try a different search or clear the active filters."
+            actionLabel="Clear filters"
+            onAction={() => {
+              setSearchQuery('');
+              setSelectedLanguages([]);
+            }}
+          />
+        )
       ) : (
         <FlatList
           key={numColumns}
@@ -243,18 +249,6 @@ const styles = StyleSheet.create({
   },
   row: {
     gap: 10,
-  },
-  empty: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 24,
   },
   toastStack: {
     position: 'absolute',

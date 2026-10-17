@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -75,6 +75,9 @@ export default function WordTransformButtons({
   );
 }
 
+// Let long words (e.g. German compounds) wrap on web, where unbreakable words overflow by default
+const webWordBreak = Platform.OS === 'web' ? ({ wordBreak: 'break-word' } as object) : {};
+
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -91,8 +94,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.primary,
     gap: 6,
+    maxWidth: '100%',
   },
   buttonText: {
+    flexShrink: 1,
+    ...webWordBreak,
     color: Colors.primary,
     fontSize: 14,
     fontWeight: '600',

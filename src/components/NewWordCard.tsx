@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel } from '../types';
@@ -144,6 +144,9 @@ export default function NewWordCard({
   );
 }
 
+// Let long words (e.g. German compounds) wrap on web, where unbreakable words overflow by default
+const webWordBreak = Platform.OS === 'web' ? ({ wordBreak: 'break-word' } as object) : {};
+
 const styles = StyleSheet.create({
   wordPanel: {
     backgroundColor: Colors.surface,
@@ -166,11 +169,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wordTitleRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginRight: 8,
   },
   wordText: {
+    flexShrink: 1,
+    ...webWordBreak,
     fontSize: 24,
     fontWeight: '700',
     color: Colors.text,

@@ -7,6 +7,7 @@ import { MasteryLevel, Song, Translation, WordContext, WordEntry } from '../type
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
 const IGNORED_WORDS_KEY = '@lyricsionary_ignored_words';
+const COMPOUND_SPLITS_KEY = '@lyricsionary_compound_splits';
 
 export interface IgnoredWord {
   word: string;
@@ -20,6 +21,7 @@ interface AppState {
   songs: Song[];
   words: WordEntry[];
   ignoredWords: IgnoredWord[];
+  compoundSplits: Record<string, string[]>;  // Manual compound word splits, keyed by lowercase word
   currentSongId: string | null;
   webUrl: string;
   scrapeTargetTab: number;
@@ -76,12 +78,17 @@ interface AppState {
   // Ignore list actions
   loadIgnoredWords: () => Promise<void>;
   toggleIgnoredWord: (word: string, language: string) => Promise<void>;
+
+  // Compound word actions
+  loadCompoundSplits: () => Promise<void>;
+  setCompoundSplit: (word: string, parts: string[] | null) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
   songs: [],
   words: [],
   ignoredWords: [],
+  compoundSplits: {},
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
   scrapeTargetTab: 0,
@@ -317,6 +324,26 @@ export const useStore = create<AppState>((set, get) => ({
       : [...current, { word: lower, language }];
     set({ ignoredWords });
     await AsyncStorage.setItem(IGNORED_WORDS_KEY, JSON.stringify(ignoredWords));
+  },
+
+  loadCompoundSplits: async () => {
+    try {
+      const json = await AsyncStorage.getItem(COMPOUND_SPLITS_KEY);
+      if (json) set({ compoundSplits: JSON.parse(json) });
+    } catch (e) {
+      console.error('Failed to load compound splits', e);
+    }
+  },
+
+  setCompoundSplit: async (word, parts) => {
+    const compoundSplits = { ...get().compoundSplits };
+    if (parts) {
+      compoundSplits[word.toLowerCase()] = parts;
+    } else {
+      delete compoundSplits[word.toLowerCase()];
+    }
+    set({ compoundSplits });
+    await AsyncStorage.setItem(COMPOUND_SPLITS_KEY, JSON.stringify(compoundSplits));
   },
 
 }));

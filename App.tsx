@@ -29,6 +29,7 @@ export default function App() {
   const loadSongs = useStore((s) => s.loadSongs);
   const loadWords = useStore((s) => s.loadWords);
   const loadIgnoredWords = useStore((s) => s.loadIgnoredWords);
+  const loadCompoundSplits = useStore((s) => s.loadCompoundSplits);
 
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({
@@ -40,6 +41,7 @@ export default function App() {
     loadSongs();
     loadWords();
     loadIgnoredWords();
+    loadCompoundSplits();
 
     // Check for expo-updates on mount
     async function checkForUpdates() {

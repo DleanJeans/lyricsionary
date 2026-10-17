@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import NewWordCard from '../components/NewWordCard';
@@ -16,6 +16,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { WordContext } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
+import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
 import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
 import { splitElisionParts } from '../utils/wordTransform';
 
@@ -38,6 +39,7 @@ export default function LearnScreen() {
     songs,
     words,
     ignoredWords,
+    compoundSplits,
     currentSongId,
     fontSize,
     setFontSize,
@@ -53,6 +55,8 @@ export default function LearnScreen() {
   } = useStore();
 
   const song = songs.find((s) => s.id === currentSongId);
+  const isGermanSong = isGermanLanguage(song?.originalLanguages);
+  const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
@@ -432,6 +436,11 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
 
           const isIgnored = !!cleanedWord && isWordIgnored(ignoredWords, cleanedWord, song?.originalLanguages?.[0] || 'unknown');
 
+          const compoundParts = !wordEntry && !isIgnored && isGermanSong && cleanedWord
+            ? getCompoundParts(cleanedWord, compoundSplits, knownGermanWords)
+            : null;
+          const compoundStart = compoundParts ? word.indexOf(cleanedWord) : -1;
+
           const wordColor = isSelected
             ? Colors.primary
             : isIgnored
@@ -463,14 +472,42 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
                   fontWeight: isActiveOccurrence ? '700' : '400',
                 }}
               >
-                {word}
+                {compoundParts && compoundStart >= 0 ? (
+                  <>
+                    {word.slice(0, compoundStart)}
+                    {compoundParts.map((part, pi) => {
+                      const partEntry = words.find((w) => w.word.toLowerCase() === part.lemma);
+                      const partColor = isSelected
+                        ? Colors.primary
+                        : (showMasteryLevelColors && partEntry?.masteryLevel)
+                          ? getMasteryLevelColor(partEntry.masteryLevel)
+                          : Colors.text;
+                      return (
+                        <React.Fragment key={pi}>
+                          {pi > 0 && <Text style={[styles.compoundSeparator, { fontSize, lineHeight: fontSize * 1.6 }]}>·</Text>}
+                          <Text
+                            style={{
+                              color: partColor,
+                              fontWeight: isActiveOccurrence ? '700' : '400',
+                              fontSize,
+                              lineHeight: fontSize * 1.6,
+                            }}
+                          >
+                            {part.text}
+                          </Text>
+                        </React.Fragment>
+                      );
+                    })}
+                    {word.slice(compoundStart + cleanedWord.length)}
+                  </>
+                ) : word}
               </Text>
             </View>
           );
         })}
       </View>
     );
-  }, [words, ignoredWords, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [words, ignoredWords, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
 
   if (!song) {
     return (
@@ -848,6 +885,9 @@ const styles = StyleSheet.create({
   translationLine: {
     color: Colors.primaryLight,
     marginTop: 2,
+  },
+  compoundSeparator: {
+    color: Colors.textMuted,
   },
   blurredText: {
     filter: 'blur(5px)',

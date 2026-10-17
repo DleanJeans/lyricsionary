@@ -18,6 +18,7 @@ interface WordTransformButtonsProps {
   source?: 'Learn' | 'Words';
   occurrence?: number;
   hideOriginalWord?: boolean;
+  extraWords?: string[];
 }
 
 export default function WordTransformButtons({
@@ -32,11 +33,14 @@ export default function WordTransformButtons({
   source,
   occurrence,
   hideOriginalWord = false,
+  extraWords = [],
 }: WordTransformButtonsProps) {
   const navigation = useNavigation<any>();
 
   // Get all transformed versions of the word
-  const transforms = getWordTransforms(word, language || originalLanguages?.[0]);
+  const transforms = [
+    ...new Set([...getWordTransforms(word, language || originalLanguages?.[0]), ...extraWords]),
+  ];
 
   // Always show at least the original word as a button
   const wordsToShow = hideOriginalWord ? transforms : [word, ...transforms];

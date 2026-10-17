@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel } from '../types';
+import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, parseManualSplit } from '../utils/compoundWords';
 import MasteryLevelDropdown from './MasteryLevelDropdown';
-import { Text } from './Text';
+import { Text, TextInput } from './Text';
 import WordTransformButtons from './WordTransformButtons';
 
 interface NewWordCardProps {
@@ -40,6 +41,25 @@ export default function NewWordCard({
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   const language = originalLanguages?.[0] || 'unknown';
   const isIgnored = isWordIgnored(ignoredWords, word, language);
+
+  const words = useStore((s) => s.words);
+  const compoundSplits = useStore((s) => s.compoundSplits);
+  const setCompoundSplit = useStore((s) => s.setCompoundSplit);
+  const isGerman = isGermanLanguage(originalLanguages);
+  const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
+  const compoundParts = isGerman ? getCompoundParts(word, compoundSplits, knownGermanWords) : null;
+  const [isEditingSplit, setIsEditingSplit] = useState(false);
+  const [splitInput, setSplitInput] = useState('');
+
+  const startEditingSplit = () => {
+    setSplitInput(compoundParts ? compoundParts.map((p) => p.text).join('-') : word);
+    setIsEditingSplit(true);
+  };
+
+  const saveSplit = () => {
+    setCompoundSplit(word, parseManualSplit(word, splitInput));
+    setIsEditingSplit(false);
+  };
 
   const handleMasterySelect = async (level: MasteryLevel) => {
     await addOrUpdateWord(word, language, '', [], level);
@@ -94,7 +114,32 @@ export default function NewWordCard({
         originalLanguages={originalLanguages}
         source="Learn"
         hideOriginalWord
+        extraWords={compoundParts?.map((p) => p.lemma)}
       />
+      {isGerman && (
+        <View style={styles.compoundRow}>
+          <TouchableOpacity accessibilityLabel="Split Compound Word" style={styles.splitButton} onPress={isEditingSplit ? saveSplit : startEditingSplit}>
+            <Ionicons name={isEditingSplit ? 'checkmark' : 'cut-outline'} size={16} color={Colors.primary} />
+          </TouchableOpacity>
+          {isEditingSplit ? (
+            <TextInput
+              style={styles.splitInput}
+              value={splitInput}
+              onChangeText={setSplitInput}
+              onSubmitEditing={saveSplit}
+              placeholder="Split with hyphens, e.g. Liebes-brief"
+              placeholderTextColor={Colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+            />
+          ) : (
+            <Text style={styles.compoundText} numberOfLines={1}>
+              {compoundParts ? compoundParts.map((p) => p.text).join(' · ') : 'Split compound word'}
+            </Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -144,6 +189,32 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 10,
     fontWeight: '700',
+  },
+  compoundRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  splitButton: {
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  splitInput: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.primary,
+    paddingVertical: 4,
+  },
+  compoundText: {
+    flex: 1,
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
   searchButton: {
     backgroundColor: Colors.surface,

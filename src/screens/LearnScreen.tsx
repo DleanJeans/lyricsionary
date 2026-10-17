@@ -606,6 +606,7 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
                     key={ti}
                     onPress={() => handleTranslationPress(i, ti)}
                     activeOpacity={blurTranslations ? 0.7 : 1}
+                    style={[styles.translationContainer, isBlurred && styles.blurredContainer]}
                   >
                     <Text
                       style={[
@@ -888,6 +889,16 @@ const styles = StyleSheet.create({
   },
   compoundSeparator: {
     color: Colors.textMuted,
+  },
+  translationContainer: {
+    alignSelf: 'flex-start',
+    marginHorizontal: -4,
+    paddingHorizontal: 4,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  blurredContainer: {
+    backgroundColor: Colors.surfaceLight,
   },
   blurredText: {
     filter: 'blur(5px)',

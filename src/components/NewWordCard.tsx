@@ -3,7 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
-import { useStore } from '../store/useStore';
+import { isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel } from '../types';
 import MasteryLevelDropdown from './MasteryLevelDropdown';
 import { Text } from './Text';
@@ -36,9 +36,13 @@ export default function NewWordCard({
 }: NewWordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  const ignoredWords = useStore((s) => s.ignoredWords);
+  const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
+  const language = originalLanguages?.[0] || 'unknown';
+  const isIgnored = isWordIgnored(ignoredWords, word, language);
 
   const handleMasterySelect = async (level: MasteryLevel) => {
-    await addOrUpdateWord(word, originalLanguages?.[0] || 'unknown', '', [], level);
+    await addOrUpdateWord(word, language, '', [], level);
     onClose();
   };
 
@@ -61,13 +65,20 @@ export default function NewWordCard({
       <View style={styles.wordHeader}>
         <View style={styles.wordTitleRow}>
           <Text style={styles.wordText}>{word}</Text>
-          <View style={styles.newBadge}>
-            <Text style={styles.newBadgeText}>NEW</Text>
+          <View style={[styles.newBadge, isIgnored && styles.ignoredBadge]}>
+            <Text style={styles.newBadgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
           </View>
           <TouchableOpacity accessibilityLabel="Search New Word" style={styles.searchButton} onPress={handleLookupOriginalWord}>
             <Ionicons name="search" size={16} color={Colors.primary} />
           </TouchableOpacity>
           <MasteryLevelDropdown onSelect={handleMasterySelect} />
+          <TouchableOpacity
+            accessibilityLabel={isIgnored ? 'Unignore Word' : 'Ignore Word'}
+            style={styles.searchButton}
+            onPress={() => toggleIgnoredWord(word, language)}
+          >
+            <Ionicons name={isIgnored ? 'eye-outline' : 'eye-off-outline'} size={16} color={Colors.primary} />
+          </TouchableOpacity>
         </View>
         <TouchableOpacity onPress={onClose}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
@@ -125,6 +136,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     marginBottom: -4,
+  },
+  ignoredBadge: {
+    backgroundColor: Colors.textMuted,
   },
   newBadgeText: {
     color: Colors.white,

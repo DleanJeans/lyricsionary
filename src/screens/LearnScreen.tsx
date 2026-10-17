@@ -13,7 +13,7 @@ import { getFlagForLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
-import { useStore } from '../store/useStore';
+import { isWordIgnored, useStore } from '../store/useStore';
 import { WordContext } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
@@ -37,6 +37,7 @@ export default function LearnScreen() {
   const {
     songs,
     words,
+    ignoredWords,
     currentSongId,
     fontSize,
     setFontSize,
@@ -429,9 +430,13 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
           const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && effectiveEmoji &&
             effectiveEmoji !== getFlagForLanguage(wordEntry.language);
 
+          const isIgnored = !!cleanedWord && isWordIgnored(ignoredWords, cleanedWord, song?.originalLanguages?.[0] || 'unknown');
+
           const wordColor = isSelected
             ? Colors.primary
-            : (showMasteryLevelColors && wordEntry?.masteryLevel)
+            : isIgnored
+              ? Colors.textMuted
+              : (showMasteryLevelColors && wordEntry?.masteryLevel)
               ? getMasteryLevelColor(wordEntry.masteryLevel)
               : Colors.text;
 
@@ -465,7 +470,7 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
         })}
       </View>
     );
-  }, [words, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [words, ignoredWords, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
 
   if (!song) {
     return (

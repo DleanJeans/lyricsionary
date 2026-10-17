@@ -6,10 +6,20 @@ import { MasteryLevel, Song, Translation, WordContext, WordEntry } from '../type
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
+const IGNORED_WORDS_KEY = '@lyricsionary_ignored_words';
+
+export interface IgnoredWord {
+  word: string;
+  language: string;
+}
+
+export const isWordIgnored = (ignoredWords: IgnoredWord[], word: string, language: string) =>
+  ignoredWords.some((w) => w.word === word.toLowerCase() && w.language === language);
 
 interface AppState {
   songs: Song[];
   words: WordEntry[];
+  ignoredWords: IgnoredWord[];
   currentSongId: string | null;
   webUrl: string;
   scrapeTargetTab: number;
@@ -62,11 +72,16 @@ interface AppState {
     masteryLevel?: MasteryLevel
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
+
+  // Ignore list actions
+  loadIgnoredWords: () => Promise<void>;
+  toggleIgnoredWord: (word: string, language: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
   songs: [],
   words: [],
+  ignoredWords: [],
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
   scrapeTargetTab: 0,
@@ -283,6 +298,25 @@ export const useStore = create<AppState>((set, get) => ({
     const words = get().words.filter((w) => w.id !== id);
     set({ words });
     await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
+  },
+
+  loadIgnoredWords: async () => {
+    try {
+      const json = await AsyncStorage.getItem(IGNORED_WORDS_KEY);
+      if (json) set({ ignoredWords: JSON.parse(json) });
+    } catch (e) {
+      console.error('Failed to load ignored words', e);
+    }
+  },
+
+  toggleIgnoredWord: async (word, language) => {
+    const lower = word.toLowerCase();
+    const current = get().ignoredWords;
+    const ignoredWords = isWordIgnored(current, lower, language)
+      ? current.filter((w) => !(w.word === lower && w.language === language))
+      : [...current, { word: lower, language }];
+    set({ ignoredWords });
+    await AsyncStorage.setItem(IGNORED_WORDS_KEY, JSON.stringify(ignoredWords));
   },
 
 }));

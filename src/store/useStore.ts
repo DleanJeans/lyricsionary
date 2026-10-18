@@ -14,6 +14,13 @@ export interface IgnoredWord {
   language: string;
 }
 
+// Automatic lyrics + translation flow started from the now playing notification
+export interface AutoFetch {
+  songName: string;
+  artistName: string;
+  step: 'lyrics' | 'translation' | 'translating';
+}
+
 export const isWordIgnored = (ignoredWords: IgnoredWord[], word: string, language: string) =>
   ignoredWords.some((w) => w.word === word.toLowerCase() && w.language === language);
 
@@ -37,6 +44,7 @@ interface AppState {
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
+  autoFetch: AutoFetch | null;
 
   // Song actions
   loadSongs: () => Promise<void>;
@@ -56,6 +64,7 @@ interface AppState {
   setDeeplCurrentChunk: (index: number) => void;
   addDeeplTranslatedChunk: (translation: string) => void;
   resetDeeplTranslation: () => void;
+  setAutoFetch: (autoFetch: AutoFetch | null) => void;
 
   // Learn actions
   setFontSize: (size: number) => void;
@@ -104,6 +113,7 @@ export const useStore = create<AppState>((set, get) => ({
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
+  autoFetch: null,
 
   loadSongs: async () => {
     try {
@@ -189,6 +199,8 @@ export const useStore = create<AppState>((set, get) => ({
     deeplTranslatedChunks: [],
     deeplLineMap: null,
   }),
+
+  setAutoFetch: (autoFetch) => set({ autoFetch }),
 
   setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
 

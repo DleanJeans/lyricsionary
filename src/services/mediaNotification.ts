@@ -36,6 +36,7 @@ const MEDIA_APP_PACKAGES = [
 ];
 
 const LAST_MEDIA_KEY = '@lyricsionary_last_media';
+const SPOTIFY_PACKAGE = 'com.spotify.music';
 
 /**
  * Called from the headless task handler in index.ts when a notification arrives.
@@ -53,6 +54,14 @@ export async function handleNotificationEvent(notification: {
       artistName: notification.text,
     };
     await AsyncStorage.setItem(LAST_MEDIA_KEY, JSON.stringify(info));
+    if (notification.app === SPOTIFY_PACKAGE) {
+      try {
+        // Required lazily to avoid a circular import at module load
+        await require('./nowPlayingNotification').notifyNowPlaying(info);
+      } catch (error) {
+        console.error('Failed to post now playing notification:', error);
+      }
+    }
   }
 }
 

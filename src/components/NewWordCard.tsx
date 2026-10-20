@@ -86,12 +86,10 @@ export default function NewWordCard({
     <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
       <View style={styles.wordHeader}>
         <View style={styles.wordTitle}>
-          <View style={styles.wordTitleRow}>
-            <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
-            <View style={[styles.badge, isIgnored && styles.ignoredBadge]}>
-              <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
-            </View>
+          <View style={[styles.badge, isIgnored && styles.ignoredBadge]}>
+            <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
           </View>
+          <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
           {showSplit && compoundParts && !isEditingSplit && (
             <Text style={styles.compoundText}>{compoundParts.map((p) => p.text).join(' · ')}</Text>
           )}
@@ -191,16 +189,10 @@ const styles = StyleSheet.create({
   },
   wordTitle: {
     flex: 1,
-    gap: 2,
-  },
-  wordTitleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: 8,
+    alignItems: 'flex-start',
+    gap: 4,
   },
   wordText: {
-    flexShrink: 1,
     ...webWordBreak,
     fontSize: 24,
     fontWeight: '700',
@@ -210,6 +202,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   badge: {
+    alignSelf: 'flex-start',
     backgroundColor: Colors.success,
     borderRadius: 4,
     paddingHorizontal: 6,

@@ -5,15 +5,15 @@ const known = new Set(['liebe', 'brief', 'hand', 'schuh', 'haus', 'tür', 'arbei
 describe('splitCompound', () => {
   it('splits a two-part compound', () => {
     expect(splitCompound('Handschuh', known)).toEqual([
-      { text: 'Hand', lemma: 'hand' },
-      { text: 'schuh', lemma: 'schuh' },
+      { text: 'Hand', lemma: 'hand', lookup: 'Hand' },
+      { text: 'schuh', lemma: 'schuh', lookup: 'Schuh' },
     ]);
   });
 
   it('handles a linking element', () => {
     expect(splitCompound('Liebesbrief', known)).toEqual([
-      { text: 'Liebes', lemma: 'liebe' },
-      { text: 'brief', lemma: 'brief' },
+      { text: 'Liebes', lemma: 'liebe', lookup: 'Liebe' },
+      { text: 'brief', lemma: 'brief', lookup: 'Brief' },
     ]);
   });
 
@@ -59,6 +59,27 @@ describe('getCompoundParts', () => {
 
   it('falls back to automatic split', () => {
     expect(getCompoundParts('Haustür', {}, known)?.map((p) => p.text)).toEqual(['Haus', 'tür']);
+  });
+});
+
+describe('lookup spelling', () => {
+  it('uses the saved spelling when known', () => {
+    const saved = new Map([['liebe', 'Liebe'], ['brief', 'Brief']]);
+    expect(splitCompound('Liebesbrief', saved)?.map((p) => p.lookup)).toEqual(['Liebe', 'Brief']);
+  });
+
+  it('capitalizes parts of a capitalized word', () => {
+    expect(getCompoundParts('Fernseher', { fernseher: ['fern', 'seher'] }, known)?.map((p) => p.lookup)).toEqual([
+      'Fern',
+      'Seher',
+    ]);
+  });
+
+  it('keeps parts of a lowercase word lowercase', () => {
+    expect(getCompoundParts('wunderschön', { wunderschön: ['wunder', 'schön'] }, known)?.map((p) => p.lookup)).toEqual([
+      'wunder',
+      'schön',
+    ]);
   });
 });
 

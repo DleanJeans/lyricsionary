@@ -1,9 +1,15 @@
 export interface CompoundPart {
   // Segment as it appears in the word (keeps original casing and any linking element)
   text: string;
-  // Form to look up (segment without linking element, e.g. "Liebes" -> "liebe")
+  // Lowercased segment without linking element, for matching saved words (e.g. "Liebes" -> "liebe")
   lemma: string;
+  // Form to look up: the saved word's spelling when known, else the lemma capitalized like the word
+  // (German nouns keep their capital, e.g. "Liebesbrief" -> "Liebe", "Brief")
+  lookup: string;
 }
+
+// Lowercased known words, optionally mapped to their saved spelling
+export type KnownWords = ReadonlySet<string> | ReadonlyMap<string, string>;
 
 const MIN_PART_LENGTH = 3;
 
@@ -29,7 +35,8 @@ export function parseManualSplit(word: string, input: string): string[] | null {
  * Turn a list of segments into CompoundParts using the word's own casing.
  * Linking elements are stripped from the lemma when the stripped form is known.
  */
-export function toCompoundParts(word: string, segments: string[], knownWords: Set<string>): CompoundPart[] {
+export function toCompoundParts(word: string, segments: string[], knownWords: KnownWords): CompoundPart[] {
+  const isCapitalized = word[0] !== word[0].toLowerCase();
   let pos = 0;
   return segments.map((segment, i) => {
     const text = word.slice(pos, pos + segment.length);
@@ -42,7 +49,9 @@ export function toCompoundParts(word: string, segments: string[], knownWords: Se
       );
       if (link) lemma = lower.slice(0, -link.length);
     }
-    return { text, lemma };
+    const saved = knownWords instanceof Map ? knownWords.get(lemma) : undefined;
+    const lookup = saved ?? (isCapitalized ? lemma.charAt(0).toUpperCase() + lemma.slice(1) : lemma);
+    return { text, lemma, lookup };
   });
 }
 
@@ -51,7 +60,7 @@ export function toCompoundParts(word: string, segments: string[], knownWords: Se
  * Prefers the segmentation with the fewest parts. Returns null if the word
  * is itself known or can't be fully split into at least two known parts.
  */
-export function splitCompound(word: string, knownWords: Set<string>): CompoundPart[] | null {
+export function splitCompound(word: string, knownWords: KnownWords): CompoundPart[] | null {
   const lower = word.toLowerCase();
   if (lower.length < MIN_PART_LENGTH * 2 || knownWords.has(lower)) return null;
 
@@ -100,7 +109,7 @@ export function splitCompound(word: string, knownWords: Set<string>): CompoundPa
 export function getCompoundParts(
   word: string,
   manualSplits: Record<string, string[]>,
-  knownWords: Set<string>
+  knownWords: KnownWords
 ): CompoundPart[] | null {
   const manual = manualSplits[word.toLowerCase()];
   if (manual && manual.join('').toLowerCase() === word.toLowerCase()) {
@@ -110,8 +119,8 @@ export function getCompoundParts(
 }
 
 /**
- * Build a lowercased set of saved German words to split compounds with.
+ * Map saved German words (lowercased) to their saved spelling, to split compounds with.
  */
-export function buildKnownGermanWords(words: { word: string; language: string }[]): Set<string> {
-  return new Set(words.filter((w) => isGermanLanguage([w.language])).map((w) => w.word.toLowerCase()));
+export function buildKnownGermanWords(words: { word: string; language: string }[]): Map<string, string> {
+  return new Map(words.filter((w) => isGermanLanguage([w.language])).map((w) => [w.word.toLowerCase(), w.word]));
 }

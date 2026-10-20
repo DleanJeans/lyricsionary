@@ -158,7 +158,7 @@ export default function NewWordCard({
         originalLanguages={originalLanguages}
         source="Learn"
         hideOriginalWord
-        extraWords={showSplit ? compoundParts?.map((p) => p.lemma) : undefined}
+        extraWords={showSplit ? compoundParts?.map((p) => p.lookup) : undefined}
       />
     </View>
   );

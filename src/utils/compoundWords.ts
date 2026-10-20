@@ -3,8 +3,8 @@ export interface CompoundPart {
   text: string;
   // Lowercased segment without linking element, for matching saved words (e.g. "Liebes" -> "liebe")
   lemma: string;
-  // Form to look up: the saved word's spelling when known, else the lemma capitalized like the word
-  // (German nouns keep their capital, e.g. "Liebesbrief" -> "Liebe", "Brief")
+  // Form to look up: the saved word's spelling when known, else the lemma; capitalized when the
+  // compound is (German nouns keep their capital, e.g. "Liebesbrief" -> "Liebe", "Brief")
   lookup: string;
 }
 
@@ -49,8 +49,9 @@ export function toCompoundParts(word: string, segments: string[], knownWords: Kn
       );
       if (link) lemma = lower.slice(0, -link.length);
     }
-    const saved = knownWords instanceof Map ? knownWords.get(lemma) : undefined;
-    const lookup = saved ?? (isCapitalized ? lemma.charAt(0).toUpperCase() + lemma.slice(1) : lemma);
+    const saved = (knownWords instanceof Map ? knownWords.get(lemma) : undefined) ?? lemma;
+    // Parts of a capitalized compound are nouns, even when saved lowercase (e.g. "liebe" the verb)
+    const lookup = isCapitalized ? saved.charAt(0).toUpperCase() + saved.slice(1) : saved;
     return { text, lemma, lookup };
   });
 }

@@ -68,6 +68,11 @@ describe('lookup spelling', () => {
     expect(splitCompound('Liebesbrief', saved)?.map((p) => p.lookup)).toEqual(['Liebe', 'Brief']);
   });
 
+  it('capitalizes saved lowercase parts of a capitalized word', () => {
+    const saved = new Map([['liebe', 'liebe'], ['brief', 'Brief']]);
+    expect(splitCompound('Liebesbrief', saved)?.map((p) => p.lookup)).toEqual(['Liebe', 'Brief']);
+  });
+
   it('capitalizes parts of a capitalized word', () => {
     expect(getCompoundParts('Fernseher', { fernseher: ['fern', 'seher'] }, known)?.map((p) => p.lookup)).toEqual([
       'Fern',

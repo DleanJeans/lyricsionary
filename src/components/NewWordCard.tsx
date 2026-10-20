@@ -80,30 +80,74 @@ export default function NewWordCard({
     });
   };
 
+  const showSplit = isGerman && !isIgnored;
+
   return (
     <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
       <View style={styles.wordHeader}>
-        <View style={styles.wordTitleRow}>
-          <Text style={styles.wordText}>{word}</Text>
-          <View style={[styles.newBadge, isIgnored && styles.ignoredBadge]}>
-            <Text style={styles.newBadgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
+        <View style={styles.wordTitle}>
+          <View style={styles.wordTitleRow}>
+            <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
+            <View style={[styles.badge, isIgnored && styles.ignoredBadge]}>
+              <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
+            </View>
           </View>
-          <TouchableOpacity accessibilityLabel="Search New Word" style={styles.searchButton} onPress={handleLookupOriginalWord}>
-            <Ionicons name="search" size={16} color={Colors.primary} />
-          </TouchableOpacity>
-          <MasteryLevelDropdown onSelect={handleMasterySelect} />
-          <TouchableOpacity
-            accessibilityLabel={isIgnored ? 'Unignore Word' : 'Ignore Word'}
-            style={styles.searchButton}
-            onPress={() => toggleIgnoredWord(word, language)}
-          >
-            <Ionicons name={isIgnored ? 'eye-outline' : 'eye-off-outline'} size={16} color={Colors.primary} />
-          </TouchableOpacity>
+          {showSplit && compoundParts && !isEditingSplit && (
+            <Text style={styles.compoundText}>{compoundParts.map((p) => p.text).join(' · ')}</Text>
+          )}
         </View>
-        <TouchableOpacity onPress={onClose}>
+        <TouchableOpacity accessibilityLabel="Close" onPress={onClose} hitSlop={8}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
+
+      <View style={styles.actionRow}>
+        <TouchableOpacity accessibilityLabel="Search New Word" style={styles.chip} onPress={handleLookupOriginalWord}>
+          <Ionicons name="search" size={16} color={Colors.primary} />
+          <Text style={styles.chipText}>Look up</Text>
+        </TouchableOpacity>
+        {!isIgnored && (
+          <MasteryLevelDropdown
+            onSelect={handleMasterySelect}
+            label="Save"
+            triggerStyle={styles.chip}
+            labelStyle={styles.chipText}
+          />
+        )}
+        <TouchableOpacity
+          accessibilityLabel={isIgnored ? 'Unignore Word' : 'Ignore Word'}
+          style={[styles.chip, styles.chipSecondary]}
+          onPress={() => toggleIgnoredWord(word, language)}
+        >
+          <Ionicons name={isIgnored ? 'eye-outline' : 'eye-off-outline'} size={16} color={Colors.textSecondary} />
+          {isIgnored && <Text style={[styles.chipText, styles.chipTextSecondary]}>Unignore</Text>}
+        </TouchableOpacity>
+        {showSplit && !isEditingSplit && (
+          <TouchableOpacity accessibilityLabel="Split Compound Word" style={[styles.chip, styles.chipSecondary]} onPress={startEditingSplit}>
+            <Ionicons name="cut-outline" size={16} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {isEditingSplit && (
+        <View style={styles.splitRow}>
+          <TextInput
+            style={styles.splitInput}
+            value={splitInput}
+            onChangeText={setSplitInput}
+            onSubmitEditing={saveSplit}
+            placeholder="Split with hyphens, e.g. Liebes-brief"
+            placeholderTextColor={Colors.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus
+          />
+          <TouchableOpacity accessibilityLabel="Save Split" style={styles.chip} onPress={saveSplit}>
+            <Ionicons name="checkmark" size={16} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <WordTransformButtons
         word={word}
         songId={songId}
@@ -114,32 +158,8 @@ export default function NewWordCard({
         originalLanguages={originalLanguages}
         source="Learn"
         hideOriginalWord
-        extraWords={compoundParts?.map((p) => p.lemma)}
+        extraWords={showSplit ? compoundParts?.map((p) => p.lemma) : undefined}
       />
-      {isGerman && (
-        <View style={styles.compoundRow}>
-          <TouchableOpacity accessibilityLabel="Split Compound Word" style={styles.splitButton} onPress={isEditingSplit ? saveSplit : startEditingSplit}>
-            <Ionicons name={isEditingSplit ? 'checkmark' : 'cut-outline'} size={16} color={Colors.primary} />
-          </TouchableOpacity>
-          {isEditingSplit ? (
-            <TextInput
-              style={styles.splitInput}
-              value={splitInput}
-              onChangeText={setSplitInput}
-              onSubmitEditing={saveSplit}
-              placeholder="Split with hyphens, e.g. Liebes-brief"
-              placeholderTextColor={Colors.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoFocus
-            />
-          ) : (
-            <Text style={styles.compoundText} numberOfLines={1}>
-              {compoundParts ? compoundParts.map((p) => p.text).join(' · ') : 'Split compound word'}
-            </Text>
-          )}
-        </View>
-      )}
     </View>
   );
 }
@@ -166,14 +186,18 @@ const styles = StyleSheet.create({
   wordHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  wordTitle: {
+    flex: 1,
+    gap: 2,
   },
   wordTitleRow: {
-    flex: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
-    marginRight: 8,
+    columnGap: 8,
   },
   wordText: {
     flexShrink: 1,
@@ -182,33 +206,60 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  newBadge: {
+  ignoredWordText: {
+    color: Colors.textSecondary,
+  },
+  badge: {
     backgroundColor: Colors.success,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    marginBottom: -4,
   },
   ignoredBadge: {
     backgroundColor: Colors.textMuted,
   },
-  newBadgeText: {
+  badgeText: {
     color: Colors.white,
     fontSize: 10,
     fontWeight: '700',
   },
-  compoundRow: {
+  compoundText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+    zIndex: 10,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  chipSecondary: {
+    borderColor: Colors.border,
+  },
+  chipText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  chipTextSecondary: {
+    color: Colors.textSecondary,
+  },
+  splitRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginTop: 12,
-  },
-  splitButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: Colors.primary,
   },
   splitInput: {
     flex: 1,
@@ -217,19 +268,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.primary,
     paddingVertical: 4,
-  },
-  compoundText: {
-    flex: 1,
-    color: Colors.textSecondary,
-    fontSize: 14,
-  },
-  searchButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    marginLeft: 4,
-    marginBottom: -4,
   },
 });

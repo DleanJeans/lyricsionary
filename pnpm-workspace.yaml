@@ -1,2 +1,3 @@
 patchedDependencies:
   expo@55.0.19: patches/expo@55.0.19.patch
+  rn-emoji-keyboard@1.7.0: patches/rn-emoji-keyboard@1.7.0.patch

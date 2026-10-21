@@ -15,7 +15,7 @@ import { findSavedSong } from './src/utils/nowPlaying';
 SplashScreen.preventAutoHideAsync();
 
 const linking = {
-  prefixes: ['exp+lyricsionary://'],
+  prefixes: ['lyricsionary://', 'lyricsionary-dev://', 'exp+lyricsionary://'],
   config: {
     screens: {
       Editor: 'editor/:songId?',

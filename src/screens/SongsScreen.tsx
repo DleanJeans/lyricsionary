@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '../store/useStore';
+import { isWordIgnored, useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { getFlagForLanguage } from '../constants/languages';
+import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Song, RootTabParamList } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -23,6 +23,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
 import LanguageTabButtons from '../components/LanguageTabButtons';
+import { countKnownWords } from '../utils/wordFrequency';
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
@@ -34,6 +35,8 @@ export default function SongsScreen() {
   const setMatchedSongs = useStore((s) => s.setMatchedSongs);
   const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
   const isLoadingSong = useStore((s) => s.isLoadingSong);
+  const words = useStore((s) => s.words);
+  const ignoredWords = useStore((s) => s.ignoredWords);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -169,6 +172,28 @@ export default function SongsScreen() {
     return words.length;
   };
 
+  // Saved words keyed by "language\u0000word", with language names normalized like LearnScreen
+  const savedWordKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const entry of words) {
+      const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
+      keys.add(`${language}\u0000${entry.word.toLowerCase()}`);
+    }
+    return keys;
+  }, [words]);
+
+  const getKnownWordCount = (song: Song) => {
+    const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
+    const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
+    return countKnownWords(song.originalLyrics, (word) => {
+      const lower = word.toLowerCase();
+      return (
+        languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
+        isWordIgnored(ignoredWords, word, ignoreLanguage)
+      );
+    });
+  };
+
   const toggleSearch = () => {
     if (showSearch) {
       setSearchQuery('');
@@ -256,7 +281,7 @@ export default function SongsScreen() {
             {getFaviconUrl(item.sourceUrl ?? '') && (
               <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
             )}
-            <Text style={styles.metaText}>{getWordCount(item)} words</Text>
+            <Text style={styles.metaText}>{getKnownWordCount(item)}/{getWordCount(item)} words</Text>
             <View style={styles.languages}>
               {(item.originalLanguages ?? []).map((lang) => (
                 <Text key={`orig-${lang}`} style={styles.flag}>

@@ -50,3 +50,16 @@ export function countWordOccurrences(
     }))
     .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
 }
+
+/**
+ * Count the words in `lyrics` that `isKnown` accepts (saved or ignored), using
+ * the same whitespace split as the song's total word count.
+ */
+export function countKnownWords(lyrics: string, isKnown: (word: string) => boolean): number {
+  let count = 0;
+  for (const token of lyrics.split(/\s+/)) {
+    const word = removeSpecialChars(token).replace(/^['-]+|['-]+$/g, '');
+    if (word && isKnown(word)) count++;
+  }
+  return count;
+}

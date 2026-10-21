@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/theme';
-import { getWordTransforms } from '../utils/wordTransform';
+import { getLowercaseVersion, getWordTransforms, isCapitalized } from '../utils/wordTransform';
+import { getCachedWiktionaryEntry, hasWiktionaryEntry } from '../utils/wiktionary';
 
 interface WordTransformButtonsProps {
   word: string;
@@ -18,6 +19,7 @@ interface WordTransformButtonsProps {
   source?: 'Learn' | 'Words';
   occurrence?: number;
   hideOriginalWord?: boolean;
+  extraWords?: string[];
 }
 
 export default function WordTransformButtons({
@@ -32,11 +34,35 @@ export default function WordTransformButtons({
   source,
   occurrence,
   hideOriginalWord = false,
+  extraWords = [],
 }: WordTransformButtonsProps) {
   const navigation = useNavigation<any>();
 
+  // Only show the lowercase button once Wiktionary confirms it has an entry
+  // (e.g. German nouns only have a capitalized page); a failed check still shows it
+  const lowercaseWord = isCapitalized(word) ? getLowercaseVersion(word) : null;
+  const [lowercaseCheck, setLowercaseCheck] = useState<{ word: string; exists: boolean | null } | null>(null);
+  const lowercaseExists = lowercaseWord
+    ? (getCachedWiktionaryEntry(lowercaseWord) ??
+      (lowercaseCheck?.word === lowercaseWord ? lowercaseCheck.exists : undefined))
+    : undefined;
+  const hideLowercase = lowercaseWord !== null && (lowercaseExists === undefined || lowercaseExists === false);
+
+  useEffect(() => {
+    if (!lowercaseWord) return;
+    let cancelled = false;
+    hasWiktionaryEntry(lowercaseWord).then((exists) => {
+      if (!cancelled) setLowercaseCheck({ word: lowercaseWord, exists });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lowercaseWord]);
+
   // Get all transformed versions of the word
-  const transforms = getWordTransforms(word, language || originalLanguages?.[0]);
+  const transforms = [
+    ...new Set([...getWordTransforms(word, language || originalLanguages?.[0]), ...extraWords]),
+  ].filter((w) => !hideLowercase || w !== lowercaseWord || extraWords.includes(w));
 
   // Always show at least the original word as a button
   const wordsToShow = hideOriginalWord ? transforms : [word, ...transforms];
@@ -71,6 +97,9 @@ export default function WordTransformButtons({
   );
 }
 
+// Let long words (e.g. German compounds) wrap on web, where unbreakable words overflow by default
+const webWordBreak = Platform.OS === 'web' ? ({ wordBreak: 'break-word' } as object) : {};
+
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -87,8 +116,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.primary,
     gap: 6,
+    maxWidth: '100%',
   },
   buttonText: {
+    flexShrink: 1,
+    ...webWordBreak,
     color: Colors.primary,
     fontSize: 14,
     fontWeight: '600',

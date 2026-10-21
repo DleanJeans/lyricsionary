@@ -40,6 +40,7 @@ function TranslationLine({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={isBlurred ? 0.7 : 1}
+      style={[styles.translationContainer, isBlurred && styles.blurredContainer]}
     >
       <Text
         style={[
@@ -125,6 +126,16 @@ const styles = StyleSheet.create({
   translationLine: {
     color: Colors.primaryLight,
     marginTop: 2,
+  },
+  translationContainer: {
+    alignSelf: 'flex-start',
+    marginHorizontal: -4,
+    paddingHorizontal: 4,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  blurredContainer: {
+    backgroundColor: Colors.surfaceLight,
   },
   blurredText: {
     filter: 'blur(5px)',

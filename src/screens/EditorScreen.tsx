@@ -33,6 +33,7 @@ import LyricsEditor from '../components/LyricsEditor';
 import { normalizeApostrophes } from '../utils/normalizeApostrophes';
 import EditorActionButtons from '../components/EditorActionButtons';
 import AddTranslationModal from '../components/AddTranslationModal';
+import { pickTranslationLanguage } from '../utils/nowPlaying';
 
 
 export default function EditorScreen() {
@@ -54,6 +55,8 @@ export default function EditorScreen() {
   const setDeeplLineMap = useStore((s) => s.setDeeplLineMap);
   const setDeeplChunks = useStore((s) => s.setDeeplChunks);
   const resetDeeplTranslation = useStore((s) => s.resetDeeplTranslation);
+  const autoFetch = useStore((s) => s.autoFetch);
+  const setAutoFetch = useStore((s) => s.setAutoFetch);
 
   const paramSongId = route.params?.songId as string | undefined;
   const [editSongId, setEditSongId] = useState<string | undefined>(paramSongId);
@@ -201,6 +204,14 @@ export default function EditorScreen() {
     if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
     setActiveTab(targetTab);
     if (url) setShowSourceUrl(true);
+
+    // Advance the automatic flow: lyrics -> translation -> done
+    const { autoFetch: currentAutoFetch } = useStore.getState();
+    if (currentAutoFetch?.step === 'lyrics' && targetTab === 0) {
+      setAutoFetch({ ...currentAutoFetch, step: 'translation' });
+    } else if (currentAutoFetch?.step === 'translating' && targetTab > 0) {
+      setAutoFetch(null);
+    }
     navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined });
   }, [route.params?.scrapedLyrics]);
 
@@ -359,6 +370,7 @@ export default function EditorScreen() {
     setEditSongId(undefined);
     navigation.setParams({ songId: undefined });
     setIsEditingMetadata(true);
+    setAutoFetch(null);
   };
 
   const handleReset = () => {
@@ -397,7 +409,10 @@ export default function EditorScreen() {
 
   const handleGetTranslation = () => {
     if (activeTab === 0 || !originalLyrics) return; // Only works for translation tabs
+    startTranslation(originalLyrics);
+  };
 
+  const startTranslation = (originalLyrics: string) => {
     // Reset any previous translation state
     resetDeeplTranslation();
 
@@ -415,6 +430,40 @@ export default function EditorScreen() {
     setWebUrl(DEEPL_URL);
     navigation.navigate('Web', { pasteIntoDeepL: chunks[0] });
   };
+
+  // Start the automatic flow from the now playing notification: search Google for lyrics
+  useEffect(() => {
+    const request = route.params?.autoFetchSong as { songName: string; artistName: string } | undefined;
+    if (!request) return;
+    navigation.setParams({ autoFetchSong: undefined });
+    handleClear();
+    setSongName(request.songName);
+    setArtistName(request.artistName);
+    setScrapeTargetTab(0);
+    setAutoFetch({ songName: request.songName, artistName: request.artistName, step: 'lyrics' });
+    const query = encodeURIComponent(`${request.songName} ${request.artistName} lyrics`);
+    setWebUrl(`${GOOGLE_SEARCH_URL}&q=${query}`);
+    navigation.navigate('Web');
+  }, [route.params?.autoFetchSong]);
+
+  // Once lyrics arrive, add a translation tab and send the lyrics to DeepL
+  useEffect(() => {
+    if (autoFetch?.step !== 'translation' || !originalLyrics) return;
+    const language = pickTranslationLanguage(songs, originalLanguages);
+    if (!language) {
+      setAutoFetch(null);
+      return;
+    }
+    const existingIndex = translations.findIndex((t) => t.language === language);
+    const tab = (existingIndex >= 0 ? existingIndex : translations.length) + 1;
+    if (existingIndex < 0) {
+      setTranslations((prev) => [...prev, { language, lyrics: '' }]);
+    }
+    setActiveTab(tab);
+    setScrapeTargetTab(tab);
+    setAutoFetch({ ...autoFetch, step: 'translating' });
+    startTranslation(originalLyrics);
+  }, [autoFetch?.step, originalLyrics]);
 
   const handleAddTranslation = () => {
     const alreadyAdded = translations.some((t) => t.language === selectedLanguage);

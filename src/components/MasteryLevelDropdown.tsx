@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { LayoutRectangle, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { LayoutRectangle, Pressable, StyleProp, StyleSheet, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { MasteryLevel } from '../types';
 import { Text } from './Text';
@@ -9,9 +9,12 @@ const MASTERY_LEVELS: MasteryLevel[] = ['Unknown', 'New', 'Learning', 'Mastered'
 
 interface MasteryLevelDropdownProps {
   onSelect: (level: MasteryLevel) => void;
+  label?: string;
+  triggerStyle?: StyleProp<ViewStyle>;
+  labelStyle?: StyleProp<TextStyle>;
 }
 
-export default function MasteryLevelDropdown({ onSelect }: MasteryLevelDropdownProps) {
+export default function MasteryLevelDropdown({ onSelect, label, triggerStyle, labelStyle }: MasteryLevelDropdownProps) {
   const [open, setOpen] = useState(false);
   const [triggerLayout, setTriggerLayout] = useState<LayoutRectangle | null>(null);
 
@@ -19,11 +22,12 @@ export default function MasteryLevelDropdown({ onSelect }: MasteryLevelDropdownP
     <>
       <TouchableOpacity
         accessibilityLabel="Set Mastery Level"
-        style={styles.trigger}
+        style={triggerStyle ?? styles.trigger}
         onPress={() => setOpen((v) => !v)}
         onLayout={(e) => setTriggerLayout(e.nativeEvent.layout)}
       >
         <Ionicons name="star-outline" size={16} color={Colors.primary} />
+        {label && <Text style={labelStyle}>{label}</Text>}
       </TouchableOpacity>
 
       {open && triggerLayout && (
@@ -34,7 +38,7 @@ export default function MasteryLevelDropdown({ onSelect }: MasteryLevelDropdownP
               styles.dropdown,
               {
                 top: triggerLayout.y + triggerLayout.height + 4,
-                right: 0,
+                left: triggerLayout.x,
               },
             ]}
           >

@@ -6,6 +6,23 @@ import { MasteryLevel, Song, Translation, WordContext, WordEntry } from '../type
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
+const IGNORED_WORDS_KEY = '@lyricsionary_ignored_words';
+const COMPOUND_SPLITS_KEY = '@lyricsionary_compound_splits';
+
+export interface IgnoredWord {
+  word: string;
+  language: string;
+}
+
+// Automatic lyrics + translation flow started from the now playing notification
+export interface AutoFetch {
+  songName: string;
+  artistName: string;
+  step: 'lyrics' | 'translation' | 'translating';
+}
+
+export const isWordIgnored = (ignoredWords: IgnoredWord[], word: string, language: string) =>
+  ignoredWords.some((w) => w.word === word.toLowerCase() && w.language === language);
 
 // AsyncStorage has no transaction primitive. Serialize writes so a slower
 // earlier operation cannot finish after and overwrite a newer in-memory state.
@@ -20,6 +37,8 @@ function persist(key: string, value: string): Promise<void> {
 interface AppState {
   songs: Song[];
   words: WordEntry[];
+  ignoredWords: IgnoredWord[];
+  compoundSplits: Record<string, string[]>;  // Manual compound word splits, keyed by lowercase word
   currentSongId: string | null;
   webUrl: string;
   scrapeTargetTab: number;
@@ -35,6 +54,7 @@ interface AppState {
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
+  autoFetch: AutoFetch | null;
 
   // Song actions
   loadSongs: () => Promise<void>;
@@ -54,6 +74,7 @@ interface AppState {
   setDeeplCurrentChunk: (index: number) => void;
   addDeeplTranslatedChunk: (translation: string) => void;
   resetDeeplTranslation: () => void;
+  setAutoFetch: (autoFetch: AutoFetch | null) => void;
 
   // Learn actions
   setFontSize: (size: number) => void;
@@ -72,11 +93,21 @@ interface AppState {
     masteryLevel?: MasteryLevel
   ) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
+
+  // Ignore list actions
+  loadIgnoredWords: () => Promise<void>;
+  toggleIgnoredWord: (word: string, language: string) => Promise<void>;
+
+  // Compound word actions
+  loadCompoundSplits: () => Promise<void>;
+  setCompoundSplit: (word: string, parts: string[] | null) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
   songs: [],
   words: [],
+  ignoredWords: [],
+  compoundSplits: {},
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
   scrapeTargetTab: 0,
@@ -92,6 +123,7 @@ export const useStore = create<AppState>((set, get) => ({
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
+  autoFetch: null,
 
   loadSongs: async () => {
     try {
@@ -180,6 +212,8 @@ export const useStore = create<AppState>((set, get) => ({
     deeplTranslatedChunks: [],
     deeplLineMap: null,
   }),
+
+  setAutoFetch: (autoFetch) => set({ autoFetch }),
 
   setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
 
@@ -286,6 +320,45 @@ export const useStore = create<AppState>((set, get) => ({
     const words = get().words.filter((w) => w.id !== id);
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
+  },
+
+  loadIgnoredWords: async () => {
+    try {
+      const json = await AsyncStorage.getItem(IGNORED_WORDS_KEY);
+      if (json) set({ ignoredWords: JSON.parse(json) });
+    } catch (e) {
+      console.error('Failed to load ignored words', e);
+    }
+  },
+
+  toggleIgnoredWord: async (word, language) => {
+    const lower = word.toLowerCase();
+    const current = get().ignoredWords;
+    const ignoredWords = isWordIgnored(current, lower, language)
+      ? current.filter((w) => !(w.word === lower && w.language === language))
+      : [...current, { word: lower, language }];
+    set({ ignoredWords });
+    await AsyncStorage.setItem(IGNORED_WORDS_KEY, JSON.stringify(ignoredWords));
+  },
+
+  loadCompoundSplits: async () => {
+    try {
+      const json = await AsyncStorage.getItem(COMPOUND_SPLITS_KEY);
+      if (json) set({ compoundSplits: JSON.parse(json) });
+    } catch (e) {
+      console.error('Failed to load compound splits', e);
+    }
+  },
+
+  setCompoundSplit: async (word, parts) => {
+    const compoundSplits = { ...get().compoundSplits };
+    if (parts) {
+      compoundSplits[word.toLowerCase()] = parts;
+    } else {
+      delete compoundSplits[word.toLowerCase()];
+    }
+    set({ compoundSplits });
+    await AsyncStorage.setItem(COMPOUND_SPLITS_KEY, JSON.stringify(compoundSplits));
   },
 
 }));

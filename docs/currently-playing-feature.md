@@ -35,8 +35,22 @@ This feature allows users to automatically fill in song name and artist name fie
    - Song name and artist name fields are automatically filled
    - Success alert is shown
 
+### Now Playing Notification
+When Spotify starts a new song, Lyricsionary posts a "Now Playing" notification
+(`src/services/nowPlayingNotification.ts`, called from the headless listener). The same
+song isn't notified twice in a row. Tapping it:
+- opens the song in Learn if it's already saved, or
+- starts the automatic flow in Editor: search Google for the lyrics (or open the first
+  Genius / Musixmatch / SongLyrics result when Google has no lyrics panel), scrape them,
+  add a translation tab (most used translation language, else English), translate on
+  DeepL and fill the translation in. The song is left in Editor to review and save.
+
+The app asks for permission to post notifications on launch once notification access
+is granted.
+
 ### Permissions Required
 - `BIND_NOTIFICATION_LISTENER_SERVICE` (Android)
+- `POST_NOTIFICATIONS` (Android 13+, added by `expo-notifications`) for the Now Playing notification
 - Must be manually enabled by user in Settings → Apps → Special Access → Notification Access
 
 ## Files Modified

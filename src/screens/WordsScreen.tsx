@@ -3,11 +3,12 @@ import {
   View,
   FlatList,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { useNavigation } from '@react-navigation/native';
-import { useStore } from '../store/useStore';
-import { Colors } from '../constants/theme';
+import { isWordIgnored, useStore } from '../store/useStore';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
@@ -17,6 +18,7 @@ import WordCard from '../components/WordCard';
 import LanguageTabButtons from '../components/LanguageTabButtons';
 import EmptyState from '../components/EmptyState';
 import IconButton from '../components/IconButton';
+import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
 
 interface PendingDeletion {
   id: string;
@@ -27,6 +29,9 @@ export default function WordsScreen() {
   const navigation = useNavigation<any>();
   const words = useStore((s) => s.words);
   const deleteWord = useStore((s) => s.deleteWord);
+  const songs = useStore((s) => s.songs);
+  const ignoredWords = useStore((s) => s.ignoredWords);
+  const [showFrequency, setShowFrequency] = useState(false);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -39,17 +44,51 @@ export default function WordsScreen() {
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
   const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // Words in saved lyrics sorted by occurrences, excluding ignored words
+  const wordFrequencies = React.useMemo(
+    () => (showFrequency ? countWordOccurrences(songs, (w, lang) => isWordIgnored(ignoredWords, w, lang)) : []),
+    [showFrequency, songs, ignoredWords],
+  );
+
   // Get all unique languages from words and count occurrences
   const { availableLanguages, languageCounts } = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    words.forEach((word) => {
+    (showFrequency ? wordFrequencies : words).forEach((word) => {
       counts[word.language] = (counts[word.language] ?? 0) + 1;
     });
     return {
       availableLanguages: Object.keys(counts).sort(),
       languageCounts: counts,
     };
-  }, [words]);
+  }, [words, wordFrequencies, showFrequency]);
+
+  const searchedFrequencies = wordFrequencies.filter(
+    (w) =>
+      (selectedLanguages.length === 0 || selectedLanguages.includes(w.language)) &&
+      (!searchQuery.trim() || w.word.toLowerCase().includes(searchQuery.toLowerCase())),
+  );
+
+  const renderFrequencyItem = ({ item, index }: { item: WordFrequency; index: number }) => {
+    const savedWord = words.find((w) => w.word.toLowerCase() === item.word.toLowerCase() && w.language === item.language);
+    return (
+      <TouchableOpacity
+        style={styles.frequencyRow}
+        onPress={() => navigation.navigate('WordLookup', { word: item.word, originalLanguages: [item.language], source: 'Words' })}
+      >
+        <Text style={styles.frequencyRank}>{index + 1}</Text>
+        <Text
+          style={[styles.frequencyWord, savedWord?.masteryLevel && { color: getMasteryLevelColor(savedWord.masteryLevel) }]}
+          numberOfLines={1}
+        >
+          {item.word}
+        </Text>
+        <Text style={styles.frequencySongs}>
+          {item.songCount} {item.songCount === 1 ? 'song' : 'songs'}
+        </Text>
+        <Text style={styles.frequencyCount}>×{item.count}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   const pendingIds = new Set(pendingDeletions.map(d => d.id));
   const filteredWords = sortedWords.filter(w => !pendingIds.has(w.id));
@@ -120,12 +159,25 @@ export default function WordsScreen() {
     />
   );
 
+  const frequencyToggle = (
+    <IconButton
+      icon="stats-chart-outline"
+      label={showFrequency ? 'Show saved words' : 'Show top words'}
+      selected={showFrequency}
+      onPress={() => {
+        setShowFrequency((v) => !v);
+        setSelectedLanguages([]);
+      }}
+    />
+  );
+
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        {showSearch ? searchInput : <Text style={styles.title}>Saved Words</Text>}
+        {showSearch ? searchInput : <Text style={styles.title}>{showFrequency ? 'Top Words' : 'Saved Words'}</Text>}
         <View style={styles.headerActions}>
           {openSearchButton}
+          {frequencyToggle}
           {languageTabsToggle}
         </View>
       </View>
@@ -140,7 +192,24 @@ export default function WordsScreen() {
           />
         </View>
       )}
-      {searchedWords.length === 0 ? (
+      {showFrequency ? (
+        searchedFrequencies.length === 0 ? (
+          <EmptyState
+            icon="stats-chart-outline"
+            title={wordFrequencies.length === 0 ? 'No lyrics yet' : 'No words found'}
+            message={wordFrequencies.length === 0 ? 'Save a song with lyrics to see its most frequent words.' : 'Try a different search or clear the active filters.'}
+          />
+        ) : (
+          <FlatList
+            data={searchedFrequencies}
+            keyExtractor={(item) => `${item.language}-${item.word}`}
+            renderItem={renderFrequencyItem}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={30}
+          />
+        )
+      ) : searchedWords.length === 0 ? (
         words.length === 0 ? (
           <EmptyState
             icon="book-outline"
@@ -248,5 +317,36 @@ const styles = StyleSheet.create({
   },
   languageTabsContainer: {
     marginBottom: 12,
+  },
+  frequencyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  frequencyRank: {
+    minWidth: 28,
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  frequencyWord: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  frequencySongs: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  frequencyCount: {
+    minWidth: 40,
+    textAlign: 'right',
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.primaryLight,
   },
 });

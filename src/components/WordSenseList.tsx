@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import WordSenseCard from './WordSenseCard';
+import type { WiktionaryDefinition } from '../utils/wiktionary';
 
 export interface WordSenseData {
   uid: number;
@@ -28,6 +29,7 @@ interface WordSenseListProps {
   artistName?: string;
   ipaPlaceholder: string;
   isNewWord: boolean;
+  definitionSuggestions?: WiktionaryDefinition[];
   onUpdateWordSense: (index: number, field: keyof WordSenseData, value: string | number) => void;
   onEmojiPress: (index: number) => void;
   onRemoveWordSense: (index: number) => void;
@@ -53,6 +55,7 @@ export default function WordSenseList({
   artistName,
   ipaPlaceholder,
   isNewWord,
+  definitionSuggestions,
   onUpdateWordSense,
   onEmojiPress,
   onRemoveWordSense,
@@ -131,6 +134,7 @@ export default function WordSenseList({
               ipaPlaceholder={ipaPlaceholder}
               definition={block.definition}
               onDefinitionChange={(value) => onUpdateWordSense(currentSenseIndex, 'definition', value)}
+              definitionSuggestions={definitionSuggestions}
               onRemove={wordSenses.length > 1 ? () => onRemoveWordSense(currentSenseIndex) : undefined}
               word={displayWord}
               occurrence={block.occurrence}

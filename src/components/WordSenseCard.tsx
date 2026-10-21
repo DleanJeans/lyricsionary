@@ -4,6 +4,7 @@ import { Text, TextInput } from './Text'
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import SongContextBlock from './SongContextBlock';
+import type { WiktionaryDefinition } from '../utils/wiktionary';
 
 interface WordSenseCardProps {
   context: string;
@@ -15,6 +16,7 @@ interface WordSenseCardProps {
   ipaPlaceholder: string;
   definition: string;
   onDefinitionChange: (value: string) => void;
+  definitionSuggestions?: WiktionaryDefinition[];
   onRemove?: () => void;
   onUndoRemove?: () => void;
   word?: string;
@@ -38,6 +40,7 @@ export default function WordSenseCard({
   ipaPlaceholder,
   definition,
   onDefinitionChange,
+  definitionSuggestions,
   onRemove,
   onUndoRemove,
   word,
@@ -121,6 +124,27 @@ export default function WordSenseCard({
           />
         </View>
       </View>
+      {!isRemoved && definitionSuggestions && definitionSuggestions.length > 0 && (
+        <View style={styles.suggestionsRow}>
+          {definitionSuggestions
+            .filter((suggestion) => suggestion.text !== definition)
+            .map((suggestion) => (
+              <TouchableOpacity
+                key={`${suggestion.partOfSpeech}-${suggestion.text}`}
+                style={styles.suggestionButton}
+                onPress={() => onDefinitionChange(suggestion.text)}
+                accessibilityLabel={`Use definition: ${suggestion.text}`}
+              >
+                <Text style={styles.suggestionText} numberOfLines={2}>
+                  {suggestion.partOfSpeech ? (
+                    <Text style={styles.suggestionPartOfSpeech}>{suggestion.partOfSpeech.toLowerCase()} </Text>
+                  ) : null}
+                  {suggestion.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+        </View>
+      )}
 
       {isRemoved && onUndoRemove && (
         <TouchableOpacity style={styles.undoButton} onPress={onUndoRemove}>
@@ -212,6 +236,29 @@ const styles = StyleSheet.create({
   emojiButtonTextSmall: {
     fontSize: 22,
     textAlign: 'center',
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  suggestionButton: {
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    maxWidth: '100%',
+  },
+  suggestionText: {
+    color: Colors.text,
+    fontSize: 14,
+  },
+  suggestionPartOfSpeech: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   undoButton: {
     flexDirection: 'row',

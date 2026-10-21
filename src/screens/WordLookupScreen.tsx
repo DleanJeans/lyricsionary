@@ -18,7 +18,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
-import { hasWiktionaryEntry } from '../utils/wiktionary';
+import { getWiktionaryDefinitions, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
 import WordTransformButtons from '../components/WordTransformButtons';
 import MasteryLevelSelector from '../components/MasteryLevelSelector';
 import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
@@ -102,6 +102,7 @@ export default function WordLookupScreen() {
   const [pronunciation, setPronunciation] = useState('');
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('New');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
+  const [definitionSuggestions, setDefinitionSuggestions] = useState<WiktionaryDefinition[]>([]);
 
   const uidRef = useRef(0);
   const mkUid = () => ++uidRef.current;
@@ -219,6 +220,19 @@ export default function WordLookupScreen() {
       .join('||');
     return currentNormalized !== storedNormalized;
   }, [displayWord, isNewWord, language, pronunciation, masteryLevel, wordSenses, words]);
+
+  // Suggest the word's Wiktionary definitions in the selected language for each context's definition
+  useEffect(() => {
+    setDefinitionSuggestions([]);
+    if (!displayWord || !language) return;
+    let cancelled = false;
+    getWiktionaryDefinitions(displayWord, language).then((definitions) => {
+      if (!cancelled && definitions) setDefinitionSuggestions(definitions);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayWord, language]);
 
   const entryCheckedWordRef = useRef<string | undefined>(undefined);
 
@@ -476,6 +490,7 @@ export default function WordLookupScreen() {
             artistName={artistName}
             ipaPlaceholder={ipaPlaceholder}
             isNewWord={!!isNewWord}
+            definitionSuggestions={definitionSuggestions}
             onUpdateWordSense={updateWordSense}
             onEmojiPress={setEmojiPickerIndex}
             onRemoveWordSense={removeWordSense}

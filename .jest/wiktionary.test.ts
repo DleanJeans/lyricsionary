@@ -209,3 +209,4 @@ describe('inflected forms', () => {
       globalThis.fetch = originalFetch;
     }
   });
+});

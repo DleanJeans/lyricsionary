@@ -159,27 +159,41 @@ export default function WordsScreen() {
     />
   );
 
-  const frequencyToggle = (
-    <IconButton
-      icon="stats-chart-outline"
-      label={showFrequency ? 'Show saved words' : 'Show top words'}
-      selected={showFrequency}
-      onPress={() => {
-        setShowFrequency((v) => !v);
-        setSelectedLanguages([]);
-      }}
-    />
+  const selectView = (frequency: boolean) => {
+    if (frequency === showFrequency) return;
+    setShowFrequency(frequency);
+    setSelectedLanguages([]);
+  };
+
+  const viewSwitch = (
+    <View style={styles.viewSwitch} accessibilityRole="tablist">
+      {[
+        { label: 'Saved', frequency: false },
+        { label: 'Top', frequency: true },
+      ].map(({ label, frequency }) => {
+        const selected = showFrequency === frequency;
+        return (
+          <TouchableOpacity
+            key={label}
+            style={[styles.viewSwitchOption, selected && styles.viewSwitchOptionSelected]}
+            onPress={() => selectView(frequency)}
+            accessibilityRole="tab"
+            accessibilityLabel={frequency ? 'Top words' : 'Saved words'}
+            accessibilityState={{ selected }}
+          >
+            <Text style={[styles.viewSwitchLabel, selected && styles.viewSwitchLabelSelected]}>{label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        {showSearch ? searchInput : <Text style={styles.title}>{showFrequency ? 'Top Words' : 'Saved Words'}</Text>}
-        <View style={styles.headerActions}>
-          {openSearchButton}
-          {frequencyToggle}
-          {languageTabsToggle}
-        </View>
+        {openSearchButton}
+        {showSearch ? searchInput : <View style={styles.titleCenter}>{viewSwitch}</View>}
+        {languageTabsToggle}
       </View>
 
       {showLanguageTabs && availableLanguages.length > 0 && (
@@ -273,21 +287,36 @@ export default function WordsScreen() {
 const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+  },
+  titleCenter: {
+    flex: 1,
     alignItems: 'center',
   },
-  title: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    fontSize: 26,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  headerActions: {
+  viewSwitch: {
     flexDirection: 'row',
-    gap: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 3,
+  },
+  viewSwitchOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 11,
+  },
+  viewSwitchOptionSelected: {
+    backgroundColor: Colors.primary,
+  },
+  viewSwitchLabel: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  viewSwitchLabelSelected: {
+    color: Colors.text,
   },
   searchInput: {
     flex: 1,
@@ -299,7 +328,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginRight: 8,
   },
   list: {
     paddingBottom: 40,

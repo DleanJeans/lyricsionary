@@ -1,4 +1,4 @@
-import { getCompoundParts, isGermanLanguage, parseManualSplit, splitCompound } from '../src/utils/compoundWords';
+import { getCompoundParts, getSplitPositions, isGermanLanguage, parseManualSplit, splitAtPositions, splitCompound } from '../src/utils/compoundWords';
 
 const known = new Set(['liebe', 'brief', 'hand', 'schuh', 'haus', 'tür', 'arbeit', 'zimmer', 'kinder', 'garten']);
 
@@ -94,5 +94,23 @@ describe('isGermanLanguage', () => {
     expect(isGermanLanguage(['de'])).toBe(true);
     expect(isGermanLanguage(['French'])).toBe(false);
     expect(isGermanLanguage(undefined)).toBe(false);
+  });
+});
+
+describe('split positions', () => {
+  it('finds where segments meet', () => {
+    expect(getSplitPositions(['Liebes', 'brief'])).toEqual([6]);
+    expect(getSplitPositions(['Haus', 'tür', 'schlüssel'])).toEqual([4, 7]);
+    expect(getSplitPositions(['Wort'])).toEqual([]);
+  });
+
+  it('cuts a word at positions in any order', () => {
+    expect(splitAtPositions('Liebesbrief', [6])).toEqual(['Liebes', 'brief']);
+    expect(splitAtPositions('Haustürschlüssel', [7, 4])).toEqual(['Haus', 'tür', 'schlüssel']);
+  });
+
+  it('ignores positions at the edges and duplicates', () => {
+    expect(splitAtPositions('Wort', [0, 4])).toEqual(['Wort']);
+    expect(splitAtPositions('Liebesbrief', [6, 6])).toEqual(['Liebes', 'brief']);
   });
 });

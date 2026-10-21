@@ -31,6 +31,24 @@ export function parseManualSplit(word: string, input: string): string[] | null {
   return parts;
 }
 
+/** Character positions where the segments meet, e.g. ["Liebes", "brief"] -> [6] */
+export function getSplitPositions(segments: string[]): number[] {
+  const positions: number[] = [];
+  let pos = 0;
+  for (const segment of segments.slice(0, -1)) {
+    pos += Array.from(segment).length;
+    positions.push(pos);
+  }
+  return positions;
+}
+
+/** Cut a word at character positions, e.g. ("Liebesbrief", [6]) -> ["Liebes", "brief"] */
+export function splitAtPositions(word: string, positions: number[]): string[] {
+  const chars = Array.from(word);
+  const cuts = [...new Set(positions)].filter((p) => p > 0 && p < chars.length).sort((a, b) => a - b);
+  return [0, ...cuts].map((start, i) => chars.slice(start, cuts[i] ?? chars.length).join(''));
+}
+
 /**
  * Turn a list of segments into CompoundParts using the word's own casing.
  * Linking elements are stripped from the lemma when the stripped form is known.

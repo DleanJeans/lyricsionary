@@ -5,9 +5,15 @@ import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel } from '../types';
-import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, parseManualSplit } from '../utils/compoundWords';
+import {
+  buildKnownGermanWords,
+  getCompoundParts,
+  getSplitPositions,
+  isGermanLanguage,
+  splitAtPositions,
+} from '../utils/compoundWords';
 import MasteryLevelDropdown from './MasteryLevelDropdown';
-import { Text, TextInput } from './Text';
+import { Text } from './Text';
 import WordTransformButtons from './WordTransformButtons';
 
 interface NewWordCardProps {
@@ -49,15 +55,24 @@ export default function NewWordCard({
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
   const compoundParts = isGerman ? getCompoundParts(word, compoundSplits, knownGermanWords) : null;
   const [isEditingSplit, setIsEditingSplit] = useState(false);
-  const [splitInput, setSplitInput] = useState('');
+  // Character positions the word is cut at while editing, e.g. [6] for Liebes|brief
+  const [splitPositions, setSplitPositions] = useState<number[]>([]);
+  const letters = Array.from(word);
+  const splitPreview = splitAtPositions(word, splitPositions);
 
   const startEditingSplit = () => {
-    setSplitInput(compoundParts ? compoundParts.map((p) => p.text).join('-') : word);
+    setSplitPositions(compoundParts ? getSplitPositions(compoundParts.map((p) => p.text)) : []);
     setIsEditingSplit(true);
   };
 
+  const toggleSplitAt = (position: number) => {
+    setSplitPositions((positions) =>
+      positions.includes(position) ? positions.filter((p) => p !== position) : [...positions, position]
+    );
+  };
+
   const saveSplit = () => {
-    setCompoundSplit(word, parseManualSplit(word, splitInput));
+    setCompoundSplit(word, splitPreview.length > 1 ? splitPreview : null);
     setIsEditingSplit(false);
   };
 
@@ -123,26 +138,51 @@ export default function NewWordCard({
         {showSplit && !isEditingSplit && (
           <TouchableOpacity accessibilityLabel="Split Compound Word" style={[styles.chip, styles.chipSecondary]} onPress={startEditingSplit}>
             <Ionicons name="cut-outline" size={16} color={Colors.textSecondary} />
+            <Text style={[styles.chipText, styles.chipTextSecondary]}>Split</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {isEditingSplit && (
-        <View style={styles.splitRow}>
-          <TextInput
-            style={styles.splitInput}
-            value={splitInput}
-            onChangeText={setSplitInput}
-            onSubmitEditing={saveSplit}
-            placeholder="Split with hyphens, e.g. Liebes-brief"
-            placeholderTextColor={Colors.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoFocus
-          />
-          <TouchableOpacity accessibilityLabel="Save Split" style={styles.chip} onPress={saveSplit}>
-            <Ionicons name="checkmark" size={16} color={Colors.primary} />
-          </TouchableOpacity>
+        <View style={styles.splitEditor}>
+          <Text style={styles.splitHint}>Tap between letters to split the word</Text>
+          <View style={styles.letterRow}>
+            {letters.map((letter, i) => {
+              // Alternate colours so each part of the split stands out
+              const partIndex = splitPositions.filter((p) => p <= i).length;
+              return (
+                <React.Fragment key={i}>
+                  {i > 0 && (
+                    <TouchableOpacity
+                      accessibilityLabel={`Split before letter ${i + 1}`}
+                      style={styles.splitGap}
+                      hitSlop={{ top: 8, bottom: 8 }}
+                      onPress={() => toggleSplitAt(i)}
+                    >
+                      <View style={[styles.splitLine, splitPositions.includes(i) && styles.splitLineActive]} />
+                    </TouchableOpacity>
+                  )}
+                  <Text style={[styles.splitLetter, partIndex % 2 === 1 && styles.splitLetterAlt]}>{letter}</Text>
+                </React.Fragment>
+              );
+            })}
+          </View>
+          <View style={styles.splitActions}>
+            <Text style={styles.splitPreview}>
+              {splitPreview.length > 1 ? splitPreview.join(' + ') : 'Not split'}
+            </Text>
+            <TouchableOpacity
+              accessibilityLabel="Cancel Split"
+              style={[styles.chip, styles.chipSecondary]}
+              onPress={() => setIsEditingSplit(false)}
+            >
+              <Ionicons name="close" size={16} color={Colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityLabel="Save Split" style={styles.chip} onPress={saveSplit}>
+              <Ionicons name="checkmark" size={16} color={Colors.primary} />
+              <Text style={styles.chipText}>Done</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -248,18 +288,54 @@ const styles = StyleSheet.create({
   chipTextSecondary: {
     color: Colors.textSecondary,
   },
-  splitRow: {
+  splitEditor: {
+    marginTop: 12,
+    gap: 8,
+  },
+  splitHint: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+  },
+  letterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+  },
+  splitLetter: {
+    color: Colors.text,
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: '600',
+  },
+  splitLetterAlt: {
+    color: Colors.primary,
+  },
+  splitGap: {
+    width: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splitLine: {
+    width: 1,
+    height: 20,
+    backgroundColor: Colors.textMuted,
+    opacity: 0.5,
+  },
+  splitLineActive: {
+    width: 3,
+    height: 30,
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
+    opacity: 1,
+  },
+  splitActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 12,
   },
-  splitInput: {
+  splitPreview: {
     flex: 1,
-    color: Colors.text,
-    fontSize: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.primary,
-    paddingVertical: 4,
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
 });

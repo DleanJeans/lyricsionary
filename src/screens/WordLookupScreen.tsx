@@ -235,6 +235,8 @@ export default function WordLookupScreen() {
   }, [displayWord, language]);
 
   const entryCheckedWordRef = useRef<string | undefined>(undefined);
+  // The Wiktionary page to open, e.g. "liebe" for a line-initial "Liebe" when only the lowercase page exists
+  const wiktionaryTitleRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!displayWord) return;
@@ -243,7 +245,7 @@ export default function WordLookupScreen() {
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(displayWord)}#${language}`;
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryTitleRef.current ?? displayWord)}#${language}`;
       setCurrentUrl(url);
       setWebViewAtTop(true);
       setScrapedIpaResults([]);
@@ -252,8 +254,14 @@ export default function WordLookupScreen() {
     // Start each new word on Wiktionary when it has an entry, otherwise on Google; tapping a tab still switches
     if (entryCheckedWordRef.current !== displayWord) {
       entryCheckedWordRef.current = displayWord;
+      wiktionaryTitleRef.current = undefined;
       setLoading(true);
-      hasWiktionaryEntry(displayWord).then((exists) => {
+      const lowercase = displayWord.toLowerCase();
+      hasWiktionaryEntry(displayWord).then(async (exists) => {
+        if (exists === false && lowercase !== displayWord && (await hasWiktionaryEntry(lowercase))) {
+          wiktionaryTitleRef.current = lowercase;
+          exists = true;
+        }
         if (cancelled) return;
         const source = exists === false ? 'google' : 'wiktionary';
         if (source === lookupSource) {

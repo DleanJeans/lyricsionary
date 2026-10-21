@@ -54,6 +54,8 @@ export function hasWiktionaryEntry(word: string): Promise<boolean | null> {
 
 const DEFINITION_API_URL = 'https://en.wiktionary.org/api/rest_v1/page/definition/';
 const MAX_DEFINITIONS = 8;
+// Longer phrases read as explanations rather than translations to write next to the word
+const MAX_GLOSS_WORDS = 4;
 
 export interface WiktionaryDefinition {
   partOfSpeech: string;
@@ -84,24 +86,79 @@ export function stripDefinitionHtml(html: string): string {
     .trim();
 }
 
-/** The definitions in the REST API response for one language, e.g. "German" */
+/**
+ * The English gloss of a form-of definition, e.g. "feelings" from 'nominative plural of Gefühl
+ * “feelings”', which is what the word means in the lyrics. Undefined for ordinary definitions.
+ */
+export function getFormOfGloss(html: string): string | undefined {
+  const span = html.match(/<span\b[^>]*class="[^"]*\bmention-gloss\b(?!-)[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
+  const gloss = span
+    ? stripDefinitionHtml(span[1])
+    : stripDefinitionHtml(html).match(/\bof\s+\S.*?\s[“"]([^“”"]+)[”"]\s*$/)?.[1];
+  return gloss?.trim() || undefined;
+}
+
+/**
+ * Short translations in a definition, e.g. "always" from 'always (at all times, without exception)'
+ * or "very often", "all the time" and "constantly" from 'very often; all the time; constantly'.
+ * Bracketed glosses, qualifiers and parentheticals are dropped, and long explanations are skipped.
+ */
+export function getShortGlosses(html: string): string[] {
+  let text = html.replace(/<span\b[^>]*class="[^"]*\b(?:gloss|qualifier|ib)-[^"]*"[^>]*>[^<]*<\/span>/gi, '');
+  text = stripDefinitionHtml(text);
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/\s*\([^()]*\)/g, '');
+  } while (text !== previous);
+  const isShort = (part: string) => part.split(/\s+/).length <= MAX_GLOSS_WORDS;
+  // Semicolons separate synonyms; commas only do when every part is short ("always, ever"),
+  // otherwise they're part of an explanation ("used to emphasize ..., which itself is stressed")
+  const glosses = text.split(';').flatMap((segment) => {
+    const parts = segment
+      .split(',')
+      .map((part) => part.trim().replace(/\.$/, ''))
+      .filter(Boolean);
+    return parts.every(isShort) ? parts : [];
+  });
+  if (glosses.length > 0) return glosses;
+
+  // A definition led by a linked translation followed by an unmarked explanation, e.g.
+  // '<a>always</a> at all times without exception'
+  const leadingLink = stripDefinitionHtml(html.match(/^\s*<a\b[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? '');
+  return leadingLink && isShort(leadingLink) ? [leadingLink] : [];
+}
+
+/**
+ * Suggestions from the REST API response for one language, e.g. "German": short translations when
+ * the entry has any, otherwise the full definitions
+ */
 export function parseDefinitions(response: unknown, language: string): WiktionaryDefinition[] {
   if (!response || typeof response !== 'object') return [];
   const target = language.toLowerCase();
-  const results: WiktionaryDefinition[] = [];
+  const glosses: WiktionaryDefinition[] = [];
+  const definitions: WiktionaryDefinition[] = [];
+  const add = (list: WiktionaryDefinition[], partOfSpeech: string, text: string) => {
+    if (text && !list.some((d) => d.text === text)) list.push({ partOfSpeech, text });
+  };
   for (const sections of Object.values(response as Record<string, DefinitionSection[]>)) {
     if (!Array.isArray(sections)) continue;
     for (const section of sections) {
       if (section.language?.toLowerCase() !== target) continue;
+      const partOfSpeech = section.partOfSpeech ?? '';
       for (const { definition } of section.definitions ?? []) {
-        const text = definition ? stripDefinitionHtml(definition) : '';
-        if (text && !results.some((r) => r.text === text)) {
-          results.push({ partOfSpeech: section.partOfSpeech ?? '', text });
+        if (!definition) continue;
+        const formOfGloss = getFormOfGloss(definition);
+        if (formOfGloss) {
+          add(glosses, partOfSpeech, formOfGloss);
+          continue;
         }
+        for (const gloss of getShortGlosses(definition)) add(glosses, partOfSpeech, gloss);
+        add(definitions, partOfSpeech, stripDefinitionHtml(definition));
       }
     }
   }
-  return results.slice(0, MAX_DEFINITIONS);
+  return (glosses.length > 0 ? glosses : definitions).slice(0, MAX_DEFINITIONS);
 }
 
 const definitionRequests = new Map<string, Promise<unknown>>();

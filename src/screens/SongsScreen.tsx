@@ -318,12 +318,17 @@ export default function SongsScreen() {
     );
   };
 
-  const sortButton = (
-    <IconButton
-      icon={getSortIcon()}
-      label={'Sort songs by ' + getSortLabel()}
+  const sortLabel = getSortLabel();
+  const sortChip = (
+    <TouchableOpacity
+      style={styles.sortChip}
       onPress={cycleSortMode}
-    />
+      accessibilityRole="button"
+      accessibilityLabel={'Sort songs by ' + sortLabel}
+    >
+      <Ionicons name={getSortIcon()} size={16} color={Colors.textSecondary} />
+      <Text style={styles.sortChipLabel}>{sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)}</Text>
+    </TouchableOpacity>
   );
 
   const searchInput = (
@@ -366,22 +371,17 @@ export default function SongsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        {sortButton}
+        {languageTabsToggle}
         {showSearch ? (
           <>
             {searchInput}
-            <View style={styles.searchButtons}>
-              {closeSearchButton}
-              {lyricsSearchToggle}
-            </View>
+            {closeSearchButton}
+            {lyricsSearchToggle}
           </>
         ) : (
           <>
-            <Text style={styles.title}>Saved Songs</Text>
-            <View style={styles.headerActions}>
-              {searchToggleButton}
-              {languageTabsToggle}
-            </View>
+            <Text style={styles.title} numberOfLines={1}>Saved Songs</Text>
+            {searchToggleButton}
           </>
         )}
       </View>
@@ -396,6 +396,8 @@ export default function SongsScreen() {
           />
         </View>
       )}
+
+      <View style={styles.sortRow}>{sortChip}</View>
 
       {filteredSongs.length === 0 ? (
         songs.length === 0 ? (
@@ -452,26 +454,36 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
   },
   title: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: 'center',
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
   },
-  searchButtons: {
+  sortRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginLeft: 8,
+    marginBottom: 12,
   },
-  headerActions: {
+  sortChip: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  sortChipLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
   },
   searchInput: {
     flex: 1,
@@ -483,7 +495,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginLeft: 8,
   },
   list: {
     paddingBottom: 40,

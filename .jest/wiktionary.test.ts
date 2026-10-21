@@ -1,4 +1,13 @@
-import { getFormOfGloss, getShortGlosses, isMissingPage, parseDefinitions, stripDefinitionHtml } from '../src/utils/wiktionary';
+import {
+  getFormOfGloss,
+  getFormOfLemma,
+  getShortGlosses,
+  getWiktionaryDefinitions,
+  isMissingPage,
+  parseDefinitions,
+  parseEntry,
+  stripDefinitionHtml,
+} from '../src/utils/wiktionary';
 
 describe('isMissingPage', () => {
   it('detects a missing page', () => {
@@ -148,5 +157,56 @@ describe('real Wiktionary responses', () => {
       'Nothing',
       'no recompense',
     ]);
+  });
+});
+
+const FRAGT = [
+  '<span class="form-of-definition use-with-mention" about="#mwt33" typeof="mw:Transclusion">inflection of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/fragen#German" title="fragen">fragen</a></i></span>:</span><span about="#mwt33">\n</span><ol about="#mwt33"><li><span class="form-of-definition use-with-mention"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#third_person" title="Appendix:Glossary">third-person</a> <a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#singular_number" title="Appendix:Glossary">singular</a> <a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#present_tense" title="Appendix:Glossary">present</a></span></li></ol>',
+  '<span class="form-of-definition use-with-mention"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#third_person" title="Appendix:Glossary">third-person</a> <a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#singular_number" title="Appendix:Glossary">singular</a> <a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#present_tense" title="Appendix:Glossary">present</a></span>',
+];
+const STYLE = 'style';
+const LINK = 'link';
+// The real HTML's style and link tags, built here so they don't read as markup in patches
+const FRAGEN = [
+  `<span class="usage-label-sense" about="#mwt26" typeof="mw:Transclusion"></span> to <a rel="mw:WikiLink" href="/wiki/ask" title="ask">ask</a> ${'<' + STYLE} data-mw-deduplicate="TemplateStyles:r90144471" typeof="mw:Extension/templatestyles mw:Transclusion" about="#mwt27">.mw-parser-output .object-usage-tag{font-style:italic}.mw-parser-output .deprecated{color:var(--wikt-palette-grey-lime-8,olivedrab)}</${STYLE}><span about="#mwt27">[</span><i about="#mwt27">with</i><span about="#mwt27"> </span><span class="object-usage-tag" about="#mwt27"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#accusative_case" title="Appendix:Glossary">accusative</a></span><span about="#mwt27"> </span><small about="#mwt27">‘someone’</small><span about="#mwt27"> </span><i about="#mwt27">and</i><span about="#mwt27"> </span><span class="object-usage-tag" about="#mwt27"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#accusative_case" title="Appendix:Glossary">accusative</a></span><span about="#mwt27"> </span><small about="#mwt27">‘something’</small><span about="#mwt27">]</span>`,
+  `<span class="usage-label-sense" about="#mwt30" typeof="mw:Transclusion"></span> to <a rel="mw:WikiLink" href="/wiki/ask_for" title="ask for">ask for</a>, to <a rel="mw:WikiLink" href="/wiki/ask_after" title="ask after">ask after</a> ${'<' + LINK} rel="mw-deduplicated-inline-style" about="#mwt31" typeof="mw:Extension/templatestyles mw:Transclusion"><span about="#mwt31">[</span><i about="#mwt31">with</i><span about="#mwt31"> </span><b class="Latn" lang="de" about="#mwt31"><a rel="mw:WikiLink" href="/wiki/nach#German" title="nach">nach</a></b><span about="#mwt31"> </span><small about="#mwt31">‘someone/something’</small><span about="#mwt31">]</span>`,
+  '<span class="usage-label-sense" about="#mwt33" typeof="mw:Transclusion"></span> to <a rel="mw:WikiLink" href="/wiki/wonder" title="wonder">wonder</a>',
+];
+const BLEIB =
+  '<span class="form-of-definition use-with-mention" about="#mwt6" typeof="mw:Transclusion"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#singular_number" title="Appendix:Glossary">singular</a> <a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#imperative_mood" title="Appendix:Glossary">imperative</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/bleiben#German" title="bleiben">bleiben</a></i></span></span>';
+
+describe('inflected forms', () => {
+  it('finds the base form and drops the grammar descriptions', () => {
+    expect(getFormOfLemma(FRAGT[0])).toBe('fragen');
+    expect(getFormOfLemma(BLEIB)).toBe('bleiben');
+    expect(getFormOfLemma(FRAGT[1])).toBeUndefined();
+    expect(parseEntry({ de: [section('German', 'Verb', FRAGT)] }, 'German')).toEqual({ glosses: [], definitions: [], lemmas: ['fragen'] });
+  });
+
+  it('reads fragen without its usage notes and styles', () => {
+    expect(texts({ de: [section('German', 'Verb', FRAGEN)] }, 'German')).toEqual(['to ask', 'to ask for', 'to ask after', 'to wonder']);
+  });
+
+  it('suggests the base form definitions for an inflected word', async () => {
+    const pages: Record<string, unknown> = {
+      fragt: { de: [section('German', 'Verb', FRAGT)] },
+      fragen: { de: [section('German', 'Verb', FRAGEN)] },
+    };
+    const fetchMock = jest.fn(async (url: string) => {
+      const page = pages[decodeURIComponent(url.split('/').pop() ?? '')];
+      return { ok: !!page, status: page ? 200 : 404, json: async () => page };
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      expect((await getWiktionaryDefinitions('fragt', 'German'))?.map((d) => d.text)).toEqual([
+        'to ask',
+        'to ask for',
+        'to ask after',
+        'to wonder',
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

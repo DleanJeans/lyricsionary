@@ -1,4 +1,4 @@
-import { countWordOccurrences } from '../src/utils/wordFrequency';
+import { countKnownWords, countWordOccurrences } from '../src/utils/wordFrequency';
 
 describe('countWordOccurrences', () => {
   const songs = [
@@ -35,5 +35,16 @@ describe('countWordOccurrences', () => {
   it('excludes ignored words', () => {
     const result = countWordOccurrences(songs, (word, language) => word.toLowerCase() === 'liebe' && language === 'German');
     expect(result.find((w) => w.language === 'German' && w.word.toLowerCase() === 'liebe')).toBeUndefined();
+  });
+});
+
+describe('countKnownWords', () => {
+  it('counts every occurrence of known words, ignoring case and punctuation', () => {
+    const known = new Set(['liebe', 'dich']);
+    expect(countKnownWords('Ich liebe dich,\nich LIEBE dich nicht!', (w) => known.has(w.toLowerCase()))).toBe(4);
+  });
+
+  it('returns 0 when nothing is known', () => {
+    expect(countKnownWords('la la la', () => false)).toBe(0);
   });
 });

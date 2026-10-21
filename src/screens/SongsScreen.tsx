@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '../store/useStore';
+import { isWordIgnored, useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { getFlagForLanguage } from '../constants/languages';
+import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Song, RootTabParamList } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -23,6 +23,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
 import LanguageTabButtons from '../components/LanguageTabButtons';
+import { countKnownWords } from '../utils/wordFrequency';
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
@@ -34,6 +35,8 @@ export default function SongsScreen() {
   const setMatchedSongs = useStore((s) => s.setMatchedSongs);
   const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
   const isLoadingSong = useStore((s) => s.isLoadingSong);
+  const words = useStore((s) => s.words);
+  const ignoredWords = useStore((s) => s.ignoredWords);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -169,6 +172,35 @@ export default function SongsScreen() {
     return words.length;
   };
 
+  // Saved words keyed by "language\u0000word", with language names normalized like LearnScreen
+  const savedWordKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const entry of words) {
+      const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
+      keys.add(`${language}\u0000${entry.word.toLowerCase()}`);
+    }
+    return keys;
+  }, [words]);
+
+  const formatWordProgress = (song: Song) => {
+    const total = getWordCount(song);
+    const known = getKnownWordCount(song);
+    const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
+    return `${known}/${total} words (${percent}%)`;
+  };
+
+  const getKnownWordCount = (song: Song) => {
+    const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
+    const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
+    return countKnownWords(song.originalLyrics, (word) => {
+      const lower = word.toLowerCase();
+      return (
+        languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
+        isWordIgnored(ignoredWords, word, ignoreLanguage)
+      );
+    });
+  };
+
   const toggleSearch = () => {
     if (showSearch) {
       setSearchQuery('');
@@ -256,7 +288,7 @@ export default function SongsScreen() {
             {getFaviconUrl(item.sourceUrl ?? '') && (
               <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
             )}
-            <Text style={styles.metaText}>{getWordCount(item)} words</Text>
+            <Text style={styles.metaText}>{formatWordProgress(item)}</Text>
             <View style={styles.languages}>
               {(item.originalLanguages ?? []).map((lang) => (
                 <Text key={`orig-${lang}`} style={styles.flag}>
@@ -286,12 +318,17 @@ export default function SongsScreen() {
     );
   };
 
-  const sortButton = (
-    <IconButton
-      icon={getSortIcon()}
-      label={'Sort songs by ' + getSortLabel()}
+  const sortLabel = getSortLabel();
+  const sortChip = (
+    <TouchableOpacity
+      style={styles.sortChip}
       onPress={cycleSortMode}
-    />
+      accessibilityRole="button"
+      accessibilityLabel={'Sort songs by ' + sortLabel}
+    >
+      <Ionicons name={getSortIcon()} size={16} color={Colors.textSecondary} />
+      <Text style={styles.sortChipLabel}>{sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)}</Text>
+    </TouchableOpacity>
   );
 
   const searchInput = (
@@ -334,22 +371,17 @@ export default function SongsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        {sortButton}
+        {languageTabsToggle}
         {showSearch ? (
           <>
             {searchInput}
-            <View style={styles.searchButtons}>
-              {closeSearchButton}
-              {lyricsSearchToggle}
-            </View>
+            {closeSearchButton}
+            {lyricsSearchToggle}
           </>
         ) : (
           <>
-            <Text style={styles.title}>Saved Songs</Text>
-            <View style={styles.headerActions}>
-              {searchToggleButton}
-              {languageTabsToggle}
-            </View>
+            <Text style={styles.title} numberOfLines={1}>Saved Songs</Text>
+            {searchToggleButton}
           </>
         )}
       </View>
@@ -364,6 +396,8 @@ export default function SongsScreen() {
           />
         </View>
       )}
+
+      <View style={styles.sortRow}>{sortChip}</View>
 
       {filteredSongs.length === 0 ? (
         songs.length === 0 ? (
@@ -420,26 +454,36 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
   },
   title: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: 'center',
     fontSize: 26,
     fontWeight: '700',
     color: Colors.text,
   },
-  searchButtons: {
+  sortRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginLeft: 8,
+    marginBottom: 12,
   },
-  headerActions: {
+  sortChip: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  sortChipLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
   },
   searchInput: {
     flex: 1,
@@ -451,7 +495,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginLeft: 8,
   },
   list: {
     paddingBottom: 40,

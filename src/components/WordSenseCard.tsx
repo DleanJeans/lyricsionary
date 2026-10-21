@@ -4,6 +4,7 @@ import { Text, TextInput } from './Text'
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import SongContextBlock from './SongContextBlock';
+import SelectableTranslation from './SelectableTranslation';
 import type { WiktionaryDefinition } from '../utils/wiktionary';
 
 interface WordSenseCardProps {
@@ -80,6 +81,8 @@ export default function WordSenseCard({
               artistName={artistName}
               translation={translation}
               showSongName={false}
+              onTranslationSelect={isRemoved ? undefined : onDefinitionChange}
+              selectedTranslation={definition}
             />
           </View>
         ) : (
@@ -92,7 +95,18 @@ export default function WordSenseCard({
           />
         )}
         {!fromSong && translation ? (
-          <Text style={styles.translationText}>{translation}</Text>
+          isRemoved ? (
+            <Text style={styles.translationText}>{translation}</Text>
+          ) : (
+            <View style={styles.translationSelectable}>
+              <SelectableTranslation
+                translation={translation}
+                onSelect={onDefinitionChange}
+                value={definition}
+                style={styles.translationText}
+              />
+            </View>
+          )
         ) : null}
       </View>
       <View style={styles.contextRow}>
@@ -200,6 +214,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     fontStyle: 'italic',
+  },
+  translationSelectable: {
+    marginHorizontal: -2,
   },
   fieldInput: {
     backgroundColor: Colors.surface,

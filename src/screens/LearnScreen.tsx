@@ -484,7 +484,6 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
                           : Colors.text;
                       return (
                         <React.Fragment key={pi}>
-                          {pi > 0 && <Text style={[styles.compoundSeparator, { fontSize, lineHeight: fontSize * 1.6 }]}>·</Text>}
                           <Text
                             style={{
                               color: partColor,
@@ -886,9 +885,6 @@ const styles = StyleSheet.create({
   translationLine: {
     color: Colors.primaryLight,
     marginTop: 2,
-  },
-  compoundSeparator: {
-    color: Colors.textMuted,
   },
   translationContainer: {
     alignSelf: 'flex-start',

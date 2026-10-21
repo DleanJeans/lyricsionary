@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/theme';
-import { getWordTransforms } from '../utils/wordTransform';
+import { getLowercaseVersion, getWordTransforms, isCapitalized } from '../utils/wordTransform';
+import { hasWiktionaryEntry } from '../utils/wiktionary';
 
 interface WordTransformButtonsProps {
   word: string;
@@ -37,10 +38,26 @@ export default function WordTransformButtons({
 }: WordTransformButtonsProps) {
   const navigation = useNavigation<any>();
 
+  // Check Wiktionary in the background and hide the lowercase button when it has no entry
+  // (e.g. German nouns, which only have a capitalized page)
+  const lowercaseWord = isCapitalized(word) ? getLowercaseVersion(word) : null;
+  const [lowercaseMissing, setLowercaseMissing] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!lowercaseWord) return;
+    let cancelled = false;
+    hasWiktionaryEntry(lowercaseWord).then((exists) => {
+      if (!cancelled && exists === false) setLowercaseMissing(lowercaseWord);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lowercaseWord]);
+
   // Get all transformed versions of the word
   const transforms = [
     ...new Set([...getWordTransforms(word, language || originalLanguages?.[0]), ...extraWords]),
-  ];
+  ].filter((w) => w !== lowercaseMissing || extraWords.includes(w));
 
   // Always show at least the original word as a button
   const wordsToShow = hideOriginalWord ? transforms : [word, ...transforms];

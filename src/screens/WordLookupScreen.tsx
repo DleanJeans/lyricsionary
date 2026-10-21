@@ -18,6 +18,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
+import { hasWiktionaryEntry } from '../utils/wiktionary';
 import WordSenseCard from '../components/WordSenseCard';
 import WordTransformButtons from '../components/WordTransformButtons';
 import { Colors } from '../constants/theme';
@@ -225,15 +226,40 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
     return currentNormalized !== storedNormalized;
   }, [displayWord, isNewWord, language, pronunciation, masteryLevel, wordSenses, words]);
 
+  const entryCheckedWordRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
-    if (displayWord) {
-      const url = lookupSource === 'google'
+    if (!displayWord) return;
+    let cancelled = false;
+
+    const open = (source: 'google' | 'wiktionary') => {
+      const url = source === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
         : `https://en.wiktionary.org/wiki/${encodeURIComponent(displayWord)}#${language}`;
       setCurrentUrl(url);
       setWebViewAtTop(true);
       setScrapedIpaResults([]);
+    };
+
+    // Open Google instead when Wiktionary has no entry for a new word; tapping Wiktionary still opens it
+    if (lookupSource === 'wiktionary' && entryCheckedWordRef.current !== displayWord) {
+      entryCheckedWordRef.current = displayWord;
+      setLoading(true);
+      hasWiktionaryEntry(displayWord).then((exists) => {
+        if (cancelled) return;
+        if (exists === false) {
+          setLookupSource('google');
+        } else {
+          open('wiktionary');
+        }
+      });
+    } else {
+      open(lookupSource);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [displayWord, lookupSource]);
 
   useEffect(() => {

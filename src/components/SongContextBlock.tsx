@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
+import SelectableTranslation from './SelectableTranslation';
 
 interface SongContextBlockProps {
   context: string;
@@ -13,6 +14,8 @@ interface SongContextBlockProps {
   artistName?: string;
   translation?: string;
   showSongName?: boolean;
+  onTranslationSelect?: (text: string) => void;
+  selectedTranslation?: string;
 }
 
 function countOccurrences(text: string, word: string): number {
@@ -32,6 +35,8 @@ export default function SongContextBlock({
   artistName,
   translation,
   showSongName = true,
+  onTranslationSelect,
+  selectedTranslation,
 }: SongContextBlockProps) {
   const computedOccurrenceCount = occurrenceCount ?? useMemo(
     () => countOccurrences(context, word || ''),
@@ -103,7 +108,16 @@ export default function SongContextBlock({
           </TouchableOpacity>
         ) : null}
       </View>
-      {translation ? (
+      {translation && onTranslationSelect ? (
+        <View style={styles.translationSelectable}>
+          <SelectableTranslation
+            translation={translation}
+            onSelect={onTranslationSelect}
+            value={selectedTranslation}
+            style={styles.translationText}
+          />
+        </View>
+      ) : translation ? (
         <Text style={styles.translationText}>{translation}</Text>
       ) : null}
     </View>
@@ -155,5 +169,9 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontStyle: 'italic',
     marginTop: 2,
+  },
+  translationSelectable: {
+    marginTop: 2,
+    marginHorizontal: -2,
   },
 });

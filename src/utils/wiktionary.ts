@@ -54,6 +54,8 @@ export function hasWiktionaryEntry(word: string): Promise<boolean | null> {
 
 const DEFINITION_API_URL = 'https://en.wiktionary.org/api/rest_v1/page/definition/';
 const MAX_DEFINITIONS = 8;
+// Base forms to look up for an inflected word, e.g. both verbs a participle could come from
+const MAX_LEMMAS = 2;
 // Longer phrases read as explanations rather than translations to write next to the word
 const MAX_GLOSS_WORDS = 4;
 
@@ -74,6 +76,8 @@ const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"'
 export function stripDefinitionHtml(html: string): string {
   return html
     .replace(/<!--[\s\S]*?-->/g, '')
+    // Template styles, e.g. fragen's '.mw-parser-output .object-usage-tag{font-style:italic}'
+    .replace(/<(\w+)\b[^>]*\btemplatestyles\b[^>]*>[\s\S]*?<\/\1>/gi, '')
     // Sub-sense lists can be left unclosed, e.g. immer's 'always\n<ol><li>at all times without exception'
     .replace(/<(ul|ol|dl)\b[\s\S]*?(?:<\/\1>|$)/gi, '')
     .replace(/<[^>]+>/g, '')
@@ -141,7 +145,8 @@ export function getShortGlosses(html: string): string[] {
   let previous: string;
   do {
     previous = text;
-    text = text.replace(/\s*\([^()]*\)/g, '');
+    // Usage notes too, e.g. fragen's "to ask [with accusative ‘someone’ and accusative ‘something’]"
+    text = text.replace(/\s*\([^()]*\)|\s*\[[^[\]]*\]/g, '');
   } while (text !== previous);
   const isShort = (part: string) => part.split(/\s+/).length <= MAX_GLOSS_WORDS;
   // Semicolons separate synonyms; commas only do when every part is short ("always, ever"),
@@ -155,15 +160,28 @@ export function getShortGlosses(html: string): string[] {
   });
 }
 
-/**
- * Suggestions from the REST API response for one language, e.g. "German": short translations when
- * the entry has any, otherwise the full definitions
- */
-export function parseDefinitions(response: unknown, language: string): WiktionaryDefinition[] {
-  if (!response || typeof response !== 'object') return [];
+export interface WiktionaryEntry {
+  /** Short translations, e.g. "always" */
+  glosses: WiktionaryDefinition[];
+  /** Full definitions, without form-of ones like "third-person singular present" */
+  definitions: WiktionaryDefinition[];
+  /** Base forms of an inflected word, e.g. "fragen" for "fragt" */
+  lemmas: string[];
+}
+
+/** The base form a form-of definition links to, e.g. fragen in 'inflection of <a>fragen</a>:' */
+export function getFormOfLemma(html: string): string | undefined {
+  const link = html.match(/<span\b[^>]*class="form-of-definition-link"[^>]*>[\s\S]*?<a\b([^>]*)>([\s\S]*?)<\/a>/i);
+  if (!link) return undefined;
+  const title = link[1].match(/\btitle="([^"]+)"/)?.[1];
+  return stripDefinitionHtml(title ?? link[2]) || undefined;
+}
+
+/** The parts of the REST API response for one language, e.g. "German" */
+export function parseEntry(response: unknown, language: string): WiktionaryEntry {
+  const entry: WiktionaryEntry = { glosses: [], definitions: [], lemmas: [] };
+  if (!response || typeof response !== 'object') return entry;
   const target = language.toLowerCase();
-  const glosses: WiktionaryDefinition[] = [];
-  const definitions: WiktionaryDefinition[] = [];
   const add = (list: WiktionaryDefinition[], partOfSpeech: string, text: string) => {
     if (text && !list.some((d) => d.text === text)) list.push({ partOfSpeech, text });
   };
@@ -174,19 +192,25 @@ export function parseDefinitions(response: unknown, language: string): Wiktionar
       const partOfSpeech = section.partOfSpeech ?? '';
       for (const { definition } of section.definitions ?? []) {
         if (!definition) continue;
-        const formOfGloss = getFormOfGloss(definition);
-        if (formOfGloss) {
-          add(glosses, partOfSpeech, formOfGloss);
+        if (isFormOf(definition)) {
+          const formOfGloss = getFormOfGloss(definition);
+          const lemma = getFormOfLemma(definition);
+          if (formOfGloss) add(entry.glosses, partOfSpeech, formOfGloss);
+          // Without a gloss, "inflection of fragen" says nothing about the meaning by itself
+          else if (lemma && !entry.lemmas.includes(lemma)) entry.lemmas.push(lemma);
           continue;
         }
-        // "Synonym of heart (verb)" says nothing about the meaning by itself
-        if (!isFormOf(definition)) {
-          for (const gloss of getShortGlosses(definition)) add(glosses, partOfSpeech, gloss);
-        }
-        add(definitions, partOfSpeech, stripDefinitionHtml(definition));
+        for (const gloss of getShortGlosses(definition)) add(entry.glosses, partOfSpeech, gloss);
+        add(entry.definitions, partOfSpeech, stripDefinitionHtml(definition));
       }
     }
   }
+  return entry;
+}
+
+/** Suggestions from one response: short translations when the entry has any, otherwise the full definitions */
+export function parseDefinitions(response: unknown, language: string): WiktionaryDefinition[] {
+  const { glosses, definitions } = parseEntry(response, language);
   return (glosses.length > 0 ? glosses : definitions).slice(0, MAX_DEFINITIONS);
 }
 
@@ -213,15 +237,22 @@ function fetchDefinitionResponse(title: string): Promise<unknown> {
 
 /**
  * Definitions from the word's Wiktionary page in the given language. Titles are case-sensitive, so
- * when the page has none ("liebe" vs "Liebe") the other casing is tried too. Resolves null on failure.
+ * when the page has none ("liebe" vs "Liebe") the other casing is tried too. Inflected forms without a
+ * meaning of their own ("fragt") use their base form's ("fragen"). Resolves null on failure.
  */
 export async function getWiktionaryDefinitions(word: string, language: string): Promise<WiktionaryDefinition[] | null> {
   const lower = word.toLowerCase();
   const variants = [word, word === lower ? word.charAt(0).toUpperCase() + word.slice(1) : lower];
   try {
     for (const title of variants) {
-      const definitions = parseDefinitions(await fetchDefinitionResponse(title), language);
-      if (definitions.length > 0) return definitions;
+      const entry = parseEntry(await fetchDefinitionResponse(title), language);
+      if (entry.glosses.length > 0) return entry.glosses.slice(0, MAX_DEFINITIONS);
+
+      for (const lemma of entry.lemmas.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
+        const definitions = parseDefinitions(await fetchDefinitionResponse(lemma), language);
+        if (definitions.length > 0) return definitions;
+      }
+      if (entry.definitions.length > 0) return entry.definitions.slice(0, MAX_DEFINITIONS);
     }
     return [];
   } catch (error) {

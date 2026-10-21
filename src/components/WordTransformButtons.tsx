@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/theme';
 import { getLowercaseVersion, getWordTransforms, isCapitalized } from '../utils/wordTransform';
-import { hasWiktionaryEntry } from '../utils/wiktionary';
+import { getCachedWiktionaryEntry, hasWiktionaryEntry } from '../utils/wiktionary';
 
 interface WordTransformButtonsProps {
   word: string;
@@ -38,16 +38,21 @@ export default function WordTransformButtons({
 }: WordTransformButtonsProps) {
   const navigation = useNavigation<any>();
 
-  // Check Wiktionary in the background and hide the lowercase button when it has no entry
-  // (e.g. German nouns, which only have a capitalized page)
+  // Only show the lowercase button once Wiktionary confirms it has an entry
+  // (e.g. German nouns only have a capitalized page); a failed check still shows it
   const lowercaseWord = isCapitalized(word) ? getLowercaseVersion(word) : null;
-  const [lowercaseMissing, setLowercaseMissing] = useState<string | null>(null);
+  const [lowercaseCheck, setLowercaseCheck] = useState<{ word: string; exists: boolean | null } | null>(null);
+  const lowercaseExists = lowercaseWord
+    ? (getCachedWiktionaryEntry(lowercaseWord) ??
+      (lowercaseCheck?.word === lowercaseWord ? lowercaseCheck.exists : undefined))
+    : undefined;
+  const hideLowercase = lowercaseWord !== null && (lowercaseExists === undefined || lowercaseExists === false);
 
   useEffect(() => {
     if (!lowercaseWord) return;
     let cancelled = false;
     hasWiktionaryEntry(lowercaseWord).then((exists) => {
-      if (!cancelled && exists === false) setLowercaseMissing(lowercaseWord);
+      if (!cancelled) setLowercaseCheck({ word: lowercaseWord, exists });
     });
     return () => {
       cancelled = true;
@@ -57,7 +62,7 @@ export default function WordTransformButtons({
   // Get all transformed versions of the word
   const transforms = [
     ...new Set([...getWordTransforms(word, language || originalLanguages?.[0]), ...extraWords]),
-  ].filter((w) => w !== lowercaseMissing || extraWords.includes(w));
+  ].filter((w) => !hideLowercase || w !== lowercaseWord || extraWords.includes(w));
 
   // Always show at least the original word as a button
   const wordsToShow = hideOriginalWord ? transforms : [word, ...transforms];

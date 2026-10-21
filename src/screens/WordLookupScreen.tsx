@@ -241,16 +241,17 @@ const isNewWord = displayWord && !words.find((w) => w.word.toLowerCase() === dis
       setScrapedIpaResults([]);
     };
 
-    // Open Google instead when Wiktionary has no entry for a new word; tapping Wiktionary still opens it
-    if (lookupSource === 'wiktionary' && entryCheckedWordRef.current !== displayWord) {
+    // Start each new word on Wiktionary when it has an entry, otherwise on Google; tapping a tab still switches
+    if (entryCheckedWordRef.current !== displayWord) {
       entryCheckedWordRef.current = displayWord;
       setLoading(true);
       hasWiktionaryEntry(displayWord).then((exists) => {
         if (cancelled) return;
-        if (exists === false) {
-          setLookupSource('google');
+        const source = exists === false ? 'google' : 'wiktionary';
+        if (source === lookupSource) {
+          open(source);
         } else {
-          open('wiktionary');
+          setLookupSource(source);
         }
       });
     } else {

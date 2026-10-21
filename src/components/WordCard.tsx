@@ -95,7 +95,7 @@ export default function WordCard({
         )}
         <View style={styles.cardRow}>
           <Text style={styles.flag}>{(item.contexts?.[0]?.emoji || item.emoji) || getFlagForLanguage(item.language)}</Text>
-          <View style={styles.cardContent}>
+          <View style={[styles.cardContent, showClose && styles.cardContentWithClose]}>
             <HighlightedText
               text={item.word}
               query={searchQuery}
@@ -145,6 +145,9 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+  },
+  cardContentWithClose: {
+    paddingRight: 24,
   },
   cardWordText: {
     fontSize: 18,

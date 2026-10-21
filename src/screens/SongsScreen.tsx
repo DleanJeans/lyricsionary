@@ -182,6 +182,13 @@ export default function SongsScreen() {
     return keys;
   }, [words]);
 
+  const formatWordProgress = (song: Song) => {
+    const total = getWordCount(song);
+    const known = getKnownWordCount(song);
+    const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
+    return `${known}/${total} words (${percent}%)`;
+  };
+
   const getKnownWordCount = (song: Song) => {
     const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
     const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
@@ -281,7 +288,7 @@ export default function SongsScreen() {
             {getFaviconUrl(item.sourceUrl ?? '') && (
               <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
             )}
-            <Text style={styles.metaText}>{getKnownWordCount(item)}/{getWordCount(item)} words</Text>
+            <Text style={styles.metaText}>{formatWordProgress(item)}</Text>
             <View style={styles.languages}>
               {(item.originalLanguages ?? []).map((lang) => (
                 <Text key={`orig-${lang}`} style={styles.flag}>

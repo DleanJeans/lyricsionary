@@ -73,7 +73,9 @@ const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"'
 /** Plain text of a definition's HTML, without nested sub-sense lists or example blocks */
 export function stripDefinitionHtml(html: string): string {
   return html
-    .replace(/<(ul|ol|dl)\b[\s\S]*?<\/\1>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    // Sub-sense lists can be left unclosed, e.g. immer's 'always\n<ol><li>at all times without exception'
+    .replace(/<(ul|ol|dl)\b[\s\S]*?(?:<\/\1>|$)/gi, '')
     .replace(/<[^>]+>/g, '')
     .replace(/&(#x?[0-9a-f]+|\w+);/gi, (match, entity: string) => {
       if (entity[0] === '#') {
@@ -91,6 +93,7 @@ export function stripDefinitionHtml(html: string): string {
  * “feelings”', which is what the word means in the lyrics. Undefined for ordinary definitions.
  */
 export function getFormOfGloss(html: string): string | undefined {
+  if (!isFormOf(html)) return undefined;
   const span = html.match(/<span\b[^>]*class="[^"]*\bmention-gloss\b(?!-)[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
   const gloss = span
     ? stripDefinitionHtml(span[1])
@@ -98,7 +101,12 @@ export function getFormOfGloss(html: string): string | undefined {
   return gloss?.trim() || undefined;
 }
 
-const ANNOTATION_SPAN = /<span\b[^>]*class="[^"]*\b(?:gloss|qualifier|ib)-[^"]*"[^>]*>/i;
+function isFormOf(html: string): boolean {
+  return /class="[^"]*\bform-of-definition\b/i.test(html);
+}
+
+const ANNOTATION_SPAN =
+  /<span\b[^>]*class="(?:[^"]*\s)?(?:mention-gloss[\w-]*|gloss-[\w-]+|qualifier[\w-]*|ib-[\w-]+|ann-pos|usage-label-sense)(?:\s[^"]*)?"[^>]*>/i;
 
 /**
  * Remove gloss and qualifier spans, e.g. the "(he who rents, lets)" of 'landlord (he who rents, lets)',
@@ -177,7 +185,10 @@ export function parseDefinitions(response: unknown, language: string): Wiktionar
           add(glosses, partOfSpeech, formOfGloss);
           continue;
         }
-        for (const gloss of getShortGlosses(definition)) add(glosses, partOfSpeech, gloss);
+        // "Synonym of heart (verb)" says nothing about the meaning by itself
+        if (!isFormOf(definition)) {
+          for (const gloss of getShortGlosses(definition)) add(glosses, partOfSpeech, gloss);
+        }
         add(definitions, partOfSpeech, stripDefinitionHtml(definition));
       }
     }

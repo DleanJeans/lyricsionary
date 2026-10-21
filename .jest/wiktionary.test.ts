@@ -51,32 +51,6 @@ describe('parseDefinitions', () => {
   });
 });
 
-describe('getFormOfGloss', () => {
-  it('reads the gloss span of a form-of definition', () => {
-    const html = '<span class="form-of-definition use-with-mention"><a href="/wiki/Appendix:Glossary#nominative_case">nominative</a>/<a>accusative</a>/<a>genitive</a> <a>plural</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a href="/wiki/Gef%C3%BChl#German">Gefühl</a></i></span> <span class="mention-gloss-double-quote">“</span><span class="mention-gloss">feelings</span><span class="mention-gloss-double-quote">”</span></span>';
-    expect(getFormOfGloss(html)).toBe('feelings');
-  });
-
-  it('falls back to a quoted gloss after "of"', () => {
-    expect(getFormOfGloss('nominative/accusative/genitive plural of Gefühl "feelings"')).toBe('feelings');
-  });
-
-  it('leaves ordinary definitions alone', () => {
-    expect(getFormOfGloss('A strong <a>affection</a>.')).toBeUndefined();
-    expect(getFormOfGloss('plural of Gefühl')).toBeUndefined();
-    expect(getFormOfGloss('the phrase "of course" said "loudly"')).toBe('loudly');
-  });
-});
-
-describe('parseDefinitions with form-of entries', () => {
-  it('suggests the gloss instead of the grammar description', () => {
-    const response = {
-      de: [{ partOfSpeech: 'Noun', language: 'German', definitions: [{ definition: 'plural of <i>Gefühl</i> <span class="mention-gloss-double-quote">“</span><span class="mention-gloss">feelings</span><span class="mention-gloss-double-quote">”</span>' }] }],
-    };
-    expect(parseDefinitions(response, 'German')).toEqual([{ partOfSpeech: 'Noun', text: 'feelings' }]);
-  });
-});
-
 describe('getShortGlosses', () => {
   it('drops bracketed glosses and parentheticals', () => {
     expect(getShortGlosses('<a>always</a> <span class="gloss-brac">(</span><span class="gloss-content">at all times, without exception</span><span class="gloss-brac">)</span>')).toEqual(['always']);
@@ -118,5 +92,61 @@ describe('parseDefinitions suggestions', () => {
   it('falls back to full definitions when there are no short glosses', () => {
     const response = { de: [{ partOfSpeech: 'Particle', language: 'German', definitions: [{ definition: 'used to emphasize another adverb of time, which itself is stressed' }] }] };
     expect(parseDefinitions(response, 'German').map((d) => d.text)).toEqual(['used to emphasize another adverb of time, which itself is stressed']);
+  });
+});
+
+// Definition HTML as returned by en.wiktionary.org/api/rest_v1/page/definition/<word> (2026-10-21)
+const IMMER = [
+  '<a rel="mw:WikiLink" href="/wiki/always" title="always">always</a>\n<ol><li>at all times without exception',
+  'at all times without exception',
+  'very often; all the time; <a rel="mw:WikiLink" href="/wiki/constantly" title="constantly">constantly</a>',
+  'every time; whenever some precondition is given',
+  '<span class="usage-label-sense" about="#mwt82" typeof="mw:Transclusion"></span> to a greater degree over time, <a rel="mw:WikiLink" href="/wiki/more_and_more" title="more and more">more and more</a>',
+  '<span class="usage-label-sense" about="#mwt84" typeof="mw:Transclusion"></span> <span class="use-with-mention" about="#mwt85" typeof="mw:Transclusion">used to emphasize another adverb of time, which itself is stressed</span>',
+];
+const VERMIETER =
+  '<a rel="mw:WikiLink" href="/wiki/landlord" title="landlord">landlord</a> <span class="mention-gloss-paren" about="#mwt11" typeof="mw:Transclusion">(</span><span class="mention-gloss" about="#mwt11">he who <a rel="mw:WikiLink" href="/wiki/rent#English" title="rent">rents</a>, <a rel="mw:WikiLink" href="/wiki/let#English" title="let">lets</a></span><span class="mention-gloss-paren" about="#mwt11">)</span>';
+const GEFUEHLE =
+  '<span class="form-of-definition use-with-mention" about="#mwt7" typeof="mw:Transclusion"><span class="inflection-of-conjoined"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#nominative_case" title="Appendix:Glossary">nominative</a><span class="inflection-of-sep">/</span><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#accusative_case" title="Appendix:Glossary">accusative</a><span class="inflection-of-sep">/</span><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#genitive_case" title="Appendix:Glossary">genitive</a></span> <a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#plural_number" title="Appendix:Glossary">plural</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/Gefühl#German" title="Gefühl">Gefühl</a></i></span></span> "<a rel="mw:WikiLink" href="/wiki/feelings" title="feelings">feelings</a>"';
+const LOVE_LOFE =
+  '<span class="form-of-definition use-with-mention" about="#mwt213" typeof="mw:Transclusion">Alternative form of <span class="form-of-definition-link"><i class="Latn mention" lang="en"><a rel="mw:WikiLink" href="/wiki/lofe#English:_verb" title="lofe">lofe</a></i> <span class="mention-gloss-paren annotation-paren">(</span><span class="mention-gloss-double-quote">“</span><span class="mention-gloss">to praise, sell</span><span class="mention-gloss-double-quote">”</span><span class="mention-gloss-paren annotation-paren">)</span></span></span>.';
+const LOVE_HEART =
+  '<span class="usage-label-sense"></span> <span class="form-of-definition use-with-mention">Synonym of <span class="form-of-definition-link"><i class="Latn mention" lang="en"><a rel="mw:WikiLink" href="/wiki/heart#English:_show_approval_of_via_a_heart_symbol" title="heart">heart</a></i> <span class="mention-gloss-paren annotation-paren">(</span><span class="ann-pos">verb</span><span class="mention-gloss-paren annotation-paren">)</span></span></span>.';
+
+const section = (language: string, partOfSpeech: string, definitions: string[]) => ({
+  language,
+  partOfSpeech,
+  definitions: definitions.map((definition) => ({ definition })),
+});
+const texts = (response: unknown, language: string) => parseDefinitions(response, language).map((d) => d.text);
+
+describe('real Wiktionary responses', () => {
+  it('immer suggests always first', () => {
+    expect(texts({ de: [section('German', 'Adverb', IMMER)] }, 'German')).toEqual([
+      'always',
+      'very often',
+      'all the time',
+      'constantly',
+      'every time',
+    ]);
+  });
+
+  it('Vermieter suggests landlord, not its gloss', () => {
+    expect(getFormOfGloss(VERMIETER)).toBeUndefined();
+    expect(texts({ de: [section('German', 'Noun', [VERMIETER])] }, 'German')).toEqual(['landlord']);
+  });
+
+  it('Gefühle suggests the gloss of its lemma', () => {
+    expect(getFormOfGloss(GEFUEHLE)).toBe('feelings');
+    expect(texts({ de: [section('German', 'Noun', [GEFUEHLE])] }, 'German')).toEqual(['feelings']);
+  });
+
+  it('reads form-of gloss spans and skips form-of entries without one', () => {
+    expect(getFormOfGloss(LOVE_LOFE)).toBe('to praise, sell');
+    expect(getFormOfGloss(LOVE_HEART)).toBeUndefined();
+    expect(texts({ en: [section('English', 'Verb', [LOVE_HEART, '', 'Nothing; no recompense. <!--see Hotten\'s Slang Dictionary 1873-->'])] }, 'English')).toEqual([
+      'Nothing',
+      'no recompense',
+    ]);
   });
 });

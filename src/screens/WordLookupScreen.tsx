@@ -18,9 +18,16 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
-import { getWiktionaryDefinitions, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
+import {
+  getWiktionaryAudio,
+  getWiktionaryDefinitions,
+  hasWiktionaryEntry,
+  type WiktionaryAudio,
+  type WiktionaryDefinition,
+} from '../utils/wiktionary';
 import WordTransformButtons from '../components/WordTransformButtons';
 import MasteryLevelSelector from '../components/MasteryLevelSelector';
+import PronunciationAudio from '../components/PronunciationAudio';
 import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
@@ -103,6 +110,7 @@ export default function WordLookupScreen() {
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('New');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
   const [definitionSuggestions, setDefinitionSuggestions] = useState<WiktionaryDefinition[]>([]);
+  const [pronunciationAudio, setPronunciationAudio] = useState<WiktionaryAudio[]>([]);
 
   const uidRef = useRef(0);
   const mkUid = () => ++uidRef.current;
@@ -228,6 +236,19 @@ export default function WordLookupScreen() {
     let cancelled = false;
     getWiktionaryDefinitions(displayWord, language).then((definitions) => {
       if (!cancelled && definitions) setDefinitionSuggestions(definitions);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayWord, language]);
+
+  // Pronunciation recordings from the word's Wiktionary page in the selected language
+  useEffect(() => {
+    setPronunciationAudio([]);
+    if (!displayWord || !language) return;
+    let cancelled = false;
+    getWiktionaryAudio(displayWord, language).then((audio) => {
+      if (!cancelled && audio) setPronunciationAudio(audio);
     });
     return () => {
       cancelled = true;
@@ -467,6 +488,7 @@ export default function WordLookupScreen() {
               placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
               placeholderTextColor={Colors.textMuted}
             />
+            <PronunciationAudio audio={pronunciationAudio} />
             {lookupSource === 'wiktionary' && scrapedIpaResults.length > 0 && (
               <View style={styles.ipaResultsRow}>
                 {scrapedIpaResults.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (

@@ -260,3 +260,105 @@ export async function getWiktionaryDefinitions(word: string, language: string): 
     return null;
   }
 }
+
+const PARSE_API_URL =
+  'https://en.wiktionary.org/w/api.php?action=parse&format=json&formatversion=2&redirects=1&prop=text&origin=*&page=';
+const MAX_AUDIO = 6;
+
+export interface WiktionaryAudio {
+  /** Commons file name, e.g. "De-Liebe.ogg" */
+  title: string;
+  url: string;
+  /** Where the speaker is from, e.g. "Germany (Berlin)"; empty when the entry doesn't say */
+  label: string;
+}
+
+/** The HTML of one language's section of a rendered page, e.g. everything under the "German" heading */
+export function getLanguageSection(html: string, language: string): string | undefined {
+  const id = language.trim().replace(/ /g, '_');
+  // Each level-2 heading starts a language, e.g. '<div class="mw-heading mw-heading2 ..."><h2 id="German">'
+  for (const section of html.split(/<div\b[^>]*class="[^"]*\bmw-heading2\b[^"]*"[^>]*>/i).slice(1)) {
+    // The mobile skin puts an expand icon before the h2
+    const heading = section.match(/<h2\b[^>]*\bid="([^"]+)"/i)?.[1];
+    if (heading?.toLowerCase() === id.toLowerCase()) return section;
+  }
+  return undefined;
+}
+
+/** Absolute URL of an audio source's src attribute, which is protocol-relative and HTML-escaped */
+function audioUrl(src: string): string {
+  const url = src.replace(/&amp;/g, '&');
+  return url.startsWith('//') ? `https:${url}` : url;
+}
+
+/**
+ * Pronunciation recordings in the language's section of a rendered page (the parse API's HTML). Each
+ * one prefers the MP3 transcode, which every platform can play, over the original Ogg or WAV.
+ */
+export function parseAudio(html: string, language: string): WiktionaryAudio[] {
+  const section = getLanguageSection(html, language);
+  if (!section) return [];
+  const audio: WiktionaryAudio[] = [];
+  // e.g. '<table class="audiotable"><tr><td>Audio (Germany (Berlin)):</td><td class="audiofile"><audio ...>'
+  for (const [table] of section.matchAll(/<table\b[^>]*class="audiotable"[\s\S]*?<\/table>/gi)) {
+    const element = table.match(/<audio\b([^>]*)>([\s\S]*?)<\/audio>/i);
+    if (!element) continue;
+    const title = stripDefinitionHtml(element[1].match(/\bdata-mwtitle="([^"]+)"/)?.[1] ?? '');
+    const sources = [...element[2].matchAll(/<source\b([^>]*)>/gi)].map(([, attributes]) => ({
+      src: attributes.match(/\bsrc="([^"]+)"/)?.[1],
+      type: attributes.match(/\btype="([^"]+)"/)?.[1] ?? '',
+    }));
+    const source = sources.find((s) => s.src && s.type.startsWith('audio/mpeg')) ?? sources.find((s) => s.src);
+    if (!source?.src || audio.some((a) => a.title === title)) continue;
+    const label = stripDefinitionHtml(table.match(/<td\b[^>]*>([\s\S]*?)<\/td>/i)?.[1] ?? '')
+      .replace(/^Audio\b\s*/i, '')
+      .replace(/:$/, '')
+      .replace(/^\((.*)\)$/, '$1')
+      .trim();
+    audio.push({ title, url: audioUrl(source.src), label });
+  }
+  return audio;
+}
+
+const pageRequests = new Map<string, Promise<string | null>>();
+
+/** A page's rendered HTML, or null when there's no page with that title */
+function fetchPageHtml(title: string): Promise<string | null> {
+  const cached = pageRequests.get(title);
+  if (cached) return cached;
+
+  const request = getUserAgent()
+    .then((ua) => fetch(PARSE_API_URL + encodeURIComponent(title), ua ? { headers: { 'User-Agent': ua } } : undefined))
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+    .then((json: { parse?: { text?: string }; error?: { code?: string; info?: string } }) => {
+      if (json.error?.code === 'missingtitle') return null;
+      if (typeof json.parse?.text !== 'string') throw new Error(json.error?.info ?? 'No page text');
+      return json.parse.text;
+    })
+    .catch((error) => {
+      pageRequests.delete(title);
+      throw error;
+    });
+  pageRequests.set(title, request);
+  return request;
+}
+
+/**
+ * Pronunciation recordings from the word's Wiktionary page in the given language, trying the other
+ * casing too like getWiktionaryDefinitions. Resolves null on failure.
+ */
+export async function getWiktionaryAudio(word: string, language: string): Promise<WiktionaryAudio[] | null> {
+  const lower = word.toLowerCase();
+  const variants = [word, word === lower ? word.charAt(0).toUpperCase() + word.slice(1) : lower];
+  try {
+    for (const title of variants) {
+      const html = await fetchPageHtml(title);
+      const audio = html ? parseAudio(html, language) : [];
+      if (audio.length > 0) return audio.slice(0, MAX_AUDIO);
+    }
+    return [];
+  } catch (error) {
+    console.warn(`Wiktionary audio failed for "${word}":`, error);
+    return null;
+  }
+}

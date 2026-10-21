@@ -1,9 +1,14 @@
 const API_URL = 'https://en.wiktionary.org/w/api.php?action=query&format=json&formatversion=2&origin=*&titles=';
 
-// Wikimedia rejects requests with generic user agents (e.g. okhttp on Android); browsers can't set User-Agent
-const USER_AGENT = 'Lyricsionary/1.0 (https://github.com/DleanJeans/lyricsionary)';
+// Wikimedia rejects requests with generic user agents (e.g. okhttp on Android), so send a browser one;
+// browsers send their own and can't override it
 const HEADERS: Record<string, string> =
-  typeof document !== 'undefined' ? { 'Api-User-Agent': USER_AGENT } : { 'User-Agent': USER_AGENT, 'Api-User-Agent': USER_AGENT };
+  typeof document !== 'undefined'
+    ? {}
+    : {
+        'User-Agent':
+          'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+      };
 
 // One request per word for the whole session; failed requests are retried next time
 const entryChecks = new Map<string, Promise<boolean | null>>();

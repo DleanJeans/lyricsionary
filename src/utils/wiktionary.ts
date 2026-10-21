@@ -98,14 +98,38 @@ export function getFormOfGloss(html: string): string | undefined {
   return gloss?.trim() || undefined;
 }
 
+const ANNOTATION_SPAN = /<span\b[^>]*class="[^"]*\b(?:gloss|qualifier|ib)-[^"]*"[^>]*>/i;
+
+/**
+ * Remove gloss and qualifier spans, e.g. the "(he who rents, lets)" of 'landlord (he who rents, lets)',
+ * along with any links nested inside them
+ */
+function removeAnnotationSpans(html: string): string {
+  let result = html;
+  for (let match = ANNOTATION_SPAN.exec(result); match; match = ANNOTATION_SPAN.exec(result)) {
+    const spanTags = /<(\/?)span\b[^>]*>/gi;
+    spanTags.lastIndex = match.index + match[0].length;
+    let depth = 1;
+    let end = result.length;
+    for (let tag = spanTags.exec(result); tag; tag = spanTags.exec(result)) {
+      depth += tag[1] ? -1 : 1;
+      if (depth === 0) {
+        end = spanTags.lastIndex;
+        break;
+      }
+    }
+    result = result.slice(0, match.index) + result.slice(end);
+  }
+  return result;
+}
+
 /**
  * Short translations in a definition, e.g. "always" from 'always (at all times, without exception)'
  * or "very often", "all the time" and "constantly" from 'very often; all the time; constantly'.
  * Bracketed glosses, qualifiers and parentheticals are dropped, and long explanations are skipped.
  */
 export function getShortGlosses(html: string): string[] {
-  let text = html.replace(/<span\b[^>]*class="[^"]*\b(?:gloss|qualifier|ib)-[^"]*"[^>]*>[^<]*<\/span>/gi, '');
-  text = stripDefinitionHtml(text);
+  let text = stripDefinitionHtml(removeAnnotationSpans(html));
   let previous: string;
   do {
     previous = text;

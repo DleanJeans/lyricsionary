@@ -146,19 +146,13 @@ export function getShortGlosses(html: string): string[] {
   const isShort = (part: string) => part.split(/\s+/).length <= MAX_GLOSS_WORDS;
   // Semicolons separate synonyms; commas only do when every part is short ("always, ever"),
   // otherwise they're part of an explanation ("used to emphasize ..., which itself is stressed")
-  const glosses = text.split(';').flatMap((segment) => {
+  return text.split(';').flatMap((segment) => {
     const parts = segment
       .split(',')
       .map((part) => part.trim().replace(/\.$/, ''))
       .filter(Boolean);
     return parts.every(isShort) ? parts : [];
   });
-  if (glosses.length > 0) return glosses;
-
-  // A definition led by a linked translation followed by an unmarked explanation, e.g.
-  // '<a>always</a> at all times without exception'
-  const leadingLink = stripDefinitionHtml(html.match(/^\s*<a\b[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? '');
-  return leadingLink && isShort(leadingLink) ? [leadingLink] : [];
 }
 
 /**

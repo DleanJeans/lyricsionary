@@ -63,8 +63,8 @@ describe('getShortGlosses', () => {
     expect(getShortGlosses('<a>landlord</a>, <a>lessor</a> <span class="gloss-content">he who <span><a>rents</a></span>, <a>lets</a></span>')).toEqual(['landlord', 'lessor']);
   });
 
-  it('falls back to a leading linked translation', () => {
-    expect(getShortGlosses('<a href="/wiki/always">always</a> at all times without exception')).toEqual(['always']);
+  it('skips the first word of a longer explanation', () => {
+    expect(getShortGlosses('<a>Affectionate</a>, <a>benevolent</a> <a>concern</a> or <a>care</a> for other <a>people</a> or <a>beings</a>, and for their <a>well-being</a>.')).toEqual([]);
     expect(getShortGlosses('used to <a>emphasize</a> another adverb of time, which itself is stressed')).toEqual([]);
   });
 

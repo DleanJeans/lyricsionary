@@ -138,7 +138,8 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       style={[
         styles.bottomBar,
         {
-          paddingBottom: Math.max(insets.bottom, 8),
+          // Extra space under the tabs as padding, since a margin shows the window behind the bar
+          paddingBottom: Math.max(insets.bottom, 8) + 8,
         },
       ]}
     >
@@ -251,7 +252,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    marginBottom: 8,
     paddingHorizontal: 8,
     paddingTop: 8,
     gap: 4,

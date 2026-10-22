@@ -556,6 +556,14 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
           .join(' / ')
       : undefined;
 
+  // Definitions of the selected word to look for in its line's translation
+  const selectedDefinitions = selectedWordEntry && selectedLine !== null
+    ? [
+        findWordContext(selectedWordEntry, selectedLine, selectedOccurrence)?.definition,
+        ...(selectedWordEntry.definitions ?? []).map((d) => d.text),
+      ].filter((d): d is string => !!d?.trim())
+    : [];
+
   const wordPanel =
     selectedWord && selectedWordEntry ? (
       <View style={[styles.wordCardContainer]}>
@@ -608,6 +616,8 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
       unblurredTranslations={unblurredTranslations}
       renderPressableText={renderPressableText}
       onTranslationPress={handleTranslationPress}
+      highlightLineIndex={selectedLineIndex}
+      highlightDefinitions={selectedDefinitions}
     />
   );
 

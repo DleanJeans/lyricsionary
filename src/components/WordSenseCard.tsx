@@ -54,6 +54,8 @@ export default function WordSenseCard({
   isNew = false,
   isRemoved = false,
 }: WordSenseCardProps) {
+  const canLowercase = !isRemoved && definition !== definition.toLowerCase();
+
   const containerStyle = [
     styles.container,
     isRemoved && styles.containerRemoved,
@@ -130,12 +132,21 @@ export default function WordSenseCard({
         </View>
         <View style={styles.contextDefinitionField}>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, canLowercase && styles.fieldInputWithButton]}
             value={definition}
             onChangeText={onDefinitionChange}
             placeholder="Definition"
             placeholderTextColor={Colors.textMuted}
           />
+          {canLowercase && (
+            <TouchableOpacity
+              style={styles.lowercaseButton}
+              onPress={() => onDefinitionChange(definition.toLowerCase())}
+              accessibilityLabel="Make definition lowercase"
+            >
+              <Text style={styles.lowercaseButtonText}>aa</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
       {!isRemoved && definitionSuggestions && definitionSuggestions.length > 0 && (
@@ -240,6 +251,25 @@ const styles = StyleSheet.create({
   },
   contextDefinitionField: {
     flex: 1.5,
+    justifyContent: 'center',
+  },
+  fieldInputWithButton: {
+    paddingRight: 40,
+  },
+  lowercaseButton: {
+    position: 'absolute',
+    right: 6,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  lowercaseButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primaryLight,
   },
   emojiButtonSmall: {
     backgroundColor: Colors.surface,

@@ -1,4 +1,4 @@
-import { pickDefinition, toGerund } from '../src/utils/definitionHighlight';
+import { pickDefinition, toGerund, toPlural } from '../src/utils/definitionHighlight';
 
 const verb = (text: string) => ({ partOfSpeech: 'Verb', text });
 const noun = (text: string) => ({ partOfSpeech: 'Noun', text });
@@ -23,6 +23,12 @@ describe('pickDefinition', () => {
     expect(pickDefinition([verb('to talk'), verb('to speak')], "He's talking")).toBe('talking');
     expect(pickDefinition([verb('to do'), verb('to make; to build')], 'Making love')).toBe('making');
     expect(pickDefinition([verb('to quit'), verb('to give up')], "I'm giving up")).toBe('giving up');
+  });
+
+  it('fills a noun as its plural when the translation has that', () => {
+    expect(pickDefinition([noun('care'), noun('worry'), noun('concern')], 'All my worries are gone')).toBe('worries');
+    expect(pickDefinition([noun('sorrow'), noun('tax adviser')], 'We need tax advisers')).toBe('tax advisers');
+    expect(pickDefinition([verb('to worry'), verb('to fret')], 'All my worries')).toBeNull();
   });
 
   it('keeps "to" when the translation has it', () => {
@@ -55,5 +61,18 @@ describe('toGerund', () => {
     ['visit', 'visiting'],
   ])('%s -> %s', (verb, gerund) => {
     expect(toGerund(verb)).toBe(gerund);
+  });
+});
+
+describe('toPlural', () => {
+  it.each([
+    ['worry', 'worries'],
+    ['day', 'days'],
+    ['kiss', 'kisses'],
+    ['box', 'boxes'],
+    ['church', 'churches'],
+    ['dream', 'dreams'],
+  ])('%s -> %s', (noun, plural) => {
+    expect(toPlural(noun)).toBe(plural);
   });
 });

@@ -52,23 +52,45 @@ export function toGerund(verb: string): string {
   return `${verb}ing`;
 }
 
-// Each verb in a definition as its -ing form, e.g. "to give up; to quit" -> "giving up", "quitting"
-function gerundsOf(definition: string): string[] {
+// English plural of a noun: worry -> worries, kiss -> kisses, day -> days, dream -> dreams
+export function toPlural(noun: string): string {
+  const word = noun.toLowerCase();
+  if (/[^aeiou]y$/.test(word)) return `${noun.slice(0, -1)}ies`;
+  if (/(?:s|x|z|ch|sh)$/.test(word)) return `${noun}es`;
+  return `${noun}s`;
+}
+
+// Each meaning in a list like "to give up; to quit (a job)", without parentheticals or "to"
+function partsOf(definition: string): string[] {
   return definition
     .split(/[,;/]/)
     .map((part) => withoutInfinitiveTo(part.replace(/\([^)]*\)/g, ' ').trim()))
-    .filter(Boolean)
-    .map((part) => part.replace(/^\S+/, toGerund));
+    .filter(Boolean);
+}
+
+// Each verb as its -ing form, e.g. "to give up; to quit" -> "giving up", "quitting"
+function gerundsOf(definition: string): string[] {
+  return partsOf(definition).map((part) => part.replace(/^\S+/, toGerund));
+}
+
+// Each noun as its plural, e.g. "worry; tax adviser" -> "worries", "tax advisers"
+function pluralsOf(definition: string): string[] {
+  return partsOf(definition).map((part) => part.replace(/\S+$/, toPlural));
 }
 
 // The definition to fill in by itself: the first that appears in the translation, or else the only one.
 // A verb that only matches without its "to" is filled in without it, e.g. "free" for "Free me",
-// or as its -ing form, e.g. "talking" for "He's talking".
+// or as its -ing form, e.g. "talking" for "He's talking". A noun can match as its plural, e.g.
+// Sorgen's "worry" fills in "worries".
 export function pickDefinition(definitions: WiktionaryDefinition[], translation?: string): string | null {
   const unique = [...new Map(definitions.filter((d) => d.text).map((d) => [d.text, d])).values()];
   if (translation) {
     for (const { text, partOfSpeech } of unique) {
       if (findDefinitionHighlight(translation, [text])) return text;
+      if (partOfSpeech.toLowerCase() === 'noun') {
+        const plural = pluralsOf(text).find((p) => findDefinitionHighlight(translation, [p]));
+        if (plural) return plural;
+      }
       if (partOfSpeech.toLowerCase() !== 'verb') continue;
       const withoutTo = withoutInfinitiveTo(text);
       if (findDefinitionHighlight(translation, [withoutTo])) return withoutTo;

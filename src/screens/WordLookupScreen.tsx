@@ -28,6 +28,7 @@ import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
+import { pickDefinition } from '../utils/definitionHighlight';
 import { getGermanExpandedForm } from '../utils/wordTransform';
 import { emojiData } from '../utils/emojiData';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
@@ -244,6 +245,23 @@ export default function WordLookupScreen() {
       cancelled = true;
     };
   }, [wiktionaryWord, language]);
+
+  // Fill in empty definitions with the only suggestion, or the one that matches the line's translation
+  useEffect(() => {
+    if (definitionSuggestions.length === 0) return;
+    const texts = definitionSuggestions.map((suggestion) => suggestion.text);
+    setWordSenses((prev) => {
+      let changed = false;
+      const next = prev.map((sense) => {
+        if (sense.definition) return sense;
+        const picked = pickDefinition(texts, sense.translation);
+        if (!picked) return sense;
+        changed = true;
+        return { ...sense, definition: picked };
+      });
+      return changed ? next : prev;
+    });
+  }, [definitionSuggestions]);
 
   const { audio: pronunciationAudio } = useWiktionaryPronunciation(wiktionaryWord, language);
 

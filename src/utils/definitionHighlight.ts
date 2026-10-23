@@ -34,3 +34,11 @@ export function findDefinitionHighlight(text: string, definitions: string[]): [n
   }
   return null;
 }
+
+// The definition to fill in by itself: the only one, or else the first that appears in the translation.
+export function pickDefinition(definitions: string[], translation?: string): string | null {
+  const unique = [...new Set(definitions.filter(Boolean))];
+  if (unique.length === 1) return unique[0];
+  if (!translation) return null;
+  return unique.find((definition) => findDefinitionHighlight(translation, [definition])) ?? null;
+}

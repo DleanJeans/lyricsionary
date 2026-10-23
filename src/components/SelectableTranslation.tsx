@@ -3,11 +3,12 @@ import { View, StyleSheet, StyleProp, TextStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
+import { findDefinitionHighlight } from '../utils/definitionHighlight';
 
 interface SelectableTranslationProps {
   translation: string;
   onSelect: (text: string) => void;
-  // The current definition; the highlight stays only while it still matches.
+  // The current definition, highlighted where it appears in the translation.
   value?: string;
   style?: StyleProp<TextStyle>;
 }
@@ -40,7 +41,12 @@ function findWordIndex(rects: (WordRect | undefined)[], x: number, y: number): n
 
 // Tap a word, or drag across several, to pick it as the definition.
 export default function SelectableTranslation({ translation, onSelect, value, style }: SelectableTranslationProps) {
-  const words = useMemo(() => translation.split(/\s+/).filter(Boolean), [translation]);
+  // Each word with its start offset in the translation, to map a highlight onto words.
+  const tokens = useMemo(
+    () => Array.from(translation.matchAll(/\S+/g), (match) => ({ text: match[0], start: match.index ?? 0 })),
+    [translation]
+  );
+  const words = useMemo(() => tokens.map((token) => token.text), [tokens]);
   const rects = useRef<(WordRect | undefined)[]>([]);
   const dragStart = useRef(-1);
   const [selection, setSelection] = useState<[number, number] | null>(null);
@@ -62,7 +68,6 @@ export default function SelectableTranslation({ translation, onSelect, value, st
       if (!success) return;
       const index = findWordIndex(rects.current, event.x, event.y);
       if (index < 0) return;
-      setSelection([index, index]);
       commit(index, index);
     });
 
@@ -75,7 +80,7 @@ export default function SelectableTranslation({ translation, onSelect, value, st
       const index = findWordIndex(rects.current, event.x - event.translationX, event.y - event.translationY);
       dragStart.current = index;
       if (index >= 0) setDragging(true);
-      if (index >= 0) setSelection([index, findWordIndex(rects.current, event.x, event.y)]);
+      if (index >= 0) setSelection([index, Math.max(findWordIndex(rects.current, event.x, event.y), 0)]);
     })
     .onUpdate((event) => {
       if (dragStart.current < 0) return;
@@ -92,31 +97,54 @@ export default function SelectableTranslation({ translation, onSelect, value, st
       setDragging(false);
     });
 
-  const showSelection = selection && (dragging || value === undefined || textOf(selection[0], selection[1]) === value);
-  const [from, to] = showSelection
-    ? selection[0] <= selection[1] ? selection : [selection[1], selection[0]]
-    : [-1, -1];
+  // While dragging show the words under the finger, otherwise where the definition appears.
+  const highlight: [number, number] | null = dragging && selection
+    ? [
+        tokens[Math.min(selection[0], selection[1])].start,
+        tokens[Math.max(selection[0], selection[1])].start + tokens[Math.max(selection[0], selection[1])].text.length,
+      ]
+    : value
+      ? findDefinitionHighlight(translation, [value])
+      : null;
   const flatStyle = StyleSheet.flatten([styles.text, style]);
 
   return (
     <GestureDetector gesture={Gesture.Race(pan, tap)}>
       <View style={styles.container} accessibilityHint="Tap or drag across words to use them as the definition">
-        {words.map((word, index) => (
-          <View
-            key={index}
-            onLayout={(event) => {
-              rects.current[index] = event.nativeEvent.layout;
-            }}
-            style={[
-              styles.word,
-              index >= from && index <= to && styles.wordSelected,
-              index === from && styles.wordSelectedStart,
-              index === to && styles.wordSelectedEnd,
-            ]}
-          >
-            <Text style={[flatStyle, index >= from && index <= to && styles.textSelected]}>{word}</Text>
-          </View>
-        ))}
+        {tokens.map((token, index) => {
+          const end = token.start + token.text.length;
+          const from = highlight ? Math.max(highlight[0], token.start) - token.start : 0;
+          const to = highlight ? Math.min(highlight[1], end) - token.start : 0;
+          const covered = from < to;
+          const whole = covered && from === 0 && to === token.text.length;
+          const startsRun = whole && highlight![0] >= token.start;
+          const endsRun = whole && highlight![1] <= end;
+          return (
+            <View
+              key={index}
+              onLayout={(event) => {
+                rects.current[index] = event.nativeEvent.layout;
+              }}
+              style={[
+                styles.word,
+                whole && styles.wordSelected,
+                startsRun && styles.wordSelectedStart,
+                endsRun && styles.wordSelectedEnd,
+              ]}
+            >
+              {covered && !whole ? (
+                // Part of a word, like the 've in I've
+                <Text style={flatStyle}>
+                  {token.text.slice(0, from)}
+                  <Text style={[flatStyle, styles.textSelected, styles.partSelected]}>{token.text.slice(from, to)}</Text>
+                  {token.text.slice(to)}
+                </Text>
+              ) : (
+                <Text style={[flatStyle, whole && styles.textSelected]}>{token.text}</Text>
+              )}
+            </View>
+          );
+        })}
       </View>
     </GestureDetector>
   );
@@ -149,5 +177,8 @@ const styles = StyleSheet.create({
   },
   textSelected: {
     color: Colors.text,
+  },
+  partSelected: {
+    backgroundColor: 'rgba(108, 92, 231, 0.35)',
   },
 });

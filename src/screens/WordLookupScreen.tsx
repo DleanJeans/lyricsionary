@@ -19,7 +19,7 @@ import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
 import { getWiktionaryDefinitions, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
-import { useWiktionaryAudio } from '../hooks/useWiktionaryAudio';
+import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import WordTransformButtons from '../components/WordTransformButtons';
 import MasteryLevelSelector from '../components/MasteryLevelSelector';
 import PronunciationAudio from '../components/PronunciationAudio';
@@ -240,7 +240,7 @@ export default function WordLookupScreen() {
     };
   }, [wiktionaryWord, language]);
 
-  const pronunciationAudio = useWiktionaryAudio(wiktionaryWord, language);
+  const { audio: pronunciationAudio } = useWiktionaryPronunciation(wiktionaryWord, language);
 
   const entryCheckedWordRef = useRef<string | undefined>(undefined);
 

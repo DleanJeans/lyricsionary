@@ -3,7 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
-import { useWiktionaryAudio } from '../hooks/useWiktionaryAudio';
+import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel } from '../types';
 import {
@@ -49,7 +49,7 @@ export default function NewWordCard({
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   const language = originalLanguages?.[0] || 'unknown';
   const isIgnored = isWordIgnored(ignoredWords, word, language);
-  const pronunciationAudio = useWiktionaryAudio(word, originalLanguages?.[0]);
+  const wiktionary = useWiktionaryPronunciation(word, originalLanguages?.[0]);
 
   const words = useStore((s) => s.words);
   const compoundSplits = useStore((s) => s.compoundSplits);
@@ -108,6 +108,7 @@ export default function NewWordCard({
             <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
           </View>
           <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
+          {wiktionary.ipa.length > 0 && <Text style={styles.ipaText}>{wiktionary.ipa.join(', ')}</Text>}
           {showSplit && compoundParts && !isEditingSplit && (
             <Text style={styles.compoundText}>{compoundParts.map((p) => p.text).join(' · ')}</Text>
           )}
@@ -146,7 +147,7 @@ export default function NewWordCard({
         )}
       </View>
 
-      <PronunciationAudio audio={pronunciationAudio} />
+      <PronunciationAudio audio={wiktionary.audio} />
 
       {isEditingSplit && (
         <View style={styles.splitEditor}>
@@ -260,6 +261,10 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 10,
     fontWeight: '700',
+  },
+  ipaText: {
+    color: Colors.textSecondary,
+    fontSize: 15,
   },
   compoundText: {
     color: Colors.textSecondary,

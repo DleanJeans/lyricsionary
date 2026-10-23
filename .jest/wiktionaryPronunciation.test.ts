@@ -1,4 +1,4 @@
-import { getLanguageSection, getWiktionaryAudio, parseAudio } from '../src/utils/wiktionary';
+import { getLanguageSection, getWiktionaryPronunciation, parseAudio, parseIpa } from '../src/utils/wiktionary';
 import amour from './fixtures/wiktionary/parse-amour.json';
 import corazon from './fixtures/wiktionary/parse-corazón.json';
 import immer from './fixtures/wiktionary/parse-immer.json';
@@ -70,13 +70,25 @@ describe('parseAudio', () => {
   });
 });
 
-describe('getWiktionaryAudio', () => {
+describe('parseIpa', () => {
+  it('reads the phonemic transcriptions without rhymes', () => {
+    expect(parseIpa(page('Liebe'), 'German')).toEqual(['/ˈliːbə/']);
+    expect(parseIpa(page('amour'), 'French')).toEqual(['/a.muʁ/']);
+  });
+
+  it('skips narrow transcriptions and partial ones', () => {
+    expect(parseIpa(page('corazón'), 'Spanish')).toEqual(['/koɾaˈθon/', '/koɾaˈson/']);
+    expect(parseIpa(page('amour'), 'English')).toEqual(['/ˈæmə(ɹ)/', '/əˈmʊə/', '/aˈmʊə/']);
+  });
+});
+
+describe('getWiktionaryPronunciation', () => {
   const originalFetch = globalThis.fetch;
   afterEach(() => {
     globalThis.fetch = originalFetch;
   });
 
-  it('tries the capitalized page when the lowercase one has no recordings', async () => {
+  it('tries the capitalized page when the lowercase one has no pronunciation', async () => {
     const pages: Record<string, unknown> = {
       liebe: { parse: { title: 'liebe', text: '<div class="mw-heading mw-heading2"><h2 id="German">German</h2></div><p>no audio</p>' } },
       Liebe: { parse: { title: 'Liebe', text: page('Liebe') } },
@@ -85,14 +97,16 @@ describe('getWiktionaryAudio', () => {
       const title = decodeURIComponent(url.split('page=').pop() ?? '');
       return { ok: true, status: 200, json: async () => pages[title] ?? { error: { code: 'missingtitle' } } };
     }) as unknown as typeof fetch;
-    expect((await getWiktionaryAudio('liebe', 'German'))?.map((a) => a.title)).toEqual(['De-Liebe2.ogg', 'De-Liebe.ogg']);
+    const pronunciation = await getWiktionaryPronunciation('liebe', 'German');
+    expect(pronunciation?.ipa).toEqual(['/ˈliːbə/']);
+    expect(pronunciation?.audio.map((a) => a.title)).toEqual(['De-Liebe2.ogg', 'De-Liebe.ogg']);
   });
 
   it('resolves an empty list for a missing page and null on failure', async () => {
     globalThis.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({ error: { code: 'missingtitle' } }) })) as unknown as typeof fetch;
-    expect(await getWiktionaryAudio('xyzzy', 'German')).toEqual([]);
+    expect(await getWiktionaryPronunciation('xyzzy', 'German')).toEqual({ ipa: [], audio: [] });
     globalThis.fetch = jest.fn(async () => ({ ok: false, status: 500 })) as unknown as typeof fetch;
     jest.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(await getWiktionaryAudio('qwerty', 'German')).toBeNull();
+    expect(await getWiktionaryPronunciation('qwerty', 'German')).toBeNull();
   });
 });

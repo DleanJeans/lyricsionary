@@ -5,7 +5,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getFlagForLanguage } from '../constants/languages';
 import { Colors } from '../constants/theme';
-import { useWiktionaryAudio } from '../hooks/useWiktionaryAudio';
+import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { WordEntry } from '../types';
 import HighlightedText from './HighlightedText';
 import PronunciationAudio from './PronunciationAudio';
@@ -48,9 +48,12 @@ export default function WordCard({
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const swipeableRef = useRef<Swipeable>(null);
-  const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
   // Only the Learn screen's card for the selected word, not every card in the Words list
-  const pronunciationAudio = useWiktionaryAudio(item.word, item.language, showClose);
+  const wiktionary = useWiktionaryPronunciation(item.word, item.language, showClose);
+  // Wiktionary's IPA until the word has one of its own
+  const ipa = item.pronunciation
+    ? (item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`)
+    : wiktionary.ipa.join(', ');
 
   const handleCardPress = () => {
     navigation.navigate('WordLookup', {
@@ -115,14 +118,14 @@ export default function WordCard({
               query={searchQuery}
               style={styles.cardWordText}
             />
-            {item.pronunciation ? (
+            {ipa ? (
               <HighlightedText
                 text={ipa}
                 query={searchQuery}
                 style={styles.pronunciation}
               />
             ) : null}
-            <PronunciationAudio audio={pronunciationAudio} />
+            <PronunciationAudio audio={wiktionary.audio} />
           </View>
 
         </View>

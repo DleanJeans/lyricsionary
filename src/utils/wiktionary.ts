@@ -264,6 +264,7 @@ export async function getWiktionaryDefinitions(word: string, language: string): 
 const PARSE_API_URL =
   'https://en.wiktionary.org/w/api.php?action=parse&format=json&formatversion=2&redirects=1&prop=text&origin=*&page=';
 const MAX_AUDIO = 6;
+const MAX_IPA = 3;
 
 export interface WiktionaryAudio {
   /** Commons file name, e.g. "De-Liebe.ogg" */
@@ -320,6 +321,26 @@ export function parseAudio(html: string, language: string): WiktionaryAudio[] {
   return audio;
 }
 
+/**
+ * Phonemic IPA transcriptions in the language's section of a rendered page, e.g. "/ˈliːbə/", without
+ * rhymes ("-iːbə"), narrow transcriptions ("[ko.ɾaˈθõn]") or partial ones ("/-ˈmoɹ/")
+ */
+export function parseIpa(html: string, language: string): string[] {
+  const section = getLanguageSection(html, language);
+  if (!section) return [];
+  const ipa: string[] = [];
+  for (const [, span] of section.matchAll(/<span\b[^>]*class="IPA\b[^"]*"[^>]*>([\s\S]*?)<\/span>/gi)) {
+    const text = stripDefinitionHtml(span);
+    if (/^\/[^-/][^/]*\/$/.test(text) && !ipa.includes(text)) ipa.push(text);
+  }
+  return ipa.slice(0, MAX_IPA);
+}
+
+export interface WiktionaryPronunciation {
+  ipa: string[];
+  audio: WiktionaryAudio[];
+}
+
 const pageRequests = new Map<string, Promise<string | null>>();
 
 /** A page's rendered HTML, or null when there's no page with that title */
@@ -344,21 +365,22 @@ function fetchPageHtml(title: string): Promise<string | null> {
 }
 
 /**
- * Pronunciation recordings from the word's Wiktionary page in the given language, trying the other
- * casing too like getWiktionaryDefinitions. Resolves null on failure.
+ * IPA and pronunciation recordings from the word's Wiktionary page in the given language, trying the
+ * other casing too like getWiktionaryDefinitions. Resolves null on failure.
  */
-export async function getWiktionaryAudio(word: string, language: string): Promise<WiktionaryAudio[] | null> {
+export async function getWiktionaryPronunciation(word: string, language: string): Promise<WiktionaryPronunciation | null> {
   const lower = word.toLowerCase();
   const variants = [word, word === lower ? word.charAt(0).toUpperCase() + word.slice(1) : lower];
   try {
     for (const title of variants) {
       const html = await fetchPageHtml(title);
-      const audio = html ? parseAudio(html, language) : [];
-      if (audio.length > 0) return audio.slice(0, MAX_AUDIO);
+      if (!html) continue;
+      const pronunciation = { ipa: parseIpa(html, language), audio: parseAudio(html, language).slice(0, MAX_AUDIO) };
+      if (pronunciation.ipa.length > 0 || pronunciation.audio.length > 0) return pronunciation;
     }
-    return [];
+    return { ipa: [], audio: [] };
   } catch (error) {
-    console.warn(`Wiktionary audio failed for "${word}":`, error);
+    console.warn(`Wiktionary pronunciation failed for "${word}":`, error);
     return null;
   }
 }

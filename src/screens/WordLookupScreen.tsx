@@ -82,6 +82,11 @@ export default function WordLookupScreen() {
         setScrollingUp(data.scrollingUp);
       } else if (data.type === 'ipa' && data.results) {
         setScrapedIpaResults(data.results);
+        // Fill in an empty pronunciation when the page has only one IPA
+        const ipaOptions = [...new Set((data.results as string[]).filter(Boolean))];
+        if (ipaOptions.length === 1) {
+          setPronunciation((current) => current || ipaOptions[0]);
+        }
       } else if (data.type === 'ipaError') {
         console.log('IPA scraping error:', data.message);
       }

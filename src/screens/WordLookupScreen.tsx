@@ -49,38 +49,58 @@ export default function WordLookupScreen() {
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
-  const [webViewAtTop, setWebViewAtTop] = useState(true);
-  const [scrollingUp, setScrollingUp] = useState(false);
   const [scrollViewAtBottom, setScrollViewAtBottom] = useState(false);
+  // Outer ScrollView offset and max offset, for scrolling it from WebView drags
+  const outerScrollRef = useRef({ y: 0, maxY: 0 });
 
-  const webViewScrollDisabled = webViewAtTop && scrollingUp;
-  const webViewScrollEnabled = scrollViewAtBottom && !webViewScrollDisabled;
-
+  // On Android, a WebView with nestedScrollEnabled keeps every drag that starts on it, and without it never
+  // scrolls. So the page owns drags only once the screen is scrolled to the bottom, and the injected script
+  // hands a drag back to the screen while the page sits at its top (or the screen has left the bottom).
+  // Deciding per touchmove inside the page lets one drag move between the two without getting stuck.
   const injectedJavaScript = `
     (function() {
-      var atTop = true;
-      var scrollingUp = false;
-      var lastY = 0;
-      window.addEventListener('scroll', function() {
-        var currentY = window.scrollY || window.pageYOffset || 0;
-        var nowAtTop = currentY === 0;
-        var nowScrollingUp = currentY < lastY;
-        lastY = currentY;
-
-        atTop = nowAtTop;
-        scrollingUp = nowScrollingUp;
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'webviewScroll', atTop, scrollingUp }));
+      if (window.__lyricsionaryScroll) return;
+      window.__lyricsionaryScroll = true;
+      if (window.__outerAtBottom === undefined) window.__outerAtBottom = false;
+      var lastY = null;
+      window.addEventListener('touchstart', function(e) {
+        lastY = e.touches.length === 1 ? e.touches[0].clientY : null;
       }, { passive: true });
+      window.addEventListener('touchmove', function(e) {
+        if (lastY === null || e.touches.length !== 1) return;
+        var y = e.touches[0].clientY;
+        var dy = y - lastY;
+        lastY = y;
+        if (dy === 0) return;
+        var pageAtTop = (window.scrollY || window.pageYOffset || 0) <= 0;
+        // dy > 0: finger moving down, i.e. scrolling up
+        if ((pageAtTop && dy > 0) || !window.__outerAtBottom) {
+          if (e.cancelable) e.preventDefault();
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'outerScroll', dy: dy }));
+        }
+      }, { passive: false });
+      window.addEventListener('touchend', function() { lastY = null; }, { passive: true });
+      window.addEventListener('touchcancel', function() { lastY = null; }, { passive: true });
     })();
     true;
   `;
 
+  const syncOuterAtBottom = (atBottom: boolean) => {
+    webViewRef.current?.injectJavaScript(`window.__outerAtBottom = ${atBottom}; true;`);
+  };
+
+  useEffect(() => {
+    syncOuterAtBottom(scrollViewAtBottom);
+  }, [scrollViewAtBottom]);
+
   const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'webviewScroll') {
-        setWebViewAtTop(data.atTop);
-        setScrollingUp(data.scrollingUp);
+      if (data.type === 'outerScroll') {
+        const { y, maxY } = outerScrollRef.current;
+        const nextY = Math.max(0, Math.min(maxY, y - data.dy));
+        outerScrollRef.current.y = nextY;
+        scrollViewRef.current?.scrollTo({ y: nextY, animated: false });
       } else if (data.type === 'ipa' && data.results) {
         setScrapedIpaResults(data.results);
         // Fill in an empty pronunciation with the page's first IPA
@@ -96,8 +116,8 @@ export default function WordLookupScreen() {
 
   const handleOuterScroll = (event: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    outerScrollRef.current = { y: contentOffset.y, maxY: Math.max(0, contentSize.height - layoutMeasurement.height) };
     setScrollViewAtBottom(layoutMeasurement.height + contentOffset.y >= contentSize.height - 20);
-    setScrollingUp(false);
   };
 
   const [currentUrl, setCurrentUrl] = useState('');
@@ -282,7 +302,6 @@ export default function WordLookupScreen() {
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
         : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${language}`;
       setCurrentUrl(url);
-      setWebViewAtTop(true);
       setScrapedIpaResults([]);
     };
 
@@ -645,12 +664,13 @@ export default function WordLookupScreen() {
                 }}
                 onLoadEnd={() => {
                   setLoading(false);
+                  syncOuterAtBottom(scrollViewAtBottom);
                   if (lookupSource === 'wiktionary' && !cardIpa && webViewRef.current) {
                     webViewRef.current.injectJavaScript(getScrapeIpaJS(language));
                   }
                 }}
                 javaScriptEnabled
-                nestedScrollEnabled={webViewScrollEnabled}
+                nestedScrollEnabled={scrollViewAtBottom}
                 injectedJavaScript={injectedJavaScript}
                 onMessage={handleWebViewMessage}
               />

@@ -139,6 +139,11 @@ export default function WordLookupScreen() {
     setDisplayWord(word);
   }, [word]);
 
+  // Drop the previous word's IPA right away, not once its page has been replaced
+  useEffect(() => {
+    setScrapedIpaResults([]);
+  }, [displayWord]);
+
   useEffect(() => {
     setShowDeleteConfirm(false);
   }, [word]);
@@ -630,7 +635,10 @@ export default function WordLookupScreen() {
                     }
                   }
                 }}
-                onLoadStart={() => setLoading(true)}
+                onLoadStart={() => {
+                  setLoading(true);
+                  setScrapedIpaResults([]);
+                }}
                 onLoadEnd={() => {
                   setLoading(false);
                   if (lookupSource === 'wiktionary' && webViewRef.current) {

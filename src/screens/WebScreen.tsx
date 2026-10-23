@@ -64,7 +64,7 @@ export default function WebScreen() {
   const [webViewKey, setWebViewKey] = useState(0);
   const pendingPasteText = useRef<string | null>(null);
   const previousWaitingForTranslation = useRef<boolean>(false);
-  // Pages already handled by the automatic lyrics flow, so repeated detection messages act once
+  // Pages already scraped or followed automatically, so repeated detection messages act once
   const autoScrapedUrl = useRef<string | null>(null);
   const autoFollowedUrl = useRef<string | null>(null);
 
@@ -122,15 +122,18 @@ export default function WebScreen() {
     webViewRef.current?.injectJavaScript(scrapeTranslationJS);
   };
 
-  // Automatic flow from the now playing notification: scrape lyrics as soon as they're
-  // detected, or follow a supported lyrics site from Google results when Google has none
-  const handleAutoFetchLyrics = (hasLyrics: boolean) => {
-    if (useStore.getState().autoFetch?.step !== 'lyrics') return;
+  // Scrape lyrics as soon as they're detected, once per page. In the automatic flow from the
+  // now playing notification, also follow a supported lyrics site from Google results when Google has none
+  const handleLyricsDetected = (hasLyrics: boolean) => {
     if (hasLyrics) {
       if (autoScrapedUrl.current === currentUrl) return;
       autoScrapedUrl.current = currentUrl;
       handleScrapeLyrics();
-    } else if (currentUrl.includes('google.com') && autoFollowedUrl.current !== currentUrl) {
+    } else if (
+      useStore.getState().autoFetch?.step === 'lyrics' &&
+      currentUrl.includes('google.com') &&
+      autoFollowedUrl.current !== currentUrl
+    ) {
       autoFollowedUrl.current = currentUrl;
       // Give Google's lyrics panel a moment to render before falling back
       setTimeout(() => webViewRef.current?.injectJavaScript(followLyricsLinkJS), 1500);
@@ -146,7 +149,7 @@ export default function WebScreen() {
       }
       if (data.type === 'lyricsDetected') {
         setShowFab(data.hasLyrics === true);
-        handleAutoFetchLyrics(data.hasLyrics === true);
+        handleLyricsDetected(data.hasLyrics === true);
         return;
       }
       if (data.type === 'translationDetected') {

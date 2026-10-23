@@ -28,6 +28,7 @@ import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
+import { getGermanExpandedForm } from '../utils/wordTransform';
 import { emojiData } from '../utils/emojiData';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
@@ -118,6 +119,9 @@ export default function WordLookupScreen() {
   const [undoData, setUndoData] = useState<{ block: WordSenseData; index: number } | null>(null);
 
   const [displayWord, setDisplayWord] = useState(word);
+  // Page the Wiktionary tab shows instead of displayWord when it has no entry (e.g. "hab'n" -> "haben")
+  const [wiktionaryRedirect, setWiktionaryRedirect] = useState<{ from: string; to: string } | null>(null);
+  const wiktionaryWord = wiktionaryRedirect && wiktionaryRedirect.from === displayWord ? wiktionaryRedirect.to : displayWord;
 
   const findExistingWord = () => words.find((entry) =>
     wordId
@@ -226,17 +230,17 @@ export default function WordLookupScreen() {
   // Suggest the word's Wiktionary definitions in the selected language for each context's definition
   useEffect(() => {
     setDefinitionSuggestions([]);
-    if (!displayWord || !language) return;
+    if (!wiktionaryWord || !language) return;
     let cancelled = false;
-    getWiktionaryDefinitions(displayWord, language).then((definitions) => {
+    getWiktionaryDefinitions(wiktionaryWord, language).then((definitions) => {
       if (!cancelled && definitions) setDefinitionSuggestions(definitions);
     });
     return () => {
       cancelled = true;
     };
-  }, [displayWord, language]);
+  }, [wiktionaryWord, language]);
 
-  const pronunciationAudio = useWiktionaryAudio(displayWord, language);
+  const pronunciationAudio = useWiktionaryAudio(wiktionaryWord, language);
 
   const entryCheckedWordRef = useRef<string | undefined>(undefined);
 
@@ -247,7 +251,7 @@ export default function WordLookupScreen() {
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(displayWord)}#${language}`;
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${language}`;
       setCurrentUrl(url);
       setWebViewAtTop(true);
       setScrapedIpaResults([]);
@@ -264,6 +268,20 @@ export default function WordLookupScreen() {
           if (!cancelled) setDisplayWord(lowercase);
           return;
         }
+        // A shortened word without its own page (e.g. "hab'n") shows its full form's page (e.g. "haben")
+        if (exists === false) {
+          const expanded = getGermanExpandedForm(displayWord, language);
+          const candidates = expanded ? [...new Set([expanded.toLowerCase(), expanded])] : [];
+          for (const candidate of candidates) {
+            if (await hasWiktionaryEntry(candidate)) {
+              if (!cancelled) {
+                setWiktionaryRedirect({ from: displayWord, to: candidate });
+                setLookupSource('wiktionary');
+              }
+              return;
+            }
+          }
+        }
         if (cancelled) return;
         const source = exists === false ? 'google' : 'wiktionary';
         if (source === lookupSource) {
@@ -279,7 +297,7 @@ export default function WordLookupScreen() {
     return () => {
       cancelled = true;
     };
-  }, [displayWord, lookupSource]);
+  }, [displayWord, wiktionaryWord, lookupSource]);
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !isFocused) {

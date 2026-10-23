@@ -13,9 +13,14 @@ describe('pickDefinition', () => {
     expect(pickDefinition([noun('freedom'), noun('love')], 'all my love')).toBe('love');
   });
 
-  it('matches verb definitions without their "to"', () => {
-    expect(pickDefinition([verb('to rescue'), verb('to free')], 'Free me now')).toBe('to free');
-    expect(pickDefinition([verb('to rescue'), verb('to liberate; to free')], 'free me')).toBe('to liberate; to free');
+  it('fills verb definitions without their "to" when the translation has none', () => {
+    expect(pickDefinition([verb('to rescue'), verb('to free')], 'Free me now')).toBe('free');
+    expect(pickDefinition([verb('to rescue'), verb('to liberate; to free')], 'free me')).toBe('liberate; free');
+    expect(pickDefinition([verb('to free')], 'Free me now')).toBe('free');
+  });
+
+  it('keeps "to" when the translation has it', () => {
+    expect(pickDefinition([verb('to rescue'), verb('to free')], 'I want to free myself')).toBe('to free');
   });
 
   it('keeps "to" for other parts of speech', () => {

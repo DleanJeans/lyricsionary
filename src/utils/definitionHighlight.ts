@@ -42,14 +42,17 @@ function withoutInfinitiveTo(definition: string): string {
   return definition.replace(/(^|[,;/]\s*)to\s+/gi, '$1');
 }
 
-// The definition to fill in by itself: the only one, or else the first that appears in the translation.
+// The definition to fill in by itself: the first that appears in the translation, or else the only one.
+// A verb that only matches without its "to" is filled in without it, e.g. "free" for "Free me".
 export function pickDefinition(definitions: WiktionaryDefinition[], translation?: string): string | null {
   const unique = [...new Map(definitions.filter((d) => d.text).map((d) => [d.text, d])).values()];
-  if (unique.length === 1) return unique[0].text;
-  if (!translation) return null;
-  const match = unique.find(({ text, partOfSpeech }) => {
-    const matchText = partOfSpeech.toLowerCase() === 'verb' ? withoutInfinitiveTo(text) : text;
-    return findDefinitionHighlight(translation, [matchText]);
-  });
-  return match?.text ?? null;
+  if (translation) {
+    for (const { text, partOfSpeech } of unique) {
+      if (findDefinitionHighlight(translation, [text])) return text;
+      if (partOfSpeech.toLowerCase() !== 'verb') continue;
+      const withoutTo = withoutInfinitiveTo(text);
+      if (findDefinitionHighlight(translation, [withoutTo])) return withoutTo;
+    }
+  }
+  return unique.length === 1 ? unique[0].text : null;
 }

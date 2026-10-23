@@ -4,7 +4,7 @@ import React, { useRef } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getFlagForLanguage } from '../constants/languages';
-import { Colors } from '../constants/theme';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { WordEntry } from '../types';
 import HighlightedText from './HighlightedText';
@@ -54,6 +54,7 @@ export default function WordCard({
   const ipa = item.pronunciation
     ? (item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`)
     : wiktionary.ipa.join(', ');
+  const flag = item.contexts?.[0]?.emoji || item.emoji || getFlagForLanguage(item.language);
 
   const handleCardPress = () => {
     navigation.navigate('WordLookup', {
@@ -100,35 +101,55 @@ export default function WordCard({
         accessibilityRole="button"
         accessibilityLabel={`Open ${item.word}`}
       >
-        {showClose && (
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeButton}
-            accessibilityRole="button"
-            accessibilityLabel={`Close ${item.word}`}
-          >
-            <Ionicons name="close" size={22} color={Colors.textSecondary} />
-          </TouchableOpacity>
-        )}
-        <View style={styles.cardRow}>
-          <Text style={styles.flag}>{(item.contexts?.[0]?.emoji || item.emoji) || getFlagForLanguage(item.language)}</Text>
-          <View style={[styles.cardContent, showClose && styles.cardContentWithClose]}>
-            <HighlightedText
-              text={item.word}
-              query={searchQuery}
-              style={styles.cardWordText}
-            />
-            {ipa ? (
+        {showClose ? (
+          // Learn screen: same layout as the new word card
+          <>
+            <View style={styles.header}>
+              <View style={styles.title}>
+                <View style={styles.badgeRow}>
+                  <View style={[styles.badge, { backgroundColor: getMasteryLevelColor(item.masteryLevel) }]}>
+                    <Text style={styles.badgeText}>{(item.masteryLevel || 'Unknown').toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.badgeEmoji}>{flag}</Text>
+                </View>
+                <Text style={styles.titleWordText}>{item.word}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.toolButton}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={`Close ${item.word}`}
+              >
+                <Ionicons name="close" size={22} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {(ipa || wiktionary.audio.length > 0) && (
+              <View style={styles.ipaRow}>
+                {ipa ? <Text style={styles.ipaText}>{ipa}</Text> : null}
+                <PronunciationAudio audio={wiktionary.audio} compact />
+              </View>
+            )}
+          </>
+        ) : (
+          <View style={styles.cardRow}>
+            <Text style={styles.flag}>{flag}</Text>
+            <View style={styles.cardContent}>
               <HighlightedText
-                text={ipa}
+                text={item.word}
                 query={searchQuery}
-                style={styles.pronunciation}
+                style={styles.cardWordText}
               />
-            ) : null}
-            <PronunciationAudio audio={wiktionary.audio} />
+              {ipa ? (
+                <HighlightedText
+                  text={ipa}
+                  query={searchQuery}
+                  style={styles.pronunciation}
+                />
+              ) : null}
+            </View>
           </View>
-
-        </View>
+        )}
       </TouchableOpacity>
     </Swipeable>
   );
@@ -151,11 +172,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  closeButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    zIndex: 1,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  title: {
+    flex: 1,
+    alignItems: 'flex-start',
+    gap: 4,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  badge: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    color: Colors.background,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  badgeEmoji: {
+    fontSize: 14,
+  },
+  titleWordText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  toolButton: {
+    padding: 6,
+    marginTop: -6,
+    marginRight: -6,
+  },
+  ipaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  ipaText: {
+    color: Colors.textSecondary,
+    fontSize: 15,
   },
   flag: {
     fontSize: 24,
@@ -163,9 +228,6 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
-  },
-  cardContentWithClose: {
-    paddingRight: 24,
   },
   cardWordText: {
     fontSize: 18,

@@ -1,3 +1,5 @@
+import type { WiktionaryDefinition } from './wiktionary';
+
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 
 // Curly apostrophes and quotes count as straight ones; same length, so indexes still line up.
@@ -35,10 +37,19 @@ export function findDefinitionHighlight(text: string, definitions: string[]): [n
   return null;
 }
 
+// Verb definitions match without their "to", e.g. "to free; to rescue" as "free; rescue"
+function withoutInfinitiveTo(definition: string): string {
+  return definition.replace(/(^|[,;/]\s*)to\s+/gi, '$1');
+}
+
 // The definition to fill in by itself: the only one, or else the first that appears in the translation.
-export function pickDefinition(definitions: string[], translation?: string): string | null {
-  const unique = [...new Set(definitions.filter(Boolean))];
-  if (unique.length === 1) return unique[0];
+export function pickDefinition(definitions: WiktionaryDefinition[], translation?: string): string | null {
+  const unique = [...new Map(definitions.filter((d) => d.text).map((d) => [d.text, d])).values()];
+  if (unique.length === 1) return unique[0].text;
   if (!translation) return null;
-  return unique.find((definition) => findDefinitionHighlight(translation, [definition])) ?? null;
+  const match = unique.find(({ text, partOfSpeech }) => {
+    const matchText = partOfSpeech.toLowerCase() === 'verb' ? withoutInfinitiveTo(text) : text;
+    return findDefinitionHighlight(translation, [matchText]);
+  });
+  return match?.text ?? null;
 }

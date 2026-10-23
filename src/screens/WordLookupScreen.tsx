@@ -249,12 +249,11 @@ export default function WordLookupScreen() {
   // Fill in empty definitions with the only suggestion, or the one that matches the line's translation
   useEffect(() => {
     if (definitionSuggestions.length === 0) return;
-    const texts = definitionSuggestions.map((suggestion) => suggestion.text);
     setWordSenses((prev) => {
       let changed = false;
       const next = prev.map((sense) => {
         if (sense.definition) return sense;
-        const picked = pickDefinition(texts, sense.translation);
+        const picked = pickDefinition(definitionSuggestions, sense.translation);
         if (!picked) return sense;
         changed = true;
         return { ...sense, definition: picked };

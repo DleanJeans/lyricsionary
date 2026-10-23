@@ -1,4 +1,4 @@
-import { getWordTransforms, splitElisionParts, splitContractedPrefix } from '../src/utils/wordTransform';
+import { getGermanExpandedForm, getWordTransforms, splitElisionParts, splitContractedPrefix } from '../src/utils/wordTransform';
 
 describe('getWordTransforms', () => {
   it('returns empty array for empty input', () => {
@@ -57,6 +57,38 @@ describe('getWordTransforms', () => {
   it('does not remove hyphens from words with apostrophes', () => {
     const transforms = getWordTransforms("qu'est-ce");
     expect(transforms).not.toContain("qu'estce");
+  });
+});
+
+describe('German shortened words', () => {
+  it("expands hab'n to haben without splitting it", () => {
+    const transforms = getWordTransforms("hab'n", 'German');
+    expect(transforms).toContain('haben');
+    expect(transforms).not.toContain("hab'");
+    expect(transforms).not.toContain('n');
+  });
+
+  it("expands befrei'n to befreien", () => {
+    expect(getWordTransforms("befrei'n", 'de')).toEqual(['befreien']);
+  });
+
+  it("expands capitalized Hab'n", () => {
+    const transforms = getWordTransforms("Hab'n", 'German');
+    expect(transforms).toContain('Haben');
+    expect(transforms).toContain('haben');
+  });
+
+  it("expands unser'm to unserem", () => {
+    expect(getWordTransforms("unser'm", 'German')).toEqual(['unserem']);
+  });
+
+  it("expands hab' to habe in German only", () => {
+    expect(getGermanExpandedForm("hab'", 'German')).toBe('habe');
+    expect(getGermanExpandedForm("dell'", 'Italian')).toBeNull();
+  });
+
+  it('leaves English contractions alone', () => {
+    expect(getGermanExpandedForm("I'm")).toBeNull();
   });
 });
 

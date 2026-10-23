@@ -1,4 +1,10 @@
-import { contractedPrefixRegex, hyphenatedPrefixRegex } from './regex';
+import { isGermanLanguage } from './compoundWords';
+import {
+  contractedPrefixRegex,
+  germanShortenedSuffixRegex,
+  germanTrailingElisionRegex,
+  hyphenatedPrefixRegex,
+} from './regex';
 
 /**
  * Transform a word into an array of transformed versions for word lookup.
@@ -18,9 +24,16 @@ export function getWordTransforms(word: string, language?: string): string[] {
     transforms.push(getLowercaseVersion(word));
   }
 
-  // Handle contracted prefix (e.g., "j'aime" -> "j'", "aime")
-  // Also handles double contractions (e.g., "qu'c'est" -> "qu'", "c'", "est")
-  if (hasContractedPrefix(word)) {
+  // Handle German shortened words (e.g., "hab'n" -> "haben") instead of splitting at the apostrophe
+  const expanded = getGermanExpandedForm(word, language);
+  if (expanded) {
+    transforms.push(expanded);
+    if (isCapitalized(expanded)) {
+      transforms.push(getLowercaseVersion(expanded));
+    }
+  } else if (hasContractedPrefix(word)) {
+    // Handle contracted prefix (e.g., "j'aime" -> "j'", "aime")
+    // Also handles double contractions (e.g., "qu'c'est" -> "qu'", "c'", "est")
     const parts = splitElisionParts(word) || splitContractedPrefix(word);
     if (parts.length >= 2) {
       transforms.push(parts[0].toLowerCase(), ...parts.slice(1));
@@ -68,6 +81,23 @@ export function hasHyphenInMiddle(word: string): boolean {
 }
 
 // Transformation functions
+
+/**
+ * Expand a German shortened word to its full form, or null if it isn't one.
+ * - "hab'n" -> "haben", "befrei'n" -> "befreien", "unser'm" -> "unserem"
+ * - "hab'" -> "habe" (only when the language is German, since French/Italian elide prefixes like "l'")
+ */
+export function getGermanExpandedForm(word: string, language?: string): string | null {
+  const suffixMatch = word.match(germanShortenedSuffixRegex);
+  if (suffixMatch) {
+    return `${suffixMatch[1]}e${suffixMatch[2]}`;
+  }
+  if (language && isGermanLanguage([language]) && germanTrailingElisionRegex.test(word)) {
+    return `${word.slice(0, -1)}e`;
+  }
+  return null;
+}
+
 export function getLowercaseVersion(word: string): string {
   return word.charAt(0).toLowerCase() + word.slice(1);
 }

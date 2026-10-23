@@ -72,6 +72,26 @@ const _scrapeLyricsLogic = `
     }
   }
 
+  // Lyricsify: the page keeps the whole LRC file in a global lrcText and renders it with JS
+  if (url.includes('lyricsify.com')) {
+    let lrc = '';
+    try {
+      if (typeof lrcText === 'string') lrc = lrcText;
+    } catch (e) {
+      consoleLog('Failed to read lrcText from Lyricsify: ' + e.message);
+    }
+    if (!lrc) lrc = document.querySelector('#lyrics_display')?.innerText || '';
+    if (lrc) {
+      // Same as Lyricsify's own "Plain Text" mode: drop [ar: ...] tags and timestamps
+      lyrics = lrc
+        .replace(/^\\s*\\[[a-z_-]+:.*\\]\\s*$/gim, '')
+        .replace(/\\[[\\d:.]+\\]|<[\\d:.]+>/g, '')
+        .replace(/\\n{3,}/g, '\\n\\n');
+      sendLyrics(lyrics, languageCode);
+      return;
+    }
+  }
+
   // Generic fallback
   consoleLog(window.location.hostname + ' - Using fallback, scraping entire page text');
   const body = document.body.innerText;

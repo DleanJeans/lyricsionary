@@ -1,5 +1,5 @@
 // Supported lyrics sites to follow from Google results when Google has no lyrics panel
-export const LYRICS_SITE_DOMAINS = ['genius.com', 'musixmatch.com', 'songlyrics.com'];
+export const LYRICS_SITE_DOMAINS = ['genius.com', 'musixmatch.com', 'songlyrics.com', 'lyricsify.com'];
 
 /**
  * Pick the translation language for the automatic lyrics flow: the language

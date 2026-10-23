@@ -37,6 +37,10 @@ const _detectLyricsLogic = `
     const songLyricsEl = document.querySelector('#songLyricsDiv');
     hasLyrics = !!songLyricsEl;
   }
+  // Lyricsify
+  else if (url.includes('lyricsify.com')) {
+    hasLyrics = !!document.querySelector('#lyrics_display');
+  }
 
   sendDetectionResult(hasLyrics);
 `;

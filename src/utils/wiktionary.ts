@@ -159,6 +159,11 @@ export function getShortGlosses(html: string): string[] {
     // Usage notes too, e.g. fragen's "to ask [with accusative ‘someone’ and accusative ‘something’]"
     text = text.replace(/\s*\([^()]*\)|\s*\[[^[\]]*\]/g, '');
   } while (text !== previous);
+  return splitShortGlosses(text);
+}
+
+/** "always, ever; very often" -> ["always", "ever", "very often"]; parts of a long explanation are dropped */
+function splitShortGlosses(text: string): string[] {
   const isShort = (part: string) => part.split(/\s+/).length <= MAX_GLOSS_WORDS;
   // Semicolons separate synonyms; commas and spaced slashes only do when every part is short
   // ("always, ever", "tax adviser / tax advisor"), otherwise they're part of an explanation
@@ -207,7 +212,11 @@ export function parseEntry(response: unknown, language: string): WiktionaryEntry
         if (isFormOf(definition)) {
           const formOfGloss = getFormOfGloss(definition);
           const lemma = getFormOfLemma(definition);
-          if (formOfGloss) add(entry.glosses, partOfSpeech, formOfGloss);
+          // A list of meanings becomes one suggestion each, e.g. lieber's "rather, better, by preference"
+          if (formOfGloss) {
+            const parts = splitShortGlosses(formOfGloss);
+            for (const gloss of parts.length > 0 ? parts : [formOfGloss]) add(entry.glosses, partOfSpeech, gloss);
+          }
           // Without a gloss, "inflection of fragen" says nothing about the meaning by itself
           else if (lemma && !entry.lemmas.includes(lemma)) entry.lemmas.push(lemma);
           continue;

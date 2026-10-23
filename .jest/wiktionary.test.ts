@@ -189,6 +189,21 @@ const FRAGEN = [
 const BLEIB =
   '<span class="form-of-definition use-with-mention" about="#mwt6" typeof="mw:Transclusion"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#singular_number" title="Appendix:Glossary">singular</a> <a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#imperative_mood" title="Appendix:Glossary">imperative</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/bleiben#German" title="bleiben">bleiben</a></i></span></span>';
 
+const LIEBER =
+  '<span class="form-of-definition use-with-mention"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#comparative" title="Appendix:Glossary">comparative degree</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/gern#German" title="gern">gern</a></i></span></span>: <a rel="mw:WikiLink" href="/wiki/rather" title="rather">rather</a>, <a rel="mw:WikiLink" href="/wiki/better" title="better">better</a>, <a rel="mw:WikiLink" href="/wiki/by_preference" title="by preference">by preference</a>';
+const LIEBER_GLOSS_SPAN =
+  '<span class="form-of-definition use-with-mention">comparative degree of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a href="/wiki/gern#German" title="gern">gern</a></i> <span class="mention-gloss-paren annotation-paren">(</span><span class="mention-gloss-double-quote">“</span><span class="mention-gloss">rather, better, by preference</span><span class="mention-gloss-double-quote">”</span><span class="mention-gloss-paren annotation-paren">)</span></span></span>';
+
+describe('form-of glosses with several meanings', () => {
+  it.each([LIEBER, LIEBER_GLOSS_SPAN])('splits lieber into one suggestion per meaning', (definition) => {
+    expect(parseEntry({ de: [section('German', 'Adverb', [definition])] }, 'German').glosses.map((d) => d.text)).toEqual([
+      'rather',
+      'better',
+      'by preference',
+    ]);
+  });
+});
+
 describe('inflected forms', () => {
   it('finds the base form and drops the grammar descriptions', () => {
     expect(getFormOfLemma(FRAGT[0])).toBe('fragen');

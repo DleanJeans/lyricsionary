@@ -1,4 +1,4 @@
-import { pickDefinition } from '../src/utils/definitionHighlight';
+import { pickDefinition, toGerund } from '../src/utils/definitionHighlight';
 
 const verb = (text: string) => ({ partOfSpeech: 'Verb', text });
 const noun = (text: string) => ({ partOfSpeech: 'Noun', text });
@@ -19,6 +19,12 @@ describe('pickDefinition', () => {
     expect(pickDefinition([verb('to free')], 'Free me now')).toBe('free');
   });
 
+  it('fills a verb as its -ing form when the translation has that', () => {
+    expect(pickDefinition([verb('to talk'), verb('to speak')], "He's talking")).toBe('talking');
+    expect(pickDefinition([verb('to do'), verb('to make; to build')], 'Making love')).toBe('making');
+    expect(pickDefinition([verb('to quit'), verb('to give up')], "I'm giving up")).toBe('giving up');
+  });
+
   it('keeps "to" when the translation has it', () => {
     expect(pickDefinition([verb('to rescue'), verb('to free')], 'I want to free myself')).toBe('to free');
   });
@@ -31,5 +37,23 @@ describe('pickDefinition', () => {
     expect(pickDefinition([verb('to free'), verb('to rescue')], 'Let me go')).toBeNull();
     expect(pickDefinition([verb('to free'), verb('to rescue')])).toBeNull();
     expect(pickDefinition([])).toBeNull();
+  });
+});
+
+describe('toGerund', () => {
+  it.each([
+    ['talk', 'talking'],
+    ['make', 'making'],
+    ['die', 'dying'],
+    ['see', 'seeing'],
+    ['be', 'being'],
+    ['run', 'running'],
+    ['stop', 'stopping'],
+    ['show', 'showing'],
+    ['fix', 'fixing'],
+    ['play', 'playing'],
+    ['visit', 'visiting'],
+  ])('%s -> %s', (verb, gerund) => {
+    expect(toGerund(verb)).toBe(gerund);
   });
 });

@@ -42,8 +42,28 @@ function withoutInfinitiveTo(definition: string): string {
   return definition.replace(/(^|[,;/]\s*)to\s+/gi, '$1');
 }
 
+// English -ing form of a verb: talk -> talking, make -> making, die -> dying, run -> running
+export function toGerund(verb: string): string {
+  const word = verb.toLowerCase();
+  if (word.endsWith('ie')) return `${verb.slice(0, -2)}ying`;
+  if (/[^aeiouy]e$/.test(word) && word !== 'be') return `${verb.slice(0, -1)}ing`;
+  // One short vowel then one consonant doubles it (run, stop, sit), but not w, x or y (show, fix, play)
+  if (/^[^aeiou]*[aeiou][^aeiouwxy]$/.test(word)) return `${verb}${verb.slice(-1)}ing`;
+  return `${verb}ing`;
+}
+
+// Each verb in a definition as its -ing form, e.g. "to give up; to quit" -> "giving up", "quitting"
+function gerundsOf(definition: string): string[] {
+  return definition
+    .split(/[,;/]/)
+    .map((part) => withoutInfinitiveTo(part.replace(/\([^)]*\)/g, ' ').trim()))
+    .filter(Boolean)
+    .map((part) => part.replace(/^\S+/, toGerund));
+}
+
 // The definition to fill in by itself: the first that appears in the translation, or else the only one.
-// A verb that only matches without its "to" is filled in without it, e.g. "free" for "Free me".
+// A verb that only matches without its "to" is filled in without it, e.g. "free" for "Free me",
+// or as its -ing form, e.g. "talking" for "He's talking".
 export function pickDefinition(definitions: WiktionaryDefinition[], translation?: string): string | null {
   const unique = [...new Map(definitions.filter((d) => d.text).map((d) => [d.text, d])).values()];
   if (translation) {
@@ -52,6 +72,8 @@ export function pickDefinition(definitions: WiktionaryDefinition[], translation?
       if (partOfSpeech.toLowerCase() !== 'verb') continue;
       const withoutTo = withoutInfinitiveTo(text);
       if (findDefinitionHighlight(translation, [withoutTo])) return withoutTo;
+      const gerund = gerundsOf(text).find((g) => findDefinitionHighlight(translation, [g]));
+      if (gerund) return gerund;
     }
   }
   return unique.length === 1 ? unique[0].text : null;

@@ -63,5 +63,7 @@ export type RootTabParamList = {
     originalLanguages?: string[];
     source?: 'Learn' | 'Words';
     occurrence?: number;
+    // IPA the Look Up card already found, so the page doesn't have to be read again
+    ipa?: string[];
   } | undefined;
 };

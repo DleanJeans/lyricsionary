@@ -40,7 +40,7 @@ export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
   const isFocused = useIsFocused();
-  const { word, wordId, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence } = route.params || {};
+  const { word, wordId, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence, ipa: routeIpa } = route.params || {};
   const insets = useSafeAreaInsets();
 
   const words = useStore((s) => s.words);
@@ -125,6 +125,8 @@ export default function WordLookupScreen() {
   const [undoData, setUndoData] = useState<{ block: WordSenseData; index: number } | null>(null);
 
   const [displayWord, setDisplayWord] = useState(word);
+  // The Look Up card's IPA for this word, used instead of scraping the Wiktionary page
+  const cardIpa = routeIpa && routeIpa.length > 0 && displayWord === word ? routeIpa : undefined;
   // Page the Wiktionary tab shows instead of displayWord when it has no entry (e.g. "hab'n" -> "haben")
   const [wiktionaryRedirect, setWiktionaryRedirect] = useState<{ from: string; to: string } | null>(null);
   const wiktionaryWord = wiktionaryRedirect && wiktionaryRedirect.from === displayWord ? wiktionaryRedirect.to : displayWord;
@@ -153,7 +155,7 @@ export default function WordLookupScreen() {
       const existingWord = findExistingWord();
       if (existingWord) {
         setLanguage(existingWord.language);
-        setPronunciation(existingWord.pronunciation);
+        setPronunciation(existingWord.pronunciation || cardIpa?.[0] || '');
         setMasteryLevel(existingWord.masteryLevel || 'New');
 
         if (existingWord.contexts && existingWord.contexts.length > 0) {
@@ -203,7 +205,7 @@ export default function WordLookupScreen() {
           setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
         }
       } else {
-        setPronunciation('');
+        setPronunciation(cardIpa?.[0] ?? '');
         setMasteryLevel('New');
         setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
         if (originalLanguages && originalLanguages.length > 0) {
@@ -213,7 +215,7 @@ export default function WordLookupScreen() {
         }
       }
     }
-  }, [displayWord, wordId, language, words, songId, lyricsLine, originalLanguages, routeOccurrence, source]);
+  }, [displayWord, wordId, language, words, songId, lyricsLine, originalLanguages, routeOccurrence, source, cardIpa]);
 
   const isNewWord = displayWord && !findExistingWord();
 
@@ -445,6 +447,8 @@ export default function WordLookupScreen() {
 
   const cleanWordForContext = word ? removeSpecialChars(word) : undefined;
 
+  const ipaOptions = cardIpa ?? (lookupSource === 'wiktionary' ? scrapedIpaResults : []);
+
   const ipaPlaceholder = pronunciation
     ? (pronunciation.includes('/') ? pronunciation : `/${pronunciation}/`)
     : 'e.g., /prəˌnʌnsiˈeɪʃən/';
@@ -517,9 +521,9 @@ export default function WordLookupScreen() {
               placeholderTextColor={Colors.textMuted}
             />
             <PronunciationAudio audio={pronunciationAudio} />
-            {lookupSource === 'wiktionary' && scrapedIpaResults.length > 0 && (
+            {ipaOptions.length > 0 && (
               <View style={styles.ipaResultsRow}>
-                {scrapedIpaResults.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
+                {ipaOptions.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
                   <TouchableOpacity
                     key={index}
                     style={styles.ipaResultButton}
@@ -641,7 +645,7 @@ export default function WordLookupScreen() {
                 }}
                 onLoadEnd={() => {
                   setLoading(false);
-                  if (lookupSource === 'wiktionary' && webViewRef.current) {
+                  if (lookupSource === 'wiktionary' && !cardIpa && webViewRef.current) {
                     webViewRef.current.injectJavaScript(getScrapeIpaJS(language));
                   }
                 }}

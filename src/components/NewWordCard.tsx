@@ -95,6 +95,7 @@ export default function NewWordCard({
       originalLanguages,
       source: 'Learn',
       occurrence,
+      ipa: wiktionary.ipa,
     });
   };
 

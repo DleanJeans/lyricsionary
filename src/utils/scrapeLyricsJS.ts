@@ -92,6 +92,40 @@ const _scrapeLyricsLogic = `
     }
   }
 
+  // Paroles-Musique: detection taps "Click to see full lyrics..." first, so the full text is here.
+  // Lines end in <br>, ads sit mid-line between <br>s, and source newlines aren't line breaks
+  if (url.includes('paroles-musique.com')) {
+    const lyricsEl = document.querySelector('#lyrics div[id]');
+    if (lyricsEl) {
+      const clone = lyricsEl.cloneNode(true);
+      const siblingBr = (node, dir) => {
+        let n = node[dir];
+        while (n && n.nodeType === 3 && !n.textContent.trim()) n = n[dir];
+        return n && n.nodeName === 'BR' ? n : null;
+      };
+      clone.querySelectorAll('.ads_cont').forEach((ad) => {
+        siblingBr(ad, 'previousSibling')?.remove();
+        siblingBr(ad, 'nextSibling')?.remove();
+        ad.remove();
+      });
+      clone.querySelectorAll('script, ins, button').forEach((el) => el.remove());
+      const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) walker.currentNode.textContent = walker.currentNode.textContent.replace(/\\s+/g, ' ');
+      clone.querySelectorAll('br').forEach((br) => br.replaceWith('\\n'));
+      lyrics = clone.textContent
+        .split('\\n')
+        .map((line) => line.replace(/ {2,}/g, ' ').trim())
+        .join('\\n')
+        .trim();
+      // The full lyrics double every <br>; halve them so lines aren't all blank-line separated
+      if (!/[^\\n]\\n[^\\n]/.test(lyrics)) lyrics = lyrics.replace(/\\n\\n/g, '\\n');
+      const languageMatch = document.querySelector('#lyrics .lf_info')?.textContent.match(/is a song in (\\w+)/);
+      if (languageMatch) languageCode = languageMatch[1];
+      sendLyrics(lyrics, languageCode);
+      return;
+    }
+  }
+
   // Generic fallback
   consoleLog(window.location.hostname + ' - Using fallback, scraping entire page text');
   const body = document.body.innerText;

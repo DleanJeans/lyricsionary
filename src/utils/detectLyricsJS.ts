@@ -41,6 +41,23 @@ const _detectLyricsLogic = `
   else if (url.includes('lyricsify.com')) {
     hasLyrics = !!document.querySelector('#lyrics_display');
   }
+  // Paroles-Musique: only a teaser shows until "Click to see full lyrics..." is tapped
+  else if (url.includes('paroles-musique.com')) {
+    const fullLyricsButton = () => document.querySelector('#lyrics div[id] button');
+    const button = fullLyricsButton();
+    hasLyrics = !!document.querySelector('#lyrics div[id]') && !button;
+    if (button) {
+      button.click();
+      const observer = new MutationObserver(() => {
+        if (document.querySelector('#lyrics div[id]') && !fullLyricsButton()) {
+          observer.disconnect();
+          sendDetectionResult(true);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => observer.disconnect(), 5000);
+    }
+  }
 
   sendDetectionResult(hasLyrics);
 `;

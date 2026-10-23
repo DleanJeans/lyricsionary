@@ -26,10 +26,11 @@ export function getFlagForLanguage(langName: string): string {
   return lang?.flag ?? '🌐';
 }
 
+// Also accepts an English language name, which some lyrics sites give instead of a code
 export function getLanguageNameFromCode(code: string): string | null {
   if (!code) return null;
   const lang = LANGUAGES.find(
-    (l) => l.code.toLowerCase() === code.toLowerCase()
+    (l) => l.code.toLowerCase() === code.toLowerCase() || l.name.toLowerCase() === code.toLowerCase()
   );
   return lang?.name ?? null;
 }

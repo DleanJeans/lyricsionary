@@ -80,6 +80,14 @@ describe('getShortGlosses', () => {
   it('splits synonyms and skips long explanations', () => {
     expect(getShortGlosses('very often; all the time; constantly')).toEqual(['very often', 'all the time', 'constantly']);
     expect(getShortGlosses('always, ever')).toEqual(['always', 'ever']);
+    expect(getShortGlosses('<a>tax adviser</a> / <a>tax advisor</a>, <a>tax consultant</a>, <a>tax counsel</a>, <a>tax preparer</a>')).toEqual([
+      'tax adviser',
+      'tax advisor',
+      'tax consultant',
+      'tax counsel',
+      'tax preparer',
+    ]);
+    expect(getShortGlosses('and/or')).toEqual(['and/or']);
     expect(getShortGlosses('to a greater degree over time, more and more')).toEqual([]);
     expect(getShortGlosses('used to emphasize another adverb of time, which itself is stressed')).toEqual([]);
   });

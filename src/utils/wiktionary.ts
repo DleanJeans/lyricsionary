@@ -160,11 +160,12 @@ export function getShortGlosses(html: string): string[] {
     text = text.replace(/\s*\([^()]*\)|\s*\[[^[\]]*\]/g, '');
   } while (text !== previous);
   const isShort = (part: string) => part.split(/\s+/).length <= MAX_GLOSS_WORDS;
-  // Semicolons separate synonyms; commas only do when every part is short ("always, ever"),
-  // otherwise they're part of an explanation ("used to emphasize ..., which itself is stressed")
+  // Semicolons separate synonyms; commas and spaced slashes only do when every part is short
+  // ("always, ever", "tax adviser / tax advisor"), otherwise they're part of an explanation
+  // ("used to emphasize ..., which itself is stressed")
   return text.split(';').flatMap((segment) => {
     const parts = segment
-      .split(',')
+      .split(/,|\s+\/\s+/)
       .map((part) => part.trim().replace(/\.$/, ''))
       .filter(Boolean);
     return parts.every(isShort) ? parts : [];

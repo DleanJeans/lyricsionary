@@ -117,6 +117,8 @@ const VERMIETER =
   '<a rel="mw:WikiLink" href="/wiki/landlord" title="landlord">landlord</a> <span class="mention-gloss-paren" about="#mwt11" typeof="mw:Transclusion">(</span><span class="mention-gloss" about="#mwt11">he who <a rel="mw:WikiLink" href="/wiki/rent#English" title="rent">rents</a>, <a rel="mw:WikiLink" href="/wiki/let#English" title="let">lets</a></span><span class="mention-gloss-paren" about="#mwt11">)</span>';
 const GEFUEHLE =
   '<span class="form-of-definition use-with-mention" about="#mwt7" typeof="mw:Transclusion"><span class="inflection-of-conjoined"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#nominative_case" title="Appendix:Glossary">nominative</a><span class="inflection-of-sep">/</span><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#accusative_case" title="Appendix:Glossary">accusative</a><span class="inflection-of-sep">/</span><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#genitive_case" title="Appendix:Glossary">genitive</a></span> <a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#plural_number" title="Appendix:Glossary">plural</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/Gefühl#German" title="Gefühl">Gefühl</a></i></span></span> "<a rel="mw:WikiLink" href="/wiki/feelings" title="feelings">feelings</a>"';
+const MICH =
+  '<span class="form-of-definition use-with-mention" about="#mwt5" typeof="mw:Transclusion"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#accusative_case" title="Appendix:Glossary">accusative</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/ich#German" title="ich">ich</a></i></span></span>: <a rel="mw:WikiLink" href="/wiki/me" title="me">me</a>';
 const LOVE_LOFE =
   '<span class="form-of-definition use-with-mention" about="#mwt213" typeof="mw:Transclusion">Alternative form of <span class="form-of-definition-link"><i class="Latn mention" lang="en"><a rel="mw:WikiLink" href="/wiki/lofe#English:_verb" title="lofe">lofe</a></i> <span class="mention-gloss-paren annotation-paren">(</span><span class="mention-gloss-double-quote">“</span><span class="mention-gloss">to praise, sell</span><span class="mention-gloss-double-quote">”</span><span class="mention-gloss-paren annotation-paren">)</span></span></span>.';
 const LOVE_HEART =
@@ -148,6 +150,10 @@ describe('real Wiktionary responses', () => {
   it('Gefühle suggests the gloss of its lemma', () => {
     expect(getFormOfGloss(GEFUEHLE)).toBe('feelings');
     expect(texts({ de: [section('German', 'Noun', [GEFUEHLE])] }, 'German')).toEqual(['feelings']);
+  });
+
+  it('reads the gloss after a form-of definition', () => {
+    expect(getFormOfGloss(MICH)).toBe('me');
   });
 
   it('reads form-of gloss spans and skips form-of entries without one', () => {

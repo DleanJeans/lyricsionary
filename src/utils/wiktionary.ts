@@ -94,15 +94,37 @@ export function stripDefinitionHtml(html: string): string {
 
 /**
  * The English gloss of a form-of definition, e.g. "feelings" from 'nominative plural of Gefühl
- * “feelings”', which is what the word means in the lyrics. Undefined for ordinary definitions.
+ * “feelings”' or "me" from 'accusative of ich: me', which is what the word means in the lyrics.
+ * Undefined for ordinary definitions.
  */
 export function getFormOfGloss(html: string): string | undefined {
   if (!isFormOf(html)) return undefined;
   const span = html.match(/<span\b[^>]*class="[^"]*\bmention-gloss\b(?!-)[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
   const gloss = span
     ? stripDefinitionHtml(span[1])
-    : stripDefinitionHtml(html).match(/\bof\s+\S.*?\s[“"]([^“”"]+)[”"]\s*$/)?.[1];
+    : (stripDefinitionHtml(html).match(/\bof\s+\S.*?\s[“"]([^“”"]+)[”"]\s*$/)?.[1] ?? getTextAfterFormOf(html));
   return gloss?.trim() || undefined;
+}
+
+/** Plain text after the form-of span, e.g. "me" in 'accusative of ich: me'; not a nested list of forms */
+function getTextAfterFormOf(html: string): string | undefined {
+  const start = html.search(/<span\b[^>]*class="[^"]*\bform-of-definition\b(?!-)/i);
+  if (start < 0) return undefined;
+  const after = html.slice(getSpanEnd(html, start));
+  if (/<(?:ol|ul|li)\b/i.test(after)) return undefined;
+  return stripDefinitionHtml(after).replace(/^[\s:;,.]+|[\s.]+$/g, '') || undefined;
+}
+
+/** Index just past the closing tag of the span that opens at start */
+function getSpanEnd(html: string, start: number): number {
+  const spanTags = /<(\/?)span\b[^>]*>/gi;
+  spanTags.lastIndex = start;
+  let depth = 0;
+  for (let tag = spanTags.exec(html); tag; tag = spanTags.exec(html)) {
+    depth += tag[1] ? -1 : 1;
+    if (depth === 0) return spanTags.lastIndex;
+  }
+  return html.length;
 }
 
 function isFormOf(html: string): boolean {
@@ -119,18 +141,7 @@ const ANNOTATION_SPAN =
 function removeAnnotationSpans(html: string): string {
   let result = html;
   for (let match = ANNOTATION_SPAN.exec(result); match; match = ANNOTATION_SPAN.exec(result)) {
-    const spanTags = /<(\/?)span\b[^>]*>/gi;
-    spanTags.lastIndex = match.index + match[0].length;
-    let depth = 1;
-    let end = result.length;
-    for (let tag = spanTags.exec(result); tag; tag = spanTags.exec(result)) {
-      depth += tag[1] ? -1 : 1;
-      if (depth === 0) {
-        end = spanTags.lastIndex;
-        break;
-      }
-    }
-    result = result.slice(0, match.index) + result.slice(end);
+    result = result.slice(0, match.index) + result.slice(getSpanEnd(result, match.index));
   }
   return result;
 }

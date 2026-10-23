@@ -5,8 +5,10 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getFlagForLanguage } from '../constants/languages';
 import { Colors } from '../constants/theme';
+import { useWiktionaryAudio } from '../hooks/useWiktionaryAudio';
 import { WordEntry } from '../types';
 import HighlightedText from './HighlightedText';
+import PronunciationAudio from './PronunciationAudio';
 import { Text } from './Text';
 
 interface WordCardProps {
@@ -47,6 +49,8 @@ export default function WordCard({
   const navigation = useNavigation<any>();
   const swipeableRef = useRef<Swipeable>(null);
   const ipa = item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`;
+  // Only the Learn screen's card for the selected word, not every card in the Words list
+  const pronunciationAudio = useWiktionaryAudio(item.word, item.language, showClose);
 
   const handleCardPress = () => {
     navigation.navigate('WordLookup', {
@@ -118,6 +122,7 @@ export default function WordCard({
                 style={styles.pronunciation}
               />
             ) : null}
+            <PronunciationAudio audio={pronunciationAudio} />
           </View>
 
         </View>

@@ -18,13 +18,8 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
-import {
-  getWiktionaryAudio,
-  getWiktionaryDefinitions,
-  hasWiktionaryEntry,
-  type WiktionaryAudio,
-  type WiktionaryDefinition,
-} from '../utils/wiktionary';
+import { getWiktionaryDefinitions, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
+import { useWiktionaryAudio } from '../hooks/useWiktionaryAudio';
 import WordTransformButtons from '../components/WordTransformButtons';
 import MasteryLevelSelector from '../components/MasteryLevelSelector';
 import PronunciationAudio from '../components/PronunciationAudio';
@@ -110,7 +105,6 @@ export default function WordLookupScreen() {
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('New');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
   const [definitionSuggestions, setDefinitionSuggestions] = useState<WiktionaryDefinition[]>([]);
-  const [pronunciationAudio, setPronunciationAudio] = useState<WiktionaryAudio[]>([]);
 
   const uidRef = useRef(0);
   const mkUid = () => ++uidRef.current;
@@ -242,18 +236,7 @@ export default function WordLookupScreen() {
     };
   }, [displayWord, language]);
 
-  // Pronunciation recordings from the word's Wiktionary page in the selected language
-  useEffect(() => {
-    setPronunciationAudio([]);
-    if (!displayWord || !language) return;
-    let cancelled = false;
-    getWiktionaryAudio(displayWord, language).then((audio) => {
-      if (!cancelled && audio) setPronunciationAudio(audio);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [displayWord, language]);
+  const pronunciationAudio = useWiktionaryAudio(displayWord, language);
 
   const entryCheckedWordRef = useRef<string | undefined>(undefined);
 

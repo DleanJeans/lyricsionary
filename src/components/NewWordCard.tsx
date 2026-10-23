@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
+import { useWiktionaryAudio } from '../hooks/useWiktionaryAudio';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel } from '../types';
 import {
@@ -13,6 +14,7 @@ import {
   splitAtPositions,
 } from '../utils/compoundWords';
 import MasteryLevelDropdown from './MasteryLevelDropdown';
+import PronunciationAudio from './PronunciationAudio';
 import { Text } from './Text';
 import WordTransformButtons from './WordTransformButtons';
 
@@ -47,6 +49,7 @@ export default function NewWordCard({
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   const language = originalLanguages?.[0] || 'unknown';
   const isIgnored = isWordIgnored(ignoredWords, word, language);
+  const pronunciationAudio = useWiktionaryAudio(word, originalLanguages?.[0]);
 
   const words = useStore((s) => s.words);
   const compoundSplits = useStore((s) => s.compoundSplits);
@@ -142,6 +145,8 @@ export default function NewWordCard({
           </TouchableOpacity>
         )}
       </View>
+
+      <PronunciationAudio audio={pronunciationAudio} />
 
       {isEditingSplit && (
         <View style={styles.splitEditor}>

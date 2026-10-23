@@ -108,46 +108,60 @@ export default function NewWordCard({
             <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
           </View>
           <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
-          {wiktionary.ipa.length > 0 && <Text style={styles.ipaText}>{wiktionary.ipa.join(', ')}</Text>}
-          {showSplit && compoundParts && !isEditingSplit && (
-            <Text style={styles.compoundText}>{compoundParts.map((p) => p.text).join(' · ')}</Text>
-          )}
         </View>
-        <TouchableOpacity accessibilityLabel="Close" onPress={onClose} hitSlop={8}>
-          <Ionicons name="close" size={22} color={Colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.headerTools}>
+          {showSplit && !isEditingSplit && (
+            <TouchableOpacity
+              accessibilityLabel="Split Compound Word"
+              style={styles.toolButton}
+              onPress={startEditingSplit}
+              hitSlop={4}
+            >
+              <Ionicons name="cut-outline" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            accessibilityLabel={isIgnored ? 'Unignore Word' : 'Ignore Word'}
+            style={styles.toolButton}
+            onPress={() => toggleIgnoredWord(word, language)}
+            hitSlop={4}
+          >
+            <Ionicons name={isIgnored ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity accessibilityLabel="Close" style={styles.toolButton} onPress={onClose} hitSlop={4}>
+            <Ionicons name="close" size={22} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
+      {(wiktionary.ipa.length > 0 || wiktionary.audio.length > 0) && (
+        <View style={styles.ipaRow}>
+          {wiktionary.ipa.length > 0 && <Text style={styles.ipaText}>{wiktionary.ipa.join(', ')}</Text>}
+          <PronunciationAudio audio={wiktionary.audio} compact />
+        </View>
+      )}
+      {showSplit && compoundParts && !isEditingSplit && (
+        <Text style={styles.compoundText}>{compoundParts.map((p) => p.text).join(' · ')}</Text>
+      )}
 
       <View style={styles.actionRow}>
-        <TouchableOpacity accessibilityLabel="Search New Word" style={styles.chip} onPress={handleLookupOriginalWord}>
-          <Ionicons name="search" size={16} color={Colors.primary} />
-          <Text style={styles.chipText}>Look up</Text>
+        <TouchableOpacity
+          accessibilityLabel="Search New Word"
+          style={[styles.chip, styles.chipFilled, styles.chipGrow]}
+          onPress={handleLookupOriginalWord}
+        >
+          <Ionicons name="search" size={16} color={Colors.white} />
+          <Text style={[styles.chipText, styles.chipTextFilled]}>Look up</Text>
         </TouchableOpacity>
         {!isIgnored && (
           <MasteryLevelDropdown
             onSelect={handleMasterySelect}
             label="Save"
-            triggerStyle={styles.chip}
+            triggerStyle={[styles.chip, styles.chipGrow]}
             labelStyle={styles.chipText}
+            showChevron
           />
         )}
-        <TouchableOpacity
-          accessibilityLabel={isIgnored ? 'Unignore Word' : 'Ignore Word'}
-          style={[styles.chip, styles.chipSecondary]}
-          onPress={() => toggleIgnoredWord(word, language)}
-        >
-          <Ionicons name={isIgnored ? 'eye-outline' : 'eye-off-outline'} size={16} color={Colors.textSecondary} />
-          {isIgnored && <Text style={[styles.chipText, styles.chipTextSecondary]}>Unignore</Text>}
-        </TouchableOpacity>
-        {showSplit && !isEditingSplit && (
-          <TouchableOpacity accessibilityLabel="Split Compound Word" style={[styles.chip, styles.chipSecondary]} onPress={startEditingSplit}>
-            <Ionicons name="cut-outline" size={16} color={Colors.textSecondary} />
-            <Text style={[styles.chipText, styles.chipTextSecondary]}>Split</Text>
-          </TouchableOpacity>
-        )}
       </View>
-
-      <PronunciationAudio audio={wiktionary.audio} />
 
       {isEditingSplit && (
         <View style={styles.splitEditor}>
@@ -202,6 +216,7 @@ export default function NewWordCard({
         originalLanguages={originalLanguages}
         source="Learn"
         hideOriginalWord
+        compact
         extraWords={showSplit ? compoundParts?.map((p) => p.lookup) : undefined}
       />
     </View>
@@ -262,17 +277,33 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  ipaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   ipaText: {
     color: Colors.textSecondary,
     fontSize: 15,
   },
   compoundText: {
+    marginTop: 4,
     color: Colors.textSecondary,
     fontSize: 14,
   },
+  headerTools: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: -6,
+    marginRight: -6,
+  },
+  toolButton: {
+    padding: 6,
+  },
   actionRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
     marginTop: 12,
     zIndex: 10,
@@ -287,6 +318,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.primary,
   },
+  chipFilled: {
+    backgroundColor: Colors.primary,
+  },
+  chipGrow: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   chipSecondary: {
     borderColor: Colors.border,
   },
@@ -294,6 +332,9 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 14,
     fontWeight: '600',
+  },
+  chipTextFilled: {
+    color: Colors.white,
   },
   chipTextSecondary: {
     color: Colors.textSecondary,

@@ -20,6 +20,8 @@ interface WordTransformButtonsProps {
   occurrence?: number;
   hideOriginalWord?: boolean;
   extraWords?: string[];
+  /** Small chips without icons after an "Also look up" label */
+  compact?: boolean;
 }
 
 export default function WordTransformButtons({
@@ -35,6 +37,7 @@ export default function WordTransformButtons({
   occurrence,
   hideOriginalWord = false,
   extraWords = [],
+  compact = false,
 }: WordTransformButtonsProps) {
   const navigation = useNavigation<any>();
 
@@ -81,16 +84,22 @@ export default function WordTransformButtons({
     });
   };
 
+  if (compact && wordsToShow.length === 0) return null;
+
   return (
-    <View style={[styles.container, wordsToShow.length > 0 && { marginTop: 12 }]}>
+    <View style={[styles.container, wordsToShow.length > 0 && { marginTop: compact ? 10 : 12 }]}>
+      {compact && <Text style={styles.label}>ALSO LOOK UP</Text>}
       {wordsToShow.map((transformedWord, index) => (
         <TouchableOpacity
           key={`${transformedWord}-${index}`}
-          style={styles.button}
+          accessibilityLabel={`Look up ${transformedWord}`}
+          style={compact ? styles.buttonCompact : styles.button}
           onPress={() => handleLookup(transformedWord)}
         >
-          <Ionicons name="search" size={16} color={Colors.primary} />
-          {transformedWord !== word && <Text style={styles.buttonText}>{transformedWord}</Text>}
+          {(!compact || transformedWord === word) && <Ionicons name="search" size={16} color={Colors.primary} />}
+          {transformedWord !== word && (
+            <Text style={compact ? styles.buttonTextCompact : styles.buttonText}>{transformedWord}</Text>
+          )}
         </TouchableOpacity>
       ))}
     </View>
@@ -104,7 +113,28 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 8,
+  },
+  label: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+  buttonCompact: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    maxWidth: '100%',
+  },
+  buttonTextCompact: {
+    flexShrink: 1,
+    ...webWordBreak,
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: '500',
   },
   button: {
     flexDirection: 'row',

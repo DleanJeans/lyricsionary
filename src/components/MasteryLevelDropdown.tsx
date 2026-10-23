@@ -12,9 +12,17 @@ interface MasteryLevelDropdownProps {
   label?: string;
   triggerStyle?: StyleProp<ViewStyle>;
   labelStyle?: StyleProp<TextStyle>;
+  /** Show a chevron after the label to hint that it opens a menu */
+  showChevron?: boolean;
 }
 
-export default function MasteryLevelDropdown({ onSelect, label, triggerStyle, labelStyle }: MasteryLevelDropdownProps) {
+export default function MasteryLevelDropdown({
+  onSelect,
+  label,
+  triggerStyle,
+  labelStyle,
+  showChevron = false,
+}: MasteryLevelDropdownProps) {
   const [open, setOpen] = useState(false);
   const [triggerLayout, setTriggerLayout] = useState<LayoutRectangle | null>(null);
 
@@ -28,6 +36,7 @@ export default function MasteryLevelDropdown({ onSelect, label, triggerStyle, la
       >
         <Ionicons name="star-outline" size={16} color={Colors.primary} />
         {label && <Text style={labelStyle}>{label}</Text>}
+        {showChevron && <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.primary} />}
       </TouchableOpacity>
 
       {open && triggerLayout && (

@@ -8,10 +8,12 @@ import { Text } from './Text';
 
 interface Props {
   audio: WiktionaryAudio[];
+  /** Small pills that sit inline, e.g. next to the IPA */
+  compact?: boolean;
 }
 
 /** Buttons that play the word's Wiktionary pronunciation recordings, labeled by accent */
-export default function PronunciationAudio({ audio }: Props) {
+export default function PronunciationAudio({ audio, compact = false }: Props) {
   const playerRef = useRef<AudioPlayerHandle>(null);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
 
@@ -25,23 +27,25 @@ export default function PronunciationAudio({ audio }: Props) {
   };
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, compact && styles.rowCompact]}>
       {audio.map((item, index) => {
         const playing = playingUrl === item.url;
         return (
           <TouchableOpacity
             key={item.url}
-            style={[styles.button, playing && styles.buttonPlaying]}
+            style={[styles.button, compact && styles.buttonCompact, playing && styles.buttonPlaying]}
             onPress={() => play(item.url)}
             accessibilityRole="button"
             accessibilityLabel={`Play pronunciation${item.label ? ` (${item.label})` : ''}`}
           >
             <Ionicons
               name={playing ? 'volume-high' : 'volume-medium-outline'}
-              size={16}
-              color={playing ? Colors.white : Colors.primary}
+              size={compact ? 14 : 16}
+              color={playing ? Colors.white : compact ? Colors.primaryLight : Colors.primary}
             />
-            <Text style={[styles.buttonText, playing && styles.buttonTextPlaying]}>
+            <Text
+              style={[styles.buttonText, compact && styles.buttonTextCompact, playing && styles.buttonTextPlaying]}
+            >
               {item.label || (audio.length > 1 ? `Audio ${index + 1}` : 'Audio')}
             </Text>
           </TouchableOpacity>
@@ -62,6 +66,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
+  rowCompact: {
+    gap: 6,
+    marginTop: 0,
+  },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -73,6 +81,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  buttonCompact: {
+    gap: 4,
+    backgroundColor: 'rgba(108, 92, 231, 0.15)',
+    borderRadius: 999,
+    paddingLeft: 7,
+    paddingRight: 9,
+    paddingVertical: 3,
+    borderWidth: 0,
+  },
   buttonPlaying: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
@@ -80,6 +97,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: Colors.text,
     fontSize: 14,
+  },
+  buttonTextCompact: {
+    color: Colors.primaryLight,
+    fontSize: 12,
   },
   buttonTextPlaying: {
     color: Colors.white,

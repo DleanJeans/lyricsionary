@@ -198,7 +198,7 @@ export default function SongsScreen() {
         languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
         isWordIgnored(ignoredWords, word, ignoreLanguage)
       );
-    });
+    }, song.originalLanguages);
   };
 
   const toggleSearch = () => {

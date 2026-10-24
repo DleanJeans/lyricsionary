@@ -32,6 +32,18 @@ describe('countWordOccurrences', () => {
     expect(result.filter((w) => w.word.toLowerCase() === 'liebe').map((w) => w.language)).toContain('French');
   });
 
+  it('counts French and Italian elisions as the word they are about', () => {
+    const result = countWordOccurrences([
+      { originalLyrics: "J'aime, je t'aime, aime-moi aujourd'hui", originalLanguages: ['French'] },
+      { originalLyrics: "dell'umanità umanità", originalLanguages: ['Italian'] },
+      { originalLyrics: "I'm here", originalLanguages: ['English'] },
+    ]);
+    expect(result.find((w) => w.word === 'aime')).toMatchObject({ language: 'French', count: 2 });
+    expect(result.find((w) => w.word === "aujourd'hui")).toMatchObject({ count: 1 });
+    expect(result.find((w) => w.word === 'umanità')).toMatchObject({ language: 'Italian', count: 2 });
+    expect(result.find((w) => w.word === "I'm")).toMatchObject({ language: 'English', count: 1 });
+  });
+
   it('excludes ignored words', () => {
     const result = countWordOccurrences(songs, (word, language) => word.toLowerCase() === 'liebe' && language === 'German');
     expect(result.find((w) => w.language === 'German' && w.word.toLowerCase() === 'liebe')).toBeUndefined();
@@ -42,6 +54,12 @@ describe('countKnownWords', () => {
   it('counts every occurrence of known words, ignoring case and punctuation', () => {
     const known = new Set(['liebe', 'dich']);
     expect(countKnownWords('Ich liebe dich,\nich LIEBE dich nicht!', (w) => known.has(w.toLowerCase()))).toBe(4);
+  });
+
+  it('counts a French elision as known when the word it is about is', () => {
+    const known = new Set(['aime', "l'"]);
+    expect(countKnownWords("Je t'aime, l'amour", (w) => known.has(w.toLowerCase()), ['French'])).toBe(1);
+    expect(countKnownWords("Je t'aime", (w) => known.has(w.toLowerCase()), ['English'])).toBe(0);
   });
 
   it('returns 0 when nothing is known', () => {

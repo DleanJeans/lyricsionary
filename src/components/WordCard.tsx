@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getFlagForLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
+import { useStore } from '../store/useStore';
 import { WordEntry } from '../types';
+import MasteryLevelSelector from './MasteryLevelSelector';
 import HighlightedText from './HighlightedText';
 import PronunciationAudio from './PronunciationAudio';
 import { Text } from './Text';
@@ -47,6 +49,10 @@ export default function WordCard({
   occurrence,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
+  const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  // Learn: the level badge opens a level picker, to change it without opening the word
+  const [choosingLevel, setChoosingLevel] = useState(false);
+  useEffect(() => setChoosingLevel(false), [item.id]);
   const swipeableRef = useRef<Swipeable>(null);
   // Only the Learn screen's card for the selected word, not every card in the Words list
   const wiktionary = useWiktionaryPronunciation(item.word, item.language, showClose);
@@ -112,9 +118,17 @@ export default function WordCard({
             <View style={styles.header}>
               <View style={styles.title}>
                 <View style={styles.badgeRow}>
-                  <View style={[styles.badge, { backgroundColor: getMasteryLevelColor(item.masteryLevel) }]}>
+                  <TouchableOpacity
+                    style={[styles.badge, styles.badgeButton, { backgroundColor: getMasteryLevelColor(item.masteryLevel) }]}
+                    onPress={() => setChoosingLevel((v) => !v)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Level: ${item.masteryLevel || 'Unknown'}`}
+                    accessibilityState={{ expanded: choosingLevel }}
+                  >
                     <Text style={styles.badgeText}>{(item.masteryLevel || 'Unknown').toUpperCase()}</Text>
-                  </View>
+                    <Ionicons name={choosingLevel ? 'chevron-up' : 'chevron-down'} size={10} color={Colors.background} />
+                  </TouchableOpacity>
                   <Text style={styles.badgeEmoji}>{flag}</Text>
                 </View>
                 <Text style={styles.titleWordText}>{item.word}</Text>
@@ -133,6 +147,17 @@ export default function WordCard({
               <View style={styles.ipaRow}>
                 {ipa ? <Text style={styles.ipaText}>{ipa}</Text> : null}
                 <PronunciationAudio audio={wiktionary.audio} compact />
+              </View>
+            )}
+            {choosingLevel && (
+              <View style={styles.levelPicker}>
+                <MasteryLevelSelector
+                  value={item.masteryLevel || 'New'}
+                  onChange={(level) => {
+                    setChoosingLevel(false);
+                    void addOrUpdateWord(item.word, item.language, undefined, undefined, level);
+                  }}
+                />
               </View>
             )}
           </>
@@ -197,6 +222,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
+  },
+  badgeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  levelPicker: {
+    marginTop: 10,
   },
   badgeText: {
     color: Colors.background,

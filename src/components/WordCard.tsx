@@ -54,7 +54,12 @@ export default function WordCard({
   const ipa = item.pronunciation
     ? (item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`)
     : wiktionary.ipa.join(', ');
-  const flag = item.contexts?.[0]?.emoji || item.emoji || getFlagForLanguage(item.language);
+  // The emoji of the selected line's context in Learn, otherwise the first context's
+  const context =
+    item.contexts?.find((c) => c.songId === songId && c.context === lyricsLine && (c.occurrence || 1) === (occurrence || 1)) ??
+    item.contexts?.find((c) => c.songId === songId && c.context === lyricsLine) ??
+    item.contexts?.[0];
+  const flag = context?.emoji || item.emoji || getFlagForLanguage(item.language);
 
   const handleCardPress = () => {
     navigation.navigate('WordLookup', {

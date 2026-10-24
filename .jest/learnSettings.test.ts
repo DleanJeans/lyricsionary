@@ -22,7 +22,6 @@ describe('Learn settings', () => {
 
     expect(JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}')).toEqual({
       fontSize: 22,
-      showTranslations: true,
       blurTranslations: false,
       showMasteryLevelColors: true,
       showIpa: false,

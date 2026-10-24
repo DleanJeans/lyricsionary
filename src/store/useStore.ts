@@ -35,8 +35,9 @@ function persist(key: string, value: string): Promise<void> {
   return write;
 }
 
-// Learn display settings kept across app restarts
-const LEARN_SETTINGS = ['fontSize', 'showTranslations', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showEmoji'] as const;
+// Learn display settings kept across app restarts. Not showTranslations, which follows the
+// current song's selected translation languages.
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showEmoji'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -240,7 +241,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setFontSize: (size) => setLearnSettings({ fontSize: Math.max(12, Math.min(32, size)) }),
 
-  toggleTranslations: () => setLearnSettings({ showTranslations: !get().showTranslations }),
+  toggleTranslations: () => set((s) => ({ showTranslations: !s.showTranslations })),
 
   setSelectedTranslationLanguages: (languages) => set({ selectedTranslationLanguages: languages }),
 

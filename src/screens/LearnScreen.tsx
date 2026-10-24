@@ -129,6 +129,8 @@ export default function LearnScreen() {
     const availableLanguages = song.translations.map(t => t.language);
     setLocalSelectedLanguages(availableLanguages);
     setSelectedTranslationLanguages(availableLanguages);
+    // Unselecting every language on the previous song turned translations off
+    if (availableLanguages.length > 0 && !useStore.getState().showTranslations) toggleTranslations();
     setUnblurredTranslations(new Set());
   }, [song?.id, setSelectedTranslationLanguages]);
 

@@ -44,6 +44,12 @@ describe('countWordOccurrences', () => {
     expect(result.find((w) => w.word === "I'm")).toMatchObject({ language: 'English', count: 1 });
   });
 
+  it("counts German shortened words as their full form", () => {
+    const result = countWordOccurrences([{ originalLyrics: "Ich hab' es, wir hab'n es, haben", originalLanguages: ['German'] }]);
+    expect(result.find((w) => w.word === 'haben')).toMatchObject({ count: 2 });
+    expect(result.find((w) => w.word === 'habe')).toMatchObject({ count: 1 });
+  });
+
   it('excludes ignored words', () => {
     const result = countWordOccurrences(songs, (word, language) => word.toLowerCase() === 'liebe' && language === 'German');
     expect(result.find((w) => w.language === 'German' && w.word.toLowerCase() === 'liebe')).toBeUndefined();

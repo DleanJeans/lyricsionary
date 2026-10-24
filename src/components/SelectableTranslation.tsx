@@ -3,7 +3,7 @@ import { View, StyleSheet, StyleProp, TextStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
-import { findDefinitionHighlight } from '../utils/definitionHighlight';
+import { findDefinitionHighlight, withWordForms } from '../utils/definitionHighlight';
 
 interface SelectableTranslationProps {
   translation: string;
@@ -104,7 +104,7 @@ export default function SelectableTranslation({ translation, onSelect, value, st
         tokens[Math.max(selection[0], selection[1])].start + tokens[Math.max(selection[0], selection[1])].text.length,
       ]]
     : value
-      ? findDefinitionHighlight(translation, [value])
+      ? findDefinitionHighlight(translation, withWordForms([value]))
       : null;
   const flatStyle = StyleSheet.flatten([styles.text, style]);
 

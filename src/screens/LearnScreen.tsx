@@ -17,7 +17,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
-import { removeSpecialChars } from '../utils/cleanLyrics';
+import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
 import { withWordForms } from '../utils/definitionHighlight';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
@@ -266,7 +266,7 @@ export default function LearnScreen() {
 
   const handleWordPress = (word: string, line: string, lineIndex: number, occurrence: number) => {
     const cleaned = removeSpecialChars(word);
-    if (cleaned) {
+    if (isLyricWord(cleaned)) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
       setSelectedLineIndex(lineIndex);

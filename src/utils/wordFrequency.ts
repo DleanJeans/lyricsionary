@@ -1,5 +1,5 @@
 import { getLanguageNameFromCode } from '../constants/languages';
-import { removeSpecialChars } from './cleanLyrics';
+import { isLyricWord, removeSpecialChars } from './cleanLyrics';
 import { isGermanLanguage } from './compoundWords';
 import { getGermanExpandedForm, splitElisionParts } from './wordTransform';
 
@@ -57,7 +57,7 @@ export function countWordOccurrences(
     for (const token of song.originalLyrics.split(/\s+/)) {
       const cleaned = cleanToken(token);
       const word = getFullWord(cleaned, song.originalLanguages) ?? withoutTrailingApostrophes(cleaned);
-      if (!/\p{L}/u.test(word)) continue;
+      if (!isLyricWord(word)) continue;
       if (isIgnored(word, songLanguage)) continue;
       const key = `${language}\u0000${word.toLowerCase()}`;
       let entry = entries.get(key);
@@ -81,12 +81,12 @@ export function countWordOccurrences(
     .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
 }
 
-/** The words in `lyrics` without punctuation, skipping tokens with no letters such as "—", "..." or "2" */
+/** The words in `lyrics` without punctuation, skipping tokens like "—", "...", "2" or the "x2" in "(x2)" */
 function lyricWords(lyrics: string): string[] {
-  return lyrics.split(/\s+/).map(cleanToken).filter((word) => /\p{L}/u.test(word));
+  return lyrics.split(/\s+/).map(cleanToken).filter(isLyricWord);
 }
 
-/** The number of words in `lyrics`; dashes, ellipses and numbers on their own aren't words to learn */
+/** The number of words in `lyrics`; dashes, ellipses, numbers and repeat markers aren't words to learn */
 export function countWords(lyrics: string): number {
   return lyricWords(lyrics).length;
 }

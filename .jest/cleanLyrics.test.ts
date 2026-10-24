@@ -1,4 +1,4 @@
-import { cleanGeniusLyrics } from '../src/utils/cleanLyrics';
+import { cleanGeniusLyrics, isLyricWord } from '../src/utils/cleanLyrics';
 
 describe('cleanGeniusLyrics', () => {
   it('removes the translations header, section tags and extra blank lines', () => {
@@ -12,5 +12,16 @@ describe('cleanGeniusLyrics', () => {
 
   it('keeps a first lyric line that ends in "lyrics"', () => {
     expect(cleanGeniusLyrics('Everyone sings these lyrics\nAnd more')).toBe('Everyone sings these lyrics\nAnd more');
+  });
+});
+
+describe('isLyricWord', () => {
+  it('accepts words and rejects numbers and repeat markers', () => {
+    expect(isLyricWord('xylophone')).toBe(true);
+    expect(isLyricWord("j'aime")).toBe(true);
+    expect(isLyricWord('x2')).toBe(false);
+    expect(isLyricWord('3X')).toBe(false);
+    expect(isLyricWord('99')).toBe(false);
+    expect(isLyricWord('')).toBe(false);
   });
 });

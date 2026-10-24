@@ -74,9 +74,9 @@ describe('countKnownWords', () => {
 });
 
 describe('countWords', () => {
-  it('skips dashes, ellipses and numbers so a fully known song reaches 100%', () => {
-    const lyrics = 'Oh — oh...\n... (x2)\n2 3 4 & go!';
-    expect(countWords(lyrics)).toBe(4);
+  it('skips dashes, ellipses, numbers and repeat markers so a fully known song reaches 100%', () => {
+    const lyrics = 'Oh — oh...\n... (x2)\n2 3 4 & go! 2x';
+    expect(countWords(lyrics)).toBe(3);
     expect(countKnownWords(lyrics, () => true)).toBe(countWords(lyrics));
   });
 });

@@ -18,8 +18,31 @@ export function pickTranslationLanguage(
   return candidates.find((lang) => !originalLanguages.includes(lang)) ?? null;
 }
 
+// A title without accents and the extras streaming apps add, e.g. "corazon partio" for
+// "Corazón Partío - Remastered 2011" or "Menteuse (feat. X)"
+function normalizeTitle(title: string): string {
+  return fold(title)
+    .replace(/\s+-\s+.*$/, '')
+    .replace(/\s*[([](?:feat\.?|ft\.?|with|from|remaster|live|version|radio edit|acoustic)[^)\]]*[)\]]/gi, '')
+    .replace(/\s*[([][^)\]]*\b(?:remaster(?:ed)?|version|edit|mix)\b[^)\]]*[)\]]/gi, '')
+    .trim();
+}
+
+// Each artist credited, without accents, e.g. ["stromae", "orelsan"] for "Stromae, Orelsan" or "Stromae & Orelsan"
+function artistsOf(artist: string): string[] {
+  return fold(artist)
+    .split(/\s*(?:,|&|\band\b|\bfeat\.?|\bft\.?|\bx\b|\/)\s*/)
+    .map((a) => a.trim())
+    .filter(Boolean);
+}
+
+function fold(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+}
+
 /**
- * Find a saved song matching the playing song (case-insensitive name and artist).
+ * Find a saved song matching the playing song: the same name and artist ignoring case, or else
+ * ignoring accents and extras like "- Remastered" or "(feat. ...)" with at least one artist in common.
  */
 export function findSavedSong<T extends { songName: string; artistName: string }>(
   songs: T[],
@@ -28,5 +51,13 @@ export function findSavedSong<T extends { songName: string; artistName: string }
 ): T | undefined {
   const name = songName.trim().toLowerCase();
   const artist = artistName.trim().toLowerCase();
-  return songs.find((s) => s.songName.trim().toLowerCase() === name && s.artistName.trim().toLowerCase() === artist);
+  const exact = songs.find((s) => s.songName.trim().toLowerCase() === name && s.artistName.trim().toLowerCase() === artist);
+  if (exact) return exact;
+
+  const title = normalizeTitle(songName);
+  const artists = artistsOf(artistName);
+  if (!title || artists.length === 0) return undefined;
+  return songs.find(
+    (s) => normalizeTitle(s.songName) === title && artistsOf(s.artistName).some((a) => artists.includes(a))
+  );
 }

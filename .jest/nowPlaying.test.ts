@@ -33,4 +33,17 @@ describe('findSavedSong', () => {
   it('requires the artist to match', () => {
     expect(findSavedSong(songs, 'Menteuse', 'Other')).toBeUndefined();
   });
+
+  it('ignores accents and the extras streaming apps add', () => {
+    const saved = [
+      { id: '2', songName: 'Corazón Partío', artistName: 'Alejandro Sanz' },
+      { id: '3', songName: 'Papaoutai', artistName: 'Stromae & Orelsan' },
+    ];
+    expect(findSavedSong(saved, 'Corazon Partio - Remastered 2011', 'Alejandro Sanz')?.id).toBe('2');
+    expect(findSavedSong(saved, 'Corazón Partío (Live)', 'alejandro sanz')?.id).toBe('2');
+    expect(findSavedSong(saved, 'Papaoutai (feat. Orelsan)', 'Stromae, Orelsan')?.id).toBe('3');
+    expect(findSavedSong(saved, 'Papaoutai', 'Orelsan')?.id).toBe('3');
+    expect(findSavedSong(saved, 'Papaoutai', 'Someone Else')).toBeUndefined();
+    expect(findSavedSong(saved, 'Corazón', 'Alejandro Sanz')).toBeUndefined();
+  });
 });

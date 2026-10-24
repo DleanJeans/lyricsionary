@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
+import { findSearchMatches } from '../utils/search';
 import { Text } from './Text';
 
 interface HighlightedTextProps {
@@ -19,19 +20,15 @@ export default function HighlightedText({
     return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
   }
 
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
+  // Matches ignore case and accents, e.g. "corazon" highlights "Corazón"
   const parts: { text: string; highlight: boolean }[] = [];
   let lastIndex = 0;
-  let index = lowerText.indexOf(lowerQuery);
-
-  while (index !== -1) {
-    if (index > lastIndex) {
-      parts.push({ text: text.slice(lastIndex, index), highlight: false });
+  for (const [start, end] of findSearchMatches(text, query)) {
+    if (start > lastIndex) {
+      parts.push({ text: text.slice(lastIndex, start), highlight: false });
     }
-    parts.push({ text: text.slice(index, index + query.length), highlight: true });
-    lastIndex = index + query.length;
-    index = lowerText.indexOf(lowerQuery, lastIndex);
+    parts.push({ text: text.slice(start, end), highlight: true });
+    lastIndex = end;
   }
 
   if (lastIndex < text.length) {

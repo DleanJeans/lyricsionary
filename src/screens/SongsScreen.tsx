@@ -24,6 +24,7 @@ import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
 import LanguageTabButtons from '../components/LanguageTabButtons';
 import { countKnownWords } from '../utils/wordFrequency';
+import { matchesSearch } from '../utils/search';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
 
 export default function SongsScreen() {
@@ -107,11 +108,10 @@ export default function SongsScreen() {
   // Helper function to find matched line in lyrics
   const findMatchedLine = (song: Song, query: string): string | null => {
     if (!query.trim()) return null;
-    const lowerQuery = query.toLowerCase();
     const lyricSources = [song.originalLyrics, ...song.translations.map((translation) => translation.lyrics)];
     for (const lyrics of lyricSources) {
       for (const line of lyrics.split('\n')) {
-        if (line.toLowerCase().includes(lowerQuery)) {
+        if (matchesSearch(line, query)) {
           return line.trim();
         }
       }
@@ -134,10 +134,7 @@ export default function SongsScreen() {
         } else {
           // Search in song name and artist
 
-          return (
-            s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            s.artistName.toLowerCase().includes(searchQuery.toLowerCase())
-          );
+          return matchesSearch(s.songName, searchQuery) || matchesSearch(s.artistName, searchQuery);
         }
       })
     : languageFilteredSongs;

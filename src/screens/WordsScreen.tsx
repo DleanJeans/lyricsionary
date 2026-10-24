@@ -19,6 +19,7 @@ import LanguageTabButtons from '../components/LanguageTabButtons';
 import EmptyState from '../components/EmptyState';
 import IconButton from '../components/IconButton';
 import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
+import { matchesSearch } from '../utils/search';
 
 interface PendingDeletion {
   id: string;
@@ -65,7 +66,7 @@ export default function WordsScreen() {
   const searchedFrequencies = wordFrequencies.filter(
     (w) =>
       (selectedLanguages.length === 0 || selectedLanguages.includes(w.language)) &&
-      (!searchQuery.trim() || w.word.toLowerCase().includes(searchQuery.toLowerCase())),
+      matchesSearch(w.word, searchQuery),
   );
 
   // Saved words by language and lowercase word, for coloring the Top list (the first one wins, like find)
@@ -103,9 +104,8 @@ export default function WordsScreen() {
   const languageFilteredWords =
     selectedLanguages.length > 0 ? filteredWords.filter((w) => selectedLanguages.includes(w.language)) : filteredWords;
 
-  // Apply search filter: the word, its language, IPA or any of its meanings
-  const query = searchQuery.trim().toLowerCase();
-  const searchedWords = query
+  // Apply search filter: the word, its language, IPA or any of its meanings, ignoring accents
+  const searchedWords = searchQuery.trim()
     ? languageFilteredWords.filter((w) =>
         [
           w.word,
@@ -113,7 +113,7 @@ export default function WordsScreen() {
           w.pronunciation,
           ...(w.definitions ?? []).map((d) => d.text),
           ...(w.contexts ?? []).map((c) => c.definition),
-        ].some((text) => text?.toLowerCase().includes(query)),
+        ].some((text) => matchesSearch(text, searchQuery)),
       )
     : languageFilteredWords;
 

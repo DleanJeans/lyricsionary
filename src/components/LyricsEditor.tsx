@@ -126,7 +126,12 @@ export default function LyricsEditor({
         ref.focus();
         if (cursorPos !== undefined) {
           requestAnimationFrame(() => {
-            ref.setNativeProps({ selection: { start: cursorPos, end: cursorPos } });
+            // Web inputs have no setNativeProps; their ref is the DOM input itself
+            if (typeof ref.setNativeProps === 'function') {
+              ref.setNativeProps({ selection: { start: cursorPos, end: cursorPos } });
+            } else {
+              (ref as unknown as HTMLTextAreaElement).setSelectionRange?.(cursorPos, cursorPos);
+            }
           });
         }
       }

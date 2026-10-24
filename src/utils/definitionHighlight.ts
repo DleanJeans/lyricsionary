@@ -73,6 +73,25 @@ export function findDefinitionHighlight(text: string, definitions: string[]): Ar
   return null;
 }
 
+// Highlights for several words at once, like the parts of a split compound: each word's first
+// matching definition, with overlaps merged and ranges only spaces apart joined into one,
+// e.g. Liebe "love" + Brief "letter" -> one highlight over "love letter".
+export function findDefinitionHighlights(text: string, definitionGroups: string[][]): Array<[number, number]> | null {
+  const ranges = definitionGroups
+    .flatMap((definitions) => findDefinitionHighlight(text, definitions) ?? [])
+    .sort((a, b) => a[0] - b[0]);
+  const merged: Array<[number, number]> = [];
+  for (const [start, end] of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && (start <= last[1] || !text.slice(last[1], start).trim())) {
+      last[1] = Math.max(last[1], end);
+    } else {
+      merged.push([start, end]);
+    }
+  }
+  return merged.length ? merged : null;
+}
+
 // Verb definitions match without their "to", e.g. "to free; to rescue" as "free; rescue"
 function withoutInfinitiveTo(definition: string): string {
   return definition.replace(/(^|[,;/]\s*)to\s+/gi, '$1');

@@ -2,7 +2,7 @@ import React, { type ReactNode } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { Text } from './Text';
-import { findDefinitionHighlight } from '../utils/definitionHighlight';
+import { findDefinitionHighlights } from '../utils/definitionHighlight';
 
 export interface LearnLine {
   original: string;
@@ -23,7 +23,8 @@ interface LearnLyricsViewProps {
   renderPressableText: (text: string, lineIndex: number) => ReactNode;
   onTranslationPress: (lineIndex: number, translationIndex: number) => void;
   highlightLineIndex?: number | null;
-  highlightDefinitions?: string[];
+  // One list of definitions per word to highlight, best first
+  highlightDefinitions?: string[][];
 }
 
 function TranslationLine({
@@ -37,12 +38,12 @@ function TranslationLine({
   fontSize: number;
   isBlurred: boolean;
   onPress: () => void;
-  highlightDefinitions?: string[];
+  highlightDefinitions?: string[][];
 }) {
   if (!text) return null;
 
   const highlights = !isBlurred && highlightDefinitions?.length
-    ? findDefinitionHighlight(text, highlightDefinitions)
+    ? findDefinitionHighlights(text, highlightDefinitions)
     : null;
 
   return (

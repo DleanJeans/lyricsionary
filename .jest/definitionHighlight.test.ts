@@ -1,4 +1,4 @@
-import { findDefinitionHighlight, pickDefinition } from '../src/utils/definitionHighlight';
+import { findDefinitionHighlight, findDefinitionHighlights, pickDefinition } from '../src/utils/definitionHighlight';
 
 const highlighted = (text: string, definition: string) =>
   findDefinitionHighlight(text, [definition])?.map(([start, end]) => text.slice(start, end)) ?? null;
@@ -36,5 +36,20 @@ describe('findDefinitionHighlight', () => {
 describe('pickDefinition with split phrases', () => {
   it('fills in a definition whose words are split up in the translation', () => {
     expect(pickDefinition([{ partOfSpeech: 'Verb', text: 'to betray' }, { partOfSpeech: 'Verb', text: 'to give away' }], "Don't give much away")).toBe('give away');
+  });
+});
+
+describe('findDefinitionHighlights', () => {
+  it('joins parts that sit next to each other', () => {
+    expect(findDefinitionHighlights('I wrote you a love letter', [['love'], ['letter; mail']])).toEqual([[14, 25]]);
+  });
+
+  it('keeps parts apart when other words sit between them', () => {
+    expect(findDefinitionHighlights('a letter full of love', [['love'], ['letter']])).toEqual([[2, 8], [17, 21]]);
+  });
+
+  it('skips parts that do not match and merges overlaps', () => {
+    expect(findDefinitionHighlights('love letter', [['love letter'], ['letter'], ['shoe']])).toEqual([[0, 11]]);
+    expect(findDefinitionHighlights('love letter', [['shoe']])).toBeNull();
   });
 });

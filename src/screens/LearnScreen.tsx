@@ -17,7 +17,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, useStore } from '../store/useStore';
-import { RootTabParamList, WordContext } from '../types';
+import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
@@ -569,12 +569,25 @@ export default function LearnScreen() {
       : undefined;
 
   // Definitions of the selected word to look for in its line's translation
-  const selectedDefinitions = selectedWordEntry && selectedLine !== null
-    ? [
-        findWordContext(selectedWordEntry, selectedLine, selectedOccurrence)?.definition,
-        ...(selectedWordEntry.definitions ?? []).map((d) => d.text),
-      ].filter((d): d is string => !!d?.trim())
-    : [];
+  const definitionsOf = (entry: WordEntry, line: string, occurrence?: number): string[] =>
+    [
+      findWordContext(entry, line, occurrence)?.definition,
+      ...(entry.definitions ?? []).map((d) => d.text),
+    ].filter((d): d is string => !!d?.trim());
+
+  // A split compound highlights its parts' definitions together, e.g. Liebesbrief -> "love letter"
+  const selectedCompoundEntries = !selectedWordEntry && selectedWord && isGermanSong &&
+    !isWordIgnored(ignoredWords, selectedWord, song?.originalLanguages?.[0] || 'unknown')
+    ? getCompoundParts(selectedWord, compoundSplits, knownGermanWords)
+        ?.map((part) => words.find((w) => w.word.toLowerCase() === part.lemma))
+        .filter((entry): entry is WordEntry => !!entry)
+    : undefined;
+
+  const selectedDefinitions = selectedLine === null
+    ? []
+    : selectedWordEntry
+      ? [definitionsOf(selectedWordEntry, selectedLine, selectedOccurrence)]
+      : (selectedCompoundEntries ?? []).map((entry) => definitionsOf(entry, selectedLine));
 
   const wordPanel =
     selectedWord && selectedWordEntry ? (

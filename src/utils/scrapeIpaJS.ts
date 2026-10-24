@@ -1,8 +1,13 @@
+import { getWiktionaryLanguage } from './wiktionary';
+
 // Scrapes IPA (International Phonetic Alphabet) pronunciations from Wiktionary
 // Injects JavaScript to find all IPA elements within the specified language section
 export const getScrapeIpaJS = (language: string) => {
+  // The section's heading id, e.g. "Haitian_Creole" or "Serbo-Croatian" for Croatian
+  const sectionId = getWiktionaryLanguage(language).trim().replace(/ /g, '_');
   const _scrapeIpaLogic = `
-    const ipaElements = Array.from(document.querySelectorAll('div:has(#${language}) + section li .IPA'));
+    const heading = '#' + CSS.escape(${JSON.stringify(sectionId)});
+    const ipaElements = Array.from(document.querySelectorAll('div:has(' + heading + ') + section li .IPA'));
     const ipaResults = ipaElements
       .map(ipa => ipa.textContent)
       .filter(text => text && text.includes('/'))

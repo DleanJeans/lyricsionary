@@ -52,6 +52,19 @@ export function hasWiktionaryEntry(word: string): Promise<boolean | null> {
   return check;
 }
 
+// Languages Wiktionary files under another name
+const WIKTIONARY_LANGUAGES: Record<string, string> = {
+  serbian: 'Serbo-Croatian',
+  croatian: 'Serbo-Croatian',
+  bosnian: 'Serbo-Croatian',
+  norwegian: 'Norwegian Bokmål',
+};
+
+/** The name of a language's section on Wiktionary, e.g. "Serbo-Croatian" for Croatian */
+export function getWiktionaryLanguage(language: string): string {
+  return WIKTIONARY_LANGUAGES[language.trim().toLowerCase()] ?? language;
+}
+
 const DEFINITION_API_URL = 'https://en.wiktionary.org/api/rest_v1/page/definition/';
 const MAX_DEFINITIONS = 8;
 // Base forms to look up for an inflected word, e.g. both verbs a participle could come from
@@ -200,7 +213,7 @@ export function getFormOfLemma(html: string): string | undefined {
 export function parseEntry(response: unknown, language: string): WiktionaryEntry {
   const entry: WiktionaryEntry = { glosses: [], definitions: [], lemmas: [] };
   if (!response || typeof response !== 'object') return entry;
-  const target = language.toLowerCase();
+  const target = getWiktionaryLanguage(language).toLowerCase();
   const add = (list: WiktionaryDefinition[], partOfSpeech: string, text: string) => {
     if (text && !list.some((d) => d.text === text)) list.push({ partOfSpeech, text });
   };
@@ -310,7 +323,7 @@ export interface WiktionaryAudio {
 
 /** The HTML of one language's section of a rendered page, e.g. everything under the "German" heading */
 export function getLanguageSection(html: string, language: string): string | undefined {
-  const id = language.trim().replace(/ /g, '_');
+  const id = getWiktionaryLanguage(language).trim().replace(/ /g, '_');
   // Each level-2 heading starts a language, e.g. '<div class="mw-heading mw-heading2 ..."><h2 id="German">'
   for (const section of html.split(/<div\b[^>]*class="[^"]*\bmw-heading2\b[^"]*"[^>]*>/i).slice(1)) {
     // The mobile skin puts an expand icon before the h2

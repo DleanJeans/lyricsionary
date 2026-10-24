@@ -18,7 +18,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
-import { getWiktionaryDefinitions, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
+import { getWiktionaryDefinitions, getWiktionaryLanguage, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import WordTransformButtons from '../components/WordTransformButtons';
 import MasteryLevelSelector from '../components/MasteryLevelSelector';
@@ -300,7 +300,7 @@ export default function WordLookupScreen() {
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${language.replace(/ /g, '_')}`;
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${getWiktionaryLanguage(language).replace(/ /g, '_')}`;
       setCurrentUrl(url);
       setScrapedIpaResults([]);
     };

@@ -204,6 +204,14 @@ describe('form-of glosses with several meanings', () => {
   });
 });
 
+describe('languages under another name on Wiktionary', () => {
+  it('reads Croatian from the Serbo-Croatian section', () => {
+    const response = { sh: [section('Serbo-Croatian', 'Noun', ['<a href="/wiki/love" title="love">love</a>'])] };
+    expect(texts(response, 'Croatian')).toEqual(['love']);
+    expect(texts(response, 'Serbo-Croatian')).toEqual(['love']);
+  });
+});
+
 describe('inflected forms', () => {
   it('finds the base form and drops the grammar descriptions', () => {
     expect(getFormOfLemma(FRAGT[0])).toBe('fragen');

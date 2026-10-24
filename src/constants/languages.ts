@@ -96,10 +96,14 @@ export function getLanguageNameFromCode(code: string): string | null {
   return lang?.name ?? null;
 }
 
+// A key that's the same for a language given as a name or a code, e.g. "french" for "fr" and "French"
+export function languageKey(language: string): string {
+  return (getLanguageNameFromCode(language) ?? language).toLowerCase();
+}
+
 // Whether two song languages are the same language, given as names or codes, e.g. "fr" and "French"
 export function isSameLanguage(a: string, b: string): boolean {
-  const name = (language: string) => (getLanguageNameFromCode(language) ?? language).toLowerCase();
-  return name(a) === name(b);
+  return languageKey(a) === languageKey(b);
 }
 
 // The language a label names, e.g. "English" in "English translation" or "Love Song (English)", or a code

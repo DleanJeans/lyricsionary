@@ -80,3 +80,13 @@ describe('countWords', () => {
     expect(countKnownWords(lyrics, () => true)).toBe(countWords(lyrics));
   });
 });
+
+describe('countWordOccurrences languages', () => {
+  it('counts songs saved with a language code and with its name together', () => {
+    const result = countWordOccurrences([
+      { originalLyrics: 'bonjour', originalLanguages: ['fr'] },
+      { originalLyrics: 'Bonjour', originalLanguages: ['French'] },
+    ]);
+    expect(result).toEqual([{ word: 'bonjour', language: 'French', count: 2, songCount: 2 }]);
+  });
+});

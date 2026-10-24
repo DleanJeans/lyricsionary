@@ -1,4 +1,4 @@
-import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode, findLanguageName, isRtlLanguage, isSameLanguage, searchLanguages } from '../src/constants/languages';
+import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode, findLanguageName, isRtlLanguage, isSameLanguage, languageKey, searchLanguages } from '../src/constants/languages';
 
 describe('languages', () => {
   it('has unique codes and names', () => {
@@ -64,5 +64,13 @@ describe('isSameLanguage', () => {
     expect(isSameLanguage('pt-BR', 'portuguese')).toBe(true);
     expect(isSameLanguage('French', 'German')).toBe(false);
     expect(isSameLanguage('unknown', 'unknown')).toBe(true);
+  });
+});
+
+describe('languageKey', () => {
+  it('is the same for a name and its code', () => {
+    expect(languageKey('fr')).toBe('french');
+    expect(languageKey('French')).toBe('french');
+    expect(languageKey('Klingon')).toBe('klingon');
   });
 });

@@ -9,6 +9,7 @@ import { Text, TextInput } from '../components/Text';
 import { useNavigation } from '@react-navigation/native';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
+import { languageKey } from '../constants/languages';
 import { WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
@@ -73,14 +74,15 @@ export default function WordsScreen() {
       matchesSearch(w.word, searchQuery),
   );
 
-  // Saved words by language and lowercase word, for coloring the Top list (the first one wins, like find)
+  // Saved words by language and lowercase word, for coloring the Top list (the first one wins, like find);
+  // keyed by languageKey so a word saved under "French" colors a song's "fr" word
   const savedWordIndex = React.useMemo(
-    () => new Map([...words].reverse().map((w) => [`${w.language}\u0000${w.word.toLowerCase()}`, w])),
+    () => new Map([...words].reverse().map((w) => [`${languageKey(w.language)}\u0000${w.word.toLowerCase()}`, w])),
     [words],
   );
 
   const renderFrequencyItem = ({ item, index }: { item: WordFrequency; index: number }) => {
-    const savedWord = savedWordIndex.get(`${item.language}\u0000${item.word.toLowerCase()}`);
+    const savedWord = savedWordIndex.get(`${languageKey(item.language)}\u0000${item.word.toLowerCase()}`);
     return (
       <TouchableOpacity
         style={styles.frequencyRow}

@@ -1,3 +1,4 @@
+import { getLanguageNameFromCode } from '../constants/languages';
 import { removeSpecialChars } from './cleanLyrics';
 import { isGermanLanguage } from './compoundWords';
 import { getGermanExpandedForm, splitElisionParts } from './wordTransform';
@@ -50,12 +51,14 @@ export function countWordOccurrences(
   const entries = new Map<string, { language: string; count: number; songs: Set<number>; spellings: Map<string, number> }>();
 
   songs.forEach((song, songIndex) => {
-    const language = song.originalLanguages?.[0] || 'unknown';
+    const songLanguage = song.originalLanguages?.[0] || 'unknown';
+    // By name, so a song saved as "fr" and one saved as "French" count together
+    const language = getLanguageNameFromCode(songLanguage) ?? songLanguage;
     for (const token of song.originalLyrics.split(/\s+/)) {
       const cleaned = cleanToken(token);
       const word = getFullWord(cleaned, song.originalLanguages) ?? withoutTrailingApostrophes(cleaned);
       if (!/\p{L}/u.test(word)) continue;
-      if (isIgnored(word, language)) continue;
+      if (isIgnored(word, songLanguage)) continue;
       const key = `${language}\u0000${word.toLowerCase()}`;
       let entry = entries.get(key);
       if (!entry) {

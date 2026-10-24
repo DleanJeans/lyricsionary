@@ -382,7 +382,7 @@ export const useStore = create<AppState>((set, get) => ({
       ? current.filter((w) => !(w.word === lower && w.language === language))
       : [...current, { word: lower, language }];
     set({ ignoredWords });
-    await AsyncStorage.setItem(IGNORED_WORDS_KEY, JSON.stringify(ignoredWords));
+    await persist(IGNORED_WORDS_KEY, JSON.stringify(ignoredWords));
   },
 
   loadCompoundSplits: async () => {
@@ -402,7 +402,7 @@ export const useStore = create<AppState>((set, get) => ({
       delete compoundSplits[word.toLowerCase()];
     }
     set({ compoundSplits });
-    await AsyncStorage.setItem(COMPOUND_SPLITS_KEY, JSON.stringify(compoundSplits));
+    await persist(COMPOUND_SPLITS_KEY, JSON.stringify(compoundSplits));
   },
 
 }));

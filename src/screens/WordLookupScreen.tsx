@@ -125,9 +125,16 @@ export default function WordLookupScreen() {
   const [loading, setLoading] = useState(false);
   const [lookupSource, setLookupSource] = useState<'google' | 'wiktionary'>('wiktionary');
 
+  // A saved word opened from Words has no song languages: start with its own language, so the
+  // Wiktionary page opens at that section rather than English's
   const [language, setLanguage] = useState(
-    (originalLanguages && originalLanguages.length > 0) ? originalLanguages[0] : 'English'
+    () =>
+      (wordId ? words.find((entry) => entry.id === wordId)?.language : undefined) ??
+      ((originalLanguages && originalLanguages.length > 0) ? originalLanguages[0] : 'English')
   );
+  // The current language for the page opened once the entry check finishes
+  const languageRef = useRef(language);
+  languageRef.current = language;
   const [pronunciation, setPronunciation] = useState('');
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('New');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
@@ -300,7 +307,7 @@ export default function WordLookupScreen() {
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${getWiktionaryLanguage(language).replace(/ /g, '_')}`;
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${getWiktionaryLanguage(languageRef.current).replace(/ /g, '_')}`;
       setCurrentUrl(url);
       setScrapedIpaResults([]);
     };
@@ -318,7 +325,7 @@ export default function WordLookupScreen() {
         }
         // A shortened word without its own page (e.g. "hab'n") shows its full form's page (e.g. "haben")
         if (exists === false) {
-          const expanded = getGermanExpandedForm(displayWord, language);
+          const expanded = getGermanExpandedForm(displayWord, languageRef.current);
           const candidates = expanded ? [...new Set([expanded.toLowerCase(), expanded])] : [];
           for (const candidate of candidates) {
             if (await hasWiktionaryEntry(candidate)) {

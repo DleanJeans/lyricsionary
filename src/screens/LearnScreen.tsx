@@ -84,9 +84,14 @@ export default function LearnScreen() {
     (cleanedWord: string) => {
       const entry = findWordEntry(cleanedWord);
       if (entry) return entry;
+      // A stuttered start, e.g. mélan-mélanger, but not a word joined to a pronoun like dis-moi
       if (hasFrenchLanguage && hasHyphenatedPrefix(cleanedWord)) {
-        const withoutPrefix = findWordEntry(cleanedWord.slice(cleanedWord.indexOf('-') + 1));
-        if (withoutPrefix) return withoutPrefix;
+        const hyphenIndex = cleanedWord.indexOf('-');
+        const rest = cleanedWord.slice(hyphenIndex + 1);
+        if (rest.toLowerCase().startsWith(cleanedWord.slice(0, hyphenIndex).toLowerCase())) {
+          const withoutPrefix = findWordEntry(rest);
+          if (withoutPrefix) return withoutPrefix;
+        }
       }
       if (hasFrenchLanguage || hasItalianLanguage) {
         // The last part with a saved word, e.g. aime in j't'aime

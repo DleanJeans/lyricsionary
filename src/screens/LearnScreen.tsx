@@ -78,7 +78,7 @@ export default function LearnScreen() {
   const songLanguages = (song?.originalLanguages ?? []).map((language) => language.toLowerCase());
   const hasFrenchLanguage = songLanguages.some((language) => language === 'french' || language === 'fr');
   const hasItalianLanguage = songLanguages.some((language) => language === 'italian' || language === 'it');
-  // Arabic or Hebrew lyrics lay their words out from the right
+  // Arabic or Hebrew lyrics lay their words out from the right (I18nManager.isRTL is undefined on web)
   const isRtlSong = !!song?.originalLanguages?.[0] && isRtlLanguage(song.originalLanguages[0]);
   // The saved word a lyric word stands for: itself, or else what its shortened form is about, e.g.
   // amour for l'amour, mélanger for mélan-mélanger, haben for hab'n
@@ -305,7 +305,7 @@ export default function LearnScreen() {
       }
     });
     return (
-      <View style={{ flexDirection: isRtlSong !== I18nManager.isRTL ? 'row-reverse' : 'row', flexWrap: 'wrap' }}>
+      <View style={{ flexDirection: isRtlSong !== !!I18nManager.isRTL ? 'row-reverse' : 'row', flexWrap: 'wrap' }}>
         {textWords.map((word, i) => {
           if (!word.trim()) {
             return <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6 }}>{word}</Text>;

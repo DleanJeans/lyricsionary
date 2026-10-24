@@ -58,6 +58,10 @@ const _detectLyricsLogic = `
       setTimeout(() => observer.disconnect(), 5000);
     }
   }
+  // LyricsTranslate: original lyrics, or a translation whose original can be toggled on
+  else if (url.includes('lyricstranslate.com')) {
+    hasLyrics = !!document.querySelector('#original-lyrics, #translation-body');
+  }
 
   sendDetectionResult(hasLyrics);
 `;

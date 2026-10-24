@@ -126,6 +126,39 @@ const _scrapeLyricsLogic = `
     }
   }
 
+  // LyricsTranslate: a translation page shows the original next to the translation, which is sent
+  // along to fill in the translation tab. The original can be hidden behind a toggle.
+  if (url.includes('lyricstranslate.com')) {
+    const send = () => {
+      const originalEl = document.querySelector('#original-lyrics');
+      const translationEl = document.querySelector('#translation-body');
+      if (!originalEl && !translationEl) return false;
+      sendLyrics(originalEl ? originalEl.innerText : '', originalEl ? originalEl.lang : '', {
+        translation: translationEl ? translationEl.innerText : '',
+        translationLanguage: document.querySelector('.lt-breadcrumb-item:last-child')?.textContent.trim() || '',
+      });
+      return true;
+    };
+    const originalToggle = document.querySelector('[data-target=original]');
+    if (!document.querySelector('#original-lyrics') && originalToggle) {
+      originalToggle.click();
+      let observer;
+      const timer = setTimeout(() => {
+        observer.disconnect();
+        send();
+      }, 3000);
+      observer = new MutationObserver(() => {
+        if (!document.querySelector('#original-lyrics')) return;
+        observer.disconnect();
+        clearTimeout(timer);
+        send();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      return;
+    }
+    if (send()) return;
+  }
+
   // Generic fallback
   consoleLog(window.location.hostname + ' - Using fallback, scraping entire page text');
   const body = document.body.innerText;
@@ -138,8 +171,9 @@ export const scrapeLyricsJS = `
     const consoleLog = (log) => {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'debug', log }));
     };
-    const sendLyrics = (text, languageCode) => {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text, title: document.title, languageCode: languageCode || '' }));
+    // extra: { translation, translationLanguage } when the page has a translation too
+    const sendLyrics = (text, languageCode, extra) => {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyrics', text, title: document.title, languageCode: languageCode || '', ...extra }));
     };
     const sendError = (err) => {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: err && err.message ? err.message : String(err) }));

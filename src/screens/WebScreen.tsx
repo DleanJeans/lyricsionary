@@ -156,17 +156,23 @@ export default function WebScreen() {
         setWaitingForTranslation(!data.hasTranslation);
         return;
       }
-      if (data.type === 'lyrics' && data.text) {
-        let lyrics = data.text.trim();
+      // A page with a translation too (LyricsTranslate) sends it along: it fills in a translation
+      // tab when getting the original, or is what a translation tab gets
+      const pageTranslation = typeof data.translation === 'string' ? data.translation.trim() : '';
+      if (data.type === 'lyrics' && (data.text || (scrapeTargetTab > 0 && pageTranslation))) {
+        let lyrics = scrapeTargetTab > 0 && pageTranslation ? pageTranslation : data.text.trim();
         if (currentUrl.includes('genius.com')) {
           lyrics = cleanGeniusLyrics(lyrics);
         }
+        const withTranslation = scrapeTargetTab === 0 && !!pageTranslation;
         navigation.navigate('Editor', {
           scrapedLyrics: lyrics,
           scrapedSourceUrl: currentUrl,
           scrapedPageTitle: data.title ?? '',
           scrapedTargetTab: scrapeTargetTab,
           scrapedLanguageCode: data.languageCode || '',
+          scrapedTranslation: withTranslation ? pageTranslation : undefined,
+          scrapedTranslationLanguage: withTranslation ? data.translationLanguage : undefined,
         });
       }
       if (data.type === 'translation' && data.text) {

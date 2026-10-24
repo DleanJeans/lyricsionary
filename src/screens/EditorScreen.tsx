@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { LANGUAGES, getLanguageNameFromCode } from '../constants/languages';
+import { LANGUAGES, findLanguageName, getLanguageNameFromCode } from '../constants/languages';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
@@ -202,17 +202,33 @@ export default function EditorScreen() {
     }
     if (url) setPendingSourceUrls((prev) => ({ ...prev, [targetTab]: url }));
     if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
+
+    // A translation that came with the original (LyricsTranslate) fills in its language's tab, adding it if needed
+    const scrapedTranslation = route.params?.scrapedTranslation as string | undefined;
+    const translationLanguage = findLanguageName((route.params?.scrapedTranslationLanguage as string | undefined) ?? '');
+    if (targetTab === 0 && scrapedTranslation && translationLanguage) {
+      const existing = translations.findIndex((t) => t.language === translationLanguage);
+      const translationTab = (existing >= 0 ? existing : translations.length) + 1;
+      setTranslations((prev) => {
+        const index = prev.findIndex((t) => t.language === translationLanguage);
+        if (index < 0) return [...prev, { language: translationLanguage, lyrics: scrapedTranslation }];
+        return prev.map((t, i) => (i === index ? { ...t, lyrics: scrapedTranslation } : t));
+      });
+      if (url) setPendingSourceUrls((prev) => ({ ...prev, [translationTab]: url }));
+      if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [translationTab]: title }));
+    }
     setActiveTab(targetTab);
     if (url) setShowSourceUrl(true);
 
     // Advance the automatic flow: lyrics -> translation -> done
     const { autoFetch: currentAutoFetch } = useStore.getState();
     if (currentAutoFetch?.step === 'lyrics' && targetTab === 0) {
-      setAutoFetch({ ...currentAutoFetch, step: 'translation' });
+      // Done already when the page had the translation too
+      setAutoFetch(scrapedTranslation && translationLanguage ? null : { ...currentAutoFetch, step: 'translation' });
     } else if (currentAutoFetch?.step === 'translating' && targetTab > 0) {
       setAutoFetch(null);
     }
-    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined });
+    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined, scrapedTranslation: undefined, scrapedTranslationLanguage: undefined });
   }, [route.params?.scrapedLyrics]);
 
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);

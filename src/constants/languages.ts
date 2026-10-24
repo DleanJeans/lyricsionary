@@ -88,6 +88,21 @@ export function getLanguageNameFromCode(code: string): string | null {
   return lang?.name ?? null;
 }
 
+// The language a label names, e.g. "English" in "English translation" or "Love Song (English)", or a code
+export function findLanguageName(label: string): string | null {
+  const byCode = getLanguageNameFromCode(label.trim());
+  if (byCode) return byCode;
+  const words = label.toLowerCase().split(/[^\p{L}]+/u);
+  // Longest first, so "Haitian Creole" wins over a shorter name inside it
+  const named = [...LANGUAGES]
+    .sort((a, b) => b.name.length - a.name.length)
+    .find((l) => {
+      const parts = l.name.toLowerCase().split(' ');
+      return words.some((_, i) => parts.every((part, j) => words[i + j] === part));
+    });
+  return named?.name ?? null;
+}
+
 // Languages whose name or code starts with the query, ignoring case and accents, e.g. "cat" or "ca"
 // for Catalan; a name's later words match too, e.g. "creole" for Haitian Creole
 export function searchLanguages<T extends { code: string; name: string }>(languages: T[], query: string): T[] {

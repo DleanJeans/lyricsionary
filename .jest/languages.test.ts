@@ -1,4 +1,4 @@
-import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode, searchLanguages } from '../src/constants/languages';
+import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode, findLanguageName, searchLanguages } from '../src/constants/languages';
 
 describe('languages', () => {
   it('has unique codes and names', () => {
@@ -37,5 +37,15 @@ describe('searchLanguages', () => {
 
   it('ignores accents', () => {
     expect(searchLanguages([{ code: 'nb', name: 'Norwegian Bokmål' }], 'bokmal')).toHaveLength(1);
+  });
+});
+
+describe('findLanguageName', () => {
+  it('finds the language a label names', () => {
+    expect(findLanguageName('English translation')).toBe('English');
+    expect(findLanguageName('Mon amour (Haitian Creole translation)')).toBe('Haitian Creole');
+    expect(findLanguageName('de')).toBe('German');
+    expect(findLanguageName('Englishman')).toBeNull();
+    expect(findLanguageName('')).toBeNull();
   });
 });

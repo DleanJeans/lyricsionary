@@ -24,6 +24,7 @@ import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
 import LanguageTabButtons from '../components/LanguageTabButtons';
 import { countKnownWords } from '../utils/wordFrequency';
+import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
@@ -37,6 +38,7 @@ export default function SongsScreen() {
   const isLoadingSong = useStore((s) => s.isLoadingSong);
   const words = useStore((s) => s.words);
   const ignoredWords = useStore((s) => s.ignoredWords);
+  const compoundSplits = useStore((s) => s.compoundSplits);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -182,6 +184,23 @@ export default function SongsScreen() {
     return keys;
   }, [words]);
 
+  // Whether a German compound splits into saved words, like Learn shows it, e.g. Liebesbrief once
+  // Liebe and Brief are saved; cached per word since every song's lyrics are checked on each render
+  const isKnownCompound = useMemo(() => {
+    const knownGermanWords = buildKnownGermanWords(words);
+    const cache = new Map<string, boolean>();
+    return (word: string) => {
+      const lower = word.toLowerCase();
+      let known = cache.get(lower);
+      if (known === undefined) {
+        const parts = getCompoundParts(word, compoundSplits, knownGermanWords);
+        known = !!parts && parts.every((part) => knownGermanWords.has(part.lemma));
+        cache.set(lower, known);
+      }
+      return known;
+    };
+  }, [words, compoundSplits]);
+
   const formatWordProgress = (song: Song) => {
     const total = getWordCount(song);
     const known = getKnownWordCount(song);
@@ -192,11 +211,13 @@ export default function SongsScreen() {
   const getKnownWordCount = (song: Song) => {
     const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
     const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
+    const isGermanSong = isGermanLanguage(song.originalLanguages);
     return countKnownWords(song.originalLyrics, (word) => {
       const lower = word.toLowerCase();
       return (
         languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
-        isWordIgnored(ignoredWords, word, ignoreLanguage)
+        isWordIgnored(ignoredWords, word, ignoreLanguage) ||
+        (isGermanSong && isKnownCompound(word))
       );
     }, song.originalLanguages);
   };

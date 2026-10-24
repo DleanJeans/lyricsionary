@@ -87,6 +87,12 @@ describe('German shortened words', () => {
     expect(getGermanExpandedForm("dell'", 'Italian')).toBeNull();
   });
 
+  it("looks up geht's as geht in German only", () => {
+    expect(getWordTransforms("geht's", 'German')).toEqual(['geht']);
+    expect(getWordTransforms("Gibt's", 'German')).toEqual(["gibt's", 'Gibt', 'gibt']);
+    expect(getGermanExpandedForm("it's", 'English')).toBeNull();
+  });
+
   it('leaves English contractions alone', () => {
     expect(getGermanExpandedForm("I'm")).toBeNull();
   });

@@ -1,6 +1,7 @@
 import { isGermanLanguage } from './compoundWords';
 import {
   contractedPrefixRegex,
+  germanCliticEsRegex,
   germanShortenedSuffixRegex,
   germanTrailingElisionRegex,
   hyphenatedPrefixRegex,
@@ -86,14 +87,17 @@ export function hasHyphenInMiddle(word: string): boolean {
  * Expand a German shortened word to its full form, or null if it isn't one.
  * - "hab'n" -> "haben", "befrei'n" -> "befreien", "unser'm" -> "unserem"
  * - "hab'" -> "habe" (only when the language is German, since French/Italian elide prefixes like "l'")
+ * - "geht's" -> "geht", the word an "'s" (es) leans on (German only, since English uses it too)
  */
 export function getGermanExpandedForm(word: string, language?: string): string | null {
   const suffixMatch = word.match(germanShortenedSuffixRegex);
   if (suffixMatch) {
     return `${suffixMatch[1]}e${suffixMatch[2]}`;
   }
-  if (language && isGermanLanguage([language]) && germanTrailingElisionRegex.test(word)) {
-    return `${word.slice(0, -1)}e`;
+  if (language && isGermanLanguage([language])) {
+    if (germanTrailingElisionRegex.test(word)) return `${word.slice(0, -1)}e`;
+    const clitic = word.match(germanCliticEsRegex);
+    if (clitic) return clitic[1];
   }
   return null;
 }

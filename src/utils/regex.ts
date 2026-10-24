@@ -7,6 +7,8 @@ export const contractedPrefixRegex = new RegExp(`^([${accentedAlphabet}]{1,}')`)
 
 // German shortened forms that drop an "e" before n/m: hab'n -> haben, unser'm -> unserem
 export const germanShortenedSuffixRegex = new RegExp(`^([${accentedAlphabet}]{2,})'([nm])$`);
+// German words with a clitic "es": geht's -> geht (es), gibt's -> gibt (es)
+export const germanCliticEsRegex = new RegExp(`^([${accentedAlphabet}]{2,})'s$`);
 // German words that drop a final "e": hab' -> habe
 export const germanTrailingElisionRegex = new RegExp(`^[${accentedAlphabet}]{2,}'$`);
 

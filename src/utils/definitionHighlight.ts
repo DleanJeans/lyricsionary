@@ -14,24 +14,60 @@ function candidatesOf(definition: string): string[] {
   return [whole, ...parts].filter(Boolean);
 }
 
-// Finds the first definition that appears in the translation as whole words.
-// An edge that isn't a letter, like the apostrophe in "'ve got", can sit inside a word ("I've got").
-export function findDefinitionHighlight(text: string, definitions: string[]): [number, number] | null {
+// Where a needle appears as whole words from position `from`, or -1.
+// An edge that isn't a letter, like the apostrophe in "'ve got", can sit inside a word ("I've got"),
+// and so can a contracted "n't" ("isn't").
+function indexOfWhole(haystack: string, needle: string, from = 0): number {
+  const checkBefore = WORD_CHAR.test(needle[0]) && !needle.startsWith("n't");
+  const checkAfter = WORD_CHAR.test(needle[needle.length - 1]);
+  let index = haystack.indexOf(needle, from);
+  while (index >= 0) {
+    const before = haystack[index - 1];
+    const after = haystack[index + needle.length];
+    const okBefore = !checkBefore || !before || !WORD_CHAR.test(before);
+    const okAfter = !checkAfter || !after || !WORD_CHAR.test(after);
+    if (okBefore && okAfter) return index;
+    index = haystack.indexOf(needle, index + 1);
+  }
+  return -1;
+}
+
+// Most words that can sit between the parts of a split phrase, e.g. "much" in "give much away"
+const MAX_GAP_WORDS = 3;
+
+// A multi-word needle split up by other words, e.g. "give away" in "give much away"; one range per word
+function findSplitPhrase(haystack: string, needle: string): Array<[number, number]> | null {
+  const words = needle.split(/\s+/);
+  if (words.length < 2) return null;
+  for (let start = indexOfWhole(haystack, words[0]); start >= 0; start = indexOfWhole(haystack, words[0], start + 1)) {
+    const ranges: Array<[number, number]> = [[start, start + words[0].length]];
+    for (const word of words.slice(1)) {
+      const previousEnd = ranges[ranges.length - 1][1];
+      const index = indexOfWhole(haystack, word, previousEnd);
+      const gap = index >= 0 ? haystack.slice(previousEnd, index).trim() : '';
+      if (index < 0 || (gap && gap.split(/\s+/).length > MAX_GAP_WORDS) || /[.,;:!?]/.test(gap)) break;
+      ranges.push([index, index + word.length]);
+    }
+    if (ranges.length === words.length) return ranges;
+  }
+  return null;
+}
+
+// Finds the first definition that appears in the translation as whole words, as the ranges to
+// highlight: one for a phrase in one piece, or one per word when other words split it up.
+export function findDefinitionHighlight(text: string, definitions: string[]): Array<[number, number]> | null {
   const haystack = normalize(text);
   for (const definition of definitions) {
     for (const candidate of candidatesOf(definition)) {
       const needle = normalize(candidate);
-      const checkBefore = WORD_CHAR.test(needle[0]);
-      const checkAfter = WORD_CHAR.test(needle[needle.length - 1]);
-      let index = haystack.indexOf(needle);
-      while (index >= 0) {
-        const before = haystack[index - 1];
-        const after = haystack[index + needle.length];
-        const okBefore = !checkBefore || !before || !WORD_CHAR.test(before);
-        const okAfter = !checkAfter || !after || !WORD_CHAR.test(after);
-        if (okBefore && okAfter) return [index, index + needle.length];
-        index = haystack.indexOf(needle, index + 1);
-      }
+      const index = indexOfWhole(haystack, needle);
+      if (index >= 0) return [[index, index + needle.length]];
+    }
+  }
+  for (const definition of definitions) {
+    for (const candidate of candidatesOf(definition)) {
+      const ranges = findSplitPhrase(haystack, normalize(candidate));
+      if (ranges) return ranges;
     }
   }
   return null;

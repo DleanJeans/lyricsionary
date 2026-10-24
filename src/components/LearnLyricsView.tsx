@@ -41,7 +41,7 @@ function TranslationLine({
 }) {
   if (!text) return null;
 
-  const highlight = !isBlurred && highlightDefinitions?.length
+  const highlights = !isBlurred && highlightDefinitions?.length
     ? findDefinitionHighlight(text, highlightDefinitions)
     : null;
 
@@ -60,13 +60,17 @@ function TranslationLine({
           isBlurred && styles.blurredText,
         ]}
       >
-        {highlight ? (
+        {highlights ? (
           <>
-            {text.slice(0, highlight[0])}
-            <Text style={[styles.highlightedText, { fontSize: fontSize - 2 }]}>
-              {text.slice(highlight[0], highlight[1])}
-            </Text>
-            {text.slice(highlight[1])}
+            {highlights.map(([start, end], i) => (
+              <React.Fragment key={i}>
+                {text.slice(i === 0 ? 0 : highlights[i - 1][1], start)}
+                <Text style={[styles.highlightedText, { fontSize: fontSize - 2 }]}>
+                  {text.slice(start, end)}
+                </Text>
+              </React.Fragment>
+            ))}
+            {text.slice(highlights[highlights.length - 1][1])}
           </>
         ) : text}
       </Text>

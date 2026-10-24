@@ -98,11 +98,11 @@ export default function SelectableTranslation({ translation, onSelect, value, st
     });
 
   // While dragging show the words under the finger, otherwise where the definition appears.
-  const highlight: [number, number] | null = dragging && selection
-    ? [
+  const highlights: Array<[number, number]> | null = dragging && selection
+    ? [[
         tokens[Math.min(selection[0], selection[1])].start,
         tokens[Math.max(selection[0], selection[1])].start + tokens[Math.max(selection[0], selection[1])].text.length,
-      ]
+      ]]
     : value
       ? findDefinitionHighlight(translation, [value])
       : null;
@@ -113,6 +113,8 @@ export default function SelectableTranslation({ translation, onSelect, value, st
       <View style={styles.container} accessibilityHint="Tap or drag across words to use them as the definition">
         {tokens.map((token, index) => {
           const end = token.start + token.text.length;
+          // Split phrases like "give much away" have a range per word
+          const highlight = highlights?.find(([start, stop]) => start < end && stop > token.start);
           const from = highlight ? Math.max(highlight[0], token.start) - token.start : 0;
           const to = highlight ? Math.min(highlight[1], end) - token.start : 0;
           const covered = from < to;

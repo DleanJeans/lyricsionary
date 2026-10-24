@@ -1,0 +1,37 @@
+import { findDefinitionHighlight, pickDefinition } from '../src/utils/definitionHighlight';
+
+const highlighted = (text: string, definition: string) =>
+  findDefinitionHighlight(text, [definition])?.map(([start, end]) => text.slice(start, end)) ?? null;
+
+describe('findDefinitionHighlight', () => {
+  it('finds whole words only', () => {
+    expect(highlighted('I have no time', 'no')).toEqual(['no']);
+    expect(highlighted('I know', 'no')).toBeNull();
+  });
+
+  it("finds contracted parts like 've and n't inside words", () => {
+    expect(highlighted("I've got it", "'ve got")).toEqual(["'ve got"]);
+    expect(highlighted("It isn't love", "n't")).toEqual(["n't"]);
+    expect(highlighted('It isn’t love', "not; n't")).toEqual(['n’t']);
+  });
+
+  it('finds phrases split up by other words', () => {
+    expect(highlighted("Don't give much away", 'give away')).toEqual(['give', 'away']);
+    expect(highlighted('Give it all up', 'give up')).toEqual(['Give', 'up']);
+  });
+
+  it('prefers a phrase in one piece', () => {
+    expect(highlighted('give much away, give away', 'give away')).toEqual(['give away']);
+  });
+
+  it("doesn't join words that are too far apart or across a sentence", () => {
+    expect(highlighted('give me one more chance today away', 'give away')).toBeNull();
+    expect(highlighted('I give. Go away', 'give away')).toBeNull();
+  });
+});
+
+describe('pickDefinition with split phrases', () => {
+  it('fills in a definition whose words are split up in the translation', () => {
+    expect(pickDefinition([{ partOfSpeech: 'Verb', text: 'to betray' }, { partOfSpeech: 'Verb', text: 'to give away' }], "Don't give much away")).toBe('give away');
+  });
+});

@@ -507,7 +507,7 @@ export default function WordLookupScreen() {
     >
       <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
+        <TouchableOpacity onPress={handleCancel} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Back">
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{displayWord}</Text>
@@ -647,7 +647,12 @@ export default function WordLookupScreen() {
         <View style={styles.webViewContainer}>
           <View style={styles.webViewHeader}>
             {canGoBackInWebView && (
-              <TouchableOpacity onPress={handleWebViewGoBack} style={styles.webViewBackButton}>
+              <TouchableOpacity
+                onPress={handleWebViewGoBack}
+                style={styles.webViewBackButton}
+                accessibilityRole="button"
+                accessibilityLabel="Previous page"
+              >
                 <Ionicons name="arrow-back" size={20} color={Colors.primary} />
               </TouchableOpacity>
             )}

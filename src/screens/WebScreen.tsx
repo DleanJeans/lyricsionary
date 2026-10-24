@@ -357,6 +357,8 @@ export default function WebScreen() {
                 setShowUrlInput(false);
               }}
               style={styles.goButton}
+              accessibilityRole="button"
+              accessibilityLabel="Go"
             >
               <Ionicons
                 name="arrow-forward-circle"
@@ -371,6 +373,8 @@ export default function WebScreen() {
               <TouchableOpacity
                 onPress={() => webViewRef.current?.goBack()}
                 style={styles.backButton}
+                accessibilityRole="button"
+                accessibilityLabel="Previous page"
               >
                 <Ionicons
                   name="arrow-back"

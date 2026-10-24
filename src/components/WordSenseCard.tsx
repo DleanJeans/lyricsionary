@@ -67,7 +67,7 @@ export default function WordSenseCard({
       <View style={styles.field}>
         <View style={styles.contextLabelRow}>
           {onRemove && (
-            <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
+            <TouchableOpacity onPress={onRemove} style={styles.removeButton} accessibilityRole="button" accessibilityLabel="Remove context">
               <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
             </TouchableOpacity>
           )}

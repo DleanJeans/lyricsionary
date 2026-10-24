@@ -146,7 +146,7 @@ export default function LearnSettingsMenu({
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Learn Settings</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Close Learn settings">
               <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
           </View>

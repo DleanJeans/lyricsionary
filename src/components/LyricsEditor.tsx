@@ -241,7 +241,7 @@ export default function LyricsEditor({
           <Ionicons name="copy-outline" size={14} color={Colors.white} />
           <Text style={styles.syncButtonText}>{syncLabel()}</Text>
         </Pressable>
-        <Pressable style={styles.syncDismiss} onPress={dismissSync} hitSlop={8}>
+        <Pressable style={styles.syncDismiss} onPress={dismissSync} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss sync">
           <Ionicons name="close" size={16} color={Colors.textMuted} />
         </Pressable>
       </View>

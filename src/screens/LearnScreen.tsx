@@ -679,7 +679,12 @@ export default function LearnScreen() {
           />
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => setShowDropdown(true)}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => setShowDropdown(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Learn settings"
+          >
             <View style={styles.headerBtnIcons}>
               <View style={styles.languageIconWrapper}>
                 <Ionicons name="language-outline" size={22} color={Colors.primary} />

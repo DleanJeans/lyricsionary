@@ -56,6 +56,8 @@ const DEFINITION_API_URL = 'https://en.wiktionary.org/api/rest_v1/page/definitio
 const MAX_DEFINITIONS = 8;
 // Base forms to look up for an inflected word, e.g. both verbs a participle could come from
 const MAX_LEMMAS = 2;
+// Forms of forms, e.g. the feminine vidée of the participle vidé of vider
+const MAX_LEMMA_DEPTH = 2;
 // Longer phrases read as explanations rather than translations to write next to the word
 const MAX_GLOSS_WORDS = 4;
 
@@ -257,6 +259,23 @@ function fetchDefinitionResponse(title: string): Promise<unknown> {
 }
 
 /**
+ * Suggestions for one page title: its short translations, else its base forms' (following chains like
+ * vidée -> vidé -> vider, each a form of the next), else its full definitions
+ */
+async function getDefinitionsForTitle(title: string, language: string, depth: number): Promise<WiktionaryDefinition[]> {
+  const entry = parseEntry(await fetchDefinitionResponse(title), language);
+  if (entry.glosses.length > 0) return entry.glosses.slice(0, MAX_DEFINITIONS);
+
+  if (depth < MAX_LEMMA_DEPTH) {
+    for (const lemma of entry.lemmas.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
+      const definitions = await getDefinitionsForTitle(lemma, language, depth + 1);
+      if (definitions.length > 0) return definitions;
+    }
+  }
+  return entry.definitions.slice(0, MAX_DEFINITIONS);
+}
+
+/**
  * Definitions from the word's Wiktionary page in the given language. Titles are case-sensitive, so
  * when the page has none ("liebe" vs "Liebe") the other casing is tried too. Inflected forms without a
  * meaning of their own ("fragt") use their base form's ("fragen"). Resolves null on failure.
@@ -266,14 +285,8 @@ export async function getWiktionaryDefinitions(word: string, language: string): 
   const variants = [word, word === lower ? word.charAt(0).toUpperCase() + word.slice(1) : lower];
   try {
     for (const title of variants) {
-      const entry = parseEntry(await fetchDefinitionResponse(title), language);
-      if (entry.glosses.length > 0) return entry.glosses.slice(0, MAX_DEFINITIONS);
-
-      for (const lemma of entry.lemmas.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
-        const definitions = parseDefinitions(await fetchDefinitionResponse(lemma), language);
-        if (definitions.length > 0) return definitions;
-      }
-      if (entry.definitions.length > 0) return entry.definitions.slice(0, MAX_DEFINITIONS);
+      const definitions = await getDefinitionsForTitle(title, language, 0);
+      if (definitions.length > 0) return definitions;
     }
     return [];
   } catch (error) {

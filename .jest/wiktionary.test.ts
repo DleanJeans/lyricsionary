@@ -216,6 +216,27 @@ describe('inflected forms', () => {
     expect(texts({ de: [section('German', 'Verb', FRAGEN)] }, 'German')).toEqual(['to ask', 'to ask for', 'to ask after', 'to wonder']);
   });
 
+  it('follows a form of a form to its base form, like vidée -> vidé -> vider', async () => {
+    const formOf = (description: string, lemma: string) =>
+      `<span class="form-of-definition use-with-mention">${description} of <span class="form-of-definition-link"><i class="Latn mention" lang="fr"><a rel="mw:WikiLink" href="/wiki/${lemma}#French" title="${lemma}">${lemma}</a></i></span></span>`;
+    const pages: Record<string, unknown> = {
+      vidée: { fr: [section('French', 'Participle', [formOf('feminine singular', 'vidé')])] },
+      vidé: { fr: [section('French', 'Participle', [formOf('past participle', 'vider')])] },
+      vider: { fr: [section('French', 'Verb', ['to <a href="/wiki/empty" title="empty">empty</a>', 'to <a href="/wiki/drain" title="drain">drain</a>'])] },
+    };
+    const fetchMock = jest.fn(async (url: string) => {
+      const page = pages[decodeURIComponent(url.split('/').pop() ?? '')];
+      return { ok: !!page, status: page ? 200 : 404, json: async () => page };
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      expect((await getWiktionaryDefinitions('vidée', 'French'))?.map((d) => d.text)).toEqual(['to empty', 'to drain']);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('suggests the base form definitions for an inflected word', async () => {
     const pages: Record<string, unknown> = {
       fragt: { de: [section('German', 'Verb', FRAGT)] },

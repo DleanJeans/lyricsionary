@@ -19,7 +19,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
-import { withVerbForms } from '../utils/definitionHighlight';
+import { withWordForms } from '../utils/definitionHighlight';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
@@ -595,7 +595,7 @@ export default function LearnScreen() {
 
   // Definitions of the selected word to look for in its line's translation
   const definitionsOf = (entry: WordEntry, line: string, occurrence?: number): string[] =>
-    withVerbForms(
+    withWordForms(
       [
         findWordContext(entry, line, occurrence)?.definition,
         ...(entry.definitions ?? []).map((d) => d.text),

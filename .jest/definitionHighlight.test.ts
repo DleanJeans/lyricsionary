@@ -1,4 +1,4 @@
-import { findDefinitionHighlight, findDefinitionHighlights, pickDefinition, withVerbForms } from '../src/utils/definitionHighlight';
+import { findDefinitionHighlight, findDefinitionHighlights, pickDefinition, withWordForms } from '../src/utils/definitionHighlight';
 
 const highlighted = (text: string, definition: string) =>
   findDefinitionHighlight(text, [definition])?.map(([start, end]) => text.slice(start, end)) ?? null;
@@ -67,14 +67,15 @@ describe('findDefinitionHighlights', () => {
   });
 });
 
-describe('withVerbForms', () => {
-  it('highlights a saved verb definition in the forms the translation uses', () => {
+describe('withWordForms', () => {
+  it('highlights a saved definition in the forms the translation uses', () => {
     const find = (text: string, definitions: string[]) =>
-      findDefinitionHighlight(text, withVerbForms(definitions))?.map(([start, end]) => text.slice(start, end)) ?? null;
+      findDefinitionHighlight(text, withWordForms(definitions))?.map(([start, end]) => text.slice(start, end)) ?? null;
     expect(find('I love you', ['to love'])).toEqual(['love']);
     expect(find('I loved you', ['to love'])).toEqual(['loved']);
     expect(find('Loving you', ['to cherish; to love'])).toEqual(['Loving']);
     expect(find('I want to love you', ['to love'])).toEqual(['to love']);
-    expect(withVerbForms(['love'])).toEqual(['love']);
+    expect(find('All my worries', ['worry; care'])).toEqual(['worries']);
+    expect(withWordForms(['love'])).toEqual(['love', 'loves']);
   });
 });

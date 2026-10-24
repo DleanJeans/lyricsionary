@@ -202,12 +202,15 @@ function pastFormsOf(definition: string): string[] {
   });
 }
 
-// Definitions plus the forms their verbs take in a translation, for highlighting saved definitions,
-// e.g. "to love" also as "love", "loving" and "loved"; the definitions themselves still match first
-export function withVerbForms(definitions: string[]): string[] {
-  const forms = definitions
-    .filter((definition) => /^to\s/i.test(definition.trim()))
-    .flatMap((definition) => [withoutInfinitiveTo(definition), ...gerundsOf(definition), ...pastFormsOf(definition)]);
+// Definitions plus the forms they take in a translation, for highlighting saved definitions: a verb
+// "to love" also as "love", "loving" and "loved", anything else also as a plural, e.g. "worries" for
+// "worry". The definitions themselves still match first.
+export function withWordForms(definitions: string[]): string[] {
+  const forms = definitions.flatMap((definition) =>
+    /^to\s/i.test(definition.trim())
+      ? [withoutInfinitiveTo(definition), ...gerundsOf(definition), ...pastFormsOf(definition)]
+      : pluralsOf(definition)
+  );
   return [...new Set([...definitions, ...forms])];
 }
 

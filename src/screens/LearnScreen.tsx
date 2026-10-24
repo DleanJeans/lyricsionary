@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, I18nManager, StyleSheet, TouchableOpacity, View } from 'react-native';
 import LearnActionBar from '../components/LearnActionBar';
 import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
@@ -12,7 +12,7 @@ import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
+import { getFlagForLanguage, getLanguageNameFromCode, isRtlLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
@@ -78,6 +78,8 @@ export default function LearnScreen() {
   const songLanguages = (song?.originalLanguages ?? []).map((language) => language.toLowerCase());
   const hasFrenchLanguage = songLanguages.some((language) => language === 'french' || language === 'fr');
   const hasItalianLanguage = songLanguages.some((language) => language === 'italian' || language === 'it');
+  // Arabic or Hebrew lyrics lay their words out from the right
+  const isRtlSong = !!song?.originalLanguages?.[0] && isRtlLanguage(song.originalLanguages[0]);
   // The saved word a lyric word stands for: itself, or else what its shortened form is about, e.g.
   // amour for l'amour, mélanger for mélan-mélanger, haben for hab'n
   const findSavedEntry = useCallback(
@@ -315,7 +317,7 @@ export default function LearnScreen() {
       }
     });
     return (
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+      <View style={{ flexDirection: isRtlSong !== I18nManager.isRTL ? 'row-reverse' : 'row', flexWrap: 'wrap' }}>
         {textWords.map((word, i) => {
           if (!word.trim()) {
             return <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6 }}>{word}</Text>;
@@ -538,7 +540,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, words, ignoredWords, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, ignoredWords, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA

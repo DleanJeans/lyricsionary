@@ -1,4 +1,4 @@
-import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode, findLanguageName, searchLanguages } from '../src/constants/languages';
+import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode, findLanguageName, isRtlLanguage, searchLanguages } from '../src/constants/languages';
 
 describe('languages', () => {
   it('has unique codes and names', () => {
@@ -47,5 +47,13 @@ describe('findLanguageName', () => {
     expect(findLanguageName('de')).toBe('German');
     expect(findLanguageName('Englishman')).toBeNull();
     expect(findLanguageName('')).toBeNull();
+  });
+});
+
+describe('isRtlLanguage', () => {
+  it('knows right-to-left languages by name or code', () => {
+    expect(isRtlLanguage('Arabic')).toBe(true);
+    expect(isRtlLanguage('he')).toBe(true);
+    expect(isRtlLanguage('French')).toBe(false);
   });
 });

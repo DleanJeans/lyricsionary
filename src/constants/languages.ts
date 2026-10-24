@@ -76,6 +76,14 @@ export function getFlagForLanguage(langName: string): string {
   return lang?.flag ?? '🌐';
 }
 
+const RTL_LANGUAGES = new Set(['Arabic', 'Hebrew', 'Persian', 'Urdu']);
+
+// Whether a language is written right to left, by name or code
+export function isRtlLanguage(language: string): boolean {
+  const name = getLanguageNameFromCode(language);
+  return !!name && RTL_LANGUAGES.has(name);
+}
+
 // Also accepts an English language name, which some lyrics sites give instead of a code, and a
 // code with a region, e.g. "pt-BR" or "es_419"
 export function getLanguageNameFromCode(code: string): string | null {

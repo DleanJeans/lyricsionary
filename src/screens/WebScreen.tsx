@@ -38,7 +38,6 @@ export default function WebScreen() {
   const setWebUrl = useStore((s) => s.setWebUrl);
   const scrapeTargetTab = useStore((s) => s.scrapeTargetTab);
   const deeplLineMap = useStore((s) => s.deeplLineMap);
-  const setDeeplLineMap = useStore((s) => s.setDeeplLineMap);
   const deeplChunks = useStore((s) => s.deeplChunks);
   const deeplCurrentChunk = useStore((s) => s.deeplCurrentChunk);
   const deeplTranslatedChunks = useStore((s) => s.deeplTranslatedChunks);

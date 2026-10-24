@@ -10,7 +10,6 @@ import NewWordCard from '../components/NewWordCard';
 import ScreenWrapper from '../components/ScreenWrapper';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
-import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
 import { getFlagForLanguage, getLanguageNameFromCode, isRtlLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
@@ -111,8 +110,6 @@ export default function LearnScreen() {
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
   const [selectedOccurrence, setSelectedOccurrence] = useState<number>(1);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [showToast, setShowToast] = useState(false);
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [isRendering, setIsRendering] = useState(true);
@@ -251,16 +248,6 @@ export default function LearnScreen() {
     setSelectedLineIndex(null);
     setSelectedOccurrence(1);
   }, [activeSongId]);
-
-  // Auto-hide toast after 2 seconds
-  useEffect(() => {
-    if (showToast) {
-      const timer = setTimeout(() => {
-        setShowToast(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [showToast]);
 
   const handleLanguageChange = (languages: string[]) => {
     setLocalSelectedLanguages(languages);
@@ -732,13 +719,6 @@ export default function LearnScreen() {
         />
       )}
 
-      {/* Toast notification */}
-      {showToast && (
-        <View style={styles.toastContainer}>
-          <Toast message={toastMessage} />
-        </View>
-      )}
-
       {isWide ? (
         /* ── Wide: left lyrics panel + right word/controls panel ── */
         <View style={styles.wideMain}>
@@ -869,12 +849,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.textSecondary,
     maxWidth: 100,
-  },
-  toastContainer: {
-    position: 'absolute',
-    bottom: 50,
-    left: 20,
-    right: 20,
-    zIndex: 1000,
   },
 });

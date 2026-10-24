@@ -28,7 +28,6 @@ import { Colors } from '../constants/theme';
 import { isSameLanguage } from '../constants/languages';
 import { useStore } from '../store/useStore';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
-import { removeSpecialChars } from '../utils/cleanLyrics';
 import { pickDefinition } from '../utils/definitionHighlight';
 import { getGermanExpandedForm } from '../utils/wordTransform';
 import { emojiData } from '../utils/emojiData';
@@ -464,8 +463,6 @@ export default function WordLookupScreen() {
       webViewRef.current.goBack();
     }
   };
-
-  const cleanWordForContext = word ? removeSpecialChars(word) : undefined;
 
   const ipaOptions = cardIpa ?? (lookupSource === 'wiktionary' ? scrapedIpaResults : []);
 

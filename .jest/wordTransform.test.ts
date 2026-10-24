@@ -103,6 +103,12 @@ describe('splitElisionParts', () => {
     expect(splitElisionParts('hello')).toBeNull();
   });
 
+  it("keeps words like aujourd'hui whole", () => {
+    expect(splitElisionParts("aujourd'hui")).toBeNull();
+    expect(splitElisionParts("Aujourd'hui")).toBeNull();
+    expect(getWordTransforms("Aujourd'hui", 'French')).toEqual(["aujourd'hui"]);
+  });
+
   it("splits qu'c'est into three parts", () => {
     expect(splitElisionParts("qu'c'est")).toEqual(["qu'", "c'", 'est']);
   });

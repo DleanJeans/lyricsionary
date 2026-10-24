@@ -21,8 +21,8 @@ import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { withVerbForms } from '../utils/definitionHighlight';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
-import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
-import { getGermanExpandedForm, splitElisionParts } from '../utils/wordTransform';
+import { hyphenatedPrefixRegex } from '../utils/regex';
+import { getGermanExpandedForm, hasContractedPrefix, splitElisionParts } from '../utils/wordTransform';
 
 const PREVIEW_MAX_WORDS = 8;
 
@@ -293,7 +293,7 @@ export default function LearnScreen() {
 
           const cleanedWord = removeSpecialChars(word);
 
-          const hasContractedPrefixWord = contractedPrefixRegex.test(cleanedWord);
+          const hasContractedPrefixWord = hasContractedPrefix(cleanedWord);
           const hasHyphenatedPrefixWord = hyphenatedPrefixRegex.test(cleanedWord);
 
           const hasFrenchLanguage = song?.originalLanguages?.some(

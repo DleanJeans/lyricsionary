@@ -15,8 +15,6 @@ interface SongLyrics {
 }
 
 const ELISION_LANGUAGES = new Set(['french', 'fr', 'italian', 'it']);
-// Words whose apostrophe isn't an elision
-const APOSTROPHE_WORDS = new Set(["aujourd'hui", "prud'homme", "presqu'île", "entr'acte"]);
 
 /** A lyric token without punctuation, e.g. "dich" for "dich,"; trailing apostrophes stay for getFullWord ("hab'") */
 function cleanToken(token: string): string {
@@ -35,7 +33,6 @@ function withoutTrailingApostrophes(word: string): string {
 function getFullWord(word: string, languages: string[] | undefined): string | null {
   if (isGermanLanguage(languages)) return getGermanExpandedForm(word, 'German');
   if (!languages?.some((language) => ELISION_LANGUAGES.has(language.toLowerCase()))) return null;
-  if (APOSTROPHE_WORDS.has(word.toLowerCase())) return null;
   const parts = splitElisionParts(word);
   return parts ? parts[parts.length - 1] : null;
 }

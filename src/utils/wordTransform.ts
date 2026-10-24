@@ -64,9 +64,12 @@ export function isCapitalized(word: string): boolean {
   return firstChar === firstChar.toUpperCase() && firstChar !== firstChar.toLowerCase();
 }
 
+// French words whose apostrophe is part of the word rather than an elision
+const APOSTROPHE_WORDS = new Set(["aujourd'hui", "prud'homme", "presqu'île", "presqu'ile", "entr'acte"]);
+
 export function hasContractedPrefix(word: string): boolean {
   if (!word || word.length < 2) return false;
-  return contractedPrefixRegex.test(word);
+  return contractedPrefixRegex.test(word) && !APOSTROPHE_WORDS.has(word.toLowerCase());
 }
 
 export function hasHyphenatedPrefix(word: string): boolean {

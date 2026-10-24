@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   View,
   FlatList,
@@ -16,7 +17,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import LanguageTabButtons from '../components/LanguageTabButtons';
+import LanguageTabButtons, { FilterChip } from '../components/LanguageTabButtons';
 import MasteryLevelTabs from '../components/MasteryLevelTabs';
 import EmptyState from '../components/EmptyState';
 import IconButton from '../components/IconButton';
@@ -39,6 +40,8 @@ export default function WordsScreen() {
   const ignoredWords = useStore((s) => s.ignoredWords);
   // Saved or Top view, kept across restarts
   const [showFrequency, setShowFrequency] = usePersistedState('@lyricsionary_words_top_view', false, isBoolean);
+  // Top view: only words not saved yet, the ones left to learn
+  const [hideSavedInTop, setHideSavedInTop] = usePersistedState('@lyricsionary_words_top_unsaved', false, isBoolean);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -70,18 +73,22 @@ export default function WordsScreen() {
     };
   }, [words, wordFrequencies, showFrequency]);
 
-  const searchedFrequencies = wordFrequencies.filter(
-    (w) =>
-      (selectedLanguages.length === 0 || selectedLanguages.includes(w.language)) &&
-      matchesSearch(w.word, searchQuery),
-  );
-
   // Saved words by language and lowercase word, for coloring the Top list (the first one wins, like find);
   // keyed by languageKey so a word saved under "French" colors a song's "fr" word
   const savedWordIndex = React.useMemo(
     () => new Map([...words].reverse().map((w) => [`${languageKey(w.language)}\u0000${w.word.toLowerCase()}`, w])),
     [words],
   );
+  const isSavedFrequency = (w: WordFrequency) => savedWordIndex.has(`${languageKey(w.language)}\u0000${w.word.toLowerCase()}`);
+
+  const languageFrequencies = wordFrequencies.filter(
+    (w) => selectedLanguages.length === 0 || selectedLanguages.includes(w.language),
+  );
+  const unsavedFrequencyCount = languageFrequencies.filter((w) => !isSavedFrequency(w)).length;
+  const searchedFrequencies = languageFrequencies.filter(
+    (w) => (!hideSavedInTop || !isSavedFrequency(w)) && matchesSearch(w.word, searchQuery),
+  );
+
 
   const renderFrequencyItem = ({ item, index }: { item: WordFrequency; index: number }) => {
     const savedWord = savedWordIndex.get(`${languageKey(item.language)}\u0000${item.word.toLowerCase()}`);
@@ -175,7 +182,7 @@ export default function WordsScreen() {
       icon="language-outline"
       label={showLanguageTabs ? 'Hide filters' : 'Show filters'}
       onPress={() => setShowLanguageTabs(!showLanguageTabs)}
-      selected={selectedLanguages.length > 0 || (!showFrequency && !!selectedLevel)}
+      selected={selectedLanguages.length > 0 || (showFrequency ? hideSavedInTop : !!selectedLevel)}
     />
   );
 
@@ -232,7 +239,18 @@ export default function WordsScreen() {
             availableLanguages={availableLanguages}
             languageCounts={languageCounts}
           />
-          {!showFrequency && (
+          {showFrequency ? (
+            <View style={styles.topFilters}>
+              <FilterChip
+                icon={<Ionicons name="bookmark-outline" size={16} color={hideSavedInTop ? Colors.white : Colors.textSecondary} />}
+                label="Not saved"
+                count={unsavedFrequencyCount}
+                selected={hideSavedInTop}
+                onPress={() => setHideSavedInTop(!hideSavedInTop)}
+                accessibilityLabel="Only words not saved yet"
+              />
+            </View>
+          ) : (
             <MasteryLevelTabs selectedLevel={selectedLevel} onLevelChange={setSelectedLevel} levelCounts={levelCounts} />
           )}
         </View>
@@ -378,6 +396,11 @@ const styles = StyleSheet.create({
   },
   languageTabsContainer: {
     marginBottom: 12,
+  },
+  topFilters: {
+    flexDirection: 'row',
+    paddingHorizontal: 4,
+    paddingBottom: 8,
   },
   frequencyRow: {
     flexDirection: 'row',

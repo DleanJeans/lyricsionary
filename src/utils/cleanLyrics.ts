@@ -28,8 +28,10 @@ export function cleanGeniusLyrics(lyrics: string): string {
 
   // If the first block pattern didn't match, try removing just "Translations" and title lines
   // Look for pattern: optional "Translations", followed by something with "Lyrics"
+  // Only the first line, and only Genius's capitalized "Lyrics", so a first lyric line ending in
+  // "lyrics" stays
   if (cleaned === lyrics) {
-    const simplifiedPattern = /^(?:Translations\s+)?.*?\s*Lyrics\s*\n/i;
+    const simplifiedPattern = /^(?:Translations\s+)?[^\n]*?[ \t]*Lyrics[ \t]*\n/;
     cleaned = cleaned.replace(simplifiedPattern, '');
   }
 

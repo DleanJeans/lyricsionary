@@ -300,7 +300,7 @@ export default function WordLookupScreen() {
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${language}`;
+        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${language.replace(/ /g, '_')}`;
       setCurrentUrl(url);
       setScrapedIpaResults([]);
     };

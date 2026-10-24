@@ -87,3 +87,12 @@ export function getLanguageNameFromCode(code: string): string | null {
     LANGUAGES.find((l) => l.code === base);
   return lang?.name ?? null;
 }
+
+// Languages whose name or code starts with the query, ignoring case and accents, e.g. "cat" or "ca"
+// for Catalan; a name's later words match too, e.g. "creole" for Haitian Creole
+export function searchLanguages<T extends { code: string; name: string }>(languages: T[], query: string): T[] {
+  const fold = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  const q = fold(query.trim());
+  if (!q) return languages;
+  return languages.filter((l) => l.code === q || fold(l.name).split(/\s+/).some((word) => word.startsWith(q)));
+}

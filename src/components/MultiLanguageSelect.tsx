@@ -3,7 +3,8 @@ import { View, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-nativ
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
-import { LANGUAGES } from '../constants/languages';
+import { LANGUAGES, searchLanguages } from '../constants/languages';
+import LanguageSearchInput from './LanguageSearchInput';
 
 interface MultiLanguageSelectProps {
   value: string[];
@@ -26,6 +27,7 @@ export default function MultiLanguageSelect({
 }: MultiLanguageSelectProps) {
   const [internalShowModal, setInternalShowModal] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(value);
+  const [query, setQuery] = useState('');
 
   // Use external control if provided, otherwise use internal state
   const showModal = externalShowModal !== undefined ? externalShowModal : internalShowModal;
@@ -34,6 +36,11 @@ export default function MultiLanguageSelect({
   React.useEffect(() => {
     setSelectedLanguages(value);
   }, [value]);
+
+  // Start each opening with an empty search
+  React.useEffect(() => {
+    if (showModal) setQuery('');
+  }, [showModal]);
 
   // Filter languages based on availableLanguages prop
   const languagesToShow = availableLanguages
@@ -100,8 +107,10 @@ export default function MultiLanguageSelect({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Original Languages</Text>
+            {languagesToShow.length > 8 && <LanguageSearchInput value={query} onChangeText={setQuery} />}
             <FlatList
-              data={languagesToShow}
+              data={searchLanguages(languagesToShow, query)}
+              keyboardShouldPersistTaps="handled"
               keyExtractor={(item) => item.code}
               renderItem={({ item }) => {
                 const isSelected = selectedLanguages.includes(item.name);

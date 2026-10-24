@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { searchLanguages } from '../constants/languages';
 import { Colors } from '../constants/theme';
+import LanguageSearchInput from './LanguageSearchInput';
 import { Text } from './Text';
 
 interface LanguageOption {
@@ -27,6 +29,13 @@ export default function AddTranslationModal({
   onCancel,
   onAdd,
 }: AddTranslationModalProps) {
+  const [query, setQuery] = useState('');
+
+  // Start each opening with an empty search
+  useEffect(() => {
+    if (visible) setQuery('');
+  }, [visible]);
+
   return (
     <Modal
       visible={visible}
@@ -36,8 +45,10 @@ export default function AddTranslationModal({
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Add Translation</Text>
+          <LanguageSearchInput value={query} onChangeText={setQuery} />
           <FlatList
-            data={languages}
+            data={searchLanguages(languages, query)}
+            keyboardShouldPersistTaps="handled"
             keyExtractor={(item) => item.code}
             style={styles.languageList}
             renderItem={({ item }) => (

@@ -3,7 +3,8 @@ import { View, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-nativ
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
-import { LANGUAGES } from '../constants/languages';
+import { LANGUAGES, searchLanguages } from '../constants/languages';
+import LanguageSearchInput from './LanguageSearchInput';
 
 interface LanguageSelectProps {
   value: string;
@@ -15,6 +16,7 @@ interface LanguageSelectProps {
 export default function LanguageSelect({ value, onValueChange, placeholder = 'Select Language' }: LanguageSelectProps) {
   const [showModal, setShowModal] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(value);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     setSelectedLanguage(value);
@@ -36,6 +38,7 @@ export default function LanguageSelect({ value, onValueChange, placeholder = 'Se
         accessibilityLabel={value ? `Language: ${value}` : placeholder}
         onPress={() => {
           setSelectedLanguage(value);
+          setQuery('');
           setShowModal(true);
         }}
       >
@@ -49,8 +52,10 @@ export default function LanguageSelect({ value, onValueChange, placeholder = 'Se
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Language</Text>
+            <LanguageSearchInput value={query} onChangeText={setQuery} />
             <FlatList
-              data={LANGUAGES}
+              data={searchLanguages(LANGUAGES, query)}
+              keyboardShouldPersistTaps="handled"
               keyExtractor={(item) => item.code}
               renderItem={({ item }) => (
                 <TouchableOpacity

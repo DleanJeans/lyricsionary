@@ -1,4 +1,4 @@
-import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode } from '../src/constants/languages';
+import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode, searchLanguages } from '../src/constants/languages';
 
 describe('languages', () => {
   it('has unique codes and names', () => {
@@ -17,5 +17,25 @@ describe('languages', () => {
     expect(getLanguageNameFromCode('FR')).toBe('French');
     expect(getLanguageNameFromCode('german')).toBe('German');
     expect(getLanguageNameFromCode('xx')).toBeNull();
+  });
+});
+
+describe('searchLanguages', () => {
+  const names = (query: string) => searchLanguages(LANGUAGES, query).map((l) => l.name);
+
+  it('matches the start of a name or word, or a code', () => {
+    expect(names('cat')).toEqual(['Catalan']);
+    expect(names('ca')).toContain('Catalan');
+    expect(names('creole')).toEqual(['Haitian Creole']);
+    expect(names('el')).toEqual(['Greek']);
+    expect(names('  GER ')).toEqual(['German']);
+  });
+
+  it('returns every language for an empty query', () => {
+    expect(names('')).toHaveLength(LANGUAGES.length);
+  });
+
+  it('ignores accents', () => {
+    expect(searchLanguages([{ code: 'nb', name: 'Norwegian Bokmål' }], 'bokmal')).toHaveLength(1);
   });
 });

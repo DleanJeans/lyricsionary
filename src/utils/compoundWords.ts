@@ -137,6 +137,30 @@ export function getCompoundParts(
   return splitCompound(word, knownWords);
 }
 
+// How linking elements sound when gluing the parts' IPA together
+const LINKING_IPA: Record<string, string> = { es: 'əs', en: 'ən', s: 's', n: 'n', e: 'ə' };
+
+/** Bare IPA of one transcription, e.g. "/ˈliːbə/, [ˈliːbɛ]" -> "ˈliːbə" */
+function bareIpa(ipa: string): string {
+  return ipa.trim().split(/\s*[,;]\s*/)[0].replace(/^[/[]+|[/\]]+$/g, '').trim();
+}
+
+/**
+ * Join the parts' IPA into the compound's IPA, keeping linking elements and making later
+ * stresses secondary, e.g. Liebe /ˈliːbə/ + s + Brief /bʁiːf/ -> "ˈliːbəsbʁiːf".
+ * Returns null unless every part has IPA.
+ */
+export function joinCompoundIpa(parts: CompoundPart[], ipas: (string | undefined)[]): string | null {
+  const pieces: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const ipa = ipas[i] ? bareIpa(ipas[i]!) : '';
+    if (!ipa) return null;
+    const link = parts[i].text.toLowerCase().slice(parts[i].lemma.length);
+    pieces.push((i > 0 ? ipa.replace(/ˈ/g, 'ˌ') : ipa) + (LINKING_IPA[link] ?? ''));
+  }
+  return pieces.join('');
+}
+
 /**
  * Map saved German words (lowercased) to their saved spelling, to split compounds with.
  */

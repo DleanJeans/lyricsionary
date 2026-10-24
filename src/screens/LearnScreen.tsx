@@ -19,7 +19,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
-import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
+import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
 import { splitElisionParts } from '../utils/wordTransform';
 
@@ -437,6 +437,16 @@ export default function LearnScreen() {
             ? getCompoundParts(cleanedWord, compoundSplits, knownGermanWords)
             : null;
           const compoundStart = compoundParts ? word.indexOf(cleanedWord) : -1;
+          const compoundEntries = compoundParts?.map((part) => words.find((w) => w.word.toLowerCase() === part.lemma));
+
+          // A split compound shows its parts' IPA joined, e.g. Liebesbrief -> /ˈliːbəsbʁiːf/
+          if (showIpa && compoundParts && compoundEntries) {
+            const compoundIpa = joinCompoundIpa(
+              compoundParts,
+              compoundEntries.map((entry) => entry && (findWordContext(entry, text)?.ipa || entry.pronunciation))
+            );
+            if (compoundIpa) displayContent = `/${compoundIpa}/`;
+          }
 
           const wordColor = isSelected
             ? Colors.primary
@@ -473,7 +483,7 @@ export default function LearnScreen() {
                   <>
                     {word.slice(0, compoundStart)}
                     {compoundParts.map((part, pi) => {
-                      const partEntry = words.find((w) => w.word.toLowerCase() === part.lemma);
+                      const partEntry = compoundEntries?.[pi];
                       const partColor = isSelected
                         ? Colors.primary
                         : (showMasteryLevelColors && partEntry?.masteryLevel)

@@ -1,4 +1,4 @@
-import { getCompoundParts, getSplitPositions, isGermanLanguage, parseManualSplit, splitAtPositions, splitCompound } from '../src/utils/compoundWords';
+import { getCompoundParts, getSplitPositions, isGermanLanguage, joinCompoundIpa, parseManualSplit, splitAtPositions, splitCompound } from '../src/utils/compoundWords';
 
 const known = new Set(['liebe', 'brief', 'hand', 'schuh', 'haus', 'tür', 'arbeit', 'zimmer', 'kinder', 'garten']);
 
@@ -112,5 +112,28 @@ describe('split positions', () => {
   it('ignores positions at the edges and duplicates', () => {
     expect(splitAtPositions('Wort', [0, 4])).toEqual(['Wort']);
     expect(splitAtPositions('Liebesbrief', [6, 6])).toEqual(['Liebes', 'brief']);
+  });
+});
+
+describe('joinCompoundIpa', () => {
+  it('joins the parts and makes later stresses secondary', () => {
+    const parts = splitCompound('Handschuh', known)!;
+    expect(joinCompoundIpa(parts, ['/ˈhant/', 'ˈʃuː'])).toBe('ˈhantˌʃuː');
+  });
+
+  it('keeps the linking element', () => {
+    const parts = splitCompound('Liebesbrief', known)!;
+    expect(joinCompoundIpa(parts, ['/ˈliːbə/', '[bʁiːf]'])).toBe('ˈliːbəsbʁiːf');
+  });
+
+  it('takes the first of several transcriptions', () => {
+    const parts = splitCompound('Handschuh', known)!;
+    expect(joinCompoundIpa(parts, ['/ˈhant/, /hant/', '/ˈʃuː/'])).toBe('ˈhantˌʃuː');
+  });
+
+  it('needs IPA for every part', () => {
+    const parts = splitCompound('Handschuh', known)!;
+    expect(joinCompoundIpa(parts, ['/ˈhant/', undefined])).toBeNull();
+    expect(joinCompoundIpa(parts, ['/ˈhant/', ' '])).toBeNull();
   });
 });

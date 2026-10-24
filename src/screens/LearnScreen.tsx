@@ -303,8 +303,9 @@ export default function LearnScreen() {
             lang => lang.toLowerCase() === 'italian' || lang.toLowerCase() === 'it'
           );
 
-          // Check if this word should be split for elision rendering (e.g., l'essence → l' + essence, dell'umanità → dell' + umanità)
-          const elisionParts = cleanedWord && hasContractedPrefixWord && (hasFrenchLanguage || hasItalianLanguage)
+          // Check if this word should be split for elision rendering (e.g., l'essence → l' + essence, dell'umanità → dell' + umanità),
+          // unless the whole word is saved (e.g., c'est)
+          const elisionParts = cleanedWord && hasContractedPrefixWord && (hasFrenchLanguage || hasItalianLanguage) && !findWordEntry(cleanedWord)
             ? splitElisionParts(cleanedWord)
             : null;
 

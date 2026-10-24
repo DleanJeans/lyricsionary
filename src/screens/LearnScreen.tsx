@@ -23,7 +23,7 @@ import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../ut
 import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
 import { splitElisionParts } from '../utils/wordTransform';
 
-export type DisplayMode = 'ipa' | 'definition' | 'none';
+const PREVIEW_MAX_WORDS = 8;
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -78,9 +78,8 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('ipa');
+  const [showIpa, setShowIpa] = useState(true);
   const [showEmoji, setShowEmoji] = useState(true);
-  const [enableAnnotations, setEnableAnnotations] = useState(true);
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [isRendering, setIsRendering] = useState(true);
@@ -334,31 +333,20 @@ export default function LearnScreen() {
 
             const mainEntry = [...partEntries].reverse().find(e => e !== null) || null;
 
+            const ctx = mainEntry ? findWordContext(mainEntry, text, occurrenceMap[i] || 1) : null;
+
             let displayContent = '';
-            if (enableAnnotations && mainEntry && displayMode !== 'none') {
-              const ctx = findWordContext(mainEntry, text, occurrenceMap[i] || 1);
-              if (displayMode === 'ipa') {
-                const contextIpa = ctx?.ipa;
-                const globalIpa = mainEntry.pronunciation;
-                const ipaValue = contextIpa || globalIpa;
-                if (ipaValue) {
-                  displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
-                }
-              } else if (displayMode === 'definition') {
-                const contextDef = ctx?.definition;
-                if (contextDef) {
-                  displayContent = contextDef;
-                } else if (mainEntry.definitions && mainEntry.definitions.length > 0) {
-                  displayContent = mainEntry.definitions[0].text;
-                }
+            if (showIpa && mainEntry) {
+              const ipaValue = ctx?.ipa || mainEntry.pronunciation;
+              if (ipaValue) {
+                displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
               }
             }
 
-            const ctx = mainEntry ? findWordContext(mainEntry, text, occurrenceMap[i] || 1) : null;
             const contextEmoji = ctx?.emoji;
             const globalEmoji = mainEntry?.emoji;
             const effectiveEmoji = contextEmoji || globalEmoji;
-            const shouldShowEmoji = enableAnnotations && showEmoji && mainEntry && effectiveEmoji &&
+            const shouldShowEmoji = showEmoji && mainEntry && effectiveEmoji &&
               effectiveEmoji !== getFlagForLanguage(mainEntry.language);
 
             return (
@@ -427,31 +415,20 @@ export default function LearnScreen() {
           const isSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();
           const isActiveOccurrence = isSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
 
-          let displayContent = '';
-          if (enableAnnotations && wordEntry && displayMode !== 'none') {
-const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
-             if (displayMode === 'ipa') {
-               const contextIpa = ctx?.ipa;
-               const globalIpa = wordEntry.pronunciation;
-               const ipaValue = contextIpa || globalIpa;
-               if (ipaValue) {
-                 displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
-               }
-             } else if (displayMode === 'definition') {
-               const contextDef = ctx?.definition;
-               if (contextDef) {
-                 displayContent = contextDef;
-               } else if (wordEntry.definitions && wordEntry.definitions.length > 0) {
-                 displayContent = wordEntry.definitions[0].text;
-               }
-             }
-           }
+          const wordCtx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
 
-          const emojiCtx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
-          const contextEmoji = emojiCtx?.emoji;
+          let displayContent = '';
+          if (showIpa && wordEntry) {
+            const ipaValue = wordCtx?.ipa || wordEntry.pronunciation;
+            if (ipaValue) {
+              displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
+            }
+          }
+
+          const contextEmoji = wordCtx?.emoji;
           const globalEmoji = wordEntry?.emoji;
           const effectiveEmoji = contextEmoji || globalEmoji;
-          const shouldShowEmoji = enableAnnotations && showEmoji && wordEntry && effectiveEmoji &&
+          const shouldShowEmoji = showEmoji && wordEntry && effectiveEmoji &&
             effectiveEmoji !== getFlagForLanguage(wordEntry.language);
 
           const isIgnored = !!cleanedWord && isWordIgnored(ignoredWords, cleanedWord, song?.originalLanguages?.[0] || 'unknown');
@@ -526,7 +503,32 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
         })}
       </View>
     );
-  }, [findWordEntry, words, ignoredWords, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, displayMode, enableAnnotations, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [findWordEntry, words, ignoredWords, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+
+  // Line shown in the settings preview: the selected line, otherwise the
+  // shortest-enough line with the most saved words that have an emoji or IPA
+  const previewLineIndex = useMemo(() => {
+    if (selectedLineIndex !== null && lines[selectedLineIndex]?.original.trim()) {
+      return selectedLineIndex;
+    }
+    let best: { index: number; score: number; fits: boolean } | null = null;
+    lines.forEach((line, index) => {
+      const lineWords = line.original.split(/\s+/).filter((w) => removeSpecialChars(w));
+      if (lineWords.length === 0) return;
+      const score = lineWords.filter((w) => {
+        const entry = findWordEntry(removeSpecialChars(w));
+        return !!entry && !!(
+          entry.emoji || entry.pronunciation || entry.contexts?.some((c) => c.emoji || c.ipa)
+        );
+      }).length;
+      const fits = lineWords.length <= PREVIEW_MAX_WORDS;
+      if (score === 0) return;
+      if (!best || (fits && !best.fits) || (fits === best.fits && score > best.score)) {
+        best = { index, score, fits };
+      }
+    });
+    return (best as { index: number } | null)?.index ?? null;
+  }, [lines, selectedLineIndex, findWordEntry]);
 
   if (!song) {
     return (
@@ -662,16 +664,19 @@ const ctx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) 
           selectedLanguages={localSelectedLanguages}
           onLanguagesChange={handleLanguageChange}
           availableLanguages={song.translations.map(t => t.language)}
-          displayMode={displayMode}
-          onDisplayModeChange={setDisplayMode}
+          showIpa={showIpa}
+          onShowIpaChange={setShowIpa}
           showEmoji={showEmoji}
           onShowEmojiChange={setShowEmoji}
-          enableAnnotations={enableAnnotations}
-          onEnableAnnotationsChange={setEnableAnnotations}
           blurTranslations={blurTranslations}
           onToggleBlur={toggleBlurTranslations}
           showMasteryLevelColors={showMasteryLevelColors}
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
+          previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}
+          previewLineIndex={previewLineIndex ?? 0}
+          fontSize={fontSize}
+          showTranslations={showTranslations}
+          renderPressableText={renderPressableText}
         />
       )}
 

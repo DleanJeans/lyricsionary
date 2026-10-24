@@ -78,7 +78,7 @@ function TranslationLine({
   );
 }
 
-function LearnLyricsLine({
+export function LearnLyricsLine({
   line,
   lineIndex,
   fontSize,

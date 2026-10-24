@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LANGUAGES } from '../constants/languages';
 import { Colors } from '../constants/theme';
-import { DisplayMode } from '../screens/LearnScreen';
+import { LearnLyricsLine, type LearnLine } from './LearnLyricsView';
 import { Text } from './Text';
 
 interface LearnSettingsMenuProps {
@@ -13,16 +13,96 @@ interface LearnSettingsMenuProps {
   selectedLanguages: string[];
   onLanguagesChange: (languages: string[]) => void;
   availableLanguages: string[];
-  displayMode: DisplayMode;
-  onDisplayModeChange: (mode: DisplayMode) => void;
+  showIpa: boolean;
+  onShowIpaChange: (show: boolean) => void;
   showEmoji: boolean;
   onShowEmojiChange: (show: boolean) => void;
-  enableAnnotations: boolean;
-  onEnableAnnotationsChange: (enable: boolean) => void;
   blurTranslations: boolean;
   onToggleBlur: () => void;
   showMasteryLevelColors: boolean;
   onToggleShowMasteryLevelColors: () => void;
+  previewLine: LearnLine | null;
+  previewLineIndex: number;
+  fontSize: number;
+  showTranslations: boolean;
+  renderPressableText: (text: string, lineIndex: number) => ReactNode;
+}
+
+const NO_UNBLURRED = new Set<string>();
+
+// Shown when the song has no saved words with an emoji or IPA to preview
+const SAMPLE_WORDS = [
+  { text: 'Bonjour', emoji: '👋', ipa: '/bɔ̃.ʒuʁ/', color: Colors.masteryLearning },
+  { text: 'le', emoji: '', ipa: '/lə/', color: Colors.masteryMastered },
+  { text: 'monde', emoji: '🌍', ipa: '/mɔ̃d/', color: Colors.masteryNew },
+];
+
+function SamplePreview({
+  showIpa,
+  showEmoji,
+  showMasteryLevelColors,
+  blurTranslations,
+  showTranslations,
+}: {
+  showIpa: boolean;
+  showEmoji: boolean;
+  showMasteryLevelColors: boolean;
+  blurTranslations: boolean;
+  showTranslations: boolean;
+}) {
+  return (
+    <View>
+      <View style={styles.sampleLine}>
+        {SAMPLE_WORDS.map((word) => (
+          <View key={word.text} style={styles.sampleWord}>
+            <View style={styles.sampleAnnotations}>
+              {showEmoji && !!word.emoji && <Text style={styles.sampleAnnotation}>{word.emoji}</Text>}
+              {showIpa && <Text style={styles.sampleAnnotation}>{word.ipa}</Text>}
+            </View>
+            <Text style={{ fontSize: 18, color: showMasteryLevelColors ? word.color : Colors.text }}>
+              {word.text}
+            </Text>
+          </View>
+        ))}
+      </View>
+      {showTranslations && (
+        <View style={[styles.sampleTranslation, blurTranslations && styles.sampleTranslationBlurred]}>
+          <Text style={[{ fontSize: 15, color: Colors.primaryLight }, blurTranslations && styles.blurredText]}>
+            Hello world
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function Chip({ label, icon, selected, onPress }: {
+  label: string;
+  icon?: ReactNode;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={[styles.chip, selected && styles.chipSelected]} onPress={onPress}>
+      {icon}
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function Tile({ label, icon, on, onPress }: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  on: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={[styles.tile, on && styles.tileOn]} onPress={onPress}>
+      <Ionicons name={icon} size={22} color={on ? Colors.primaryLight : Colors.textSecondary} />
+      <Text style={styles.tileLabel}>{label}</Text>
+      <Text style={styles.tileState}>{on ? 'On' : 'Off'}</Text>
+    </TouchableOpacity>
+  );
 }
 
 export default function LearnSettingsMenu({
@@ -32,16 +112,19 @@ export default function LearnSettingsMenu({
   selectedLanguages,
   onLanguagesChange,
   availableLanguages,
-  displayMode,
-  onDisplayModeChange,
+  showIpa,
+  onShowIpaChange,
   showEmoji,
   onShowEmojiChange,
-  enableAnnotations,
-  onEnableAnnotationsChange,
   blurTranslations,
   onToggleBlur,
   showMasteryLevelColors,
   onToggleShowMasteryLevelColors,
+  previewLine,
+  previewLineIndex,
+  fontSize,
+  showTranslations,
+  renderPressableText,
 }: LearnSettingsMenuProps) {
   const languagesToShow = LANGUAGES.filter((lang) =>
     availableLanguages.includes(lang.name)
@@ -55,9 +138,7 @@ export default function LearnSettingsMenu({
     }
   };
 
-  const handleDone = () => {
-    onClose();
-  };
+  const chipIconColor = (selected: boolean) => (selected ? Colors.primaryLight : Colors.textSecondary);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -65,147 +146,84 @@ export default function LearnSettingsMenu({
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Learn Settings</Text>
-            <TouchableOpacity onPress={handleDone} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {/* Edit Button */}
-            <TouchableOpacity style={styles.settingRow} onPress={() => { onEdit(); onClose(); }}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="create-outline" size={20} color={Colors.text} />
-                <Text style={styles.settingText}>Edit Song</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-
-            {/* Blur Toggle */}
-            <TouchableOpacity style={styles.settingRow} onPress={onToggleBlur}>
-              <View style={styles.settingLeft}>
-                <Ionicons
-                  name='eye-outline'
-                  size={20}
-                  color={Colors.text}
-                  style={{ filter: blurTranslations ? 'blur(2px)' : 'none' }}
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Live preview of the lyrics with the current settings */}
+            <View style={styles.preview} pointerEvents="none">
+              {previewLine ? (
+                <LearnLyricsLine
+                  lines={[]}
+                  line={previewLine}
+                  lineIndex={previewLineIndex}
+                  fontSize={fontSize}
+                  showTranslations={showTranslations}
+                  selectedLanguages={selectedLanguages}
+                  blurTranslations={blurTranslations}
+                  unblurredTranslations={NO_UNBLURRED}
+                  renderPressableText={renderPressableText}
+                  onTranslationPress={() => {}}
                 />
-                <Text style={styles.settingText}>Blur Translations</Text>
-              </View>
-              <View style={[styles.switch, blurTranslations && styles.switchActive]}>
-                <View style={[styles.switchThumb, blurTranslations && styles.switchThumbActive]} />
-              </View>
-            </TouchableOpacity>
-
-            {/* Mastery Level Colors Toggle */}
-            <TouchableOpacity style={styles.settingRow} onPress={onToggleShowMasteryLevelColors}>
-              <View style={styles.settingLeft}>
-                <Ionicons
-                  name="color-palette-outline"
-                  size={20}
-                  color={Colors.text}
+              ) : (
+                <SamplePreview
+                  showIpa={showIpa}
+                  showEmoji={showEmoji}
+                  showMasteryLevelColors={showMasteryLevelColors}
+                  blurTranslations={blurTranslations}
+                  showTranslations={showTranslations}
                 />
-                <Text style={styles.settingText}>Mastery Level Colors</Text>
-              </View>
-              <View style={[styles.switch, showMasteryLevelColors && styles.switchActive]}>
-                <View style={[styles.switchThumb, showMasteryLevelColors && styles.switchThumbActive]} />
-              </View>
-            </TouchableOpacity>
+              )}
+            </View>
 
-            {/* Translation Languages Section */}
+            <Text style={styles.sectionTitle}>Above Words</Text>
+            <View style={styles.chips}>
+              <Chip
+                label="Emoji"
+                icon={<Ionicons name="happy-outline" size={18} color={chipIconColor(showEmoji)} />}
+                selected={showEmoji}
+                onPress={() => onShowEmojiChange(!showEmoji)}
+              />
+              <Chip
+                label="IPA"
+                icon={<Ionicons name="volume-medium-outline" size={18} color={chipIconColor(showIpa)} />}
+                selected={showIpa}
+                onPress={() => onShowIpaChange(!showIpa)}
+              />
+            </View>
+
             {languagesToShow.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>Translation Languages</Text>
-                {languagesToShow.map((lang) => {
-                  const isSelected = selectedLanguages.includes(lang.name);
-                  return (
-                    <TouchableOpacity
+                <Text style={styles.sectionTitle}>Translations</Text>
+                <View style={styles.chips}>
+                  {languagesToShow.map((lang) => (
+                    <Chip
                       key={lang.code}
-                      style={styles.settingRow}
+                      label={lang.name}
+                      icon={<Text style={styles.flag}>{lang.flag}</Text>}
+                      selected={selectedLanguages.includes(lang.name)}
                       onPress={() => toggleLanguage(lang.name)}
-                    >
-                      <View style={styles.settingLeft}>
-                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                          {isSelected && <Ionicons name="checkmark" size={14} color={Colors.white} />}
-                        </View>
-                        <Text style={styles.languageEmoji}>{lang.flag}</Text>
-                        <Text style={styles.settingText}>{lang.name}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+                    />
+                  ))}
+                </View>
               </>
             )}
 
-            {/* Display Above Original Words Section */}
-            <Text style={styles.sectionTitle}>Display Above Original Words</Text>
+            <View style={styles.tiles}>
+              <Tile label="Blur translations" icon="eye-off-outline" on={blurTranslations} onPress={onToggleBlur} />
+              <Tile
+                label="Mastery colors"
+                icon="color-palette-outline"
+                on={showMasteryLevelColors}
+                onPress={onToggleShowMasteryLevelColors}
+              />
+            </View>
 
-            {/* Master Toggle */}
-            <TouchableOpacity
-              style={styles.settingRow}
-              onPress={() => onEnableAnnotationsChange(!enableAnnotations)}
-            >
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingTextBold}>Enable</Text>
-              </View>
-              <View style={[styles.switch, enableAnnotations && styles.switchActive]}>
-                <View style={[styles.switchThumb, enableAnnotations && styles.switchThumbActive]} />
-              </View>
-            </TouchableOpacity>
-
-            {/* Emoji Checkbox */}
-            <TouchableOpacity
-              style={styles.settingRow}
-              onPress={() => onShowEmojiChange(!showEmoji)}
-              disabled={!enableAnnotations}
-            >
-              <View style={styles.settingLeft}>
-                <View style={[styles.checkbox, showEmoji && styles.checkboxSelected, !enableAnnotations && styles.checkboxDisabled]}>
-                  {showEmoji && <Ionicons name="checkmark" size={14} color={Colors.white} />}
-                </View>
-                <Text style={[styles.settingText, !enableAnnotations && styles.disabledText]}>Emoji</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* IPA Radio */}
-            <TouchableOpacity
-              style={styles.settingRow}
-              onPress={() => onDisplayModeChange('ipa')}
-              disabled={!enableAnnotations}
-            >
-              <View style={styles.settingLeft}>
-                <View style={[styles.radioButton, !enableAnnotations && styles.radioButtonDisabled]}>
-                  {displayMode === 'ipa' && <View style={styles.radioButtonInner} />}
-                </View>
-                <Text style={[styles.settingText, !enableAnnotations && styles.disabledText]}>IPA</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Definition Radio */}
-            <TouchableOpacity
-              style={styles.settingRow}
-              onPress={() => onDisplayModeChange('definition')}
-              disabled={!enableAnnotations}
-            >
-              <View style={styles.settingLeft}>
-                <View style={[styles.radioButton, !enableAnnotations && styles.radioButtonDisabled]}>
-                  {displayMode === 'definition' && <View style={styles.radioButtonInner} />}
-                </View>
-                <Text style={[styles.settingText, !enableAnnotations && styles.disabledText]}>Definition</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* None Radio */}
-            <TouchableOpacity
-              style={styles.settingRow}
-              onPress={() => onDisplayModeChange('none')}
-              disabled={!enableAnnotations}
-            >
-              <View style={styles.settingLeft}>
-                <View style={[styles.radioButton, !enableAnnotations && styles.radioButtonDisabled]}>
-                  {displayMode === 'none' && <View style={styles.radioButtonInner} />}
-                </View>
-                <Text style={[styles.settingText, !enableAnnotations && styles.disabledText]}>None</Text>
-              </View>
+            <TouchableOpacity style={styles.editButton} onPress={() => { onEdit(); onClose(); }}>
+              <Ionicons name="create-outline" size={20} color={Colors.text} />
+              <Text style={styles.editButtonText}>Edit song</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -222,9 +240,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    width: '85%',
+    width: '90%',
     maxWidth: 440,
-    maxHeight: '80%',
+    maxHeight: '85%',
     backgroundColor: Colors.surface,
     borderRadius: 16,
   },
@@ -246,102 +264,127 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  scrollView: {
-    paddingHorizontal: 20,
+  scrollContent: {
+    padding: 20,
+    paddingTop: 16,
+  },
+  preview: {
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 12,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.textSecondary,
-    marginTop: 12,
+    marginTop: 18,
     marginBottom: 8,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
-  settingRow: {
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    minHeight: 44,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  settingText: {
-    fontSize: 16,
-    color: Colors.text,
-  },
-  settingTextBold: {
-    fontSize: 16,
-    color: Colors.text,
-    fontWeight: '600',
-  },
-  languageEmoji: {
-    fontSize: 20,
-  },
-  switch: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.border,
-    padding: 2,
-    justifyContent: 'center',
-  },
-  switchActive: {
-    backgroundColor: Colors.primary,
-  },
-  switchThumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.white,
-    alignSelf: 'flex-start',
-  },
-  switchThumbActive: {
-    alignSelf: 'flex-end',
-  },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 2,
+    gap: 6,
+    borderWidth: 1,
     borderColor: Colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
   },
-  checkboxSelected: {
-    backgroundColor: Colors.primary,
+  chipSelected: {
+    backgroundColor: 'rgba(108, 92, 231, 0.18)',
     borderColor: Colors.primary,
   },
-  checkboxDisabled: {
-    opacity: 0.4,
+  chipText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
-  radioButton: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
+  chipTextSelected: {
+    color: Colors.text,
+  },
+  flag: {
+    fontSize: 16,
+  },
+  tiles: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  tile: {
+    flex: 1,
+    gap: 6,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: Colors.surfaceLight,
+  },
+  tileOn: {
+    backgroundColor: 'rgba(108, 92, 231, 0.18)',
     borderColor: Colors.primary,
+  },
+  tileLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    marginTop: 4,
+  },
+  tileState: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  editButtonText: {
+    fontSize: 15,
+    color: Colors.text,
+  },
+  sampleLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sampleWord: {
     alignItems: 'center',
   },
-  radioButtonInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.primary,
+  sampleAnnotations: {
+    minHeight: 14,
+    marginBottom: -6,
+    flexDirection: 'row',
+    gap: 4,
   },
-  radioButtonDisabled: {
-    opacity: 0.4,
+  sampleAnnotation: {
+    fontSize: 10,
+    color: Colors.textSecondary,
   },
-  disabledText: {
-    opacity: 0.4,
+  sampleTranslation: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    marginHorizontal: -4,
+    paddingHorizontal: 4,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  sampleTranslationBlurred: {
+    backgroundColor: Colors.surfaceLight,
+  },
+  blurredText: {
+    filter: 'blur(5px)',
   },
 });

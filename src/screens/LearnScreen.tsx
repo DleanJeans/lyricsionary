@@ -429,8 +429,8 @@ export default function LearnScreen() {
 
           const contextEmoji = wordCtx?.emoji;
           const globalEmoji = wordEntry?.emoji;
-          const effectiveEmoji = contextEmoji || globalEmoji;
-          const shouldShowEmoji = showEmoji && wordEntry && effectiveEmoji &&
+          let effectiveEmoji = contextEmoji || globalEmoji;
+          let shouldShowEmoji = showEmoji && wordEntry && effectiveEmoji &&
             effectiveEmoji !== getFlagForLanguage(wordEntry.language);
 
           const isIgnored = !!cleanedWord && isWordIgnored(ignoredWords, cleanedWord, song?.originalLanguages?.[0] || 'unknown');
@@ -441,13 +441,27 @@ export default function LearnScreen() {
           const compoundStart = compoundParts ? word.indexOf(cleanedWord) : -1;
           const compoundEntries = compoundParts?.map((part) => words.find((w) => w.word.toLowerCase() === part.lemma));
 
-          // A split compound shows its parts' IPA joined, e.g. Liebesbrief -> /ˈliːbəsbʁiːf/
+          // A split compound shows its parts' IPA joined, e.g. Liebesbrief -> /ˈliːbəsbʁiːf/,
           if (showIpa && compoundParts && compoundEntries) {
             const compoundIpa = joinCompoundIpa(
               compoundParts,
               compoundEntries.map((entry) => entry && (findWordContext(entry, text)?.ipa || entry.pronunciation))
             );
             if (compoundIpa) displayContent = `/${compoundIpa}/`;
+          }
+
+          // and its parts' emojis side by side, e.g. Liebesbrief -> 💕✉️ (parts without one are skipped)
+          if (showEmoji && compoundParts && compoundEntries) {
+            const compoundEmoji = compoundEntries
+              .map((entry) => {
+                const emoji = entry && (findWordContext(entry, text)?.emoji || entry.emoji);
+                return emoji && emoji !== getFlagForLanguage(entry.language) ? emoji : '';
+              })
+              .join('');
+            if (compoundEmoji) {
+              effectiveEmoji = compoundEmoji;
+              shouldShowEmoji = true;
+            }
           }
 
           const wordColor = isSelected

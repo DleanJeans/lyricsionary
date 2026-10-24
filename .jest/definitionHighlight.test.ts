@@ -12,6 +12,9 @@ describe('findDefinitionHighlight', () => {
   it("finds contracted parts like 've and n't inside words", () => {
     expect(highlighted("I've got it", "'ve got")).toEqual(["'ve got"]);
     expect(highlighted("It isn't love", "n't")).toEqual(["n't"]);
+    expect(highlighted("It isn't love", 'is')).toEqual(['is']);
+    expect(highlighted("I don't know", 'do')).toEqual(['do']);
+    expect(highlighted('It isnot love', 'is')).toBeNull();
     expect(highlighted('It isn’t love', "not; n't")).toEqual(['n’t']);
   });
 

@@ -16,7 +16,7 @@ function candidatesOf(definition: string): string[] {
 
 // Where a needle appears as whole words from position `from`, or -1.
 // An edge that isn't a letter, like the apostrophe in "'ve got", can sit inside a word ("I've got"),
-// and so can a contracted "n't" ("isn't").
+// and so can a contracted "n't", on either side: "n't" and "is" both match in "isn't".
 function indexOfWhole(haystack: string, needle: string, from = 0): number {
   const checkBefore = WORD_CHAR.test(needle[0]) && !needle.startsWith("n't");
   const checkAfter = WORD_CHAR.test(needle[needle.length - 1]);
@@ -25,7 +25,7 @@ function indexOfWhole(haystack: string, needle: string, from = 0): number {
     const before = haystack[index - 1];
     const after = haystack[index + needle.length];
     const okBefore = !checkBefore || !before || !WORD_CHAR.test(before);
-    const okAfter = !checkAfter || !after || !WORD_CHAR.test(after);
+    const okAfter = !checkAfter || !after || !WORD_CHAR.test(after) || haystack.startsWith("n't", index + needle.length);
     if (okBefore && okAfter) return index;
     index = haystack.indexOf(needle, index + 1);
   }

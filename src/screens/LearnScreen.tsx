@@ -217,7 +217,8 @@ export default function LearnScreen() {
 
   const lines = computedLines;
 
-  const lineCount = lines.length;
+  // Blank lines between verses aren't lyrics
+  const lineCount = lines.filter((line) => line.original.trim()).length;
   // Updates as words are saved or ignored, like the song's progress in Songs
   const progressSongs = useMemo(() => (song ? [song] : []), [song]);
   const wordProgress = useWordProgress(progressSongs).get(song?.id ?? '');

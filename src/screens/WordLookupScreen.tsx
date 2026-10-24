@@ -25,6 +25,7 @@ import MasteryLevelSelector from '../components/MasteryLevelSelector';
 import PronunciationAudio from '../components/PronunciationAudio';
 import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
+import { isSameLanguage } from '../constants/languages';
 import { useStore } from '../store/useStore';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
@@ -154,7 +155,7 @@ export default function WordLookupScreen() {
   const findExistingWord = () => words.find((entry) =>
     wordId
       ? entry.id === wordId
-      : entry.word.toLowerCase() === displayWord?.toLowerCase() && entry.language === language
+      : entry.word.toLowerCase() === displayWord?.toLowerCase() && isSameLanguage(entry.language, language)
   );
 
   useEffect(() => {

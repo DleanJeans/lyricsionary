@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
+import { isSameLanguage } from '../constants/languages';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import { MasteryLevel, Song, Translation, WordContext, WordEntry } from '../types';
 
@@ -326,7 +327,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   addOrUpdateWord: async (word, language, pronunciation, contexts, masteryLevel) => {
     const existing = get().words.find(
-      (w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language
+      (w) => w.word.toLowerCase() === word.toLowerCase() && isSameLanguage(w.language, language)
     );
     let words: WordEntry[];
     if (existing) {

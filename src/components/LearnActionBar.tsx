@@ -8,6 +8,8 @@ import { Text } from './Text';
 interface LearnActionBarProps {
   fontSize: number;
   lineCount: number;
+  /** Known words out of the song's words, e.g. "12/40 words (30%)" */
+  wordProgress?: string;
   onDecreaseFontSize: () => void;
   onIncreaseFontSize: () => void;
 }
@@ -15,6 +17,7 @@ interface LearnActionBarProps {
 export default function LearnActionBar({
   fontSize,
   lineCount,
+  wordProgress,
   onDecreaseFontSize,
   onIncreaseFontSize,
 }: LearnActionBarProps) {
@@ -45,7 +48,9 @@ export default function LearnActionBar({
           style={styles.fontButton}
         />
       </View>
-      <Text style={styles.lineCounter}>{lineCount} lines</Text>
+      <Text style={styles.lineCounter} numberOfLines={1}>
+        {wordProgress ? `${wordProgress} · ${lineCount} lines` : `${lineCount} lines`}
+      </Text>
     </View>
   );
 }
@@ -80,6 +85,8 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   lineCounter: {
+    flexShrink: 1,
+    marginLeft: 12,
     color: Colors.textSecondary,
     fontSize: 13,
     fontVariant: ['tabular-nums'],

@@ -3,6 +3,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, I18nManager, StyleSheet, TouchableOpacity, View } from 'react-native';
 import LearnActionBar from '../components/LearnActionBar';
+import { useWordProgress } from '../hooks/useWordProgress';
 import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import EmptyState from '../components/EmptyState';
@@ -217,6 +218,9 @@ export default function LearnScreen() {
   const lines = computedLines;
 
   const lineCount = lines.length;
+  // Updates as words are saved or ignored, like the song's progress in Songs
+  const progressSongs = useMemo(() => (song ? [song] : []), [song]);
+  const wordProgress = useWordProgress(progressSongs).get(song?.id ?? '');
 
   // Turn off loading state once lines are computed
   useEffect(() => {
@@ -643,6 +647,7 @@ export default function LearnScreen() {
     <LearnActionBar
       fontSize={fontSize}
       lineCount={lineCount}
+      wordProgress={wordProgress?.label}
       onDecreaseFontSize={() => setFontSize(fontSize - 1)}
       onIncreaseFontSize={() => setFontSize(fontSize + 1)}
     />

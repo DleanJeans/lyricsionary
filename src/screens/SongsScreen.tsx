@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
-import { makeIgnoredWordChecker, useStore } from '../store/useStore';
+import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
+import { getFlagForLanguage } from '../constants/languages';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Song, RootTabParamList } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -23,10 +23,9 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
 import LanguageTabButtons from '../components/LanguageTabButtons';
-import { countKnownWords, countWords } from '../utils/wordFrequency';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
-import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
+import { useWordProgress } from '../hooks/useWordProgress';
 
 const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'aZ', 'zA'] as const;
 type SortMode = (typeof SORT_MODES)[number];
@@ -42,9 +41,6 @@ export default function SongsScreen() {
   const setMatchedSongs = useStore((s) => s.setMatchedSongs);
   const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
   const isLoadingSong = useStore((s) => s.isLoadingSong);
-  const words = useStore((s) => s.words);
-  const ignoredWords = useStore((s) => s.ignoredWords);
-  const compoundSplits = useStore((s) => s.compoundSplits);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -136,56 +132,7 @@ export default function SongsScreen() {
     setSongToDelete(null);
   };
 
-  // Saved words keyed by "language\u0000word", with language names normalized like LearnScreen
-  const savedWordKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const entry of words) {
-      const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
-      keys.add(`${language}\u0000${entry.word.toLowerCase()}`);
-    }
-    return keys;
-  }, [words]);
-
-  // Whether a German compound splits into saved words, like Learn shows it, e.g. Liebesbrief once
-  // Liebe and Brief are saved; cached per word since every song's lyrics are checked on each render
-  const isKnownCompound = useMemo(() => {
-    const knownGermanWords = buildKnownGermanWords(words);
-    const cache = new Map<string, boolean>();
-    return (word: string) => {
-      const lower = word.toLowerCase();
-      let known = cache.get(lower);
-      if (known === undefined) {
-        const parts = getCompoundParts(word, compoundSplits, knownGermanWords);
-        known = !!parts && parts.every((part) => knownGermanWords.has(part.lemma));
-        cache.set(lower, known);
-      }
-      return known;
-    };
-  }, [words, compoundSplits]);
-
-  // Progress label per song, computed once per change to the songs or known words instead of on every
-  // render (typing in the search box re-renders the list and recounted every song's lyrics)
-  const wordProgress = useMemo(() => {
-    const progress = new Map<string, { percent: number; label: string }>();
-    const isIgnored = makeIgnoredWordChecker(ignoredWords);
-    for (const song of songs) {
-      const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
-      const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
-      const isGermanSong = isGermanLanguage(song.originalLanguages);
-      const total = countWords(song.originalLyrics);
-      const known = countKnownWords(song.originalLyrics, (word) => {
-        const lower = word.toLowerCase();
-        return (
-          languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
-          isIgnored(word, ignoreLanguage) ||
-          (isGermanSong && isKnownCompound(word))
-        );
-      }, song.originalLanguages);
-      const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
-      progress.set(song.id, { percent, label: `${known}/${total} words (${percent}%)` });
-    }
-    return progress;
-  }, [songs, savedWordKeys, ignoredWords, isKnownCompound]);
+  const wordProgress = useWordProgress(songs);
 
   const sortedSongs = [...songs].sort((a, b) => {
     switch (sortMode) {

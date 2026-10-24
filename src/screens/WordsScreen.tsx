@@ -68,8 +68,14 @@ export default function WordsScreen() {
       (!searchQuery.trim() || w.word.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
+  // Saved words by language and lowercase word, for coloring the Top list (the first one wins, like find)
+  const savedWordIndex = React.useMemo(
+    () => new Map([...words].reverse().map((w) => [`${w.language}\u0000${w.word.toLowerCase()}`, w])),
+    [words],
+  );
+
   const renderFrequencyItem = ({ item, index }: { item: WordFrequency; index: number }) => {
-    const savedWord = words.find((w) => w.word.toLowerCase() === item.word.toLowerCase() && w.language === item.language);
+    const savedWord = savedWordIndex.get(`${item.language}\u0000${item.word.toLowerCase()}`);
     return (
       <TouchableOpacity
         style={styles.frequencyRow}

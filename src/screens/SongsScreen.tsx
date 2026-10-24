@@ -28,7 +28,7 @@ import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
 
-const SORT_MODES = ['lastOpened', 'openCount', 'aZ', 'zA'] as const;
+const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'aZ', 'zA'] as const;
 type SortMode = (typeof SORT_MODES)[number];
 const isSortMode = (value: unknown): value is SortMode => SORT_MODES.includes(value as SortMode);
 
@@ -95,21 +95,6 @@ export default function SongsScreen() {
     };
   }, [songs]);
 
-  const sortedSongs = [...songs].sort((a, b) => {
-    switch (sortMode) {
-      case 'lastOpened':
-        return (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0);
-      case 'openCount':
-        return (b.openCount ?? 0) - (a.openCount ?? 0);
-      case 'aZ':
-        return a.songName.toLowerCase().localeCompare(b.songName.toLowerCase());
-      case 'zA':
-        return b.songName.toLowerCase().localeCompare(a.songName.toLowerCase());
-      default:
-        return 0;
-    }
-  });
-
   // Helper function to find matched line in lyrics
   const findMatchedLine = (song: Song, query: string): string | null => {
     if (!query.trim()) return null;
@@ -123,26 +108,6 @@ export default function SongsScreen() {
     }
     return null;
   };
-
-  // Apply language filter
-  const languageFilteredSongs =
-    selectedLanguages.length > 0
-      ? sortedSongs.filter((s) => (s.originalLanguages ?? []).some((lang) => selectedLanguages.includes(lang)))
-      : sortedSongs;
-
-  // Apply search filter
-  const filteredSongs = searchQuery.trim()
-    ? languageFilteredSongs.filter((s) => {
-        if (searchInLyrics) {
-          // Search in lyrics
-          return findMatchedLine(s, searchQuery) !== null;
-        } else {
-          // Search in song name and artist
-
-          return matchesSearch(s.songName, searchQuery) || matchesSearch(s.artistName, searchQuery);
-        }
-      })
-    : languageFilteredSongs;
 
   const handlePressSong = (song: Song) => {
     setIsLoadingSong(true);
@@ -201,7 +166,7 @@ export default function SongsScreen() {
   // Progress label per song, computed once per change to the songs or known words instead of on every
   // render (typing in the search box re-renders the list and recounted every song's lyrics)
   const wordProgress = useMemo(() => {
-    const progress = new Map<string, string>();
+    const progress = new Map<string, { percent: number; label: string }>();
     for (const song of songs) {
       const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
       const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
@@ -216,10 +181,47 @@ export default function SongsScreen() {
         );
       }, song.originalLanguages);
       const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
-      progress.set(song.id, `${known}/${total} words (${percent}%)`);
+      progress.set(song.id, { percent, label: `${known}/${total} words (${percent}%)` });
     }
     return progress;
   }, [songs, savedWordKeys, ignoredWords, isKnownCompound]);
+
+  const sortedSongs = [...songs].sort((a, b) => {
+    switch (sortMode) {
+      case 'lastOpened':
+        return (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0);
+      case 'openCount':
+        return (b.openCount ?? 0) - (a.openCount ?? 0);
+      case 'progress':
+        return (wordProgress.get(b.id)?.percent ?? 0) - (wordProgress.get(a.id)?.percent ?? 0);
+      case 'aZ':
+        return a.songName.toLowerCase().localeCompare(b.songName.toLowerCase());
+      case 'zA':
+        return b.songName.toLowerCase().localeCompare(a.songName.toLowerCase());
+      default:
+        return 0;
+    }
+  });
+
+  // Apply language filter
+  const languageFilteredSongs =
+    selectedLanguages.length > 0
+      ? sortedSongs.filter((s) => (s.originalLanguages ?? []).some((lang) => selectedLanguages.includes(lang)))
+      : sortedSongs;
+
+  // Apply search filter
+  const filteredSongs = searchQuery.trim()
+    ? languageFilteredSongs.filter((s) => {
+        if (searchInLyrics) {
+          // Search in lyrics
+          return findMatchedLine(s, searchQuery) !== null;
+        } else {
+          // Search in song name and artist
+
+          return matchesSearch(s.songName, searchQuery) || matchesSearch(s.artistName, searchQuery);
+        }
+      })
+    : languageFilteredSongs;
 
   const toggleSearch = () => {
     if (showSearch) {
@@ -239,6 +241,8 @@ export default function SongsScreen() {
         return 'time-outline';
       case 'openCount':
         return 'stats-chart-outline';
+      case 'progress':
+        return 'trending-up-outline';
       case 'aZ':
         return 'arrow-down';
       case 'zA':
@@ -254,6 +258,8 @@ export default function SongsScreen() {
         return 'recently opened';
       case 'openCount':
         return 'most opened';
+      case 'progress':
+        return 'most words known';
       case 'aZ':
         return 'title A to Z';
       case 'zA':
@@ -295,7 +301,7 @@ export default function SongsScreen() {
             {getFaviconUrl(item.sourceUrl ?? '') && (
               <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
             )}
-            <Text style={styles.metaText}>{wordProgress.get(item.id)}</Text>
+            <Text style={styles.metaText}>{wordProgress.get(item.id)?.label}</Text>
             <View style={styles.languages}>
               {(item.originalLanguages ?? []).map((lang) => (
                 <Text key={`orig-${lang}`} style={styles.flag}>

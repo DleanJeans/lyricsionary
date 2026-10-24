@@ -11,19 +11,18 @@ interface LanguageTabButtonsProps {
   languageCounts?: Record<string, number>;
 }
 
-interface LanguageFilterChipProps {
-  language: (typeof LANGUAGES)[number];
+interface FilterChipProps {
+  /** Shown before the label, e.g. a flag */
+  icon: React.ReactNode;
+  label: string;
   count: number;
   selected: boolean;
   onPress: () => void;
+  accessibilityLabel: string;
 }
 
-function LanguageFilterChip({
-  language,
-  count,
-  selected,
-  onPress,
-}: LanguageFilterChipProps) {
+// A selectable filter pill with a count, like the language filters
+export function FilterChip({ icon, label, count, selected, onPress, accessibilityLabel }: FilterChipProps) {
   return (
     <Pressable
       style={({ pressed }) => [
@@ -33,12 +32,12 @@ function LanguageFilterChip({
       ]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={language.name + ' language filter'}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected }}
     >
-      <Text style={styles.flag}>{language.flag}</Text>
+      {icon}
       <Text style={[styles.languageName, selected && styles.languageNameSelected]}>
-        {language.name}
+        {label}
       </Text>
       {count > 0 && (
         <View style={[styles.badge, selected && styles.badgeSelected]}>
@@ -84,12 +83,14 @@ export default function LanguageTabButtons({
       contentContainerStyle={styles.contentContainer}
     >
       {languagesToShow.map((language) => (
-        <LanguageFilterChip
+        <FilterChip
           key={language.code}
-          language={language}
+          icon={<Text style={styles.flag}>{language.flag}</Text>}
+          label={language.name}
           count={languageCounts[language.name] ?? 0}
           selected={selectedLanguages.includes(language.name)}
           onPress={() => toggleLanguage(language.name)}
+          accessibilityLabel={language.name + ' language filter'}
         />
       ))}
     </ScrollView>

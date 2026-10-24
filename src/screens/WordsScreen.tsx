@@ -10,13 +10,14 @@ import { useNavigation } from '@react-navigation/native';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { languageKey } from '../constants/languages';
-import { WordEntry } from '../types';
+import { MasteryLevel, WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
 import LanguageTabButtons from '../components/LanguageTabButtons';
+import MasteryLevelTabs from '../components/MasteryLevelTabs';
 import EmptyState from '../components/EmptyState';
 import IconButton from '../components/IconButton';
 import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
@@ -46,6 +47,7 @@ export default function WordsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [selectedLevel, setSelectedLevel] = useState<MasteryLevel | null>(null);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
   const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -110,9 +112,19 @@ export default function WordsScreen() {
   const languageFilteredWords =
     selectedLanguages.length > 0 ? filteredWords.filter((w) => selectedLanguages.includes(w.language)) : filteredWords;
 
+  // Count each level among the language's words, then apply the level filter
+  const levelCounts: Partial<Record<MasteryLevel, number>> = {};
+  for (const w of languageFilteredWords) {
+    const level = w.masteryLevel || 'New';
+    levelCounts[level] = (levelCounts[level] ?? 0) + 1;
+  }
+  const levelFilteredWords = selectedLevel
+    ? languageFilteredWords.filter((w) => (w.masteryLevel || 'New') === selectedLevel)
+    : languageFilteredWords;
+
   // Apply search filter: the word, its language, IPA or any of its meanings, ignoring accents
   const searchedWords = searchQuery.trim()
-    ? languageFilteredWords.filter((w) =>
+    ? levelFilteredWords.filter((w) =>
         [
           w.word,
           w.language,
@@ -121,7 +133,7 @@ export default function WordsScreen() {
           ...(w.contexts ?? []).map((c) => c.definition),
         ].some((text) => matchesSearch(text, searchQuery)),
       )
-    : languageFilteredWords;
+    : levelFilteredWords;
 
   const toggleSearch = () => {
     if (showSearch) setSearchQuery('');
@@ -161,9 +173,9 @@ export default function WordsScreen() {
   const languageTabsToggle = (
     <IconButton
       icon="language-outline"
-      label={showLanguageTabs ? 'Hide language filters' : 'Show language filters'}
+      label={showLanguageTabs ? 'Hide filters' : 'Show filters'}
       onPress={() => setShowLanguageTabs(!showLanguageTabs)}
-      selected={selectedLanguages.length > 0}
+      selected={selectedLanguages.length > 0 || (!showFrequency && !!selectedLevel)}
     />
   );
 
@@ -220,6 +232,9 @@ export default function WordsScreen() {
             availableLanguages={availableLanguages}
             languageCounts={languageCounts}
           />
+          {!showFrequency && (
+            <MasteryLevelTabs selectedLevel={selectedLevel} onLevelChange={setSelectedLevel} levelCounts={levelCounts} />
+          )}
         </View>
       )}
       {showFrequency ? (
@@ -257,6 +272,7 @@ export default function WordsScreen() {
             onAction={() => {
               setSearchQuery('');
               setSelectedLanguages([]);
+              setSelectedLevel(null);
             }}
           />
         )

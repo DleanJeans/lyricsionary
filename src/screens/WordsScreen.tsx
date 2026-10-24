@@ -97,13 +97,17 @@ export default function WordsScreen() {
   const languageFilteredWords =
     selectedLanguages.length > 0 ? filteredWords.filter((w) => selectedLanguages.includes(w.language)) : filteredWords;
 
-  // Apply search filter
-  const searchedWords = searchQuery.trim()
-    ? languageFilteredWords.filter(
-        (w) =>
-          w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          w.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (w.pronunciation && w.pronunciation.toLowerCase().includes(searchQuery.toLowerCase())),
+  // Apply search filter: the word, its language, IPA or any of its meanings
+  const query = searchQuery.trim().toLowerCase();
+  const searchedWords = query
+    ? languageFilteredWords.filter((w) =>
+        [
+          w.word,
+          w.language,
+          w.pronunciation,
+          ...(w.definitions ?? []).map((d) => d.text),
+          ...(w.contexts ?? []).map((c) => c.definition),
+        ].some((text) => text?.toLowerCase().includes(query)),
       )
     : languageFilteredWords;
 
@@ -134,7 +138,7 @@ export default function WordsScreen() {
   const searchInput = (
     <TextInput
       style={styles.searchInput}
-      placeholder="Search by word or language..."
+      placeholder="Search by word, meaning or language..."
       placeholderTextColor={Colors.textMuted}
       value={searchQuery}
       onChangeText={setSearchQuery}

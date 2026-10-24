@@ -15,7 +15,7 @@ import { getFlagForLanguage, getLanguageNameFromCode, isRtlLanguage } from '../c
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
-import { isWordIgnored, useStore } from '../store/useStore';
+import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
 import { withWordForms } from '../utils/definitionHighlight';
@@ -54,6 +54,7 @@ export default function LearnScreen() {
   const song = songs.find((s) => s.id === activeSongId);
   const isGermanSong = isGermanLanguage(song?.originalLanguages);
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
+  const isIgnoredWord = useMemo(() => makeIgnoredWordChecker(ignoredWords), [ignoredWords]);
   const wordEntryIndex = useMemo(() => {
     const songLanguages = new Set(
       (song?.originalLanguages ?? []).map((language) =>
@@ -431,7 +432,7 @@ export default function LearnScreen() {
           let shouldShowEmoji = showEmoji && wordEntry && effectiveEmoji &&
             effectiveEmoji !== getFlagForLanguage(wordEntry.language);
 
-          const isIgnored = !!cleanedWord && isWordIgnored(ignoredWords, cleanedWord, song?.originalLanguages?.[0] || 'unknown');
+          const isIgnored = !!cleanedWord && isIgnoredWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
 
           const compoundParts = !wordEntry && !isIgnored && isGermanSong && cleanedWord
             ? getCompoundParts(cleanedWord, compoundSplits, knownGermanWords)
@@ -527,7 +528,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, ignoredWords, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA

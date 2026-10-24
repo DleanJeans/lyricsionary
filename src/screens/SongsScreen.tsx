@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
-import { isWordIgnored, useStore } from '../store/useStore';
+import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -167,6 +167,7 @@ export default function SongsScreen() {
   // render (typing in the search box re-renders the list and recounted every song's lyrics)
   const wordProgress = useMemo(() => {
     const progress = new Map<string, { percent: number; label: string }>();
+    const isIgnored = makeIgnoredWordChecker(ignoredWords);
     for (const song of songs) {
       const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
       const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
@@ -176,7 +177,7 @@ export default function SongsScreen() {
         const lower = word.toLowerCase();
         return (
           languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
-          isWordIgnored(ignoredWords, word, ignoreLanguage) ||
+          isIgnored(word, ignoreLanguage) ||
           (isGermanSong && isKnownCompound(word))
         );
       }, song.originalLanguages);

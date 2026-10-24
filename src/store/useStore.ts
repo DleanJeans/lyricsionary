@@ -26,6 +26,12 @@ export interface AutoFetch {
 export const isWordIgnored = (ignoredWords: IgnoredWord[], word: string, language: string) =>
   ignoredWords.some((w) => w.word === word.toLowerCase() && w.language === language);
 
+// isWordIgnored for checking many words, e.g. every word of every song, with one lookup each
+export function makeIgnoredWordChecker(ignoredWords: IgnoredWord[]): (word: string, language: string) => boolean {
+  const keys = new Set(ignoredWords.map((w) => `${w.language}\u0000${w.word}`));
+  return (word, language) => keys.has(`${language}\u0000${word.toLowerCase()}`);
+}
+
 // AsyncStorage has no transaction primitive. Serialize writes so a slower
 // earlier operation cannot finish after and overwrite a newer in-memory state.
 let storageWriteQueue: Promise<void> = Promise.resolve();

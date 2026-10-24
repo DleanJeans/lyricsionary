@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { useNavigation } from '@react-navigation/native';
-import { isWordIgnored, useStore } from '../store/useStore';
+import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { languageKey } from '../constants/languages';
 import { WordEntry } from '../types';
@@ -52,7 +52,7 @@ export default function WordsScreen() {
 
   // Words in saved lyrics sorted by occurrences, excluding ignored words
   const wordFrequencies = React.useMemo(
-    () => (showFrequency ? countWordOccurrences(songs, (w, lang) => isWordIgnored(ignoredWords, w, lang)) : []),
+    () => (showFrequency ? countWordOccurrences(songs, makeIgnoredWordChecker(ignoredWords)) : []),
     [showFrequency, songs, ignoredWords],
   );
 

@@ -14,6 +14,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { LANGUAGES, findLanguageName, getLanguageNameFromCode } from '../constants/languages';
+import { matchesSearch } from '../utils/search';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
@@ -152,19 +153,17 @@ export default function EditorScreen() {
     }
 
     const searchQuery = trimmedSongName || trimmedArtistName;
+    // Ignoring case and accents, like the Saved Songs search the button opens
     const matchedSongs = songs.filter((s) => {
       if (trimmedSongName && trimmedArtistName) {
         // If both are provided, match on both
-        return (
-          s.songName.toLowerCase().includes(trimmedSongName.toLowerCase()) &&
-          s.artistName.toLowerCase().includes(trimmedArtistName.toLowerCase())
-        );
+        return matchesSearch(s.songName, trimmedSongName) && matchesSearch(s.artistName, trimmedArtistName);
       } else if (trimmedSongName) {
         // Match on song name
-        return s.songName.toLowerCase().includes(trimmedSongName.toLowerCase());
+        return matchesSearch(s.songName, trimmedSongName);
       } else {
         // Match on artist name
-        return s.artistName.toLowerCase().includes(trimmedArtistName.toLowerCase());
+        return matchesSearch(s.artistName, trimmedArtistName);
       }
     });
 

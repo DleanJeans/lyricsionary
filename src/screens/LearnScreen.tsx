@@ -44,6 +44,10 @@ export default function LearnScreen() {
   const toggleBlurTranslations = useStore((s) => s.toggleBlurTranslations);
   const showMasteryLevelColors = useStore((s) => s.showMasteryLevelColors);
   const toggleShowMasteryLevelColors = useStore((s) => s.toggleShowMasteryLevelColors);
+  const showIpa = useStore((s) => s.showIpa);
+  const setShowIpa = useStore((s) => s.setShowIpa);
+  const showEmoji = useStore((s) => s.showEmoji);
+  const setShowEmoji = useStore((s) => s.setShowEmoji);
   const isLoadingSong = useStore((s) => s.isLoadingSong);
   const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
 
@@ -78,8 +82,6 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [showIpa, setShowIpa] = useState(true);
-  const [showEmoji, setShowEmoji] = useState(true);
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
   const [isRendering, setIsRendering] = useState(true);

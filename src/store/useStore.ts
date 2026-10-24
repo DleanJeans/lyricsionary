@@ -8,6 +8,7 @@ const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
 const IGNORED_WORDS_KEY = '@lyricsionary_ignored_words';
 const COMPOUND_SPLITS_KEY = '@lyricsionary_compound_splits';
+const LEARN_SETTINGS_KEY = '@lyricsionary_learn_settings';
 
 export interface IgnoredWord {
   word: string;
@@ -34,6 +35,10 @@ function persist(key: string, value: string): Promise<void> {
   return write;
 }
 
+// Learn display settings kept across app restarts
+const LEARN_SETTINGS = ['fontSize', 'showTranslations', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showEmoji'] as const;
+export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
+
 interface AppState {
   songs: Song[];
   words: WordEntry[];
@@ -51,6 +56,8 @@ interface AppState {
   selectedTranslationLanguages: string[];
   blurTranslations: boolean;
   showMasteryLevelColors: boolean;
+  showIpa: boolean;
+  showEmoji: boolean;
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
@@ -82,6 +89,9 @@ interface AppState {
   setSelectedTranslationLanguages: (languages: string[]) => void;
   toggleBlurTranslations: () => void;
   toggleShowMasteryLevelColors: () => void;
+  setShowIpa: (show: boolean) => void;
+  setShowEmoji: (show: boolean) => void;
+  loadLearnSettings: () => Promise<void>;
 
   // Word actions
   loadWords: () => Promise<void>;
@@ -103,6 +113,17 @@ interface AppState {
   setCompoundSplit: (word: string, parts: string[] | null) => Promise<void>;
 }
 
+function pickLearnSettings(state: LearnSettings): LearnSettings {
+  return Object.fromEntries(LEARN_SETTINGS.map((key) => [key, state[key]])) as unknown as LearnSettings;
+}
+
+function setLearnSettings(settings: Partial<LearnSettings>) {
+  useStore.setState(settings);
+  persist(LEARN_SETTINGS_KEY, JSON.stringify(pickLearnSettings(useStore.getState()))).catch((e) =>
+    console.error('Failed to save Learn settings', e)
+  );
+}
+
 export const useStore = create<AppState>((set, get) => ({
   songs: [],
   words: [],
@@ -120,6 +141,8 @@ export const useStore = create<AppState>((set, get) => ({
   selectedTranslationLanguages: [],
   blurTranslations: true,
   showMasteryLevelColors: true,
+  showIpa: true,
+  showEmoji: true,
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
@@ -215,15 +238,36 @@ export const useStore = create<AppState>((set, get) => ({
 
   setAutoFetch: (autoFetch) => set({ autoFetch }),
 
-  setFontSize: (size) => set({ fontSize: Math.max(12, Math.min(32, size)) }),
+  setFontSize: (size) => setLearnSettings({ fontSize: Math.max(12, Math.min(32, size)) }),
 
-  toggleTranslations: () => set((s) => ({ showTranslations: !s.showTranslations })),
+  toggleTranslations: () => setLearnSettings({ showTranslations: !get().showTranslations }),
 
   setSelectedTranslationLanguages: (languages) => set({ selectedTranslationLanguages: languages }),
 
-  toggleBlurTranslations: () => set((s) => ({ blurTranslations: !s.blurTranslations })),
+  toggleBlurTranslations: () => setLearnSettings({ blurTranslations: !get().blurTranslations }),
 
-  toggleShowMasteryLevelColors: () => set((s) => ({ showMasteryLevelColors: !s.showMasteryLevelColors })),
+  toggleShowMasteryLevelColors: () => setLearnSettings({ showMasteryLevelColors: !get().showMasteryLevelColors }),
+
+  setShowIpa: (showIpa) => setLearnSettings({ showIpa }),
+
+  setShowEmoji: (showEmoji) => setLearnSettings({ showEmoji }),
+
+  loadLearnSettings: async () => {
+    try {
+      const json = await AsyncStorage.getItem(LEARN_SETTINGS_KEY);
+      if (!json) return;
+      const saved = JSON.parse(json) as Partial<LearnSettings>;
+      const defaults = pickLearnSettings(get());
+      const settings: Partial<LearnSettings> = {};
+      // Skip values of the wrong type, e.g. from an older or corrupted save
+      for (const key of LEARN_SETTINGS) {
+        if (typeof saved[key] === typeof defaults[key]) Object.assign(settings, { [key]: saved[key] });
+      }
+      set(settings);
+    } catch (e) {
+      console.error('Failed to load Learn settings', e);
+    }
+  },
 
   loadWords: async () => {
     try {

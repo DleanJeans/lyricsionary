@@ -224,13 +224,24 @@ describe('inflected forms', () => {
     expect(texts({ de: [section('German', 'Verb', FRAGEN)] }, 'German')).toEqual(['to ask', 'to ask for', 'to ask after', 'to wonder']);
   });
 
-  it('follows a form of a form to its base form, like vidée -> vidé -> vider', async () => {
-    const formOf = (description: string, lemma: string) =>
-      `<span class="form-of-definition use-with-mention">${description} of <span class="form-of-definition-link"><i class="Latn mention" lang="fr"><a rel="mw:WikiLink" href="/wiki/${lemma}#French" title="${lemma}">${lemma}</a></i></span></span>`;
+  it('follows a form of a form to its base form, like vidée -> vidé -> vider (real responses)', async () => {
+    const glossary = (term: string, anchor: string) =>
+      `<a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#${anchor}" title="Appendix:Glossary">${term}</a>`;
+    const link = (lemma: string) =>
+      `<span class="form-of-definition-link"><i class="Latn mention" lang="fr"><a rel="mw:WikiLink" href="/wiki/${lemma}#French" title="${lemma}">${lemma}</a></i></span>`;
     const pages: Record<string, unknown> = {
-      vidée: { fr: [section('French', 'Participle', [formOf('feminine singular', 'vidé')])] },
-      vidé: { fr: [section('French', 'Participle', [formOf('past participle', 'vider')])] },
-      vider: { fr: [section('French', 'Verb', ['to <a href="/wiki/empty" title="empty">empty</a>', 'to <a href="/wiki/drain" title="drain">drain</a>'])] },
+      vidée: { fr: [section('French', 'Participle', [`<span class="form-of-definition use-with-mention" about="#mwt2" typeof="mw:Transclusion">${glossary('feminine', 'gender')} ${glossary('singular', 'singular_number')} of ${link('vidé')}</span>`])] },
+      vidé: {
+        fr: [section('French', 'Participle', [`<span class="form-of-definition use-with-mention" about="#mwt5" typeof="mw:Transclusion">${glossary('past', 'past_tense')} ${glossary('participle', 'participle')} of ${link('vider')}</span><link rel="mw:PageProp/Category" href="./Category:French_past_participles#VIDE" about="#mwt5">`])],
+        other: [section('Louisiana Creole', 'Verb', ['to <a rel="mw:WikiLink" href="/wiki/empty" title="empty">empty</a>'])],
+      },
+      vider: {
+        fr: [section('French', 'Verb', [
+          'to <a rel="mw:WikiLink" href="/wiki/empty" title="empty">empty</a>, to empty out',
+          'to <a rel="mw:WikiLink" href="/wiki/gut" title="gut">gut</a> (e.g. a fish)',
+        ])],
+        ia: [section('Interlingua', 'Verb', ['to see'])],
+      },
     };
     const fetchMock = jest.fn(async (url: string) => {
       const page = pages[decodeURIComponent(url.split('/').pop() ?? '')];
@@ -239,7 +250,7 @@ describe('inflected forms', () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     try {
-      expect((await getWiktionaryDefinitions('vidée', 'French'))?.map((d) => d.text)).toEqual(['to empty', 'to drain']);
+      expect((await getWiktionaryDefinitions('vidée', 'French'))?.map((d) => d.text)).toEqual(['to empty', 'to empty out', 'to gut']);
     } finally {
       globalThis.fetch = originalFetch;
     }

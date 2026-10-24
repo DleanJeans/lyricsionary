@@ -23,7 +23,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import HighlightedText from '../components/HighlightedText';
 import LanguageTabButtons from '../components/LanguageTabButtons';
-import { countKnownWords } from '../utils/wordFrequency';
+import { countKnownWords, countWords } from '../utils/wordFrequency';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
@@ -206,7 +206,7 @@ export default function SongsScreen() {
       const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
       const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
       const isGermanSong = isGermanLanguage(song.originalLanguages);
-      const total = song.originalLyrics.split(/\s+/).filter(Boolean).length;
+      const total = countWords(song.originalLyrics);
       const known = countKnownWords(song.originalLyrics, (word) => {
         const lower = word.toLowerCase();
         return (

@@ -1,4 +1,4 @@
-import { countKnownWords, countWordOccurrences } from '../src/utils/wordFrequency';
+import { countKnownWords, countWordOccurrences, countWords } from '../src/utils/wordFrequency';
 
 describe('countWordOccurrences', () => {
   const songs = [
@@ -70,5 +70,13 @@ describe('countKnownWords', () => {
 
   it('returns 0 when nothing is known', () => {
     expect(countKnownWords('la la la', () => false)).toBe(0);
+  });
+});
+
+describe('countWords', () => {
+  it('skips dashes, ellipses and numbers so a fully known song reaches 100%', () => {
+    const lyrics = 'Oh — oh...\n... (x2)\n2 3 4 & go!';
+    expect(countWords(lyrics)).toBe(4);
+    expect(countKnownWords(lyrics, () => true)).toBe(countWords(lyrics));
   });
 });

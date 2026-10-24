@@ -78,17 +78,25 @@ export function countWordOccurrences(
     .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
 }
 
+/** The words in `lyrics` without punctuation, skipping tokens with no letters such as "—", "..." or "2" */
+function lyricWords(lyrics: string): string[] {
+  return lyrics.split(/\s+/).map(cleanToken).filter((word) => /\p{L}/u.test(word));
+}
+
+/** The number of words in `lyrics`; dashes, ellipses and numbers on their own aren't words to learn */
+export function countWords(lyrics: string): number {
+  return lyricWords(lyrics).length;
+}
+
 /**
- * Count the words in `lyrics` that `isKnown` accepts (saved or ignored), using
- * the same whitespace split as the song's total word count. A shortened word is
+ * Count the words in `lyrics` that `isKnown` accepts (saved or ignored), out of
+ * the words countWords counts. A shortened word is
  * known when its full word is, e.g. "j'aime" when "aime" is, or "hab'n" when "haben" is.
  */
 export function countKnownWords(lyrics: string, isKnown: (word: string) => boolean, languages?: string[]): number {
   let count = 0;
-  for (const token of lyrics.split(/\s+/)) {
-    const cleaned = cleanToken(token);
+  for (const cleaned of lyricWords(lyrics)) {
     const word = withoutTrailingApostrophes(cleaned);
-    if (!word) continue;
     const full = getFullWord(cleaned, languages);
     if (isKnown(word) || (full && isKnown(full))) count++;
   }

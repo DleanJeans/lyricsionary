@@ -21,8 +21,7 @@ import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { withVerbForms } from '../utils/definitionHighlight';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
-import { hyphenatedPrefixRegex } from '../utils/regex';
-import { getGermanExpandedForm, hasContractedPrefix, splitElisionParts } from '../utils/wordTransform';
+import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
 const PREVIEW_MAX_WORDS = 8;
 
@@ -75,6 +74,30 @@ export default function LearnScreen() {
   const findWordEntry = useCallback(
     (candidate: string) => wordEntryIndex.get(candidate.toLowerCase()),
     [wordEntryIndex]
+  );
+  const songLanguages = (song?.originalLanguages ?? []).map((language) => language.toLowerCase());
+  const hasFrenchLanguage = songLanguages.some((language) => language === 'french' || language === 'fr');
+  const hasItalianLanguage = songLanguages.some((language) => language === 'italian' || language === 'it');
+  // The saved word a lyric word stands for: itself, or else what its shortened form is about, e.g.
+  // amour for l'amour, mélanger for mélan-mélanger, haben for hab'n
+  const findSavedEntry = useCallback(
+    (cleanedWord: string) => {
+      const entry = findWordEntry(cleanedWord);
+      if (entry) return entry;
+      if (hasFrenchLanguage && hasHyphenatedPrefix(cleanedWord)) {
+        const withoutPrefix = findWordEntry(cleanedWord.slice(cleanedWord.indexOf('-') + 1));
+        if (withoutPrefix) return withoutPrefix;
+      }
+      if (hasFrenchLanguage || hasItalianLanguage) {
+        // The last part with a saved word, e.g. aime in j't'aime
+        const parts = splitElisionParts(cleanedWord) ?? [];
+        const part = [...parts].reverse().map(findWordEntry).find(Boolean);
+        if (part) return part;
+      }
+      const expanded = isGermanSong ? getGermanExpandedForm(cleanedWord, 'German') : null;
+      return expanded ? findWordEntry(expanded) : undefined;
+    },
+    [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong]
   );
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
@@ -294,14 +317,6 @@ export default function LearnScreen() {
           const cleanedWord = removeSpecialChars(word);
 
           const hasContractedPrefixWord = hasContractedPrefix(cleanedWord);
-          const hasHyphenatedPrefixWord = hyphenatedPrefixRegex.test(cleanedWord);
-
-          const hasFrenchLanguage = song?.originalLanguages?.some(
-            lang => lang.toLowerCase() === 'french' || lang.toLowerCase() === 'fr'
-          );
-          const hasItalianLanguage = song?.originalLanguages?.some(
-            lang => lang.toLowerCase() === 'italian' || lang.toLowerCase() === 'it'
-          );
 
           // Check if this word should be split for elision rendering (e.g., l'essence → l' + essence, dell'umanità → dell' + umanità),
           // unless the whole word is saved (e.g., c'est)
@@ -399,28 +414,7 @@ export default function LearnScreen() {
           }
 
           // Standard rendering for non-elision words
-          let wordEntry = cleanedWord ? findWordEntry(cleanedWord) : null;
-
-          if (!wordEntry && cleanedWord && hasHyphenatedPrefixWord && hasFrenchLanguage) {
-            const hyphenIndex = cleanedWord.indexOf('-');
-            const withoutPrefix = cleanedWord.slice(hyphenIndex + 1);
-            wordEntry = findWordEntry(withoutPrefix) ?? null;
-          }
-
-          // Fallback for contracted prefixes (e.g., dell'umanità -> umanità)
-          if (!wordEntry && cleanedWord && hasContractedPrefixWord && (hasFrenchLanguage || hasItalianLanguage)) {
-            const apostropheIndex = cleanedWord.indexOf("'");
-            if (apostropheIndex !== -1) {
-              const withoutPrefix = cleanedWord.slice(apostropheIndex + 1);
-              wordEntry = findWordEntry(withoutPrefix) ?? null;
-            }
-          }
-
-          // Fallback for German shortened words (e.g., hab'n -> haben, geht's -> geht)
-          if (!wordEntry && cleanedWord && isGermanSong) {
-            const expanded = getGermanExpandedForm(cleanedWord, 'German');
-            if (expanded) wordEntry = findWordEntry(expanded) ?? null;
-          }
+          const wordEntry = cleanedWord ? findSavedEntry(cleanedWord) ?? null : null;
 
           const isSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();
           const isActiveOccurrence = isSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
@@ -537,7 +531,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, words, ignoredWords, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, words, ignoredWords, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -580,7 +574,7 @@ export default function LearnScreen() {
 
   /* ─── Word panel ──────────────────────────────────────── */
   const selectedWordEntry = selectedWord
-    ? findWordEntry(selectedWord)
+    ? findSavedEntry(selectedWord)
     : null;
 
   // Get translation line for the selected line

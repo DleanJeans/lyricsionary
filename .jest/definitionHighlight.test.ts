@@ -18,6 +18,19 @@ describe('findDefinitionHighlight', () => {
     expect(highlighted('It isn’t love', "not; n't")).toEqual(['n’t']);
   });
 
+  it('finds words in their irregular contractions', () => {
+    expect(highlighted("I won't stay", 'will')).toEqual(['wo']);
+    expect(highlighted("I won't stay", 'will not')).toEqual(['wo', "n't"]);
+    expect(highlighted("It isn't love", 'not')).toEqual(["n't"]);
+    expect(highlighted('I cannot stay', 'can not')).toEqual(['can', 'not']);
+    expect(highlighted('I cannot stay', 'not')).toEqual(['not']);
+    expect(highlighted("I'll be there", 'will')).toEqual(["'ll"]);
+    expect(highlighted("You're mine", 'are')).toEqual(["'re"]);
+    expect(highlighted("We shan't", 'shall')).toEqual(['sha']);
+    expect(highlighted('I want it', 'will')).toBeNull();
+    expect(highlighted('a knot', 'not')).toBeNull();
+  });
+
   it('finds phrases split up by other words', () => {
     expect(highlighted("Don't give much away", 'give away')).toEqual(['give', 'away']);
     expect(highlighted('Give it all up', 'give up')).toEqual(['Give', 'up']);

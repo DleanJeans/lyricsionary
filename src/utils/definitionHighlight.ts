@@ -32,6 +32,30 @@ function indexOfWhole(haystack: string, needle: string, from = 0): number {
   return -1;
 }
 
+// Contracted spellings of a word, as [before, word, after]: the word only matches between the two,
+// e.g. "will" as the "wo" of "won't", "not" as the "not" of "cannot"
+const CONTRACTIONS: Record<string, Array<[string, string, string]>> = {
+  not: [['', "n't", ''], ['can', 'not', '']],
+  can: [['', 'can', 'not']],
+  will: [['', 'wo', "n't"], ['', "'ll", '']],
+  shall: [['', 'sha', "n't"]],
+  am: [['', "'m", '']],
+  are: [['', "'re", '']],
+  have: [['', "'ve", '']],
+};
+
+// The range of a needle as whole words from position `from`, also in its contracted spellings, e.g.
+// "will" in "won't" or "I'll"; null when it isn't there.
+function findWhole(haystack: string, needle: string, from = 0): [number, number] | null {
+  const index = indexOfWhole(haystack, needle, from);
+  if (index >= 0) return [index, index + needle.length];
+  for (const [before, word, after] of CONTRACTIONS[needle] ?? []) {
+    const contracted = indexOfWhole(haystack, before + word + after, Math.max(0, from - before.length));
+    if (contracted >= 0) return [contracted + before.length, contracted + before.length + word.length];
+  }
+  return null;
+}
+
 // Most words that can sit between the parts of a split phrase, e.g. "much" in "give much away"
 const MAX_GAP_WORDS = 3;
 
@@ -39,14 +63,14 @@ const MAX_GAP_WORDS = 3;
 function findSplitPhrase(haystack: string, needle: string): Array<[number, number]> | null {
   const words = needle.split(/\s+/);
   if (words.length < 2) return null;
-  for (let start = indexOfWhole(haystack, words[0]); start >= 0; start = indexOfWhole(haystack, words[0], start + 1)) {
-    const ranges: Array<[number, number]> = [[start, start + words[0].length]];
+  for (let first = findWhole(haystack, words[0]); first; first = findWhole(haystack, words[0], first[0] + 1)) {
+    const ranges: Array<[number, number]> = [first];
     for (const word of words.slice(1)) {
       const previousEnd = ranges[ranges.length - 1][1];
-      const index = indexOfWhole(haystack, word, previousEnd);
-      const gap = index >= 0 ? haystack.slice(previousEnd, index).trim() : '';
-      if (index < 0 || (gap && gap.split(/\s+/).length > MAX_GAP_WORDS) || /[.,;:!?]/.test(gap)) break;
-      ranges.push([index, index + word.length]);
+      const range = findWhole(haystack, word, previousEnd);
+      const gap = range ? haystack.slice(previousEnd, range[0]).trim() : '';
+      if (!range || (gap && gap.split(/\s+/).length > MAX_GAP_WORDS) || /[.,;:!?]/.test(gap)) break;
+      ranges.push(range);
     }
     if (ranges.length === words.length) return ranges;
   }
@@ -60,8 +84,8 @@ export function findDefinitionHighlight(text: string, definitions: string[]): Ar
   for (const definition of definitions) {
     for (const candidate of candidatesOf(definition)) {
       const needle = normalize(candidate);
-      const index = indexOfWhole(haystack, needle);
-      if (index >= 0) return [[index, index + needle.length]];
+      const range = findWhole(haystack, needle);
+      if (range) return [range];
     }
   }
   for (const definition of definitions) {

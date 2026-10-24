@@ -21,7 +21,7 @@ import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from '../utils/cleanLyrics';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { contractedPrefixRegex, hyphenatedPrefixRegex } from '../utils/regex';
-import { splitElisionParts } from '../utils/wordTransform';
+import { getGermanExpandedForm, splitElisionParts } from '../utils/wordTransform';
 
 const PREVIEW_MAX_WORDS = 8;
 
@@ -412,6 +412,12 @@ export default function LearnScreen() {
               const withoutPrefix = cleanedWord.slice(apostropheIndex + 1);
               wordEntry = findWordEntry(withoutPrefix) ?? null;
             }
+          }
+
+          // Fallback for German shortened words (e.g., hab'n -> haben, geht's -> geht)
+          if (!wordEntry && cleanedWord && isGermanSong) {
+            const expanded = getGermanExpandedForm(cleanedWord, 'German');
+            if (expanded) wordEntry = findWordEntry(expanded) ?? null;
           }
 
           const isSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();

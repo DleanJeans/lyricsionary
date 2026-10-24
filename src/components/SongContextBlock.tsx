@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
 import SelectableTranslation from './SelectableTranslation';
+import { findWordOccurrences } from '../utils/wordOccurrences';
 
 interface SongContextBlockProps {
   context: string;
@@ -18,13 +19,6 @@ interface SongContextBlockProps {
   selectedTranslation?: string;
 }
 
-function countOccurrences(text: string, word: string): number {
-  if (!word || !text) return 0;
-  const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-  const matches = text.match(regex);
-  return matches ? matches.length : 0;
-}
-
 export default function SongContextBlock({
   context,
   word,
@@ -38,33 +32,21 @@ export default function SongContextBlock({
   onTranslationSelect,
   selectedTranslation,
 }: SongContextBlockProps) {
-  const computedOccurrenceCount = occurrenceCount ?? useMemo(
-    () => countOccurrences(context, word || ''),
-    [context, word]
-  );
+  const ranges = useMemo(() => findWordOccurrences(context, word || ''), [context, word]);
+  const computedOccurrenceCount = occurrenceCount ?? ranges.length;
 
   const renderHighlightedText = () => {
     if (!word || !context) return <Text style={styles.contextText}>{context}</Text>;
 
-    const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    let occurrenceIndex = 0;
     const parts: { text: string; isHighlight: boolean }[] = [];
-    const regex = new RegExp(`(${escapedWord})`, 'gi');
     let lastIndex = 0;
-    let match;
-
-    while ((match = regex.exec(context)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push({ text: context.slice(lastIndex, match.index), isHighlight: false });
+    ranges.forEach(([start, end], i) => {
+      if (start > lastIndex) {
+        parts.push({ text: context.slice(lastIndex, start), isHighlight: false });
       }
-      occurrenceIndex++;
-      parts.push({
-        text: match[1],
-        isHighlight: occurrenceIndex === occurrence,
-      });
-      lastIndex = match.index + match[1].length;
-    }
+      parts.push({ text: context.slice(start, end), isHighlight: i + 1 === occurrence });
+      lastIndex = end;
+    });
 
     if (lastIndex < context.length) {
       parts.push({ text: context.slice(lastIndex), isHighlight: false });

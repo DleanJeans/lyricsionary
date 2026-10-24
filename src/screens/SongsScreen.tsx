@@ -171,11 +171,6 @@ export default function SongsScreen() {
     setSongToDelete(null);
   };
 
-  const getWordCount = (song: Song) => {
-    const words = song.originalLyrics.split(/\s+/).filter(Boolean);
-    return words.length;
-  };
-
   // Saved words keyed by "language\u0000word", with language names normalized like LearnScreen
   const savedWordKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -203,26 +198,28 @@ export default function SongsScreen() {
     };
   }, [words, compoundSplits]);
 
-  const formatWordProgress = (song: Song) => {
-    const total = getWordCount(song);
-    const known = getKnownWordCount(song);
-    const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
-    return `${known}/${total} words (${percent}%)`;
-  };
-
-  const getKnownWordCount = (song: Song) => {
-    const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
-    const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
-    const isGermanSong = isGermanLanguage(song.originalLanguages);
-    return countKnownWords(song.originalLyrics, (word) => {
-      const lower = word.toLowerCase();
-      return (
-        languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
-        isWordIgnored(ignoredWords, word, ignoreLanguage) ||
-        (isGermanSong && isKnownCompound(word))
-      );
-    }, song.originalLanguages);
-  };
+  // Progress label per song, computed once per change to the songs or known words instead of on every
+  // render (typing in the search box re-renders the list and recounted every song's lyrics)
+  const wordProgress = useMemo(() => {
+    const progress = new Map<string, string>();
+    for (const song of songs) {
+      const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
+      const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
+      const isGermanSong = isGermanLanguage(song.originalLanguages);
+      const total = song.originalLyrics.split(/\s+/).filter(Boolean).length;
+      const known = countKnownWords(song.originalLyrics, (word) => {
+        const lower = word.toLowerCase();
+        return (
+          languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
+          isWordIgnored(ignoredWords, word, ignoreLanguage) ||
+          (isGermanSong && isKnownCompound(word))
+        );
+      }, song.originalLanguages);
+      const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
+      progress.set(song.id, `${known}/${total} words (${percent}%)`);
+    }
+    return progress;
+  }, [songs, savedWordKeys, ignoredWords, isKnownCompound]);
 
   const toggleSearch = () => {
     if (showSearch) {
@@ -298,7 +295,7 @@ export default function SongsScreen() {
             {getFaviconUrl(item.sourceUrl ?? '') && (
               <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
             )}
-            <Text style={styles.metaText}>{formatWordProgress(item)}</Text>
+            <Text style={styles.metaText}>{wordProgress.get(item.id)}</Text>
             <View style={styles.languages}>
               {(item.originalLanguages ?? []).map((lang) => (
                 <Text key={`orig-${lang}`} style={styles.flag}>

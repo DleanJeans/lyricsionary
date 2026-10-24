@@ -202,6 +202,15 @@ function pastFormsOf(definition: string): string[] {
   });
 }
 
+// Definitions plus the forms their verbs take in a translation, for highlighting saved definitions,
+// e.g. "to love" also as "love", "loving" and "loved"; the definitions themselves still match first
+export function withVerbForms(definitions: string[]): string[] {
+  const forms = definitions
+    .filter((definition) => /^to\s/i.test(definition.trim()))
+    .flatMap((definition) => [withoutInfinitiveTo(definition), ...gerundsOf(definition), ...pastFormsOf(definition)]);
+  return [...new Set([...definitions, ...forms])];
+}
+
 // The definition to fill in by itself: the first that appears in the translation, or else the only one.
 // A verb that only matches without its "to" is filled in without it, e.g. "free" for "Free me",
 // or as its -ing form, e.g. "talking" for "He's talking", or a past form, e.g. "loved" for

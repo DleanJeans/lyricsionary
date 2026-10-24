@@ -131,6 +131,42 @@ export function toGerund(verb: string): string {
   return `${verb}ing`;
 }
 
+// Irregular English past tense and past participle forms of common verbs
+const IRREGULAR_PAST: Record<string, string[]> = {
+  be: ['was', 'were', 'been'], have: ['had'], do: ['did', 'done'], go: ['went', 'gone'],
+  say: ['said'], make: ['made'], get: ['got', 'gotten'], know: ['knew', 'known'],
+  think: ['thought'], take: ['took', 'taken'], see: ['saw', 'seen'], come: ['came', 'come'],
+  give: ['gave', 'given'], find: ['found'], tell: ['told'], feel: ['felt'], leave: ['left'],
+  keep: ['kept'], let: ['let'], begin: ['began', 'begun'], hold: ['held'], bring: ['brought'],
+  write: ['wrote', 'written'], stand: ['stood'], understand: ['understood'], lose: ['lost'],
+  pay: ['paid'], meet: ['met'], run: ['ran', 'run'], sit: ['sat'], speak: ['spoke', 'spoken'],
+  lie: ['lay', 'lain'], lead: ['led'], grow: ['grew', 'grown'], fall: ['fell', 'fallen'],
+  break: ['broke', 'broken'], forget: ['forgot', 'forgotten'], forgive: ['forgave', 'forgiven'],
+  sleep: ['slept'], sing: ['sang', 'sung'], fly: ['flew', 'flown'], fight: ['fought'],
+  hear: ['heard'], hide: ['hid', 'hidden'], buy: ['bought'], catch: ['caught'], teach: ['taught'],
+  seek: ['sought'], build: ['built'], send: ['sent'], spend: ['spent'], win: ['won'],
+  wake: ['woke', 'woken'], wear: ['wore', 'worn'], burn: ['burnt', 'burned'], dream: ['dreamt', 'dreamed'],
+  shine: ['shone'], drink: ['drank', 'drunk'], eat: ['ate', 'eaten'], drive: ['drove', 'driven'],
+  ride: ['rode', 'ridden'], rise: ['rose', 'risen'], choose: ['chose', 'chosen'], steal: ['stole', 'stolen'],
+  swim: ['swam', 'swum'], throw: ['threw', 'thrown'], blow: ['blew', 'blown'], draw: ['drew', 'drawn'],
+  shake: ['shook', 'shaken'], bite: ['bit', 'bitten'], freeze: ['froze', 'frozen'], hang: ['hung'],
+  shoot: ['shot'], bleed: ['bled'], feed: ['fed'], hurt: ['hurt'], cut: ['cut'], put: ['put'],
+  set: ['set'], shut: ['shut'], quit: ['quit'], read: ['read'], mean: ['meant'], sell: ['sold'],
+  stick: ['stuck'], strike: ['struck'], swear: ['swore', 'sworn'], tear: ['tore', 'torn'],
+  become: ['became', 'become'], light: ['lit'], slide: ['slid'], spin: ['spun'], dig: ['dug'],
+};
+
+// English past tense forms of a verb: love -> loved, cry -> cried, stop -> stopped, go -> went, gone
+export function toPast(verb: string): string[] {
+  const word = verb.toLowerCase();
+  const irregular = IRREGULAR_PAST[word];
+  if (irregular) return irregular;
+  if (word.endsWith('e')) return [`${verb}d`];
+  if (/[^aeiou]y$/.test(word)) return [`${verb.slice(0, -1)}ied`];
+  if (/^[^aeiou]*[aeiou][^aeiouwxy]$/.test(word)) return [`${verb}${verb.slice(-1)}ed`];
+  return [`${verb}ed`];
+}
+
 // English plural of a noun: worry -> worries, kiss -> kisses, day -> days, dream -> dreams
 export function toPlural(noun: string): string {
   const word = noun.toLowerCase();
@@ -157,9 +193,19 @@ function pluralsOf(definition: string): string[] {
   return partsOf(definition).map((part) => part.replace(/\S+$/, toPlural));
 }
 
+// Each verb's past forms, e.g. "to give up; to cry" -> "gave up", "given up", "cried". Not the third
+// person ("cries"), which reads the same as a noun's plural ("All my worries").
+function pastFormsOf(definition: string): string[] {
+  return partsOf(definition).flatMap((part) => {
+    const [verb] = part.split(/\s/);
+    return toPast(verb).map((form) => form + part.slice(verb.length));
+  });
+}
+
 // The definition to fill in by itself: the first that appears in the translation, or else the only one.
 // A verb that only matches without its "to" is filled in without it, e.g. "free" for "Free me",
-// or as its -ing form, e.g. "talking" for "He's talking". A noun can match as its plural, e.g.
+// or as its -ing form, e.g. "talking" for "He's talking", or a past form, e.g. "loved" for
+// "I loved you" or "gave up" for "She gave up". A noun can match as its plural, e.g.
 // Sorgen's "worry" fills in "worries".
 export function pickDefinition(definitions: WiktionaryDefinition[], translation?: string): string | null {
   const unique = [...new Map(definitions.filter((d) => d.text).map((d) => [d.text, d])).values()];
@@ -175,6 +221,8 @@ export function pickDefinition(definitions: WiktionaryDefinition[], translation?
       if (findDefinitionHighlight(translation, [withoutTo])) return withoutTo;
       const gerund = gerundsOf(text).find((g) => findDefinitionHighlight(translation, [g]));
       if (gerund) return gerund;
+      const past = pastFormsOf(text).find((p) => findDefinitionHighlight(translation, [p]));
+      if (past) return past;
     }
   }
   return unique.length === 1 ? unique[0].text : null;

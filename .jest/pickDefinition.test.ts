@@ -1,4 +1,4 @@
-import { pickDefinition, toGerund, toPlural } from '../src/utils/definitionHighlight';
+import { pickDefinition, toGerund, toPast, toPlural } from '../src/utils/definitionHighlight';
 
 const verb = (text: string) => ({ partOfSpeech: 'Verb', text });
 const noun = (text: string) => ({ partOfSpeech: 'Noun', text });
@@ -23,6 +23,13 @@ describe('pickDefinition', () => {
     expect(pickDefinition([verb('to talk'), verb('to speak')], "He's talking")).toBe('talking');
     expect(pickDefinition([verb('to do'), verb('to make; to build')], 'Making love')).toBe('making');
     expect(pickDefinition([verb('to quit'), verb('to give up')], "I'm giving up")).toBe('giving up');
+  });
+
+  it('fills a verb as its past form when the translation has that', () => {
+    expect(pickDefinition([verb('to like'), verb('to love')], 'I loved you')).toBe('loved');
+    expect(pickDefinition([verb('to quit'), verb('to give up')], 'She gave up')).toBe('gave up');
+    expect(pickDefinition([verb('to weep'), verb('to cry')], 'She cried at night')).toBe('cried');
+    expect(pickDefinition([verb('to stay'), verb('to go')], "He's gone")).toBe('gone');
   });
 
   it('fills a noun as its plural when the translation has that', () => {
@@ -76,3 +83,18 @@ describe('toPlural', () => {
     expect(toPlural(noun)).toBe(plural);
   });
 });
+
+describe('toPast', () => {
+  it.each([
+    ['love', ['loved']],
+    ['cry', ['cried']],
+    ['play', ['played']],
+    ['stop', ['stopped']],
+    ['walk', ['walked']],
+    ['go', ['went', 'gone']],
+    ['Feel', ['felt']],
+  ])('%s -> %s', (verb, past) => {
+    expect(toPast(verb)).toEqual(past);
+  });
+});
+

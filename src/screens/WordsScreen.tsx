@@ -20,11 +20,14 @@ import EmptyState from '../components/EmptyState';
 import IconButton from '../components/IconButton';
 import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
 import { matchesSearch } from '../utils/search';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 interface PendingDeletion {
   id: string;
   item: WordEntry;
 }
+
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 export default function WordsScreen() {
   const navigation = useNavigation<any>();
@@ -32,7 +35,8 @@ export default function WordsScreen() {
   const deleteWord = useStore((s) => s.deleteWord);
   const songs = useStore((s) => s.songs);
   const ignoredWords = useStore((s) => s.ignoredWords);
-  const [showFrequency, setShowFrequency] = useState(false);
+  // Saved or Top view, kept across restarts
+  const [showFrequency, setShowFrequency] = usePersistedState('@lyricsionary_words_top_view', false, isBoolean);
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;

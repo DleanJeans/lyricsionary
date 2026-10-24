@@ -25,7 +25,12 @@ import HighlightedText from '../components/HighlightedText';
 import LanguageTabButtons from '../components/LanguageTabButtons';
 import { countKnownWords } from '../utils/wordFrequency';
 import { matchesSearch } from '../utils/search';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
+
+const SORT_MODES = ['lastOpened', 'openCount', 'aZ', 'zA'] as const;
+type SortMode = (typeof SORT_MODES)[number];
+const isSortMode = (value: unknown): value is SortMode => SORT_MODES.includes(value as SortMode);
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
@@ -47,7 +52,7 @@ export default function SongsScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInLyrics, setSearchInLyrics] = useState(false);
-  const [sortMode, setSortMode] = useState<'lastOpened' | 'openCount' | 'aZ' | 'zA'>('lastOpened');
+  const [sortMode, setSortMode] = usePersistedState('@lyricsionary_songs_sort', 'lastOpened', isSortMode);
   const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
@@ -228,20 +233,7 @@ export default function SongsScreen() {
   };
 
   const cycleSortMode = () => {
-    setSortMode((current) => {
-      switch (current) {
-        case 'lastOpened':
-          return 'openCount';
-        case 'openCount':
-          return 'aZ';
-        case 'aZ':
-          return 'zA';
-        case 'zA':
-          return 'lastOpened';
-        default:
-          return 'lastOpened';
-      }
-    });
+    setSortMode(SORT_MODES[(SORT_MODES.indexOf(sortMode) + 1) % SORT_MODES.length]);
   };
 
   const getSortIcon = () => {

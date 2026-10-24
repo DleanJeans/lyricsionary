@@ -36,6 +36,10 @@ import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
+const wiktionaryPageUrl = (word: string) => `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
+// The id of a language's heading on a Wiktionary page, e.g. "Serbo-Croatian" for Croatian
+const wiktionarySectionId = (language: string) => getWiktionaryLanguage(language).replace(/ /g, '_');
+
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
@@ -177,9 +181,18 @@ export default function WordLookupScreen() {
     setShowDeleteConfirm(false);
   }, [word]);
 
+  // The word (and where it was looked up from) that the form was last filled in for
+  const filledLookupRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     if (displayWord) {
+      const lookup = [wordId, displayWord, songId, lyricsLine, routeOccurrence, source].join('\u0000');
+      const isNewLookup = filledLookupRef.current !== lookup;
+      filledLookupRef.current = lookup;
       const existingWord = findExistingWord();
+      // Picking another language for the same word keeps it and what's been typed, unless the word
+      // is saved in that language, whose details then fill in
+      if (!isNewLookup && (wordId || !existingWord)) return;
       if (existingWord) {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation || cardIpa?.[0] || '');
@@ -300,6 +313,13 @@ export default function WordLookupScreen() {
 
   const entryCheckedWordRef = useRef<string | undefined>(undefined);
 
+  // Choosing another language scrolls the open Wiktionary page to that language's section
+  useEffect(() => {
+    if (!wiktionaryWord) return;
+    const pageUrl = wiktionaryPageUrl(wiktionaryWord);
+    setCurrentUrl((url) => (url.split('#')[0] === pageUrl ? `${pageUrl}#${wiktionarySectionId(language)}` : url));
+  }, [language]);
+
   useEffect(() => {
     if (!displayWord) return;
     let cancelled = false;
@@ -307,7 +327,7 @@ export default function WordLookupScreen() {
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
         ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
-        : `https://en.wiktionary.org/wiki/${encodeURIComponent(wiktionaryWord!)}#${getWiktionaryLanguage(languageRef.current).replace(/ /g, '_')}`;
+        : `${wiktionaryPageUrl(wiktionaryWord!)}#${wiktionarySectionId(languageRef.current)}`;
       setCurrentUrl(url);
       setScrapedIpaResults([]);
     };

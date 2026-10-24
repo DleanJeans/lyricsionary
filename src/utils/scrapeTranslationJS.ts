@@ -29,7 +29,7 @@ export const scrapeTranslationJS = `
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: err && err.message ? err.message : String(err) }));
     };
     try {
-      (new Function('consoleLog', 'sendTranslation', ${JSON.stringify(_scrapeTranslationLogic)}))(consoleLog, sendTranslation);
+      (new Function('consoleLog', 'sendTranslation', 'sendError', ${JSON.stringify(_scrapeTranslationLogic)}))(consoleLog, sendTranslation, sendError);
     } catch (e) {
       sendError(e);
     }

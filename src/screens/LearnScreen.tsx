@@ -439,7 +439,7 @@ export default function LearnScreen() {
             ? getCompoundParts(cleanedWord, compoundSplits, knownGermanWords)
             : null;
           const compoundStart = compoundParts ? word.indexOf(cleanedWord) : -1;
-          const compoundEntries = compoundParts?.map((part) => words.find((w) => w.word.toLowerCase() === part.lemma));
+          const compoundEntries = compoundParts?.map((part) => findWordEntry(part.lemma));
 
           // A split compound shows its parts' IPA joined, e.g. Liebesbrief -> /ˈliːbəsbʁiːf/,
           if (showIpa && compoundParts && compoundEntries) {
@@ -595,7 +595,7 @@ export default function LearnScreen() {
   const selectedCompoundEntries = !selectedWordEntry && selectedWord && isGermanSong &&
     !isWordIgnored(ignoredWords, selectedWord, song?.originalLanguages?.[0] || 'unknown')
     ? getCompoundParts(selectedWord, compoundSplits, knownGermanWords)
-        ?.map((part) => words.find((w) => w.word.toLowerCase() === part.lemma))
+        ?.map((part) => findWordEntry(part.lemma))
         .filter((entry): entry is WordEntry => !!entry)
     : undefined;
 

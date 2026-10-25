@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
 import type { WordProgress } from '../hooks/useWordProgress';
 import IconButton from './IconButton';
@@ -59,7 +60,18 @@ export default function LearnActionBar({
           accessibilityLabel="Known words"
           accessibilityValue={{ min: 0, max: wordProgress.total, now: wordProgress.known }}
         >
-          <View style={[styles.progressFill, { width: `${wordProgress.percent}%` }]} />
+          {/* Slides to the new width as words are saved or ignored */}
+          <Animated.View
+            style={[
+              styles.progressFill,
+              {
+                width: `${wordProgress.percent}%`,
+                transitionProperty: 'width',
+                transitionDuration: 400,
+                transitionTimingFunction: 'ease-out',
+              },
+            ]}
+          />
         </View>
       )}
     </View>

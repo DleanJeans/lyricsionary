@@ -8,6 +8,7 @@ import VersionInfo from '../components/VersionInfo';
 import DataTransfer from '../components/DataTransfer';
 import { Colors } from '../constants/theme';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
+import Constants from 'expo-constants';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -81,7 +82,7 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             size={26}
             color={Colors.primary}
           />
-          <Text style={styles.appName}>Lyricsionary</Text>
+          <Text style={styles.appName}>{Constants.expoConfig?.name ?? 'Lyricsionary'}</Text>
         </View>
 
         <View style={styles.divider} />

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 import VersionInfo from '../components/VersionInfo';
 import DataTransfer from '../components/DataTransfer';
+import Constants from 'expo-constants';
 
 export default function DrawerContent(props: DrawerContentComponentProps) {
   const insets = useSafeAreaInsets();
@@ -16,7 +17,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
         {/* Logo */}
         <View style={styles.logoRow}>
           <Ionicons name="musical-notes" size={26} color={Colors.primary} />
-          <Text style={styles.appName}>Lyricsionary</Text>
+          <Text style={styles.appName}>{Constants.expoConfig?.name ?? 'Lyricsionary'}</Text>
         </View>
 
         <View style={styles.divider} />

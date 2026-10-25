@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
@@ -33,6 +34,8 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const [quiz] = useState(() =>
     alreadyAnswered || quizKindFor(entry.masteryLevel) !== kind || isCoolingDown(entry.quiz, Date.now()) ? null : build()
   );
+  // The word before the answer, where the level track starts
+  const [unanswered] = useState(entry);
   const [chosen, setChosen] = useState<number | null>(null);
   const [before, setBefore] = useState<WordEntry | null>(null);
   const [undone, setUndone] = useState(false);
@@ -109,16 +112,19 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
           )}
         </View>
       )}
-      {answered && !practice && <LevelTrack entry={current} />}
+      {answered && !practice && <LevelTrack from={unanswered} entry={current} />}
     </View>
   );
 }
 
 /** The four levels with the gap after the word's level filling up toward the next one */
-function LevelTrack({ entry }: { entry: WordEntry }) {
-  const level = entry.masteryLevel ?? 'Seen';
+function LevelTrack({ from, entry }: { from: WordEntry; entry: WordEntry }) {
+  // Starts where the word was before the answer, then slides to where it is now, also back on Undo
+  const [shown, setShown] = useState(from);
+  useEffect(() => setShown(entry), [entry]);
+  const level = shown.masteryLevel ?? 'Seen';
   const levelIndex = MASTERY_LEVELS.indexOf(level);
-  const progress = levelProgress(level, entry.quiz);
+  const progress = levelProgress(level, shown.quiz);
   const hint = progressHint(level, entry.quiz, Date.now());
   return (
     <View accessible accessibilityLabel={progressLabel(level, entry.quiz) ?? `${entry.word} is ${level}`}>
@@ -131,9 +137,10 @@ function LevelTrack({ entry }: { entry: WordEntry }) {
             const to = getMasteryLevelColor(next);
             return (
               <View key={next} style={styles.trackBar}>
-                <View
+                <Animated.View
                   style={[
                     styles.trackFill,
+                    { transitionProperty: 'width', transitionDuration: TRACK_MS, transitionTimingFunction: 'ease-out' },
                     { width: `${fill * 100}%`, backgroundColor: to, experimental_backgroundImage: `linear-gradient(to right, ${from}, ${to})` },
                   ]}
                 />
@@ -145,9 +152,11 @@ function LevelTrack({ entry }: { entry: WordEntry }) {
           const color = getMasteryLevelColor(name);
           return (
             <View key={name} style={styles.trackStop}>
-              <View
+              <Animated.View
                 style={[
                   styles.trackDot,
+                  // Lights up once the bar before it has filled
+                  { transitionProperty: ['backgroundColor', 'borderColor', 'transform'], transitionDuration: 250, transitionDelay: TRACK_MS },
                   i <= levelIndex && { backgroundColor: color, borderColor: color },
                   i === levelIndex && styles.trackDotCurrent,
                 ]}
@@ -165,6 +174,7 @@ function LevelTrack({ entry }: { entry: WordEntry }) {
 }
 
 const TRACK_DOT = 10;
+const TRACK_MS = 500;
 
 const styles = StyleSheet.create({
   container: {

@@ -129,6 +129,9 @@ export default function LearnScreen() {
   // Fill in the lyrics: saved words to recall show as gaps until answered
   const [lyricQuiz, setLyricQuiz] = useState(false);
   const [answeredGaps, setAnsweredGaps] = useState<Set<string>>(new Set());
+  // Words (lowercased) whose meaning quiz was answered since the song opened, practice included, so
+  // saving a word right after its practice quiz doesn't ask it again
+  const [answeredMeanings, setAnsweredMeanings] = useState<Set<string>>(new Set());
   // The gap being answered, kept while its answer shows even though the word is no longer a gap
   const [gapTarget, setGapTarget] = useState<{ entryId: string; lineIndex: number; occurrence: number } | null>(null);
   const [isRendering, setIsRendering] = useState(true);
@@ -291,6 +294,7 @@ export default function LearnScreen() {
     setSeenTranslationLines(new Set());
     setSeenAllTranslations(false);
     setAnsweredGaps(new Set());
+    setAnsweredMeanings(new Set());
     setGapTarget(null);
   }, [activeSongId]);
 
@@ -748,7 +752,9 @@ export default function LearnScreen() {
         prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> {prompt}</>}
         build={() => buildMeaningQuiz({ entry, ...sense, songId: song.id, excludeWords: parts }, useStore.getState().words)}
         hidden={selectedTranslationSeen}
+        alreadyAnswered={answeredMeanings.has(entry.word.toLowerCase())}
         onAnswered={(correct) => {
+          setAnsweredMeanings((prev) => new Set(prev).add(entry.word.toLowerCase()));
           if (!correct) revealSelectedTranslation();
         }}
         isWide={isWide}

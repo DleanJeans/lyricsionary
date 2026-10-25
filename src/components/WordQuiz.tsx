@@ -15,6 +15,8 @@ interface WordQuizProps {
   build: () => Quiz | null;
   /** Hides a quiz not answered yet, e.g. once the line's translation has been seen */
   hidden?: boolean;
+  /** Answered before, e.g. as practice before the word was saved, so it isn't asked when it next shows */
+  alreadyAnswered?: boolean;
   onAnswered?: (correct: boolean) => void;
   isWide?: boolean;
   /** For a word that isn't saved yet: the answer isn't recorded and no level progress shows */
@@ -22,14 +24,14 @@ interface WordQuizProps {
 }
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, onAnswered, isWide, practice = false }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   // Asked only when the quiz is for the word's level, decided once so moving up a level keeps the
   // answer on screen. A word quizzed in the last few hours isn't asked again, e.g. when the chorus
   // repeats it.
   const [quiz] = useState(() =>
-    quizKindFor(entry.masteryLevel) !== kind || isCoolingDown(entry.quiz, Date.now()) ? null : build()
+    alreadyAnswered || quizKindFor(entry.masteryLevel) !== kind || isCoolingDown(entry.quiz, Date.now()) ? null : build()
   );
   const [chosen, setChosen] = useState<number | null>(null);
   const [before, setBefore] = useState<WordEntry | null>(null);

@@ -1,6 +1,6 @@
 import type { WordEntry } from '../src/types';
 import type { PartOfSpeech } from '../src/utils/partOfSpeech';
-import { buildLyricQuiz, buildMeaningQuiz, lookAlikeScore, meaningsOverlap, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
+import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, lookAlikeScore, meaningsOverlap, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
 
 const DAY = 24 * 60 * 60 * 1000;
 const start = new Date(2026, 9, 25, 12).getTime();
@@ -98,6 +98,15 @@ describe('buildMeaningQuiz', () => {
 
   it('is null with fewer than 2 wrong options', () => {
     expect(buildMeaningQuiz({ entry: herz, answer: 'heart' }, [herz, word('Liebe', 'love')])).toBeNull();
+  });
+});
+
+describe('isCoolingDown', () => {
+  it('waits a few hours after any answer before asking the word again', () => {
+    const wrong = recordAnswer('Seen', undefined, 'meaning', false, start).quiz;
+    expect(isCoolingDown(wrong, start + QUIZ_RULES.cooldownMs - 1)).toBe(true);
+    expect(isCoolingDown(wrong, start + QUIZ_RULES.cooldownMs)).toBe(false);
+    expect(isCoolingDown(undefined, start)).toBe(false);
   });
 });
 

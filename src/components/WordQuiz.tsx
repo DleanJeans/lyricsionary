@@ -26,8 +26,8 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, o
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   // Asked only when the quiz is for the word's level, decided once so moving up a level keeps the
-  // answer on screen. A word answered correctly a few minutes ago isn't asked again, e.g. when the
-  // chorus repeats it.
+  // answer on screen. A word quizzed in the last few hours isn't asked again, e.g. when the chorus
+  // repeats it.
   const [quiz] = useState(() =>
     quizKindFor(entry.masteryLevel) !== kind || isCoolingDown(entry.quiz, Date.now()) ? null : build()
   );

@@ -24,8 +24,8 @@ export const QUIZ_RULES = {
   toRecalled: 3,
   /** Days a Recalled word goes without a quiz before a correct answer makes it Known */
   knownAfterDays: 14,
-  /** A word answered correctly isn't asked again this soon, e.g. when it repeats in the chorus */
-  cooldownMs: 10 * 60 * 1000,
+  /** A word is quizzed once in this long, right or wrong, so its answers are spread out over the day */
+  cooldownMs: 4 * 60 * 60 * 1000,
   options: 4,
 };
 
@@ -39,9 +39,9 @@ const localDay = (time: number) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-/** Whether the word was answered correctly too recently to ask again */
+/** Whether the word was quizzed too recently to ask again */
 export const isCoolingDown = (quiz: QuizStats | undefined, now: number) =>
-  !!quiz?.lastCorrectAt && now - quiz.lastCorrectAt < QUIZ_RULES.cooldownMs;
+  !!quiz?.lastAnsweredAt && now - quiz.lastAnsweredAt < QUIZ_RULES.cooldownMs;
 
 /** How many more correct answers the word needs for its next level, e.g. "2 more to Recognized" */
 export function progressLabel(level: MasteryLevel | undefined, quiz: QuizStats | undefined): string | null {

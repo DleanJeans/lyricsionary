@@ -2,14 +2,15 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
+import type { WordProgress } from '../hooks/useWordProgress';
 import IconButton from './IconButton';
 import { Text } from './Text';
 
 interface LearnActionBarProps {
   fontSize: number;
   lineCount: number;
-  /** Known words out of the song's words, e.g. "12/40 words (30%)" */
-  wordProgress?: string;
+  /** Known (saved or ignored) words out of the song's words, shown as text and a bar */
+  wordProgress?: WordProgress;
   onDecreaseFontSize: () => void;
   onIncreaseFontSize: () => void;
 }
@@ -49,8 +50,18 @@ export default function LearnActionBar({
         />
       </View>
       <Text style={styles.lineCounter} numberOfLines={1}>
-        {wordProgress ? `${wordProgress} · ${lineCount} lines` : `${lineCount} lines`}
+        {wordProgress ? `${wordProgress.label} · ${lineCount} lines` : `${lineCount} lines`}
       </Text>
+      {wordProgress && (
+        <View
+          style={styles.progressTrack}
+          accessibilityRole="progressbar"
+          accessibilityLabel="Known words"
+          accessibilityValue={{ min: 0, max: wordProgress.total, now: wordProgress.known }}
+        >
+          <View style={[styles.progressFill, { width: `${wordProgress.percent}%` }]} />
+        </View>
+      )}
     </View>
   );
 }
@@ -83,6 +94,19 @@ const styles = StyleSheet.create({
     minWidth: 24,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
+  },
+  // Sits on the bar's bottom border so it takes no extra height
+  progressTrack: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -1,
+    height: 3,
+    backgroundColor: Colors.border,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
   },
   lineCounter: {
     flexShrink: 1,

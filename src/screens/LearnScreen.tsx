@@ -648,7 +648,7 @@ export default function LearnScreen() {
     <LearnActionBar
       fontSize={fontSize}
       lineCount={lineCount}
-      wordProgress={wordProgress?.label}
+      wordProgress={wordProgress}
       onDecreaseFontSize={() => setFontSize(fontSize - 1)}
       onIncreaseFontSize={() => setFontSize(fontSize + 1)}
     />

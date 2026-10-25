@@ -5,7 +5,8 @@ import { MasteryLevel } from '../types';
 import { Text } from './Text';
 
 interface MasteryLevelSelectorProps {
-  value: MasteryLevel;
+  /** None for a word not saved yet */
+  value?: MasteryLevel;
   onChange: (value: MasteryLevel) => void;
 }
 

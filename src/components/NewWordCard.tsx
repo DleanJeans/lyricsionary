@@ -13,6 +13,7 @@ import {
   isGermanLanguage,
   splitAtPositions,
 } from '../utils/compoundWords';
+import { MasteryLevel } from '../types';
 import MasteryLevelBadge from './MasteryLevelBadge';
 import MasteryLevelSelector from './MasteryLevelSelector';
 import PronunciationAudio from './PronunciationAudio';
@@ -86,10 +87,10 @@ export default function NewWordCard({
     setIsEditingSplit(false);
   };
 
-  const handleSave = async () => {
-    // Keep the recordings so the saved word doesn't fetch them again
-    await addOrUpdateWord(word, language, undefined, undefined, 'Seen', wiktionary.loaded ? wiktionary.audio : undefined);
-    onClose();
+  const handleLevel = (level: MasteryLevel) => {
+    setChoosingLevel(false);
+    // Saves an unsaved word, keeping the recordings so it doesn't fetch them again
+    void addOrUpdateWord(word, language, undefined, undefined, level, saved || !wiktionary.loaded ? undefined : wiktionary.audio);
   };
 
   const handleLookupOriginalWord = () => {
@@ -113,18 +114,19 @@ export default function NewWordCard({
     <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
       <View style={styles.wordHeader}>
         <View style={styles.wordTitle}>
-          {/* A word saved from its quiz shows its level, as on the saved word's card */}
-          {saved ? (
+          {/* Saves the word at a level, then shows it as on the saved word's card */}
+          {isIgnored && !saved ? (
+            <View style={[styles.badge, styles.ignoredBadge]}>
+              <Text style={styles.badgeText}>IGNORED</Text>
+            </View>
+          ) : (
             <MasteryLevelBadge
-              level={saved.masteryLevel}
+              level={saved?.masteryLevel}
+              isNew={!saved}
               open={choosingLevel}
               onPress={() => setChoosingLevel((v) => !v)}
               style={styles.levelBadge}
             />
-          ) : (
-            <View style={[styles.badge, isIgnored && styles.ignoredBadge]}>
-              <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
-            </View>
           )}
           <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
         </View>
@@ -162,15 +164,9 @@ export default function NewWordCard({
         <Text style={styles.compoundText}>{compoundParts.map((p) => p.text).join(' · ')}</Text>
       )}
 
-      {saved && choosingLevel && (
+      {choosingLevel && (
         <View style={styles.levelPicker}>
-          <MasteryLevelSelector
-            value={saved.masteryLevel || 'Seen'}
-            onChange={(level) => {
-              setChoosingLevel(false);
-              void addOrUpdateWord(saved.word, saved.language, undefined, undefined, level);
-            }}
-          />
+          <MasteryLevelSelector value={saved ? saved.masteryLevel || 'Seen' : undefined} onChange={handleLevel} />
         </View>
       )}
 
@@ -183,12 +179,6 @@ export default function NewWordCard({
           <Ionicons name="search" size={16} color={Colors.white} />
           <Text style={[styles.chipText, styles.chipTextFilled]}>Look up</Text>
         </TouchableOpacity>
-        {!isIgnored && !saved && (
-          <TouchableOpacity accessibilityLabel="Save" style={[styles.chip, styles.chipGrow]} onPress={() => void handleSave()}>
-            <Ionicons name="star-outline" size={16} color={Colors.primary} />
-            <Text style={styles.chipText}>Save</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {isEditingSplit && (

@@ -11,6 +11,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useStore } from './src/store/useStore';
 import { NowPlayingRequest, setupNowPlayingNotifications, useNowPlayingResponse } from './src/services/nowPlayingNotification';
 import { findSavedSong } from './src/utils/nowPlaying';
+import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -39,6 +40,7 @@ export default function App() {
   const loadCompoundSplits = useStore((s) => s.loadCompoundSplits);
   const loadLearnSettings = useStore((s) => s.loadLearnSettings);
   const [dataLoaded, setDataLoaded] = useState(false);
+  usePartOfSpeechBackfill(dataLoaded);
 
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({

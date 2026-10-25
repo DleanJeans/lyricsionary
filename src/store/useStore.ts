@@ -116,6 +116,8 @@ interface AppState {
   ) => Promise<void>;
   setWordAudio: (id: string, audio: WiktionaryAudio[]) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
+  /** Changes saved word fields without counting it as a look up, e.g. a word type found later */
+  updateWordEntry: (id: string, changes: Partial<Omit<WordEntry, 'id'>>) => Promise<void>;
 
   // Ignore list actions
   loadIgnoredWords: () => Promise<void>;
@@ -380,6 +382,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   setWordAudio: async (id, audio) => {
     const words = get().words.map((w) => (w.id === id ? { ...w, audio } : w));
+    set({ words });
+    await persist(WORDS_KEY, JSON.stringify(words));
+  },
+
+  updateWordEntry: async (id, changes) => {
+    if (!get().words.some((w) => w.id === id)) return;
+    const words = get().words.map((w) => (w.id === id ? { ...w, ...changes } : w));
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
   },

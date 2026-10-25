@@ -73,3 +73,22 @@ export function findPartOfSpeech(
   const distinct = new Set(types.filter(Boolean));
   return distinct.size === 1 ? [...distinct][0] : undefined;
 }
+
+/**
+ * The contexts with a word type found for each definition that has none, or null when none was
+ * found, for words saved before types were
+ */
+export function fillPartsOfSpeech<T extends { definition?: string; partOfSpeech?: PartOfSpeech }>(
+  contexts: T[],
+  suggestions: WiktionaryDefinition[]
+): T[] | null {
+  let changed = false;
+  const filled = contexts.map((context) => {
+    if (context.partOfSpeech || !context.definition?.trim()) return context;
+    const partOfSpeech = findPartOfSpeech(context.definition, suggestions);
+    if (!partOfSpeech) return context;
+    changed = true;
+    return { ...context, partOfSpeech };
+  });
+  return changed ? filled : null;
+}

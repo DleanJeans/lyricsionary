@@ -65,6 +65,10 @@ const _detectLyricsLogic = `
       setTimeout(() => observer.disconnect(), 5000);
     }
   }
+  // Letras: a translation page, with the original under each translated line
+  else if (url.includes('letras.com') || url.includes('letras.mus.br')) {
+    hasLyrics = !!document.querySelector('.lyric-translation .verse');
+  }
   // LyricsTranslate: original lyrics, or a translation whose original can be toggled on
   else if (url.includes('lyricstranslate.com')) {
     hasLyrics = !!document.querySelector('#original-lyrics, #translation-body');

@@ -155,7 +155,7 @@ export default function WebScreen() {
         setWaitingForTranslation(!data.hasTranslation);
         return;
       }
-      // A page with a translation too (LyricsTranslate, Musixmatch) sends it along: it fills in a translation
+      // A page with a translation too (LyricsTranslate, Musixmatch, Letras) sends it along: it fills in a translation
       // tab when getting the original, or is what a translation tab gets
       const pageTranslation = typeof data.translation === 'string' ? data.translation.trim() : '';
       if (data.type === 'lyrics' && (data.text || (scrapeTargetTab > 0 && pageTranslation))) {

@@ -46,6 +46,17 @@ async function runScript(href: string, { elements = {}, lists = {}, globals: pag
   return messages;
 }
 
+// A Letras line: the translation over its original in a .verse span
+function letrasVerse(translation: string, original: string): FakeElement {
+  const originalEl = { textContent: original };
+  const children = [{ textContent: translation }, originalEl];
+  return { children, querySelector: (selector) => (selector === '.romanization' ? originalEl : null) };
+}
+
+function letrasStanza(...verses: FakeElement[]): FakeElement {
+  return { querySelector: () => verses[0] ?? null, querySelectorAll: () => verses };
+}
+
 describe('scrapeLyricsJS', () => {
   it('sends LyricsTranslate lyrics with their translation', async () => {
     const messages = await runScript('https://lyricstranslate.com/en/bon-dia-good-morning.html', {
@@ -97,6 +108,32 @@ describe('scrapeLyricsJS', () => {
         languageCode: 'fr',
         translation: "It's midnight\nI thought\n\nRien",
         translationLanguage: 'english',
+      },
+    ]);
+  });
+
+  it('sends Letras lyrics with their translation', async () => {
+    const messages = await runScript('https://www.letras.com/oscar-anton/minuit/english.html', {
+      lists: {
+        '.lyric-translation p': [
+          letrasStanza(letrasVerse("It's midnight", 'Il est minuit'), letrasVerse('Once again', 'Encore une fois')),
+          letrasStanza(letrasVerse('Just once', "Rien qu'une fois")),
+        ],
+        'script:not([src])': [{ textContent: '_omq.push([\'ui/lyric\', {"Name":"Minuit","SongLanguage":"fr"}]);' }],
+        'link[rel=alternate][hreflang]': [
+          { href: 'https://www.letras.com/oscar-anton/minuit/traduccion.html', getAttribute: () => 'es' },
+          { href: 'https://www.letras.com/oscar-anton/minuit/english.html', getAttribute: () => 'en' },
+        ],
+      },
+    });
+    expect(messages).toEqual([
+      {
+        type: 'lyrics',
+        text: "Il est minuit\nEncore une fois\n\nRien qu'une fois",
+        title: 'Page',
+        languageCode: 'fr',
+        translation: "It's midnight\nOnce again\n\nJust once",
+        translationLanguage: 'en',
       },
     ]);
   });

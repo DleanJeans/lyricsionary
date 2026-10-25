@@ -158,6 +158,43 @@ const _scrapeLyricsLogic = `
     }
   }
 
+  // Letras: a translation page stacks each translated line over its original (.romanization),
+  // in a paragraph per stanza
+  if (url.includes('letras.com') || url.includes('letras.mus.br')) {
+    const stanzas = [...document.querySelectorAll('.lyric-translation p')].filter((p) => p.querySelector('.verse'));
+    if (stanzas.length > 0) {
+      const originals = [];
+      const translations = [];
+      stanzas.forEach((p) => {
+        p.querySelectorAll('.verse').forEach((verse) => {
+          const original = verse.querySelector('.romanization');
+          const translated = [...verse.children].find((child) => child !== original);
+          originals.push(original ? original.textContent.trim() : '');
+          translations.push(translated ? translated.textContent.trim() : '');
+        });
+        originals.push('');
+        translations.push('');
+      });
+      // The song's language is only in the page's analytics, e.g. "SongLanguage":"fr"
+      const scripts = [...document.querySelectorAll('script:not([src])')].map((script) => script.textContent).join('\\n');
+      languageCode = scripts.match(/"SongLanguage":"([\\w-]+)"/)?.[1] || '';
+      // Each translation page is the alternate link for its language
+      const path = window.location.pathname;
+      const alternate = [...document.querySelectorAll('link[rel=alternate][hreflang]')].find((link) => {
+        try {
+          return new URL(link.href).pathname === path;
+        } catch (e) {
+          return false;
+        }
+      });
+      sendLyrics(originals.join('\\n').trim(), languageCode, {
+        translation: translations.join('\\n').trim(),
+        translationLanguage: alternate?.getAttribute('hreflang') || document.documentElement.lang || '',
+      });
+      return;
+    }
+  }
+
   // LyricsTranslate: a translation page shows the original next to the translation, which is sent
   // along to fill in the translation tab. The original can be hidden behind a toggle.
   if (url.includes('lyricstranslate.com')) {

@@ -1,5 +1,6 @@
 import type { PartOfSpeech } from '../utils/partOfSpeech';
 import type { WiktionaryAudio } from '../utils/wiktionary';
+import type { QuizStats } from '../utils/wordQuiz';
 
 export interface Song {
   id: string;
@@ -66,6 +67,8 @@ export interface WordEntry {
   contexts: WordContext[];
   lastLookedUp: number;
   masteryLevel?: MasteryLevel;
+  /** Word quiz answers, which move the word up a level */
+  quiz?: QuizStats;
   emoji?: string;
   definitions?: { text: string; songId?: string; songName?: string; lyricsLine?: string }[];
   /** Wiktionary's pronunciation recordings, kept so the word doesn't fetch them again; empty when it has none */

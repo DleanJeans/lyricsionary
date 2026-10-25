@@ -5,6 +5,7 @@ import { isSameLanguage } from '../constants/languages';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import { MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
 import type { WiktionaryAudio } from '../utils/wiktionary';
+import { QuizKind, recordAnswer } from '../utils/wordQuiz';
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
@@ -118,6 +119,8 @@ interface AppState {
   deleteWord: (id: string) => Promise<void>;
   /** Changes saved word fields without counting it as a look up, e.g. a word type found later */
   updateWordEntry: (id: string, changes: Partial<Omit<WordEntry, 'id'>>) => Promise<void>;
+  /** Saves a word quiz answer, moving the word up a level when it has enough; returns the word before */
+  recordQuizAnswer: (id: string, kind: QuizKind, correct: boolean) => Promise<WordEntry | undefined>;
 
   // Ignore list actions
   loadIgnoredWords: () => Promise<void>;
@@ -392,6 +395,13 @@ export const useStore = create<AppState>((set, get) => ({
     const words = get().words.map((w) => (w.id === id ? { ...w, ...changes } : w));
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
+  },
+
+  recordQuizAnswer: async (id, kind, correct) => {
+    const before = get().words.find((w) => w.id === id);
+    if (!before) return undefined;
+    await get().updateWordEntry(id, recordAnswer(before.masteryLevel, before.quiz, kind, correct, Date.now()));
+    return before;
   },
 
   deleteWord: async (id) => {

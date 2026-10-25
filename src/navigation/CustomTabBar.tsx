@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import VersionInfo from '../components/VersionInfo';
+import DataTransfer from '../components/DataTransfer';
 import { Colors } from '../constants/theme';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 
@@ -127,6 +128,8 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         <View style={styles.versionInfoContainer}>
           <View style={styles.divider} />
           <VersionInfo />
+          <View style={styles.divider} />
+          <DataTransfer />
         </View>
       </View>
     );

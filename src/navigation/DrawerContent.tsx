@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 import VersionInfo from '../components/VersionInfo';
+import DataTransfer from '../components/DataTransfer';
 
 export default function DrawerContent(props: DrawerContentComponentProps) {
   const insets = useSafeAreaInsets();
@@ -22,6 +23,10 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
 
         {/* Version Info */}
         <VersionInfo />
+
+        <View style={styles.divider} />
+
+        <DataTransfer />
       </ScrollView>
     </View>
   );

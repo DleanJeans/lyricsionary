@@ -203,6 +203,9 @@ importers:
       expo-dev-client:
         specifier: ~55.0.30
         version: 55.0.30(expo@55.0.19)
+      expo-file-system:
+        specifier: ~55.0.17
+        version: 55.0.17(expo@55.0.19)(react-native@0.83.6(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.85.2(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.0)(supports-color@8.1.1))
       expo-font:
         specifier: ~55.0.6
         version: 55.0.6(expo@55.0.19)(react-native@0.83.6(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.85.2(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.0)(supports-color@8.1.1))(react@19.2.0)

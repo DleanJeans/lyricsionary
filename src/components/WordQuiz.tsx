@@ -70,6 +70,8 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
         {quiz.options.map((option, index) => {
           const isAnswer = index === quiz.answerIndex;
           const state = !answered ? null : isAnswer ? 'right' : index === chosen ? 'wrong' : 'other';
+          // Once answered, only the answer and a wrong pick stay
+          if (state === 'other') return null;
           return (
             <TouchableOpacity
               key={`${index}-${option}`}
@@ -78,7 +80,6 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
                 isWide && styles.optionWide,
                 state === 'right' && styles.optionRight,
                 state === 'wrong' && styles.optionWrong,
-                state === 'other' && styles.optionOther,
               ]}
               onPress={() => void choose(index)}
               disabled={answered}
@@ -217,9 +218,6 @@ const styles = StyleSheet.create({
   optionWrong: {
     borderColor: Colors.danger,
     backgroundColor: 'rgba(255, 107, 107, 0.12)',
-  },
-  optionOther: {
-    opacity: 0.5,
   },
   optionText: {
     flexShrink: 1,

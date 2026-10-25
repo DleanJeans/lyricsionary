@@ -21,11 +21,12 @@ import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
-import { withWordForms } from '../utils/definitionHighlight';
+import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, quizKindFor } from '../utils/wordQuiz';
-import type { PartOfSpeech } from '../utils/partOfSpeech';
+import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
+import { getWiktionaryDefinitions, type WiktionaryDefinition } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
 const PREVIEW_MAX_WORDS = 8;
@@ -632,6 +633,21 @@ export default function LearnScreen() {
     return (best as { index: number } | null)?.index ?? null;
   }, [lines, selectedLineIndex, findWordEntry]);
 
+  // Wiktionary's definitions of the selected word when it isn't saved, for a meaning quiz on it
+  const songLanguage = song?.originalLanguages?.[0];
+  const selectedWordSaved = !!selectedWord && !!findSavedEntry(selectedWord);
+  const [newWordDefinitions, setNewWordDefinitions] = useState<{ word: string; definitions: WiktionaryDefinition[] } | null>(null);
+  useEffect(() => {
+    if (!selectedWord || selectedWordSaved || !songLanguage) return;
+    let cancelled = false;
+    getWiktionaryDefinitions(selectedWord, songLanguage).then((definitions) => {
+      if (!cancelled) setNewWordDefinitions({ word: selectedWord, definitions: definitions ?? [] });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedWord, selectedWordSaved, songLanguage]);
+
   if (!song) {
     return (
       <ScreenWrapper>
@@ -715,17 +731,21 @@ export default function LearnScreen() {
     return legacy ? { answer: legacy.text.trim() } : null;
   };
 
-  const meaningQuiz = (entry: WordEntry) => {
-    const sense = quizSense(entry);
+  const meaningQuiz = (
+    entry: WordEntry,
+    sense = quizSense(entry),
+    { practice = false, prompt = 'mean here?' }: { practice?: boolean; prompt?: string } = {}
+  ) => {
     if (!sense) return null;
     // A German compound's parts aren't wrong meanings, e.g. Liebe in Liebesbrief
     const parts = isGermanSong ? getCompoundParts(entry.word, compoundSplits, knownGermanWords)?.map((p) => p.lemma) : undefined;
     return (
       <WordQuiz
-        key={`meaning-${entry.id}-${selectedLineIndex}-${selectedOccurrence}`}
+        key={`meaning-${entry.id || entry.word}-${selectedLineIndex}-${selectedOccurrence}`}
         entry={entry}
         kind="meaning"
-        prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> mean here?</>}
+        practice={practice}
+        prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> {prompt}</>}
         build={() => buildMeaningQuiz({ entry, ...sense, songId: song.id, excludeWords: parts }, useStore.getState().words)}
         hidden={selectedTranslationSeen}
         onAnswered={(correct) => {
@@ -734,6 +754,27 @@ export default function LearnScreen() {
         isWide={isWide}
       />
     );
+  };
+
+  // An unsaved word's quiz asks about the Wiktionary meaning found in the line's translation, or else
+  // its first one. Its answers aren't recorded since there's no saved word to level up.
+  const newWordQuiz = (word: string) => {
+    if (newWordDefinitions?.word !== word || newWordDefinitions.definitions.length === 0) return null;
+    const { definitions } = newWordDefinitions;
+    const inLine = pickDefinition(definitions, selectedTranslationLine);
+    const answer = inLine ?? definitions[0].text;
+    const entry: WordEntry = {
+      id: '',
+      word,
+      language: songLanguage ?? '',
+      pronunciation: '',
+      contexts: [],
+      lastLookedUp: 0,
+      // Every meaning, so none of them shows up as a wrong option
+      definitions: definitions.map((d) => ({ text: d.text })),
+    };
+    const partOfSpeech = normalizePartOfSpeech((definitions.find((d) => d.text === answer) ?? definitions[0]).partOfSpeech);
+    return meaningQuiz(entry, { answer, partOfSpeech }, { practice: true, prompt: inLine ? 'mean here?' : 'mean?' });
   };
 
   const gapWordEntry = gapTarget && selectedWord && gapTarget.lineIndex === selectedLineIndex && gapTarget.occurrence === selectedOccurrence
@@ -821,6 +862,7 @@ export default function LearnScreen() {
         onClose={() => setSelectedWord(null)}
         isWide={isWide}
         occurrence={selectedOccurrence}
+        quiz={newWordQuiz(selectedWord)}
       />
     ) : null);
 

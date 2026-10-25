@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
@@ -29,6 +29,8 @@ interface NewWordCardProps {
   onClose: () => void;
   isWide?: boolean;
   occurrence?: number;
+  /** Shown under the actions in Learn, e.g. a quiz on the word's Wiktionary meaning */
+  quiz?: ReactNode;
 }
 
 export default function NewWordCard({
@@ -42,6 +44,7 @@ export default function NewWordCard({
   onClose,
   isWide = false,
   occurrence,
+  quiz,
 }: NewWordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -207,6 +210,8 @@ export default function NewWordCard({
           </View>
         </View>
       )}
+
+      {quiz}
 
       <WordTransformButtons
         word={word}

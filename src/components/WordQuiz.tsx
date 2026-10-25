@@ -17,10 +17,12 @@ interface WordQuizProps {
   hidden?: boolean;
   onAnswered?: (correct: boolean) => void;
   isWide?: boolean;
+  /** For a word that isn't saved yet: the answer isn't recorded and no level progress shows */
+  practice?: boolean;
 }
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, onAnswered, isWide }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, onAnswered, isWide, practice = false }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   // Asked only when the quiz is for the word's level, decided once so moving up a level keeps the
@@ -45,6 +47,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, o
     if (answered) return;
     setChosen(index);
     onAnswered?.(index === quiz.answerIndex);
+    if (practice) return;
     setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex)) ?? null);
   };
 
@@ -54,7 +57,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, o
     void updateWordEntry(entry.id, { masteryLevel: before.masteryLevel, quiz: before.quiz });
   };
 
-  const progress = progressLabel(current.masteryLevel, current.quiz);
+  const progress = practice ? null : progressLabel(current.masteryLevel, current.quiz);
 
   return (
     <View style={styles.container}>
@@ -102,7 +105,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, o
             </>
           ) : (
             <Text style={styles.resultText}>
-              {correct ? 'Right! ' : 'Not quite. '}
+              {correct ? 'Right!' : 'Not quite.'}{progress ? ' ' : ''}
               {progress}
             </Text>
           )}

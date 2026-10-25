@@ -107,6 +107,22 @@ describe('buildLyricQuiz', () => {
     const words = [herz, word('Liebe', 'love', 'noun'), word('Nacht', 'night', 'noun', 'song'), word('laufen', 'to run', 'verb', 'song'), word('Stern', 'star', 'noun'), word('Mond', 'moon', 'noun', 'song')];
     const quiz = buildLyricQuiz({ entry: herz, answer: 'heart', partOfSpeech: 'noun', songId: 'song' }, words, noShuffle)!;
     expect(quiz.options[quiz.answerIndex]).toBe('Herz');
-    expect([...quiz.options].sort()).toEqual(['Herz', 'Mond', 'Nacht', 'laufen']);
+    expect([...quiz.options].sort()).toEqual(['Herz', 'Liebe', 'Mond', 'Nacht']);
+  });
+
+  it('in German, offers only words capitalized like the answer', () => {
+    const laufen = word('laufen', 'to run', 'verb', 'song');
+    const words = [laufen, word('Herz', 'heart', 'noun', 'song'), word('Nacht', 'night', 'noun', 'song'), word('gehen', 'to go', 'verb'), word('schön', 'beautiful', 'adjective')];
+    const quiz = buildLyricQuiz({ entry: laufen, answer: 'to run', partOfSpeech: 'verb', songId: 'song' }, words, noShuffle)!;
+    expect([...quiz.options].sort()).toEqual(['gehen', 'laufen', 'schön']);
+    // Not enough nouns to choose from
+    const herz = words[1];
+    expect(buildLyricQuiz({ entry: herz, answer: 'heart', songId: 'song' }, [...words, word('Liebe', 'love', 'noun', 'x', 'en')])).toBeNull();
+  });
+
+  it('mixes capitalized and lowercase words in other languages', () => {
+    const amour = word('amour', 'love', 'noun', 'song', 'French');
+    const words = [amour, word('Paris', 'Paris', 'noun', 'song', 'French'), word('nuit', 'night', 'noun', 'song', 'French'), word('Marie', 'Mary', 'noun', 'song', 'French')];
+    expect([...buildLyricQuiz({ entry: amour, answer: 'love', songId: 'song' }, words, noShuffle)!.options].sort()).toEqual(['Marie', 'Paris', 'amour', 'nuit']);
   });
 });

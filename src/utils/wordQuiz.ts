@@ -1,5 +1,6 @@
 import { isSameLanguage } from '../constants/languages';
 import type { MasteryLevel, WordEntry } from '../types';
+import { isGermanLanguage } from './compoundWords';
 import type { PartOfSpeech } from './partOfSpeech';
 
 /** Which quiz a level takes: the meaning quiz proves Recognized, the lyric quiz Recalled and Known */
@@ -206,16 +207,21 @@ export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random 
   return finish(target.answer, pickBest(candidates, QUIZ_RULES.options - 1, random), random);
 }
 
+const isCapitalized = (word: string) => word.charAt(0) !== word.charAt(0).toLowerCase();
+
 /**
  * A lyric quiz: the target word and other saved words in its language to fill the lyric's gap with,
- * preferring words from the same song, the same type of word and words of similar length
+ * preferring words from the same song, the same type of word and words of similar length. In German
+ * only words capitalized like the answer are options, since a noun's capital would give it away.
  */
 export function buildLyricQuiz(target: QuizTarget, words: WordEntry[], random = Math.random): Quiz | null {
   const answer = target.entry.word;
+  const german = isGermanLanguage([target.entry.language]);
   const seen = new Set<string>([answer.toLowerCase()]);
   const candidates: { item: string; score: number }[] = [];
   for (const word of otherWords(target, words)) {
     if (seen.has(word.word.toLowerCase())) continue;
+    if (german && isCapitalized(word.word) !== isCapitalized(answer)) continue;
     seen.add(word.word.toLowerCase());
     const sameType = !!target.partOfSpeech && (word.contexts ?? []).some((c) => c.partOfSpeech === target.partOfSpeech);
     candidates.push({

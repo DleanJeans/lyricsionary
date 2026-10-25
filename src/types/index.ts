@@ -1,3 +1,5 @@
+import type { WiktionaryAudio } from '../utils/wiktionary';
+
 export interface Song {
   id: string;
   songName: string;
@@ -44,6 +46,8 @@ export interface WordEntry {
   masteryLevel?: MasteryLevel;
   emoji?: string;
   definitions?: { text: string; songId?: string; songName?: string; lyricsLine?: string }[];
+  /** Wiktionary's pronunciation recordings, kept so the word doesn't fetch them again; empty when it has none */
+  audio?: WiktionaryAudio[];
 }
 
 export type RootTabParamList = {

@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { isSameLanguage } from '../constants/languages';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import { MasteryLevel, Song, Translation, WordContext, WordEntry } from '../types';
+import type { WiktionaryAudio } from '../utils/wiktionary';
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
@@ -110,8 +111,10 @@ interface AppState {
     language: string,
     pronunciation?: string,
     contexts?: WordContext[],
-    masteryLevel?: MasteryLevel
+    masteryLevel?: MasteryLevel,
+    audio?: WiktionaryAudio[]
   ) => Promise<void>;
+  setWordAudio: (id: string, audio: WiktionaryAudio[]) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
 
   // Ignore list actions
@@ -336,7 +339,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addOrUpdateWord: async (word, language, pronunciation, contexts, masteryLevel) => {
+  addOrUpdateWord: async (word, language, pronunciation, contexts, masteryLevel, audio) => {
     const existing = get().words.find(
       (w) => w.word.toLowerCase() === word.toLowerCase() && isSameLanguage(w.language, language)
     );
@@ -354,6 +357,7 @@ export const useStore = create<AppState>((set, get) => ({
                 ? contexts.filter(c => c.context || c.emoji || c.ipa || c.definition)
                 : w.contexts,
               masteryLevel: masteryLevel !== undefined ? masteryLevel : w.masteryLevel,
+              audio: audio ?? w.audio,
             }
           : w
       );
@@ -366,9 +370,16 @@ export const useStore = create<AppState>((set, get) => ({
         contexts: (contexts ?? []).filter(c => c.context || c.emoji || c.ipa || c.definition),
         lastLookedUp: Date.now(),
         masteryLevel: masteryLevel || 'New',
+        audio,
       };
       words = [...get().words, entry];
     }
+    set({ words });
+    await persist(WORDS_KEY, JSON.stringify(words));
+  },
+
+  setWordAudio: async (id, audio) => {
+    const words = get().words.map((w) => (w.id === id ? { ...w, audio } : w));
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
   },

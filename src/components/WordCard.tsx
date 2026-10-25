@@ -55,7 +55,16 @@ export default function WordCard({
   useEffect(() => setChoosingLevel(false), [item.id]);
   const swipeableRef = useRef<Swipeable>(null);
   // Only the Learn screen's card for the selected word, not every card in the Words list
-  const wiktionary = useWiktionaryPronunciation(item.word, item.language, showClose);
+  const wiktionary = useWiktionaryPronunciation(item.word, item.language, {
+    enabled: showClose,
+    savedAudio: item.audio,
+    needsIpa: !item.pronunciation,
+  });
+  // Words saved before recordings were kept get them the first time they're selected
+  const setWordAudio = useStore((s) => s.setWordAudio);
+  useEffect(() => {
+    if (showClose && !item.audio && wiktionary.loaded) setWordAudio(item.id, wiktionary.audio);
+  }, [showClose, item.id, item.audio, wiktionary.loaded, wiktionary.audio, setWordAudio]);
   // Wiktionary's IPA until the word has one of its own
   const ipa = item.pronunciation
     ? (item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`)

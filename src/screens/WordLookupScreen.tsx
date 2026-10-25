@@ -309,7 +309,14 @@ export default function WordLookupScreen() {
     });
   }, [definitionSuggestions]);
 
-  const { audio: pronunciationAudio } = useWiktionaryPronunciation(wiktionaryWord, language);
+  const savedWord = findExistingWord();
+  const wiktionaryPronunciation = useWiktionaryPronunciation(wiktionaryWord, language, {
+    // The saved recordings are for the saved word's language
+    savedAudio: savedWord && isSameLanguage(savedWord.language, language) ? savedWord.audio : undefined,
+    // The Wiktionary tab reads the IPA itself
+    needsIpa: false,
+  });
+  const pronunciationAudio = wiktionaryPronunciation.audio;
 
   const entryCheckedWordRef = useRef<string | undefined>(undefined);
 
@@ -444,7 +451,8 @@ export default function WordLookupScreen() {
       }));
 
     await addOrUpdateWord(
-      displayWord, language, pronunciation, contexts, masteryLevel
+      displayWord, language, pronunciation, contexts, masteryLevel,
+      wiktionaryPronunciation.loaded ? pronunciationAudio : undefined
     );
 
     if (source === 'Words') {

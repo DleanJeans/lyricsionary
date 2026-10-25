@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react';
-import { getWiktionaryPronunciation, type WiktionaryPronunciation } from '../utils/wiktionary';
+import { getWiktionaryPronunciation, type WiktionaryAudio, type WiktionaryPronunciation } from '../utils/wiktionary';
+
+interface Options {
+  enabled?: boolean;
+  /** Recordings a saved word already has; the page is skipped unless its IPA is needed too */
+  savedAudio?: WiktionaryAudio[];
+  needsIpa?: boolean;
+}
+
+interface Result extends WiktionaryPronunciation {
+  /** False until the page loads (or fails), so an empty audio list isn't mistaken for "none" */
+  loaded: boolean;
+}
 
 const EMPTY: WiktionaryPronunciation = { ipa: [], audio: [] };
 
@@ -7,21 +19,23 @@ const EMPTY: WiktionaryPronunciation = { ipa: [], audio: [] };
 export function useWiktionaryPronunciation(
   word: string | undefined,
   language: string | undefined,
-  enabled = true
-): WiktionaryPronunciation {
-  const [pronunciation, setPronunciation] = useState(EMPTY);
+  { enabled = true, savedAudio, needsIpa = true }: Options = {}
+): Result {
+  const [pronunciation, setPronunciation] = useState<WiktionaryPronunciation | null>(null);
+  const skip = !!savedAudio && !needsIpa;
 
   useEffect(() => {
-    setPronunciation(EMPTY);
-    if (!enabled || !word || !language) return;
+    setPronunciation(null);
+    if (!enabled || skip || !word || !language) return;
     let cancelled = false;
     getWiktionaryPronunciation(word, language).then((result) => {
-      if (!cancelled && result) setPronunciation(result);
+      if (!cancelled) setPronunciation(result ?? null);
     });
     return () => {
       cancelled = true;
     };
-  }, [word, language, enabled]);
+  }, [word, language, enabled, skip]);
 
-  return pronunciation;
+  if (savedAudio) return { ipa: pronunciation?.ipa ?? [], audio: savedAudio, loaded: true };
+  return { ...(pronunciation ?? EMPTY), loaded: pronunciation !== null };
 }

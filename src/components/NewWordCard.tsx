@@ -80,7 +80,8 @@ export default function NewWordCard({
   };
 
   const handleMasterySelect = async (level: MasteryLevel) => {
-    await addOrUpdateWord(word, language, undefined, undefined, level);
+    // Keep the recordings so the saved word doesn't fetch them again
+    await addOrUpdateWord(word, language, undefined, undefined, level, wiktionary.loaded ? wiktionary.audio : undefined);
     onClose();
   };
 

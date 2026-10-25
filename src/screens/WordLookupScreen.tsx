@@ -20,6 +20,7 @@ import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
 import { getWiktionaryDefinitions, getWiktionaryLanguage, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
+import { findPartOfSpeech } from '../utils/partOfSpeech';
 import WordTransformButtons from '../components/WordTransformButtons';
 import MasteryLevelSelector from '../components/MasteryLevelSelector';
 import PronunciationAudio from '../components/PronunciationAudio';
@@ -215,6 +216,7 @@ export default function WordLookupScreen() {
             occurrence: c.occurrence || 1,
             fromSong: c.fromSong ?? false,
             translation: c.translation,
+            partOfSpeech: c.partOfSpeech,
           });
 
           if (exactMatchIndex >= 0) {
@@ -267,7 +269,7 @@ export default function WordLookupScreen() {
     if (language !== existing.language) return true;
     if (pronunciation !== existing.pronunciation) return true;
     if (masteryLevel !== (existing.masteryLevel || 'New')) return true;
-    const normalizeSense = (s: any) => `${s.context || ''}|${s.emoji || ''}|${s.ipa || ''}|${s.definition || ''}|${s.songId || ''}|${s.occurrence || 1}`;
+    const normalizeSense = (s: any) => `${s.context || ''}|${s.emoji || ''}|${s.ipa || ''}|${s.definition || ''}|${s.songId || ''}|${s.occurrence || 1}|${s.partOfSpeech || ''}`;
     const currentNormalized = wordSenses
       .filter(b => b.context || b.emoji || b.ipa || b.definition)
       .map(normalizeSense)
@@ -409,7 +411,10 @@ export default function WordLookupScreen() {
 
   const updateWordSense = (index: number, field: keyof WordSenseData, value: string | number) => {
     setUndoData(null);
-    setWordSenses(prev => prev.map((b, i) => i === index ? { ...b, [field]: value } : b));
+    // Another definition can be another type of word, found again when saving
+    setWordSenses(prev => prev.map((b, i) => i !== index ? b
+      : field === 'definition' && value !== b.definition ? { ...b, definition: String(value), partOfSpeech: undefined }
+      : { ...b, [field]: value }));
   };
 
   const addWordSense = () => {
@@ -448,6 +453,9 @@ export default function WordLookupScreen() {
         fromSong: b.fromSong ?? false,
         occurrence: b.occurrence || 1,
         translation: b.translation || undefined,
+        partOfSpeech: b.definition
+          ? b.partOfSpeech ?? findPartOfSpeech(b.definition, definitionSuggestions)
+          : undefined,
       }));
 
     await addOrUpdateWord(

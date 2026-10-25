@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import WordSenseCard from './WordSenseCard';
 import type { WiktionaryDefinition } from '../utils/wiktionary';
+import type { PartOfSpeech } from '../utils/partOfSpeech';
 
 export interface WordSenseData {
   uid: number;
@@ -15,6 +16,8 @@ export interface WordSenseData {
   translation?: string;
   fromSong?: boolean;
   occurrence?: number;
+  // The saved or chosen word type; left out, it's found from the definition when saving
+  partOfSpeech?: PartOfSpeech;
   isNew?: boolean;
 }
 

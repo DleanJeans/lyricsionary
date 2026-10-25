@@ -29,6 +29,8 @@ interface WordCardProps {
   translationLine?: string;
   originalLanguages?: string[];
   occurrence?: number;
+  /** Shown under the word in Learn, e.g. a quiz on its meaning */
+  quiz?: React.ReactNode;
 }
 
 export default function WordCard({
@@ -47,6 +49,7 @@ export default function WordCard({
   translationLine,
   originalLanguages,
   occurrence,
+  quiz,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -169,6 +172,7 @@ export default function WordCard({
                 />
               </View>
             )}
+            {quiz}
           </>
         ) : (
           <View style={styles.cardRow}>

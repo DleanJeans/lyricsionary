@@ -13,6 +13,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
 import WordCard from '../components/WordCard';
+import WordQuiz from '../components/WordQuiz';
 import { getFlagForLanguage, getLanguageNameFromCode, isRtlLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
@@ -23,6 +24,8 @@ import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
 import { withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
+import { buildMeaningQuiz } from '../utils/wordQuiz';
+import type { PartOfSpeech } from '../utils/partOfSpeech';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
 const PREVIEW_MAX_WORDS = 8;
@@ -118,6 +121,10 @@ export default function LearnScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
   const [unblurredTranslations, setUnblurredTranslations] = useState<Set<string>>(new Set());
+  // Lines whose translation was shown since the song opened, even if blurred again, so the word
+  // quiz isn't asked there; all of them once translations were shown unblurred
+  const [seenTranslationLines, setSeenTranslationLines] = useState<Set<number>>(new Set());
+  const [seenAllTranslations, setSeenAllTranslations] = useState(false);
   const [isRendering, setIsRendering] = useState(true);
   const [computedLines, setComputedLines] = useState<LearnLine[]>([]);
 
@@ -152,6 +159,7 @@ export default function LearnScreen() {
     emoji: string | undefined;
     ipa: string | undefined;
     definition: string | undefined;
+    partOfSpeech?: PartOfSpeech;
   } | null => {
     if (!wordEntry.contexts || wordEntry.contexts.length === 0) return null;
     const occ = occurrence || 1;
@@ -160,28 +168,28 @@ export default function LearnScreen() {
       c.songId === song?.id && c.context === line && (c.occurrence || 1) === occ
     );
     if (bySongLineOcc) {
-      return { emoji: bySongLineOcc.emoji, ipa: bySongLineOcc.ipa, definition: bySongLineOcc.definition };
+      return { emoji: bySongLineOcc.emoji, ipa: bySongLineOcc.ipa, definition: bySongLineOcc.definition, partOfSpeech: bySongLineOcc.partOfSpeech };
     }
     // Try matching by songId + context line (no occurrence)
     const bySongAndLine = wordEntry.contexts.find(c =>
       c.songId === song?.id && c.context === line && !c.occurrence
     );
     if (bySongAndLine) {
-      return { emoji: bySongAndLine.emoji, ipa: bySongAndLine.ipa, definition: bySongAndLine.definition };
+      return { emoji: bySongAndLine.emoji, ipa: bySongAndLine.ipa, definition: bySongAndLine.definition, partOfSpeech: bySongAndLine.partOfSpeech };
     }
     // Try matching by songId only
     const bySong = wordEntry.contexts.find(c => c.songId === song?.id);
     if (bySong) {
-      return { emoji: bySong.emoji, ipa: bySong.ipa, definition: bySong.definition };
+      return { emoji: bySong.emoji, ipa: bySong.ipa, definition: bySong.definition, partOfSpeech: bySong.partOfSpeech };
     }
     // Try matching by context line text only
     const byLine = wordEntry.contexts.find(c => c.context === line);
     if (byLine) {
-      return { emoji: byLine.emoji, ipa: byLine.ipa, definition: byLine.definition };
+      return { emoji: byLine.emoji, ipa: byLine.ipa, definition: byLine.definition, partOfSpeech: byLine.partOfSpeech };
     }
     // Fall back to first context
     const first = wordEntry.contexts[0];
-    return { emoji: first.emoji, ipa: first.ipa, definition: first.definition };
+    return { emoji: first.emoji, ipa: first.ipa, definition: first.definition, partOfSpeech: first.partOfSpeech };
   }, [song?.id]);
 
   // Compute lines asynchronously to avoid blocking initial render
@@ -251,6 +259,15 @@ export default function LearnScreen() {
     setUnblurredTranslations(new Set());
   }, [blurTranslations, activeSongId]);
 
+  useEffect(() => {
+    setSeenTranslationLines(new Set());
+    setSeenAllTranslations(false);
+  }, [activeSongId]);
+
+  useEffect(() => {
+    if (!blurTranslations && showTranslations) setSeenAllTranslations(true);
+  }, [blurTranslations, showTranslations]);
+
   // Close word panel when switching songs
   useEffect(() => {
     setSelectedWord(null);
@@ -289,6 +306,7 @@ export default function LearnScreen() {
     if (blurTranslations) {
       if (!unblurredTranslations.has(key)) {
         setUnblurredTranslations((prev) => new Set(prev).add(key));
+        setSeenTranslationLines((prev) => new Set(prev).add(lineIndex));
       } else {
         setUnblurredTranslations((prev) => {
           const newSet = new Set(prev);
@@ -615,6 +633,59 @@ export default function LearnScreen() {
       ? [definitionsOf(selectedWordEntry, selectedLine, selectedOccurrence)]
       : (selectedCompoundEntries ?? []).map((entry) => definitionsOf(entry, selectedLine));
 
+  // The selected line's translations, as LearnLyricsView keys them
+  const selectedLineTranslationCount =
+    selectedLineIndex !== null && lines[selectedLineIndex]
+      ? lines[selectedLineIndex].translations.filter((tl) => tl.show && localSelectedLanguages.includes(tl.language)).length
+      : 0;
+  // The quiz would give itself away when the line's translation is, or was, readable
+  const selectedTranslationSeen =
+    selectedLineIndex !== null &&
+    showTranslations &&
+    selectedLineTranslationCount > 0 &&
+    (!blurTranslations || seenAllTranslations || seenTranslationLines.has(selectedLineIndex));
+
+  const revealSelectedTranslation = () => {
+    if (selectedLineIndex === null || !blurTranslations) return;
+    setUnblurredTranslations((prev) => {
+      const next = new Set(prev);
+      for (let t = 0; t < selectedLineTranslationCount; t++) next.add(`${selectedLineIndex}-${t}`);
+      return next;
+    });
+    setSeenTranslationLines((prev) => new Set(prev).add(selectedLineIndex));
+  };
+
+  // The meaning asked about: the definition saved for this line, otherwise any saved definition
+  const quizSense = (entry: WordEntry): { answer: string; partOfSpeech?: PartOfSpeech } | null => {
+    const context = selectedLine !== null ? findWordContext(entry, selectedLine, selectedOccurrence) : null;
+    if (context?.definition?.trim()) return { answer: context.definition.trim(), partOfSpeech: context.partOfSpeech };
+    const other = entry.contexts?.find((c) => c.definition?.trim());
+    if (other) return { answer: other.definition!.trim(), partOfSpeech: other.partOfSpeech };
+    const legacy = entry.definitions?.find((d) => d.text.trim());
+    return legacy ? { answer: legacy.text.trim() } : null;
+  };
+
+  const meaningQuiz = (entry: WordEntry) => {
+    const sense = quizSense(entry);
+    if (!sense) return null;
+    // A German compound's parts aren't wrong meanings, e.g. Liebe in Liebesbrief
+    const parts = isGermanSong ? getCompoundParts(entry.word, compoundSplits, knownGermanWords)?.map((p) => p.lemma) : undefined;
+    return (
+      <WordQuiz
+        key={`meaning-${entry.id}-${selectedLineIndex}-${selectedOccurrence}`}
+        entry={entry}
+        kind="meaning"
+        prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> mean here?</>}
+        build={() => buildMeaningQuiz({ entry, ...sense, songId: song.id, excludeWords: parts }, useStore.getState().words)}
+        hidden={selectedTranslationSeen}
+        onAnswered={(correct) => {
+          if (!correct) revealSelectedTranslation();
+        }}
+        isWide={isWide}
+      />
+    );
+  };
+
   const wordPanel =
     selectedWord && selectedWordEntry ? (
       <View style={[styles.wordCardContainer]}>
@@ -631,6 +702,7 @@ export default function LearnScreen() {
           translationLine={selectedTranslationLine}
           originalLanguages={song.originalLanguages}
           occurrence={selectedOccurrence}
+          quiz={meaningQuiz(selectedWordEntry)}
         />
       </View>
     ) : selectedWord ? (
@@ -769,6 +841,11 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
+  quizWord: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
+  },
   /* Layout */
   loadingOverlay: {
     position: 'absolute',

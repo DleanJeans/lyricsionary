@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
 import { isSameLanguage } from '../constants/languages';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
-import { MasteryLevel, Song, Translation, WordContext, WordEntry } from '../types';
+import { MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
 import type { WiktionaryAudio } from '../utils/wiktionary';
 
 const SONGS_KEY = '@lyricsionary_songs';
@@ -292,7 +292,7 @@ export const useStore = create<AppState>((set, get) => ({
       const json = await AsyncStorage.getItem(WORDS_KEY);
       if (json) {
         const loadedWords: WordEntry[] = JSON.parse(json);
-        // Migrate old words that don't have definitions array or masteryLevel
+        // Migrate old words that don't have definitions array or masteryLevel, or have an old level
         const migratedWords = loadedWords.map(w => {
           const contexts = w.contexts || [];
           const needsMigration = contexts.length === 0 && (w.definitions || []).length > 0;
@@ -328,7 +328,8 @@ export const useStore = create<AppState>((set, get) => ({
             ...w,
             definitions: w.definitions || [],
             contexts: migratedContexts,
-            masteryLevel: w.masteryLevel || 'New' as MasteryLevel,
+            // Also renames the old levels, e.g. Mastered -> Known
+            masteryLevel: toMasteryLevel(w.masteryLevel),
           };
         });
         set({ words: migratedWords });
@@ -371,7 +372,7 @@ export const useStore = create<AppState>((set, get) => ({
         pronunciation: pronunciation ?? '',
         contexts: (contexts ?? []).filter(c => c.context || c.emoji || c.ipa || c.definition),
         lastLookedUp: Date.now(),
-        masteryLevel: masteryLevel || 'New',
+        masteryLevel: masteryLevel || 'Seen',
         audio,
       };
       words = [...get().words, entry];

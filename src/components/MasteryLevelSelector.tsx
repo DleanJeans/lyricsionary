@@ -15,19 +15,24 @@ const levels: {
   color: string;
 }[] = [
   {
-    value: 'New',
-    label: 'New',
-    color: Colors.masteryNew,
+    value: 'Seen',
+    label: 'Seen',
+    color: Colors.masterySeen,
   },
   {
-    value: 'Learning',
-    label: 'Learning',
-    color: Colors.masteryLearning,
+    value: 'Recognized',
+    label: 'Recognized',
+    color: Colors.masteryRecognized,
   },
   {
-    value: 'Mastered',
-    label: 'Mastered',
-    color: Colors.masteryMastered,
+    value: 'Recalled',
+    label: 'Recalled',
+    color: Colors.masteryRecalled,
+  },
+  {
+    value: 'Known',
+    label: 'Known',
+    color: Colors.masteryKnown,
   },
 ];
 

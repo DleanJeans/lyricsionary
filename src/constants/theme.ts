@@ -23,23 +23,23 @@ export const Colors = {
   warning: '#FDCB6E',
   white: '#FFFFFF',
   // Mastery level colors
-  masteryUnknown: '#FFFFFF',      // White (default)
-  masteryNew: '#FF6B6B',           // Red-orange
-  masteryLearning: '#FDCB6E',      // Yellow
-  masteryMastered: '#00B894',      // Green
+  masterySeen: '#FF6B6B',          // Red-orange
+  masteryRecognized: '#FDCB6E',    // Yellow
+  masteryRecalled: '#55EFC4',      // Light green
+  masteryKnown: '#00B894',         // Green
 };
 
-export const getMasteryLevelColor = (level?: 'Unknown' | 'New' | 'Learning' | 'Mastered'): string => {
+export const getMasteryLevelColor = (level?: 'Seen' | 'Recognized' | 'Recalled' | 'Known'): string => {
   switch (level) {
-    case 'New':
-      return Colors.masteryNew;
-    case 'Learning':
-      return Colors.masteryLearning;
-    case 'Mastered':
-      return Colors.masteryMastered;
-    case 'Unknown':
+    case 'Recognized':
+      return Colors.masteryRecognized;
+    case 'Recalled':
+      return Colors.masteryRecalled;
+    case 'Known':
+      return Colors.masteryKnown;
+    case 'Seen':
     default:
-      return Colors.masteryUnknown;
+      return Colors.masterySeen;
   }
 };
 

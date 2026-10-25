@@ -141,7 +141,7 @@ export default function WordLookupScreen() {
   const languageRef = useRef(language);
   languageRef.current = language;
   const [pronunciation, setPronunciation] = useState('');
-  const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('New');
+  const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('Seen');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
   const [definitionSuggestions, setDefinitionSuggestions] = useState<WiktionaryDefinition[]>([]);
 
@@ -197,7 +197,7 @@ export default function WordLookupScreen() {
       if (existingWord) {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation || cardIpa?.[0] || '');
-        setMasteryLevel(existingWord.masteryLevel || 'New');
+        setMasteryLevel(existingWord.masteryLevel || 'Seen');
 
         if (existingWord.contexts && existingWord.contexts.length > 0) {
           const exactMatchIndex = existingWord.contexts.findIndex(c =>
@@ -248,7 +248,7 @@ export default function WordLookupScreen() {
         }
       } else {
         setPronunciation(cardIpa?.[0] ?? '');
-        setMasteryLevel('New');
+        setMasteryLevel('Seen');
         setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
@@ -268,7 +268,7 @@ export default function WordLookupScreen() {
     if (!existing) return true;
     if (language !== existing.language) return true;
     if (pronunciation !== existing.pronunciation) return true;
-    if (masteryLevel !== (existing.masteryLevel || 'New')) return true;
+    if (masteryLevel !== (existing.masteryLevel || 'Seen')) return true;
     const normalizeSense = (s: any) => `${s.context || ''}|${s.emoji || ''}|${s.ipa || ''}|${s.definition || ''}|${s.songId || ''}|${s.occurrence || 1}|${s.partOfSpeech || ''}`;
     const currentNormalized = wordSenses
       .filter(b => b.context || b.emoji || b.ipa || b.definition)

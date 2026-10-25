@@ -2,10 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { LayoutRectangle, Pressable, StyleProp, StyleSheet, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
-import { MasteryLevel } from '../types';
+import { MASTERY_LEVELS, MasteryLevel } from '../types';
 import { Text } from './Text';
-
-const MASTERY_LEVELS: MasteryLevel[] = ['Unknown', 'New', 'Learning', 'Mastered'];
 
 interface MasteryLevelDropdownProps {
   onSelect: (level: MasteryLevel) => void;

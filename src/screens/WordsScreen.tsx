@@ -122,11 +122,11 @@ export default function WordsScreen() {
   // Count each level among the language's words, then apply the level filter
   const levelCounts: Partial<Record<MasteryLevel, number>> = {};
   for (const w of languageFilteredWords) {
-    const level = w.masteryLevel || 'New';
+    const level = w.masteryLevel || 'Seen';
     levelCounts[level] = (levelCounts[level] ?? 0) + 1;
   }
   const levelFilteredWords = selectedLevel
-    ? languageFilteredWords.filter((w) => (w.masteryLevel || 'New') === selectedLevel)
+    ? languageFilteredWords.filter((w) => (w.masteryLevel || 'Seen') === selectedLevel)
     : languageFilteredWords;
 
   // Apply search filter: the word, its language, IPA or any of its meanings, ignoring accents

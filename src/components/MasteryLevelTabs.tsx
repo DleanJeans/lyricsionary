@@ -1,10 +1,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { getMasteryLevelColor } from '../constants/theme';
-import { MasteryLevel } from '../types';
+import { MASTERY_LEVELS, MasteryLevel } from '../types';
 import { FilterChip } from './LanguageTabButtons';
-
-const LEVELS: MasteryLevel[] = ['Unknown', 'New', 'Learning', 'Mastered'];
 
 interface MasteryLevelTabsProps {
   selectedLevel: MasteryLevel | null;
@@ -21,7 +19,7 @@ export default function MasteryLevelTabs({ selectedLevel, onLevelChange, levelCo
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
-      {LEVELS.filter((level) => (levelCounts[level] ?? 0) > 0).map((level) => (
+      {MASTERY_LEVELS.filter((level) => (levelCounts[level] ?? 0) > 0).map((level) => (
         <FilterChip
           key={level}
           icon={<View style={[styles.dot, { backgroundColor: getMasteryLevelColor(level) }]} />}

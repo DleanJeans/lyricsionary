@@ -35,9 +35,9 @@ const NO_UNBLURRED = new Set<string>();
 
 // Shown when the song has no saved words with an emoji or IPA to preview
 const SAMPLE_WORDS = [
-  { text: 'Bonjour', emoji: '👋', ipa: '/bɔ̃.ʒuʁ/', color: Colors.masteryLearning },
-  { text: 'le', emoji: '', ipa: '/lə/', color: Colors.masteryMastered },
-  { text: 'monde', emoji: '🌍', ipa: '/mɔ̃d/', color: Colors.masteryNew },
+  { text: 'Bonjour', emoji: '👋', ipa: '/bɔ̃.ʒuʁ/', color: Colors.masteryRecognized },
+  { text: 'le', emoji: '', ipa: '/lə/', color: Colors.masteryKnown },
+  { text: 'monde', emoji: '🌍', ipa: '/mɔ̃d/', color: Colors.masterySeen },
 ];
 
 function SamplePreview({

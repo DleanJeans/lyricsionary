@@ -37,7 +37,26 @@ export interface WordContext {
   partOfSpeech?: PartOfSpeech;
 }
 
-export type MasteryLevel = 'Unknown' | 'New' | 'Learning' | 'Mastered';
+// Seen: saved, not tested yet. Recognized: picks its meaning from a few. Recalled: comes up with the
+// word from its meaning or the lyric. Known: still right after a couple of weeks.
+export type MasteryLevel = 'Seen' | 'Recognized' | 'Recalled' | 'Known';
+export const MASTERY_LEVELS: MasteryLevel[] = ['Seen', 'Recognized', 'Recalled', 'Known'];
+
+/** The level of a word saved with the old levels, e.g. Learning -> Recognized */
+export function toMasteryLevel(level?: string): MasteryLevel {
+  switch (level) {
+    case 'Recognized':
+    case 'Learning':
+      return 'Recognized';
+    case 'Recalled':
+      return 'Recalled';
+    case 'Known':
+    case 'Mastered':
+      return 'Known';
+    default:
+      return 'Seen';
+  }
+}
 
 export interface WordEntry {
   id: string;

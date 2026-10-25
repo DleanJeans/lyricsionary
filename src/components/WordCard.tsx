@@ -132,10 +132,10 @@ export default function WordCard({
                     onPress={() => setChoosingLevel((v) => !v)}
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel={`Level: ${item.masteryLevel || 'Unknown'}`}
+                    accessibilityLabel={`Level: ${item.masteryLevel || 'Seen'}`}
                     accessibilityState={{ expanded: choosingLevel }}
                   >
-                    <Text style={styles.badgeText}>{(item.masteryLevel || 'Unknown').toUpperCase()}</Text>
+                    <Text style={styles.badgeText}>{(item.masteryLevel || 'Seen').toUpperCase()}</Text>
                     <Ionicons name={choosingLevel ? 'chevron-up' : 'chevron-down'} size={10} color={Colors.background} />
                   </TouchableOpacity>
                   <Text style={styles.badgeEmoji}>{flag}</Text>
@@ -161,7 +161,7 @@ export default function WordCard({
             {choosingLevel && (
               <View style={styles.levelPicker}>
                 <MasteryLevelSelector
-                  value={item.masteryLevel || 'New'}
+                  value={item.masteryLevel || 'Seen'}
                   onChange={(level) => {
                     setChoosingLevel(false);
                     void addOrUpdateWord(item.word, item.language, undefined, undefined, level);

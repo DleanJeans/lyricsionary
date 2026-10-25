@@ -233,12 +233,13 @@ export default function LearnSettingsMenu({
                 onPress={onToggleShowSections}
               />
               {/* Debug: copy the detected sections to check them */}
-              <Chip
-                label={copiedSections ? 'Copied' : 'Copy sections'}
-                icon={<Ionicons name={copiedSections ? 'checkmark' : 'copy-outline'} size={18} color={Colors.textSecondary} />}
-                selected={false}
+              <TouchableOpacity
+                style={[styles.chip, styles.iconChip]}
                 onPress={copySections}
-              />
+                accessibilityLabel={copiedSections ? 'Copied sections' : 'Copy sections'}
+              >
+                <Ionicons name={copiedSections ? 'checkmark' : 'copy-outline'} size={18} color={Colors.textSecondary} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.tiles}>
@@ -327,6 +328,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 14,
+  },
+  iconChip: {
+    alignSelf: 'stretch',
+    paddingHorizontal: 12,
   },
   chipSelected: {
     backgroundColor: 'rgba(108, 92, 231, 0.18)',

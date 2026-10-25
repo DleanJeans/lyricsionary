@@ -3,6 +3,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, I18nManager, StyleSheet, TouchableOpacity, View } from 'react-native';
+import AnimatedHeight from '../components/AnimatedHeight';
 import LearnActionBar from '../components/LearnActionBar';
 import { useWordProgress } from '../hooks/useWordProgress';
 import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
@@ -1034,7 +1035,7 @@ export default function LearnScreen() {
       ) : (
         /* ── Narrow: stacked ── */
         <View style={styles.narrowMain}>
-          {wordPanel}
+          {wordPanel && <AnimatedHeight>{wordPanel}</AnimatedHeight>}
           {actionBar}
           {lyricsView}
         </View>

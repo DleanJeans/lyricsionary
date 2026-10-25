@@ -56,7 +56,7 @@ function MasteryOption({ level, active, onPress }: MasteryOptionProps) {
       accessibilityLabel={level.label + ' mastery level'}
       accessibilityState={{ selected: active }}
     >
-      <Text style={[styles.buttonText, active && styles.buttonTextActive]}>
+      <Text style={[styles.buttonText, active && styles.buttonTextActive]} numberOfLines={1}>
         {level.label}
       </Text>
     </Pressable>
@@ -85,8 +85,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   button: {
-    flex: 1,
-    minWidth: 76,
+    // Grows from the label's width, so a long level like Recognized gets more room instead of breaking
+    flexGrow: 1,
     backgroundColor: Colors.surface,
     borderRadius: 8,
     minHeight: 44,

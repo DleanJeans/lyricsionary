@@ -22,14 +22,18 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
   const ignoredWords = useStore((s) => s.ignoredWords);
   const compoundSplits = useStore((s) => s.compoundSplits);
 
-  // Saved words keyed by "language\u0000word", with language names normalized like LearnScreen
-  const savedWordKeys = useMemo(() => {
+  // Saved words keyed by "language\u0000word", with language names normalized like LearnScreen, and
+  // by word alone for songs with no language, which Learn matches against saved words in any language
+  const { savedWordKeys, savedWordsAnyLanguage } = useMemo(() => {
     const keys = new Set<string>();
+    const anyLanguage = new Set<string>();
     for (const entry of words) {
       const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
-      keys.add(`${language}\u0000${entry.word.toLowerCase()}`);
+      const word = entry.word.toLowerCase();
+      keys.add(`${language}\u0000${word}`);
+      anyLanguage.add(word);
     }
-    return keys;
+    return { savedWordKeys: keys, savedWordsAnyLanguage: anyLanguage };
   }, [words]);
 
   // Whether a German compound splits into saved words, like Learn shows it, e.g. Liebesbrief once
@@ -60,7 +64,9 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
       const known = countKnownWords(song.originalLyrics, (word) => {
         const lower = word.toLowerCase();
         return (
-          languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`)) ||
+          (languages.length === 0
+            ? savedWordsAnyLanguage.has(lower)
+            : languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`))) ||
           isIgnored(word, ignoreLanguage) ||
           (isGermanSong && isKnownCompound(word))
         );
@@ -69,5 +75,5 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
       progress.set(song.id, { known, total, percent, label: `${known}/${total} words (${percent}%)` });
     }
     return progress;
-  }, [songs, savedWordKeys, ignoredWords, isKnownCompound]);
+  }, [songs, savedWordKeys, savedWordsAnyLanguage, ignoredWords, isKnownCompound]);
 }

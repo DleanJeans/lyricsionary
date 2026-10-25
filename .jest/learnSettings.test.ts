@@ -18,6 +18,7 @@ describe('Learn settings', () => {
     store.setFontSize(22);
     store.toggleBlurTranslations();
     store.setShowIpa(false);
+    store.toggleShowSections();
     await flush();
 
     expect(JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}')).toEqual({
@@ -26,11 +27,12 @@ describe('Learn settings', () => {
       showMasteryLevelColors: true,
       showIpa: false,
       showEmoji: true,
+      showSections: false,
     });
 
-    useStore.setState({ fontSize: 18, blurTranslations: true, showIpa: true });
+    useStore.setState({ fontSize: 18, blurTranslations: true, showIpa: true, showSections: true });
     await useStore.getState().loadLearnSettings();
-    expect(useStore.getState()).toMatchObject({ fontSize: 22, blurTranslations: false, showIpa: false });
+    expect(useStore.getState()).toMatchObject({ fontSize: 22, blurTranslations: false, showIpa: false, showSections: false });
   });
 
   it('keeps defaults for missing or malformed values', async () => {

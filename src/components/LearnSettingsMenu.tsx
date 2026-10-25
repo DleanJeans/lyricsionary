@@ -21,6 +21,8 @@ interface LearnSettingsMenuProps {
   onToggleBlur: () => void;
   showMasteryLevelColors: boolean;
   onToggleShowMasteryLevelColors: () => void;
+  showSections: boolean;
+  onToggleShowSections: () => void;
   previewLine: LearnLine | null;
   previewLineIndex: number;
   fontSize: number;
@@ -120,6 +122,8 @@ export default function LearnSettingsMenu({
   onToggleBlur,
   showMasteryLevelColors,
   onToggleShowMasteryLevelColors,
+  showSections,
+  onToggleShowSections,
   previewLine,
   previewLineIndex,
   fontSize,
@@ -210,6 +214,16 @@ export default function LearnSettingsMenu({
                 </View>
               </>
             )}
+
+            <Text style={styles.sectionTitle}>Lyrics</Text>
+            <View style={styles.chips}>
+              <Chip
+                label="Song sections"
+                icon={<Ionicons name="albums-outline" size={18} color={chipIconColor(showSections)} />}
+                selected={showSections}
+                onPress={onToggleShowSections}
+              />
+            </View>
 
             <View style={styles.tiles}>
               <Tile label="Blur translations" icon="eye-off-outline" on={blurTranslations} onPress={onToggleBlur} />

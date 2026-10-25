@@ -26,6 +26,8 @@ interface LearnLyricsViewProps {
   highlightLineIndex?: number | null;
   // One list of definitions per word to highlight, best first
   highlightDefinitions?: string[][];
+  // Box and label the song's sections, like the verses and chorus
+  showSections?: boolean;
 }
 
 function TranslationLine({
@@ -142,9 +144,12 @@ function SectionBox({ section, children }: { section: SongSection; children: Rea
 }
 
 export default function LearnLyricsView(props: LearnLyricsViewProps) {
-  const { lines } = props;
+  const { lines, showSections } = props;
   const originals = lines.map((line) => line.original).join('\n');
-  const sections = useMemo(() => detectSongSections(originals.split('\n')), [originals]);
+  const sections = useMemo(
+    () => (showSections ? detectSongSections(originals.split('\n')) : []),
+    [originals, showSections]
+  );
 
   const renderLine = (lineIndex: number) => (
     <LearnLyricsLine

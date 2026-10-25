@@ -48,6 +48,8 @@ export default function LearnScreen() {
   const setShowIpa = useStore((s) => s.setShowIpa);
   const showEmoji = useStore((s) => s.showEmoji);
   const setShowEmoji = useStore((s) => s.setShowEmoji);
+  const showSections = useStore((s) => s.showSections);
+  const toggleShowSections = useStore((s) => s.toggleShowSections);
   const isLoadingSong = useStore((s) => s.isLoadingSong);
   const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
 
@@ -666,6 +668,7 @@ export default function LearnScreen() {
       onTranslationPress={handleTranslationPress}
       highlightLineIndex={selectedLineIndex}
       highlightDefinitions={selectedDefinitions}
+      showSections={showSections}
     />
   );
 
@@ -719,6 +722,8 @@ export default function LearnScreen() {
           onShowIpaChange={setShowIpa}
           showEmoji={showEmoji}
           onShowEmojiChange={setShowEmoji}
+          showSections={showSections}
+          onToggleShowSections={toggleShowSections}
           blurTranslations={blurTranslations}
           onToggleBlur={toggleBlurTranslations}
           showMasteryLevelColors={showMasteryLevelColors}

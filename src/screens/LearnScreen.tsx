@@ -24,7 +24,7 @@ import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
 import { withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
-import { buildMeaningQuiz } from '../utils/wordQuiz';
+import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, quizKindFor } from '../utils/wordQuiz';
 import type { PartOfSpeech } from '../utils/partOfSpeech';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
@@ -125,8 +125,26 @@ export default function LearnScreen() {
   // quiz isn't asked there; all of them once translations were shown unblurred
   const [seenTranslationLines, setSeenTranslationLines] = useState<Set<number>>(new Set());
   const [seenAllTranslations, setSeenAllTranslations] = useState(false);
+  // Fill in the lyrics: saved words to recall show as gaps until answered
+  const [lyricQuiz, setLyricQuiz] = useState(false);
+  const [answeredGaps, setAnsweredGaps] = useState<Set<string>>(new Set());
+  // The gap being answered, kept while its answer shows even though the word is no longer a gap
+  const [gapTarget, setGapTarget] = useState<{ entryId: string; lineIndex: number; occurrence: number } | null>(null);
   const [isRendering, setIsRendering] = useState(true);
   const [computedLines, setComputedLines] = useState<LearnLine[]>([]);
+
+  // Wrong options for a gap are other saved words in the song's language
+  const canFillGaps = wordEntryIndex.size >= 3;
+  // Whether a lyric word is a gap to fill in: a saved word, as saved, that is learned enough to recall
+  const gapEntry = useCallback(
+    (cleanedWord: string): WordEntry | undefined => {
+      if (!lyricQuiz || !canFillGaps) return undefined;
+      const entry = findWordEntry(cleanedWord);
+      if (!entry || quizKindFor(entry.masteryLevel) !== 'lyric' || answeredGaps.has(entry.id)) return undefined;
+      return isCoolingDown(entry.quiz, Date.now()) ? undefined : entry;
+    },
+    [lyricQuiz, canFillGaps, findWordEntry, answeredGaps]
+  );
 
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -231,6 +249,15 @@ export default function LearnScreen() {
 
   // Blank lines between verses aren't lyrics
   const lineCount = lines.filter((line) => line.original.trim()).length;
+  const lyricQuizGaps = useMemo(() => {
+    if (!lyricQuiz || !song) return 0;
+    const gaps = new Set<string>();
+    for (const token of song.originalLyrics.split(/\s+/)) {
+      const entry = gapEntry(removeSpecialChars(token));
+      if (entry) gaps.add(entry.id);
+    }
+    return gaps.size;
+  }, [lyricQuiz, song?.originalLyrics, gapEntry]);
   // Updates as words are saved or ignored, like the song's progress in Songs
   const progressSongs = useMemo(() => (song ? [song] : []), [song]);
   const wordProgress = useWordProgress(progressSongs).get(song?.id ?? '');
@@ -262,6 +289,8 @@ export default function LearnScreen() {
   useEffect(() => {
     setSeenTranslationLines(new Set());
     setSeenAllTranslations(false);
+    setAnsweredGaps(new Set());
+    setGapTarget(null);
   }, [activeSongId]);
 
   useEffect(() => {
@@ -490,6 +519,32 @@ export default function LearnScreen() {
             }
           }
 
+          const gap = !compoundParts ? gapEntry(cleanedWord) : undefined;
+          if (gap) {
+            const isGapSelected = isActiveOccurrence;
+            return (
+              <View key={i} style={{ alignItems: 'center' }}>
+                <View style={styles.annotationSpace} />
+                <Text
+                  onPress={() => {
+                    setGapTarget({ entryId: gap.id, lineIndex, occurrence: occurrenceMap[i] || 1 });
+                    handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Gap to fill in"
+                  style={[
+                    styles.gap,
+                    isGapSelected && styles.gapSelected,
+                    { fontSize, lineHeight: fontSize * 1.6 - 4 },
+                  ]}
+                >
+                  {/* Keeps the word's width so the line doesn't move once it's filled in */}
+                  {word}
+                </Text>
+              </View>
+            );
+          }
+
           const wordColor = isSelected
             ? Colors.primary
             : isIgnored
@@ -555,7 +610,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -686,7 +741,61 @@ export default function LearnScreen() {
     );
   };
 
-  const wordPanel =
+  const gapWordEntry = gapTarget && selectedWord && gapTarget.lineIndex === selectedLineIndex && gapTarget.occurrence === selectedOccurrence
+    ? words.find((w) => w.id === gapTarget.entryId && w.word.toLowerCase() === selectedWord.toLowerCase())
+    : undefined;
+
+  const gapPanel = gapWordEntry && selectedLine !== null ? (() => {
+    const sense = quizSense(gapWordEntry);
+    // The line with this occurrence of the word blanked out
+    let seen = 0;
+    const gapLine = selectedLine.split(/(\s+)/).map((token) => {
+      if (removeSpecialChars(token).toLowerCase() !== selectedWord!.toLowerCase()) return token;
+      seen++;
+      return seen === selectedOccurrence ? token.replace(removeSpecialChars(token), '＿＿＿') : token;
+    }).join('');
+    const hint = selectedTranslationLine || sense?.answer;
+    return (
+      <View style={[styles.wordCardContainer]}>
+        <View style={[styles.gapCard, isWide && styles.gapCardWide]}>
+          <View style={styles.gapCardHeader}>
+            <Text style={styles.gapCardTitle}>Fill in the gap</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setGapTarget(null);
+                setSelectedWord(null);
+              }}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Close gap"
+            >
+              <Ionicons name="close" size={22} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.gapCardLine}>{gapLine}</Text>
+          {hint ? <Text style={styles.gapCardHint}>{hint}</Text> : null}
+          <WordQuiz
+            key={`lyric-${gapWordEntry.id}-${selectedLineIndex}-${selectedOccurrence}`}
+            entry={gapWordEntry}
+            kind="lyric"
+            prompt="Which word goes in the gap?"
+            build={() => buildLyricQuiz({
+              entry: gapWordEntry,
+              answer: gapWordEntry.word,
+              partOfSpeech: sense?.partOfSpeech,
+              songId: song.id,
+              // Words the line shows can't be what's missing from it
+              excludeWords: selectedLine.split(/\s+/).map(removeSpecialChars).filter(Boolean),
+            }, useStore.getState().words)}
+            onAnswered={() => setAnsweredGaps((prev) => new Set(prev).add(gapWordEntry.id))}
+            isWide={isWide}
+          />
+        </View>
+      </View>
+    );
+  })() : null;
+
+  const wordPanel = gapPanel ?? (
     selectedWord && selectedWordEntry ? (
       <View style={[styles.wordCardContainer]}>
         <WordCard
@@ -718,7 +827,7 @@ export default function LearnScreen() {
         isWide={isWide}
         occurrence={selectedOccurrence}
       />
-    ) : null;
+    ) : null);
 
   const actionBar = (
     <LearnActionBar
@@ -727,6 +836,13 @@ export default function LearnScreen() {
       wordProgress={wordProgress}
       onDecreaseFontSize={() => setFontSize(fontSize - 1)}
       onIncreaseFontSize={() => setFontSize(fontSize + 1)}
+      lyricQuiz={lyricQuiz}
+      lyricQuizGaps={lyricQuizGaps}
+      onToggleLyricQuiz={canFillGaps ? () => {
+        setLyricQuiz((on) => !on);
+        setAnsweredGaps(new Set());
+        setGapTarget(null);
+      } : undefined}
     />
   );
 
@@ -841,6 +957,51 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
+  gap: {
+    color: 'transparent',
+    borderBottomWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: Colors.primary,
+    marginBottom: 4,
+  },
+  gapSelected: {
+    borderStyle: 'solid',
+    backgroundColor: 'rgba(108, 92, 231, 0.18)',
+  },
+  gapCard: {
+    alignSelf: 'stretch',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 6,
+  },
+  gapCardWide: {
+    flex: 1,
+  },
+  gapCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  gapCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  gapCardLine: {
+    fontSize: 18,
+    color: Colors.text,
+  },
+  gapCardHint: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+  },
   quizWord: {
     fontSize: 14,
     fontWeight: '700',

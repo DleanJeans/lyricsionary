@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
@@ -14,6 +14,10 @@ interface LearnActionBarProps {
   wordProgress?: WordProgress;
   onDecreaseFontSize: () => void;
   onIncreaseFontSize: () => void;
+  /** Whether saved words to recall are blanked out in the lyrics, and how many gaps are left */
+  lyricQuiz?: boolean;
+  lyricQuizGaps?: number;
+  onToggleLyricQuiz?: () => void;
 }
 
 export default function LearnActionBar({
@@ -22,6 +26,9 @@ export default function LearnActionBar({
   wordProgress,
   onDecreaseFontSize,
   onIncreaseFontSize,
+  lyricQuiz = false,
+  lyricQuizGaps = 0,
+  onToggleLyricQuiz,
 }: LearnActionBarProps) {
   const canDecrease = fontSize > 12;
   const canIncrease = fontSize < 32;
@@ -49,6 +56,18 @@ export default function LearnActionBar({
           disabled={!canIncrease}
           style={styles.fontButton}
         />
+        {onToggleLyricQuiz && (
+          <TouchableOpacity
+            style={[styles.quizButton, lyricQuiz && styles.quizButtonActive]}
+            onPress={onToggleLyricQuiz}
+            accessibilityRole="switch"
+            accessibilityLabel="Fill in the lyrics"
+            accessibilityState={{ checked: lyricQuiz }}
+          >
+            <Ionicons name="create-outline" size={16} color={lyricQuiz ? Colors.white : Colors.primary} />
+            {lyricQuiz && <Text style={styles.quizButtonText}>{lyricQuizGaps}</Text>}
+          </TouchableOpacity>
+        )}
       </View>
       <Text style={styles.lineCounter} numberOfLines={1}>
         {wordProgress ? `${wordProgress.label} · ${lineCount} lines` : `${lineCount} lines`}
@@ -98,6 +117,29 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  quizButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 36,
+    minWidth: 36,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  quizButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  quizButtonText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
   fontSizeText: {
     color: Colors.text,

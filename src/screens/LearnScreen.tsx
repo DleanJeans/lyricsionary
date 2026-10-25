@@ -38,6 +38,8 @@ export default function LearnScreen() {
   useBackToQuit();
   const songs = useStore((s) => s.songs);
   const words = useStore((s) => s.words);
+  const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const compoundSplits = useStore((s) => s.compoundSplits);
   const currentSongId = useStore((s) => s.currentSongId);
@@ -135,6 +137,8 @@ export default function LearnScreen() {
   // Words (lowercased) opened unsaved since the song opened: their meanings were just read on the new
   // word card, so the saved word's card doesn't quiz them
   const [newWordsShown, setNewWordsShown] = useState<Set<string>>(new Set());
+  // A new word (lowercased) saved by answering its quiz, whose new word card stays to show the answer
+  const [savedFromQuiz, setSavedFromQuiz] = useState<string | null>(null);
   // The gap being answered, kept while its answer shows even though the word is no longer a gap
   const [gapTarget, setGapTarget] = useState<{ entryId: string; lineIndex: number; occurrence: number } | null>(null);
   const [isRendering, setIsRendering] = useState(true);
@@ -301,6 +305,8 @@ export default function LearnScreen() {
     setNewWordsShown(new Set());
     setGapTarget(null);
   }, [activeSongId]);
+
+  useEffect(() => setSavedFromQuiz(null), [selectedWord, selectedLineIndex, selectedOccurrence]);
 
   const isSelectedWordSaved = !!selectedWord && !!findSavedEntry(selectedWord);
   useEffect(() => {
@@ -747,14 +753,19 @@ export default function LearnScreen() {
   const meaningQuiz = (
     entry: WordEntry,
     sense = quizSense(entry),
-    { practice = false, prompt = 'mean here?' }: { practice?: boolean; prompt?: string } = {}
+    {
+      practice = false,
+      prompt = 'mean here?',
+      onAnswered,
+    }: { practice?: boolean; prompt?: string; onAnswered?: (correct: boolean) => void } = {}
   ) => {
     if (!sense) return null;
     // A German compound's parts aren't wrong meanings, e.g. Liebe in Liebesbrief
     const parts = isGermanSong ? getCompoundParts(entry.word, compoundSplits, knownGermanWords)?.map((p) => p.lemma) : undefined;
     return (
       <WordQuiz
-        key={`meaning-${entry.id || entry.word}-${selectedLineIndex}-${selectedOccurrence}`}
+        // By word, so a new word's quiz stays when answering it saves the word
+        key={`meaning-${entry.word.toLowerCase()}-${selectedLineIndex}-${selectedOccurrence}`}
         entry={entry}
         kind="meaning"
         practice={practice}
@@ -765,6 +776,7 @@ export default function LearnScreen() {
         onAnswered={(correct) => {
           setAnsweredMeanings((prev) => new Set(prev).add(entry.word.toLowerCase()));
           if (!correct) revealSelectedTranslation();
+          onAnswered?.(correct);
         }}
         isWide={isWide}
       />
@@ -772,7 +784,8 @@ export default function LearnScreen() {
   };
 
   // An unsaved word's quiz asks about the Wiktionary meaning found in the line's translation, or else
-  // its first one. Its answers aren't recorded since there's no saved word to level up.
+  // its first one. Answering it saves the word as Seen with that meaning for this line, and records
+  // the answer.
   const newWordQuiz = (word: string) => {
     if (newWordDefinitions?.word !== word || newWordDefinitions.definitions.length === 0) return null;
     const { definitions } = newWordDefinitions;
@@ -789,7 +802,29 @@ export default function LearnScreen() {
       definitions: definitions.map((d) => ({ text: d.text })),
     };
     const partOfSpeech = normalizePartOfSpeech((definitions.find((d) => d.text === answer) ?? definitions[0]).partOfSpeech);
-    return meaningQuiz(entry, { answer, partOfSpeech }, { practice: true, prompt: inLine ? 'mean here?' : 'mean?' });
+    const saved = savedFromQuiz === word.toLowerCase() ? findSavedEntry(word) : undefined;
+    const language = songLanguage ?? '';
+    const saveAndRecord = async (correct: boolean) => {
+      setSavedFromQuiz(word.toLowerCase());
+      const context: WordContext = {
+        context: selectedLine ?? '',
+        definition: answer,
+        partOfSpeech,
+        songId: song.id,
+        songName: song.songName,
+        translation: selectedTranslationLine || undefined,
+        fromSong: !!selectedLine,
+        occurrence: selectedOccurrence,
+      };
+      await addOrUpdateWord(word, language, undefined, [context], 'Seen');
+      const id = useStore.getState().words.find((w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language)?.id;
+      if (id) await recordQuizAnswer(id, 'meaning', correct);
+    };
+    return meaningQuiz(saved ?? entry, { answer, partOfSpeech }, {
+      practice: !saved,
+      prompt: inLine ? 'mean here?' : 'mean?',
+      onAnswered: (correct) => void saveAndRecord(correct),
+    });
   };
 
   const gapWordEntry = gapTarget && selectedWord && gapTarget.lineIndex === selectedLineIndex && gapTarget.occurrence === selectedOccurrence
@@ -847,7 +882,7 @@ export default function LearnScreen() {
   })() : null;
 
   const wordPanel = gapPanel ?? (
-    selectedWord && selectedWordEntry ? (
+    selectedWord && selectedWordEntry && savedFromQuiz !== selectedWord.toLowerCase() ? (
       <View style={[styles.wordCardContainer]}>
         <WordCard
           item={selectedWordEntry}

@@ -15,7 +15,7 @@ import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
 import WordCard from '../components/WordCard';
 import WordQuiz from '../components/WordQuiz';
-import { getFlagForLanguage, getLanguageNameFromCode, isRtlLanguage } from '../constants/languages';
+import { getFlagForLanguage, isRtlLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
@@ -25,7 +25,8 @@ import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
 import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
-import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, quizKindFor } from '../utils/wordQuiz';
+import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
+import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, type WiktionaryDefinition } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
@@ -67,22 +68,7 @@ export default function LearnScreen() {
   const isGermanSong = isGermanLanguage(song?.originalLanguages);
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
   const isIgnoredWord = useMemo(() => makeIgnoredWordChecker(ignoredWords), [ignoredWords]);
-  const wordEntryIndex = useMemo(() => {
-    const songLanguages = new Set(
-      (song?.originalLanguages ?? []).map((language) =>
-        (getLanguageNameFromCode(language) ?? language).toLowerCase()
-      )
-    );
-    const index = new Map<string, (typeof words)[number]>();
-    for (const entry of words) {
-      const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
-      if (songLanguages.size === 0 || songLanguages.has(language)) {
-        const key = entry.word.toLowerCase();
-        if (!index.has(key)) index.set(key, entry);
-      }
-    }
-    return index;
-  }, [song?.originalLanguages, words]);
+  const wordEntryIndex = useMemo(() => songWordIndex(words, song?.originalLanguages), [song?.originalLanguages, words]);
   const findWordEntry = useCallback(
     (candidate: string) => wordEntryIndex.get(candidate.toLowerCase()),
     [wordEntryIndex]
@@ -130,7 +116,9 @@ export default function LearnScreen() {
   const [seenTranslationLines, setSeenTranslationLines] = useState<Set<number>>(new Set());
   const [seenAllTranslations, setSeenAllTranslations] = useState(false);
   // Fill in the lyrics: saved words to recall show as gaps until answered
-  const [lyricQuiz, setLyricQuiz] = useState(false);
+  // Fill in the lyrics, opened from a song's pencil button in Songs, so the lyrics show with their gaps
+  // from the start. Show all turns it off for the rest of the visit.
+  const lyricQuiz = !!route.params?.fillIn && route.params.songId === activeSongId;
   const [answeredGaps, setAnsweredGaps] = useState<Set<string>>(new Set());
   // Words (lowercased) whose meaning quiz was answered since the song opened, practice included, so
   // saving a word right after its practice quiz doesn't ask it again
@@ -145,17 +133,14 @@ export default function LearnScreen() {
   const [isRendering, setIsRendering] = useState(true);
   const [computedLines, setComputedLines] = useState<LearnLine[]>([]);
 
-  // Wrong options for a gap are other saved words in the song's language
-  const canFillGaps = wordEntryIndex.size >= 3;
-  // Whether a lyric word is a gap to fill in: a saved word, as saved, that is learned enough to recall
+  // Whether a lyric word is a gap to fill in, until it's answered
   const gapEntry = useCallback(
     (cleanedWord: string): WordEntry | undefined => {
-      if (!lyricQuiz || !canFillGaps) return undefined;
-      const entry = findWordEntry(cleanedWord);
-      if (!entry || quizKindFor(entry.masteryLevel) !== 'lyric' || answeredGaps.has(entry.id)) return undefined;
-      return isCoolingDown(entry.quiz, Date.now()) ? undefined : entry;
+      if (!lyricQuiz || !canFillGaps(wordEntryIndex)) return undefined;
+      const entry = gapWord(wordEntryIndex, cleanedWord, Date.now());
+      return entry && !answeredGaps.has(entry.id) ? entry : undefined;
     },
-    [lyricQuiz, canFillGaps, findWordEntry, answeredGaps]
+    [lyricQuiz, wordEntryIndex, answeredGaps]
   );
 
   // Initialize selected languages when song changes
@@ -261,15 +246,6 @@ export default function LearnScreen() {
 
   // Blank lines between verses aren't lyrics
   const lineCount = lines.filter((line) => line.original.trim()).length;
-  const lyricQuizGaps = useMemo(() => {
-    if (!lyricQuiz || !song) return 0;
-    const gaps = new Set<string>();
-    for (const token of song.originalLyrics.split(/\s+/)) {
-      const entry = gapEntry(removeSpecialChars(token));
-      if (entry) gaps.add(entry.id);
-    }
-    return gaps.size;
-  }, [lyricQuiz, song?.originalLyrics, gapEntry]);
   // Updates as words are saved or ignored, like the song's progress in Songs
   const progressSongs = useMemo(() => (song ? [song] : []), [song]);
   const wordProgress = useWordProgress(progressSongs).get(song?.id ?? '');
@@ -292,6 +268,12 @@ export default function LearnScreen() {
       setIsRendering(true);
     }
   }, [activeSongId]);
+
+  // Gaps come back each time fill in the lyrics starts
+  useEffect(() => {
+    setAnsweredGaps(new Set());
+    setGapTarget(null);
+  }, [lyricQuiz]);
 
   // Reset unblurred translations when blur toggle changes or song changes
   useEffect(() => {
@@ -924,13 +906,7 @@ export default function LearnScreen() {
       wordProgress={wordProgress}
       onDecreaseFontSize={() => setFontSize(fontSize - 1)}
       onIncreaseFontSize={() => setFontSize(fontSize + 1)}
-      lyricQuiz={lyricQuiz}
-      lyricQuizGaps={lyricQuizGaps}
-      onToggleLyricQuiz={canFillGaps ? () => {
-        setLyricQuiz((on) => !on);
-        setAnsweredGaps(new Set());
-        setGapTarget(null);
-      } : undefined}
+      onShowAllLyrics={lyricQuiz ? () => navigation.setParams({ fillIn: false }) : undefined}
     />
   );
 

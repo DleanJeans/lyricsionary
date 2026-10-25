@@ -78,7 +78,8 @@ export interface WordEntry {
 export type RootTabParamList = {
   Editor: { songId?: string } | undefined;
   Web: { url?: string } | undefined;
-  Learn: { songId?: string } | undefined;
+  /** fillIn: open the song with its saved words to recall as gaps */
+  Learn: { songId?: string; fillIn?: boolean } | undefined;
   Songs: { searchQuery?: string } | undefined;
   Words: undefined;
   WordLookup: {

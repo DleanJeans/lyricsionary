@@ -14,10 +14,8 @@ interface LearnActionBarProps {
   wordProgress?: WordProgress;
   onDecreaseFontSize: () => void;
   onIncreaseFontSize: () => void;
-  /** Whether saved words to recall are blanked out in the lyrics, and how many gaps are left */
-  lyricQuiz?: boolean;
-  lyricQuizGaps?: number;
-  onToggleLyricQuiz?: () => void;
+  /** While saved words to recall are blanked out in the lyrics: ends that and shows the full lyrics */
+  onShowAllLyrics?: () => void;
 }
 
 export default function LearnActionBar({
@@ -26,9 +24,7 @@ export default function LearnActionBar({
   wordProgress,
   onDecreaseFontSize,
   onIncreaseFontSize,
-  lyricQuiz = false,
-  lyricQuizGaps = 0,
-  onToggleLyricQuiz,
+  onShowAllLyrics,
 }: LearnActionBarProps) {
   const canDecrease = fontSize > 12;
   const canIncrease = fontSize < 32;
@@ -56,16 +52,10 @@ export default function LearnActionBar({
           disabled={!canIncrease}
           style={styles.fontButton}
         />
-        {onToggleLyricQuiz && (
-          <TouchableOpacity
-            style={[styles.quizButton, lyricQuiz && styles.quizButtonActive]}
-            onPress={onToggleLyricQuiz}
-            accessibilityRole="switch"
-            accessibilityLabel="Fill in the lyrics"
-            accessibilityState={{ checked: lyricQuiz }}
-          >
-            <Ionicons name="create-outline" size={16} color={lyricQuiz ? Colors.white : Colors.primary} />
-            {lyricQuiz && <Text style={styles.quizButtonText}>{lyricQuizGaps}</Text>}
+        {onShowAllLyrics && (
+          <TouchableOpacity style={styles.quizButton} onPress={onShowAllLyrics} accessibilityRole="button">
+            <Ionicons name="eye-outline" size={16} color={Colors.primary} />
+            <Text style={styles.quizButtonText}>Show all</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -131,15 +121,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
-  quizButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
   quizButtonText: {
-    color: Colors.white,
+    color: Colors.primary,
     fontSize: 13,
     fontWeight: '600',
-    fontVariant: ['tabular-nums'],
   },
   fontSizeText: {
     color: Colors.text,

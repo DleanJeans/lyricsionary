@@ -26,6 +26,7 @@ import LanguageTabButtons from '../components/LanguageTabButtons';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useWordProgress } from '../hooks/useWordProgress';
+import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 
 const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'aZ', 'zA'] as const;
 type SortMode = (typeof SORT_MODES)[number];
@@ -105,7 +106,8 @@ export default function SongsScreen() {
     return null;
   };
 
-  const handlePressSong = (song: Song) => {
+  // fillIn opens the song with its saved words to recall as gaps
+  const handlePressSong = (song: Song, fillIn = false) => {
     setIsLoadingSong(true);
     setLoadingSongId(song.id);
     // Defer expensive operations to next tick to avoid blocking navigation
@@ -113,7 +115,7 @@ export default function SongsScreen() {
       setCurrentSongId(song.id);
       void trackSongOpen(song.id);
       navigation.navigate('Editor', { songId: song.id });
-      navigation.navigate('Learn', { songId: song.id });
+      navigation.navigate('Learn', { songId: song.id, fillIn });
     }, 0);
   };
 
@@ -133,6 +135,17 @@ export default function SongsScreen() {
   };
 
   const wordProgress = useWordProgress(songs);
+  const words = useStore((s) => s.words);
+  // Saved words each song has to fill in, the same gaps Learn blanks out
+  const songGaps = useMemo(() => {
+    const now = Date.now();
+    const gaps = new Map<string, number>();
+    for (const song of songs) {
+      const index = songWordIndex(words, song.originalLanguages);
+      if (canFillGaps(index)) gaps.set(song.id, countGaps(song.originalLyrics, (word) => gapWord(index, word, now)));
+    }
+    return gaps;
+  }, [songs, words]);
 
   const sortedSongs = [...songs].sort((a, b) => {
     switch (sortMode) {
@@ -270,6 +283,19 @@ export default function SongsScreen() {
             </View>
           )}
         </View>
+        {!!songGaps.get(item.id) && !isLoadingThisSong && (
+          <TouchableOpacity
+            style={styles.fillInButton}
+            onPress={() => handlePressSong(item, true)}
+            disabled={isAnySongLoading}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={`Fill in the lyrics, ${songGaps.get(item.id)} words`}
+          >
+            <Ionicons name="create-outline" size={16} color={Colors.primary} />
+            <Text style={styles.fillInText}>{songGaps.get(item.id)}</Text>
+          </TouchableOpacity>
+        )}
         {isLoadingThisSong ? (
           <ActivityIndicator size="small" color={Colors.primary} />
         ) : (
@@ -479,6 +505,23 @@ const styles = StyleSheet.create({
   },
   cardLeft: {
     flex: 1,
+  },
+  fillInButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    paddingHorizontal: 10,
+    marginRight: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  fillInText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
   songNameRow: {
     flexDirection: 'row',

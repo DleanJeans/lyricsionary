@@ -1,8 +1,9 @@
-import React, { type ReactNode } from 'react';
+import React, { useMemo, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { Text } from './Text';
 import { findDefinitionHighlights } from '../utils/definitionHighlight';
+import { detectSongSections, type SectionKind, type SongSection } from '../utils/songSections';
 
 export interface LearnLine {
   original: string;
@@ -118,20 +119,64 @@ export function LearnLyricsLine({
   );
 }
 
+const SECTION_COLORS: Record<SectionKind, string> = {
+  intro: Colors.blue,
+  verse: Colors.textMuted,
+  'pre-chorus': Colors.secondary,
+  chorus: Colors.primaryLight,
+  bridge: Colors.warning,
+  hook: '#FD79A8',
+  outro: Colors.blue,
+};
+
+function SectionBox({ section, children }: { section: SongSection; children: ReactNode }) {
+  const color = SECTION_COLORS[section.kind];
+  return (
+    <View style={[styles.sectionBox, { borderColor: `${color}80` }]}>
+      <View style={[styles.sectionLabel, { borderColor: `${color}80` }]}>
+        <Text style={[styles.sectionLabelText, { color, fontSize: 11 }]}>{section.label}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
 export default function LearnLyricsView(props: LearnLyricsViewProps) {
+  const { lines } = props;
+  const originals = lines.map((line) => line.original).join('\n');
+  const sections = useMemo(() => detectSongSections(originals.split('\n')), [originals]);
+
+  const renderLine = (lineIndex: number) => (
+    <LearnLyricsLine
+      key={lineIndex}
+      {...props}
+      line={lines[lineIndex]}
+      lineIndex={lineIndex}
+    />
+  );
+
+  // Lines inside a section go in its box, the blank lines between sections stay outside
+  const content: ReactNode[] = [];
+  let sectionIndex = 0;
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const section = sections[sectionIndex];
+    if (section?.start !== lineIndex) {
+      content.push(renderLine(lineIndex));
+      continue;
+    }
+    const sectionLines: ReactNode[] = [];
+    for (let i = section.start; i <= section.end; i++) sectionLines.push(renderLine(i));
+    content.push(<SectionBox key={`section-${lineIndex}`} section={section}>{sectionLines}</SectionBox>);
+    lineIndex = section.end;
+    sectionIndex++;
+  }
+
   return (
     <ScrollView
       style={styles.lyricsScroll}
       contentContainerStyle={styles.lyricsContent}
     >
-      {props.lines.map((line, lineIndex) => (
-        <LearnLyricsLine
-          key={lineIndex}
-          {...props}
-          line={line}
-          lineIndex={lineIndex}
-        />
-      ))}
+      {content}
     </ScrollView>
   );
 }
@@ -147,6 +192,30 @@ const styles = StyleSheet.create({
   },
   lineBlock: {
     marginBottom: 6,
+  },
+  sectionBox: {
+    borderWidth: 1,
+    borderRadius: 10,
+    marginTop: 10,
+    marginBottom: 4,
+    marginHorizontal: -10,
+    paddingHorizontal: 9,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  sectionLabel: {
+    position: 'absolute',
+    top: -10,
+    left: 10,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    backgroundColor: Colors.background,
+  },
+  sectionLabelText: {
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   translationLine: {
     color: Colors.primaryLight,

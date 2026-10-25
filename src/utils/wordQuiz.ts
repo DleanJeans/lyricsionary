@@ -123,6 +123,23 @@ export function meaningsOverlap(a: string, b: string): boolean {
 const similarLength = (a: string, b: string) =>
   Math.max(a.length, b.length) <= 2 * Math.max(1, Math.min(a.length, b.length));
 
+const letters = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
+/**
+ * How alike an option looks to the answer, so it can't be ruled out at a glance: the same number of
+ * words ("to run" / "to go"), the same starting letter, ignoring a verb's "to" ("love" / "luck"), a
+ * rhyme ("Herz" / "Schmerz") and a similar length
+ */
+export function lookAlikeScore(option: string, answer: string): number {
+  const words = (text: string) => text.trim().split(/\s+/);
+  const sameCount = words(option).length === words(answer).length;
+  const first = (text: string) => (contentWords(text)[0] ?? letters(text)).charAt(0);
+  const sameStart = !!first(answer) && first(option) === first(answer);
+  const ending = (text: string) => letters(words(text).pop() ?? '').slice(-2);
+  const rhymes = ending(answer).length === 2 && ending(option) === ending(answer);
+  return (sameCount ? 2 : 0) + (sameStart ? 1 : 0) + (rhymes ? 1 : 0) + (similarLength(option, answer) ? 1 : 0);
+}
+
 const shuffle = <T>(items: T[], random: () => number): T[] => {
   const shuffled = [...items];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -178,7 +195,8 @@ const finish = (answer: string, wrong: string[], random: () => number): Quiz | n
 
 /**
  * A meaning quiz: the target's definition and the definitions of other saved words in its language,
- * preferring the same type of word, words from the same song and meanings of similar length
+ * preferring the same type of word, then meanings that look like it (lookAlikeScore), then words from
+ * the same song
  */
 export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random = Math.random): Quiz | null {
   const ownMeanings = [
@@ -200,7 +218,7 @@ export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random 
       const sameType = !!target.partOfSpeech && sense.partOfSpeech === target.partOfSpeech;
       candidates.push({
         item: text,
-        score: (sameType ? 4 : 0) + (fromSong(word, target.songId) ? 2 : 0) + (similarLength(text, target.answer) ? 1 : 0),
+        score: (sameType ? 8 : 0) + lookAlikeScore(text, target.answer) + (fromSong(word, target.songId) ? 1 : 0),
       });
     }
   }
@@ -211,8 +229,9 @@ const isCapitalized = (word: string) => word.charAt(0) !== word.charAt(0).toLowe
 
 /**
  * A lyric quiz: the target word and other saved words in its language to fill the lyric's gap with,
- * preferring words from the same song, the same type of word and words of similar length. In German
- * only words capitalized like the answer are options, since a noun's capital would give it away.
+ * preferring the same type of word, then words that look like it (lookAlikeScore), then words from the
+ * same song. In German only words capitalized like the answer are options, since a noun's capital
+ * would give it away.
  */
 export function buildLyricQuiz(target: QuizTarget, words: WordEntry[], random = Math.random): Quiz | null {
   const answer = target.entry.word;
@@ -226,7 +245,7 @@ export function buildLyricQuiz(target: QuizTarget, words: WordEntry[], random = 
     const sameType = !!target.partOfSpeech && (word.contexts ?? []).some((c) => c.partOfSpeech === target.partOfSpeech);
     candidates.push({
       item: word.word,
-      score: (fromSong(word, target.songId) ? 4 : 0) + (sameType ? 2 : 0) + (similarLength(word.word, answer) ? 1 : 0),
+      score: (sameType ? 8 : 0) + lookAlikeScore(word.word, answer) + (fromSong(word, target.songId) ? 2 : 0),
     });
   }
   return finish(answer, pickBest(candidates, QUIZ_RULES.options - 1, random), random);

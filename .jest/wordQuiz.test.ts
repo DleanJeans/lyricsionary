@@ -1,6 +1,6 @@
 import type { WordEntry } from '../src/types';
 import type { PartOfSpeech } from '../src/utils/partOfSpeech';
-import { buildLyricQuiz, buildMeaningQuiz, meaningsOverlap, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
+import { buildLyricQuiz, buildMeaningQuiz, lookAlikeScore, meaningsOverlap, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
 
 const DAY = 24 * 60 * 60 * 1000;
 const start = new Date(2026, 9, 25, 12).getTime();
@@ -101,8 +101,46 @@ describe('buildMeaningQuiz', () => {
   });
 });
 
+describe('lookAlikeScore', () => {
+  it('scores the same word count, starting letter, rhyme and length', () => {
+    expect(lookAlikeScore('to run', 'to go')).toBe(3); // count, length
+    expect(lookAlikeScore('luck', 'love')).toBe(4); // count, start, length
+    expect(lookAlikeScore('Schmerz', 'Herz')).toBe(4); // count, rhyme, length
+    expect(lookAlikeScore('to leave behind', 'love')).toBe(1); // start, ignoring "to"
+    expect(lookAlikeScore('a very long explanation', 'sun')).toBe(0);
+  });
+});
+
+describe('option priority', () => {
+  it('puts the same word type before options that only look alike', () => {
+    const herz = word('Herz', 'heart', 'noun', 'song');
+    const words = [
+      herz,
+      word('Schmerz', 'pain', 'noun'),
+      word('Nacht', 'night', 'noun'),
+      word('Licht', 'light', 'noun'),
+      word('März', 'March', 'other', 'song'),
+    ];
+    const quiz = buildLyricQuiz({ entry: herz, answer: 'heart', partOfSpeech: 'noun', songId: 'song' }, words, noShuffle)!;
+    expect([...quiz.options].sort()).toEqual(['Herz', 'Licht', 'Nacht', 'Schmerz']);
+  });
+
+  it('prefers meanings that look like the answer among the same type', () => {
+    const lieben = word('lieben', 'to love', 'verb');
+    const words = [
+      lieben,
+      word('laufen', 'to run', 'verb'),
+      word('lachen', 'to laugh', 'verb'),
+      word('warten', 'to wait for someone patiently', 'verb'),
+      word('gehen', 'to go', 'verb'),
+    ];
+    const quiz = buildMeaningQuiz({ entry: lieben, answer: 'to love', partOfSpeech: 'verb' }, words, noShuffle)!;
+    expect([...quiz.options].sort()).toEqual(['to go', 'to laugh', 'to love', 'to run']);
+  });
+});
+
 describe('buildLyricQuiz', () => {
-  it('offers saved words of the same song first', () => {
+  it('prefers words from the same song among equally good options', () => {
     const herz = word('Herz', 'heart', 'noun', 'song');
     const words = [herz, word('Liebe', 'love', 'noun'), word('Nacht', 'night', 'noun', 'song'), word('laufen', 'to run', 'verb', 'song'), word('Stern', 'star', 'noun'), word('Mond', 'moon', 'noun', 'song')];
     const quiz = buildLyricQuiz({ entry: herz, answer: 'heart', partOfSpeech: 'noun', songId: 'song' }, words, noShuffle)!;

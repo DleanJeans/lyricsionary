@@ -370,17 +370,20 @@ export function parseAudio(html: string, language: string): WiktionaryAudio[] {
 
 /**
  * Phonemic IPA transcriptions in the language's section of a rendered page, e.g. "/ˈliːbə/", without
- * rhymes ("-iːbə"), narrow transcriptions ("[ko.ɾaˈθõn]") or partial ones ("/-ˈmoɹ/")
+ * rhymes ("-iːbə") or partial ones ("/-ˈmoɹ/"). Narrow transcriptions ("[ko.ɾaˈθõn]") are used only
+ * when there's no phonemic one, e.g. "[ˈʃtɔɪ̯ɐbəˌʁaːtɐ]" for Steuerberater.
  */
 export function parseIpa(html: string, language: string): string[] {
   const section = getLanguageSection(html, language);
   if (!section) return [];
-  const ipa: string[] = [];
+  const phonemic: string[] = [];
+  const narrow: string[] = [];
   for (const [, span] of section.matchAll(/<span\b[^>]*class="IPA\b[^"]*"[^>]*>([\s\S]*?)<\/span>/gi)) {
     const text = stripDefinitionHtml(span);
-    if (/^\/[^-/][^/]*\/$/.test(text) && !ipa.includes(text)) ipa.push(text);
+    if (/^\/[^-/][^/]*\/$/.test(text) && !phonemic.includes(text)) phonemic.push(text);
+    else if (/^\[[^-\]][^\]]*\]$/.test(text) && !narrow.includes(text)) narrow.push(text);
   }
-  return ipa.slice(0, MAX_IPA);
+  return (phonemic.length > 0 ? phonemic : narrow).slice(0, MAX_IPA);
 }
 
 export interface WiktionaryPronunciation {

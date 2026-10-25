@@ -3,9 +3,10 @@ import amour from './fixtures/wiktionary/parse-amour.json';
 import corazon from './fixtures/wiktionary/parse-corazón.json';
 import immer from './fixtures/wiktionary/parse-immer.json';
 import liebe from './fixtures/wiktionary/parse-Liebe.json';
+import steuerberater from './fixtures/wiktionary/parse-Steuerberater.json';
 
 // Real parse API responses (prop=text), fetched with an Android WebView user agent
-const pages: Record<string, { parse: { text: string } }> = { amour, 'corazón': corazon, immer, Liebe: liebe };
+const pages: Record<string, { parse: { text: string } }> = { amour, 'corazón': corazon, immer, Liebe: liebe, Steuerberater: steuerberater };
 const page = (title: string): string => pages[title].parse.text;
 
 describe('getLanguageSection', () => {
@@ -79,6 +80,10 @@ describe('parseIpa', () => {
   it('skips narrow transcriptions and partial ones', () => {
     expect(parseIpa(page('corazón'), 'Spanish')).toEqual(['/koɾaˈθon/', '/koɾaˈson/']);
     expect(parseIpa(page('amour'), 'English')).toEqual(['/ˈæmə(ɹ)/', '/əˈmʊə/', '/aˈmʊə/']);
+  });
+
+  it('falls back to the narrow transcription without a phonemic one', () => {
+    expect(parseIpa(page('Steuerberater'), 'German')).toEqual(['[ˈʃtɔɪ̯ɐbəˌʁaːtɐ]']);
   });
 });
 

@@ -8,10 +8,10 @@ export const getScrapeIpaJS = (language: string) => {
   const _scrapeIpaLogic = `
     const heading = '#' + CSS.escape(${JSON.stringify(sectionId)});
     const ipaElements = Array.from(document.querySelectorAll('div:has(' + heading + ') + section li .IPA'));
-    const ipaResults = ipaElements
-      .map(ipa => ipa.textContent)
-      .filter(text => text && text.includes('/'))
-      .map(text => text.trim());
+    const texts = ipaElements.map(ipa => (ipa.textContent || '').trim());
+    // Narrow transcriptions like "[ˈʃtɔɪ̯ɐbəˌʁaːtɐ]" only when there's no phonemic one
+    const phonemic = texts.filter(text => text.includes('/'));
+    const ipaResults = phonemic.length > 0 ? phonemic : texts.filter(text => text.startsWith('['));
 
     if (ipaResults.length > 0) {
       sendIpa(ipaResults);

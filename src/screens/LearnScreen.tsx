@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, I18nManager, StyleSheet, TouchableOpacity, View } from 'react-native';
 import LearnActionBar from '../components/LearnActionBar';
@@ -20,6 +21,7 @@ import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useSto
 import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
 import { withWordForms } from '../utils/definitionHighlight';
+import { formatSongSections } from '../utils/songSections';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
@@ -724,6 +726,7 @@ export default function LearnScreen() {
           onShowEmojiChange={setShowEmoji}
           showSections={showSections}
           onToggleShowSections={toggleShowSections}
+          onCopySections={() => Clipboard.setStringAsync(formatSongSections(song.originalLyrics.split('\n')))}
           blurTranslations={blurTranslations}
           onToggleBlur={toggleBlurTranslations}
           showMasteryLevelColors={showMasteryLevelColors}

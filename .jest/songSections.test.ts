@@ -1,4 +1,4 @@
-import { detectSongSections } from '../src/utils/songSections';
+import { detectSongSections, formatSongSections } from '../src/utils/songSections';
 
 const lyrics = (...stanzas: string[][]) => stanzas.map((stanza) => stanza.join('\n')).join('\n\n').split('\n');
 const labels = (lines: string[]) => detectSongSections(lines).map((section) => section.label);
@@ -57,5 +57,13 @@ describe('detectSongSections', () => {
   it('returns nothing for a single stanza', () => {
     expect(detectSongSections(verse1)).toEqual([]);
     expect(detectSongSections([])).toEqual([]);
+  });
+});
+
+describe('formatSongSections', () => {
+  it('tags each section with its label', () => {
+    expect(formatSongSections(lyrics(verse1, chorus, verse2, chorus))).toBe(
+      ['[Verse 1]', ...verse1, '', '[Chorus]', ...chorus, '', '[Verse 2]', ...verse2, '', '[Chorus]', ...chorus].join('\n')
+    );
   });
 });

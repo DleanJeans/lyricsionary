@@ -176,3 +176,10 @@ export function detectSongSections(lyricsLines: string[]): SongSection[] {
     return { kind, label, start: segment.start, end: segment.end };
   });
 }
+
+/** The lyrics as text with a [Section] tag above each detected section, for checking the detection. */
+export function formatSongSections(lyricsLines: string[]): string {
+  return detectSongSections(lyricsLines)
+    .map((section) => `[${section.label}]\n${lyricsLines.slice(section.start, section.end + 1).join('\n')}`)
+    .join('\n\n');
+}

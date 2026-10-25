@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { type ReactNode } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LANGUAGES } from '../constants/languages';
 import { Colors } from '../constants/theme';
@@ -23,6 +23,7 @@ interface LearnSettingsMenuProps {
   onToggleShowMasteryLevelColors: () => void;
   showSections: boolean;
   onToggleShowSections: () => void;
+  onCopySections: () => Promise<unknown>;
   previewLine: LearnLine | null;
   previewLineIndex: number;
   fontSize: number;
@@ -124,6 +125,7 @@ export default function LearnSettingsMenu({
   onToggleShowMasteryLevelColors,
   showSections,
   onToggleShowSections,
+  onCopySections,
   previewLine,
   previewLineIndex,
   fontSize,
@@ -140,6 +142,13 @@ export default function LearnSettingsMenu({
     } else {
       onLanguagesChange([...selectedLanguages, langName]);
     }
+  };
+
+  const [copiedSections, setCopiedSections] = useState(false);
+  const copySections = async () => {
+    await onCopySections();
+    setCopiedSections(true);
+    setTimeout(() => setCopiedSections(false), 2000);
   };
 
   const chipIconColor = (selected: boolean) => (selected ? Colors.primaryLight : Colors.textSecondary);
@@ -222,6 +231,13 @@ export default function LearnSettingsMenu({
                 icon={<Ionicons name="albums-outline" size={18} color={chipIconColor(showSections)} />}
                 selected={showSections}
                 onPress={onToggleShowSections}
+              />
+              {/* Debug: copy the detected sections to check them */}
+              <Chip
+                label={copiedSections ? 'Copied' : 'Copy sections'}
+                icon={<Ionicons name={copiedSections ? 'checkmark' : 'copy-outline'} size={18} color={Colors.textSecondary} />}
+                selected={false}
+                onPress={copySections}
               />
             </View>
 

@@ -46,21 +46,53 @@ const _scrapeLyricsLogic = `
     }
   }
 
-  // Musixmatch
+  // Musixmatch: a translation page has crowdTranslationGet, a map from each original line to its
+  // translation. __NEXT_DATA__ goes stale on client-side navigation, so read it from a fresh copy of the page
   if (url.includes('musixmatch.com')) {
-    try {
-      const mLyrics = __NEXT_DATA__.props.pageProps.data.trackInfo.data.lyrics;
-      sendLyrics(mLyrics.body, mLyrics.language);
-      return;
-    } catch (e) {
-      consoleLog('Failed to extract from __NEXT_DATA__: ' + e.message);
-    }
-    // Fallback to old scraping method
-    const musix = document.querySelector('h2[style="color: var(--mxm-contentSecondary);"]:not([data-testid]) + div')?.innerText;
-    if (musix && musix.length > 0) {
-      sendLyrics(musix, languageCode);
-      return;
-    }
+    const sendFromNextData = (nextData) => {
+      const pageProps = nextData.props.pageProps;
+      const mLyrics = pageProps.data.trackInfo.data.lyrics;
+      const lineTranslations = pageProps.data.crowdTranslationGet?.data;
+      if (!lineTranslations || typeof lineTranslations !== 'object' || !Object.keys(lineTranslations).length) {
+        sendLyrics(mLyrics.body, mLyrics.language);
+        return;
+      }
+      // Keys mix ′ and ' apostrophes, sometimes differently from the lyrics body
+      const normalize = (line) => line.replace(/[′’‘]/g, "'").trim();
+      const byLine = {};
+      Object.keys(lineTranslations).forEach((line) => { byLine[normalize(line)] = lineTranslations[line]; });
+      // Keep one line per original line so the tabs line up; an untranslated line stays as it is
+      const translation = mLyrics.body
+        .split('\\n')
+        .map((line) => (line.trim() ? byLine[normalize(line)] ?? line : ''))
+        .join('\\n');
+      sendLyrics(mLyrics.body, mLyrics.language, {
+        translation,
+        translationLanguage: pageProps.analyticsData?.destination_languge || nextData.query?.language || '',
+      });
+    };
+    const sendFromDocument = () => {
+      try {
+        sendFromNextData(__NEXT_DATA__);
+        return;
+      } catch (e) {
+        consoleLog('Failed to extract from __NEXT_DATA__: ' + e.message);
+      }
+      // Fallback to old scraping method
+      const musix = document.querySelector('h2[style="color: var(--mxm-contentSecondary);"]:not([data-testid]) + div')?.innerText;
+      sendLyrics(musix || document.body.innerText.substring(0, 5000), languageCode);
+    };
+    fetch(url)
+      .then((response) => response.text())
+      .then((html) => {
+        const json = new DOMParser().parseFromString(html, 'text/html').querySelector('#__NEXT_DATA__')?.textContent;
+        sendFromNextData(JSON.parse(json));
+      })
+      .catch((e) => {
+        consoleLog('Failed to read a fresh Musixmatch page: ' + e.message);
+        sendFromDocument();
+      });
+    return;
   }
 
   // SongLyrics.com

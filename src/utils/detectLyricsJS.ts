@@ -17,6 +17,13 @@ const _detectLyricsLogic = `
   // Musixmatch
   else if (url.includes('musixmatch.com')) {
     const checkMusixmatch = () => {
+      // A translation page's lyrics may not match the selector below; its page data has them.
+      // The data is stale after client-side navigation, so it only counts on the song it's for
+      try {
+        const nextData = window.__NEXT_DATA__;
+        const trackVanityId = nextData.query.trackVanityId;
+        if (trackVanityId && window.location.pathname.includes('/' + trackVanityId) && nextData.props.pageProps.data.trackInfo.data.lyrics.body) return true;
+      } catch (e) {}
       const musix = document.querySelector('h2[style="color: var(--mxm-contentSecondary);"]:not([data-testid]) + div');
       return musix && musix.innerText && musix.innerText.length > 0;
     };

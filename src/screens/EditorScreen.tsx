@@ -202,7 +202,7 @@ export default function EditorScreen() {
     if (url) setPendingSourceUrls((prev) => ({ ...prev, [targetTab]: url }));
     if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
 
-    // A translation that came with the original (LyricsTranslate) fills in its language's tab, adding it if needed
+    // A translation that came with the original (LyricsTranslate, Musixmatch) fills in its language's tab, adding it if needed
     const scrapedTranslation = route.params?.scrapedTranslation as string | undefined;
     const translationLanguage = findLanguageName((route.params?.scrapedTranslationLanguage as string | undefined) ?? '');
     if (targetTab === 0 && scrapedTranslation && translationLanguage) {

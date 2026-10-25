@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, TextInput } from './Text'
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { Colors } from '../constants/theme';
 import SongContextBlock from './SongContextBlock';
 import SelectableTranslation from './SelectableTranslation';
 import type { WiktionaryDefinition } from '../utils/wiktionary';
+import { findPartOfSpeech, PARTS_OF_SPEECH, type PartOfSpeech } from '../utils/partOfSpeech';
 
 interface WordSenseCardProps {
   context: string;
@@ -18,6 +19,8 @@ interface WordSenseCardProps {
   definition: string;
   onDefinitionChange: (value: string) => void;
   definitionSuggestions?: WiktionaryDefinition[];
+  partOfSpeech?: PartOfSpeech;
+  onPartOfSpeechChange?: (value: PartOfSpeech) => void;
   onRemove?: () => void;
   onUndoRemove?: () => void;
   word?: string;
@@ -42,6 +45,8 @@ export default function WordSenseCard({
   definition,
   onDefinitionChange,
   definitionSuggestions,
+  partOfSpeech,
+  onPartOfSpeechChange,
   onRemove,
   onUndoRemove,
   word,
@@ -55,6 +60,9 @@ export default function WordSenseCard({
   isRemoved = false,
 }: WordSenseCardProps) {
   const canLowercase = !isRemoved && definition !== definition.toLowerCase();
+  const [choosingType, setChoosingType] = useState(false);
+  // The chosen type, otherwise the one saving would find from the definition
+  const shownType = partOfSpeech ?? findPartOfSpeech(definition, definitionSuggestions ?? []);
 
   const containerStyle = [
     styles.container,
@@ -149,6 +157,34 @@ export default function WordSenseCard({
           )}
         </View>
       </View>
+      {!isRemoved && onPartOfSpeechChange && definition.trim() !== '' && (
+        <View style={styles.typeRow}>
+          <TouchableOpacity
+            style={[styles.typeChip, !shownType && styles.typeChipUnset]}
+            onPress={() => setChoosingType((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={shownType ? `Word type: ${shownType}` : 'Set word type'}
+            accessibilityState={{ expanded: choosingType }}
+          >
+            <Text style={[styles.typeChipText, !shownType && styles.typeChipTextUnset]}>{shownType ?? 'set type'}</Text>
+            <Ionicons name={choosingType ? 'chevron-up' : 'chevron-down'} size={10} color={shownType ? Colors.textSecondary : Colors.primary} />
+          </TouchableOpacity>
+          {choosingType && PARTS_OF_SPEECH.filter((type) => type !== shownType).map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={styles.typeChip}
+              onPress={() => {
+                setChoosingType(false);
+                onPartOfSpeechChange(type);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Make it a ${type}`}
+            >
+              <Text style={styles.typeChipText}>{type}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       {!isRemoved && definitionSuggestions && definitionSuggestions.length > 0 && (
         <View style={styles.suggestionsRow}>
           {definitionSuggestions
@@ -182,6 +218,33 @@ export default function WordSenseCard({
 }
 
 const styles = StyleSheet.create({
+  typeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  typeChipUnset: {
+    borderStyle: 'dashed',
+    borderColor: Colors.primary,
+  },
+  typeChipText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  typeChipTextUnset: {
+    color: Colors.primary,
+  },
   container: {
     gap: 6,
     position: 'relative',

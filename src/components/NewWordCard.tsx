@@ -112,9 +112,12 @@ export default function NewWordCard({
     <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
       <View style={styles.wordHeader}>
         <View style={styles.wordTitle}>
-          <View style={[styles.badge, isIgnored && styles.ignoredBadge]}>
-            <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
-          </View>
+          {/* A word saved from its quiz isn't new; the Save button shows its level */}
+          {!saved && (
+            <View style={[styles.badge, isIgnored && styles.ignoredBadge]}>
+              <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
+            </View>
+          )}
           <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
         </View>
         <View style={styles.headerTools}>

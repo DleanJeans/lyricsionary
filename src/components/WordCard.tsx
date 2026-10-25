@@ -4,10 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getFlagForLanguage } from '../constants/languages';
-import { Colors, getMasteryLevelColor } from '../constants/theme';
+import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { useStore } from '../store/useStore';
 import { WordEntry } from '../types';
+import MasteryLevelBadge from './MasteryLevelBadge';
 import MasteryLevelSelector from './MasteryLevelSelector';
 import HighlightedText from './HighlightedText';
 import PronunciationAudio from './PronunciationAudio';
@@ -130,17 +131,7 @@ export default function WordCard({
             <View style={styles.header}>
               <View style={styles.title}>
                 <View style={styles.badgeRow}>
-                  <TouchableOpacity
-                    style={[styles.badge, styles.badgeButton, { backgroundColor: getMasteryLevelColor(item.masteryLevel) }]}
-                    onPress={() => setChoosingLevel((v) => !v)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Level: ${item.masteryLevel || 'Seen'}`}
-                    accessibilityState={{ expanded: choosingLevel }}
-                  >
-                    <Text style={styles.badgeText}>{(item.masteryLevel || 'Seen').toUpperCase()}</Text>
-                    <Ionicons name={choosingLevel ? 'chevron-up' : 'chevron-down'} size={10} color={Colors.background} />
-                  </TouchableOpacity>
+                  <MasteryLevelBadge level={item.masteryLevel} open={choosingLevel} onPress={() => setChoosingLevel((v) => !v)} />
                   <Text style={styles.badgeEmoji}>{flag}</Text>
                 </View>
                 <Text style={styles.titleWordText}>{item.word}</Text>
@@ -231,23 +222,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  badge: {
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
   levelPicker: {
     marginTop: 10,
-  },
-  badgeText: {
-    color: Colors.background,
-    fontSize: 10,
-    fontWeight: '700',
   },
   badgeEmoji: {
     fontSize: 14,

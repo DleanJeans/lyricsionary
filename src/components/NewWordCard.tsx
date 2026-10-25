@@ -3,10 +3,9 @@ import { useNavigation } from '@react-navigation/native';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { isSameLanguage } from '../constants/languages';
-import { Colors, getMasteryLevelColor } from '../constants/theme';
+import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { isWordIgnored, useStore } from '../store/useStore';
-import { MasteryLevel } from '../types';
 import {
   buildKnownGermanWords,
   getCompoundParts,
@@ -14,7 +13,8 @@ import {
   isGermanLanguage,
   splitAtPositions,
 } from '../utils/compoundWords';
-import MasteryLevelDropdown from './MasteryLevelDropdown';
+import MasteryLevelBadge from './MasteryLevelBadge';
+import MasteryLevelSelector from './MasteryLevelSelector';
 import PronunciationAudio from './PronunciationAudio';
 import { Text } from './Text';
 import WordTransformButtons from './WordTransformButtons';
@@ -64,6 +64,7 @@ export default function NewWordCard({
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
   const compoundParts = isGerman ? getCompoundParts(word, compoundSplits, knownGermanWords) : null;
   const [isEditingSplit, setIsEditingSplit] = useState(false);
+  const [choosingLevel, setChoosingLevel] = useState(false);
   // Character positions the word is cut at while editing, e.g. [6] for Liebes|brief
   const [splitPositions, setSplitPositions] = useState<number[]>([]);
   const letters = Array.from(word);
@@ -85,9 +86,9 @@ export default function NewWordCard({
     setIsEditingSplit(false);
   };
 
-  const handleMasterySelect = async (level: MasteryLevel) => {
+  const handleSave = async () => {
     // Keep the recordings so the saved word doesn't fetch them again
-    await addOrUpdateWord(word, language, undefined, undefined, level, wiktionary.loaded ? wiktionary.audio : undefined);
+    await addOrUpdateWord(word, language, undefined, undefined, 'Seen', wiktionary.loaded ? wiktionary.audio : undefined);
     onClose();
   };
 
@@ -112,8 +113,15 @@ export default function NewWordCard({
     <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
       <View style={styles.wordHeader}>
         <View style={styles.wordTitle}>
-          {/* A word saved from its quiz isn't new; the Save button shows its level */}
-          {!saved && (
+          {/* A word saved from its quiz shows its level, as on the saved word's card */}
+          {saved ? (
+            <MasteryLevelBadge
+              level={saved.masteryLevel}
+              open={choosingLevel}
+              onPress={() => setChoosingLevel((v) => !v)}
+              style={styles.levelBadge}
+            />
+          ) : (
             <View style={[styles.badge, isIgnored && styles.ignoredBadge]}>
               <Text style={styles.badgeText}>{isIgnored ? 'IGNORED' : 'NEW'}</Text>
             </View>
@@ -154,6 +162,18 @@ export default function NewWordCard({
         <Text style={styles.compoundText}>{compoundParts.map((p) => p.text).join(' · ')}</Text>
       )}
 
+      {saved && choosingLevel && (
+        <View style={styles.levelPicker}>
+          <MasteryLevelSelector
+            value={saved.masteryLevel || 'Seen'}
+            onChange={(level) => {
+              setChoosingLevel(false);
+              void addOrUpdateWord(saved.word, saved.language, undefined, undefined, level);
+            }}
+          />
+        </View>
+      )}
+
       <View style={styles.actionRow}>
         <TouchableOpacity
           accessibilityLabel="Search New Word"
@@ -163,14 +183,11 @@ export default function NewWordCard({
           <Ionicons name="search" size={16} color={Colors.white} />
           <Text style={[styles.chipText, styles.chipTextFilled]}>Look up</Text>
         </TouchableOpacity>
-        {!isIgnored && (
-          <MasteryLevelDropdown
-            onSelect={handleMasterySelect}
-            label={saved ? `Saved · ${saved.masteryLevel ?? 'Seen'}` : 'Save'}
-            triggerStyle={[styles.chip, styles.chipGrow]}
-            labelStyle={[styles.chipText, saved && { color: getMasteryLevelColor(saved.masteryLevel) }]}
-            showChevron
-          />
+        {!isIgnored && !saved && (
+          <TouchableOpacity accessibilityLabel="Save" style={[styles.chip, styles.chipGrow]} onPress={() => void handleSave()}>
+            <Ionicons name="star-outline" size={16} color={Colors.primary} />
+            <Text style={styles.chipText}>Save</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -281,6 +298,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
+  },
+  levelBadge: {
+    alignSelf: 'flex-start',
+  },
+  levelPicker: {
+    marginTop: 10,
   },
   ignoredBadge: {
     backgroundColor: Colors.textMuted,

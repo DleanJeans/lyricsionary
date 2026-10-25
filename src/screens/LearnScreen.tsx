@@ -132,6 +132,9 @@ export default function LearnScreen() {
   // Words (lowercased) whose meaning quiz was answered since the song opened, practice included, so
   // saving a word right after its practice quiz doesn't ask it again
   const [answeredMeanings, setAnsweredMeanings] = useState<Set<string>>(new Set());
+  // Words (lowercased) opened unsaved since the song opened: their meanings were just read on the new
+  // word card, so the saved word's card doesn't quiz them
+  const [newWordsShown, setNewWordsShown] = useState<Set<string>>(new Set());
   // The gap being answered, kept while its answer shows even though the word is no longer a gap
   const [gapTarget, setGapTarget] = useState<{ entryId: string; lineIndex: number; occurrence: number } | null>(null);
   const [isRendering, setIsRendering] = useState(true);
@@ -295,8 +298,14 @@ export default function LearnScreen() {
     setSeenAllTranslations(false);
     setAnsweredGaps(new Set());
     setAnsweredMeanings(new Set());
+    setNewWordsShown(new Set());
     setGapTarget(null);
   }, [activeSongId]);
+
+  const isSelectedWordSaved = !!selectedWord && !!findSavedEntry(selectedWord);
+  useEffect(() => {
+    if (selectedWord && !isSelectedWordSaved) setNewWordsShown((prev) => new Set(prev).add(selectedWord.toLowerCase()));
+  }, [selectedWord, isSelectedWordSaved]);
 
   useEffect(() => {
     if (!blurTranslations && showTranslations) setSeenAllTranslations(true);
@@ -752,7 +761,7 @@ export default function LearnScreen() {
         prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> {prompt}</>}
         build={() => buildMeaningQuiz({ entry, ...sense, songId: song.id, excludeWords: parts }, useStore.getState().words)}
         hidden={selectedTranslationSeen}
-        alreadyAnswered={answeredMeanings.has(entry.word.toLowerCase())}
+        alreadyAnswered={answeredMeanings.has(entry.word.toLowerCase()) || (!practice && newWordsShown.has(entry.word.toLowerCase()))}
         onAnswered={(correct) => {
           setAnsweredMeanings((prev) => new Set(prev).add(entry.word.toLowerCase()));
           if (!correct) revealSelectedTranslation();

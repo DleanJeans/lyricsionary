@@ -34,7 +34,7 @@ import LyricsEditor from '../components/LyricsEditor';
 import { normalizeApostrophes } from '../utils/normalizeApostrophes';
 import EditorActionButtons from '../components/EditorActionButtons';
 import AddTranslationModal from '../components/AddTranslationModal';
-import { pickTranslationLanguage } from '../utils/nowPlaying';
+import { findSavedSong, pickTranslationLanguage } from '../utils/nowPlaying';
 
 
 export default function EditorScreen() {
@@ -48,6 +48,7 @@ export default function EditorScreen() {
   const updateSong = useStore((s) => s.updateSong);
   const currentSongId = useStore((s) => s.currentSongId);
   const setCurrentSongId = useStore((s) => s.setCurrentSongId);
+  const trackSongOpen = useStore((s) => s.trackSongOpen);
   const setWebUrl = useStore((s) => s.setWebUrl);
   const setScrapeTargetTab = useStore((s) => s.setScrapeTargetTab);
   const setMatchedSongs = useStore((s) => s.setMatchedSongs);
@@ -521,6 +522,15 @@ export default function EditorScreen() {
       const mediaInfo = await getCurrentlyPlayingMedia();
 
       if (mediaInfo) {
+        // A song already saved opens straight in Learn
+        const saved = findSavedSong(songs, mediaInfo.songName, mediaInfo.artistName);
+        if (saved) {
+          setCurrentSongId(saved.id);
+          void trackSongOpen(saved.id);
+          navigation.setParams({ songId: saved.id });
+          navigation.navigate('Learn', { songId: saved.id });
+          return;
+        }
         setSongName(mediaInfo.songName);
         setArtistName(mediaInfo.artistName);
       } else {

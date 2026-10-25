@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Colors } from '../constants/theme';
+import { isSameLanguage } from '../constants/languages';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel } from '../types';
@@ -56,6 +57,8 @@ export default function NewWordCard({
 
   const words = useStore((s) => s.words);
   const compoundSplits = useStore((s) => s.compoundSplits);
+  // Saved while the card is open, e.g. by answering its quiz
+  const saved = words.find((w) => w.word.toLowerCase() === word.toLowerCase() && isSameLanguage(w.language, language));
   const setCompoundSplit = useStore((s) => s.setCompoundSplit);
   const isGerman = isGermanLanguage(originalLanguages);
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
@@ -160,9 +163,9 @@ export default function NewWordCard({
         {!isIgnored && (
           <MasteryLevelDropdown
             onSelect={handleMasterySelect}
-            label="Save"
+            label={saved ? `Saved · ${saved.masteryLevel ?? 'Seen'}` : 'Save'}
             triggerStyle={[styles.chip, styles.chipGrow]}
-            labelStyle={styles.chipText}
+            labelStyle={[styles.chipText, saved && { color: getMasteryLevelColor(saved.masteryLevel) }]}
             showChevron
           />
         )}

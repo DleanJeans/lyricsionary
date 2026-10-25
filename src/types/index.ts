@@ -1,3 +1,4 @@
+import type { PartOfSpeech } from '../utils/partOfSpeech';
 import type { WiktionaryAudio } from '../utils/wiktionary';
 
 export interface Song {
@@ -32,6 +33,8 @@ export interface WordContext {
   fromSong?: boolean;
   occurrence?: number;
   translation?: string;
+  /** The type of word this sense is, e.g. "noun" for Leben "life" and "verb" for Leben "to live" */
+  partOfSpeech?: PartOfSpeech;
 }
 
 export type MasteryLevel = 'Unknown' | 'New' | 'Learning' | 'Mastered';

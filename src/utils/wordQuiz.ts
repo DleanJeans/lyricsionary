@@ -58,6 +58,26 @@ export function progressLabel(level: MasteryLevel | undefined, quiz: QuizStats |
   }
 }
 
+/** How far the word is toward its next level, 0 to 1. Recalled waits on days, not answers, so it shows none. */
+export function levelProgress(level: MasteryLevel | undefined, quiz: QuizStats | undefined): number {
+  const streak = quiz?.streak ?? 0;
+  switch (level ?? 'Seen') {
+    case 'Seen':
+      return streak / QUIZ_RULES.toRecognized;
+    case 'Recognized':
+      return streak / QUIZ_RULES.toRecalled;
+    default:
+      return 0;
+  }
+}
+
+/** What the progress bar can't show: Recognized counts one answer a day and Recalled waits on days */
+export function progressHint(level: MasteryLevel | undefined, quiz: QuizStats | undefined, now: number): string | null {
+  if (level === 'Recognized' && quiz?.lastCountedDay === localDay(now)) return 'The next one counts tomorrow';
+  if (level === 'Recalled') return `Right again after ${QUIZ_RULES.knownAfterDays} days to make it Known`;
+  return null;
+}
+
 /**
  * The word's quiz stats and level after an answer. A wrong answer starts the streak again but never
  * lowers the level; moving up a level starts the streak for the next one.

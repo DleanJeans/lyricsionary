@@ -1,6 +1,6 @@
 import type { WordEntry } from '../src/types';
 import type { PartOfSpeech } from '../src/utils/partOfSpeech';
-import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, lookAlikeScore, meaningsOverlap, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
+import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
 
 const DAY = 24 * 60 * 60 * 1000;
 const start = new Date(2026, 9, 25, 12).getTime();
@@ -53,6 +53,25 @@ describe('recordAnswer', () => {
 
   it("doesn't count a quiz meant for another level", () => {
     expect(recordAnswer('Recognized', undefined, 'meaning', true, start)).toMatchObject({ masteryLevel: 'Recognized', quiz: { streak: 0 } });
+  });
+});
+
+describe('levelProgress', () => {
+  it('fills with the streak toward the next level', () => {
+    expect(levelProgress(undefined, undefined)).toBe(0);
+    expect(levelProgress('Seen', { streak: 2, correct: 2, wrong: 0 })).toBeCloseTo(2 / 3);
+    expect(levelProgress('Recognized', { streak: 1, correct: 4, wrong: 0 })).toBeCloseTo(1 / 3);
+    expect(levelProgress('Recalled', { streak: 0, correct: 7, wrong: 0 })).toBe(0);
+  });
+});
+
+describe('progressHint', () => {
+  it("says when today's answer already counted and what Recalled waits for", () => {
+    const counted = recordAnswer('Recognized', undefined, 'lyric', true, start).quiz;
+    expect(progressHint('Recognized', counted, start + 1000)).toBe('The next one counts tomorrow');
+    expect(progressHint('Recognized', counted, start + DAY)).toBeNull();
+    expect(progressHint('Recalled', undefined, start)).toMatch(/14 days/);
+    expect(progressHint('Seen', undefined, start)).toBeNull();
   });
 });
 

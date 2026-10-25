@@ -3,8 +3,8 @@ import React, { ReactNode, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
-import { MasteryLevel, WordEntry } from '../types';
-import { isCoolingDown, progressLabel, Quiz, QuizKind, quizKindFor } from '../utils/wordQuiz';
+import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
+import { isCoolingDown, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor } from '../utils/wordQuiz';
 import { Text } from './Text';
 
 interface WordQuizProps {
@@ -57,7 +57,6 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, o
     void updateWordEntry(entry.id, { masteryLevel: before.masteryLevel, quiz: before.quiz });
   };
 
-  const progress = practice ? null : progressLabel(current.masteryLevel, current.quiz);
 
   return (
     <View style={styles.container}>
@@ -104,16 +103,66 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, o
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.resultText}>
-              {correct ? 'Right!' : 'Not quite.'}{progress ? ' ' : ''}
-              {progress}
-            </Text>
+            <Text style={styles.resultText}>{correct ? 'Right!' : 'Not quite.'}</Text>
           )}
         </View>
       )}
+      {answered && !practice && <LevelTrack entry={current} />}
     </View>
   );
 }
+
+/** The four levels with the gap after the word's level filling up toward the next one */
+function LevelTrack({ entry }: { entry: WordEntry }) {
+  const level = entry.masteryLevel ?? 'Seen';
+  const levelIndex = MASTERY_LEVELS.indexOf(level);
+  const progress = levelProgress(level, entry.quiz);
+  const hint = progressHint(level, entry.quiz, Date.now());
+  return (
+    <View accessible accessibilityLabel={progressLabel(level, entry.quiz) ?? `${entry.word} is ${level}`}>
+      <View style={styles.track}>
+        {/* Runs between the first and last dot's centers, a quarter of the width per gap */}
+        <View style={styles.trackBars}>
+          {MASTERY_LEVELS.slice(1).map((next, i) => {
+            const fill = i < levelIndex ? 1 : i === levelIndex ? progress : 0;
+            const from = getMasteryLevelColor(MASTERY_LEVELS[i]);
+            const to = getMasteryLevelColor(next);
+            return (
+              <View key={next} style={styles.trackBar}>
+                <View
+                  style={[
+                    styles.trackFill,
+                    { width: `${fill * 100}%`, backgroundColor: to, experimental_backgroundImage: `linear-gradient(to right, ${from}, ${to})` },
+                  ]}
+                />
+              </View>
+            );
+          })}
+        </View>
+        {MASTERY_LEVELS.map((name, i) => {
+          const color = getMasteryLevelColor(name);
+          return (
+            <View key={name} style={styles.trackStop}>
+              <View
+                style={[
+                  styles.trackDot,
+                  i <= levelIndex && { backgroundColor: color, borderColor: color },
+                  i === levelIndex && styles.trackDotCurrent,
+                ]}
+              />
+              <Text style={[styles.trackLabel, i === levelIndex && { color, fontWeight: '700' }]} numberOfLines={1}>
+                {name}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+      {hint && <Text style={styles.trackHint}>{hint}</Text>}
+    </View>
+  );
+}
+
+const TRACK_DOT = 10;
 
 const styles = StyleSheet.create({
   container: {
@@ -181,6 +230,51 @@ const styles = StyleSheet.create({
   },
   levelText: {
     fontWeight: '700',
+  },
+  track: {
+    flexDirection: 'row',
+  },
+  trackBars: {
+    position: 'absolute',
+    top: TRACK_DOT / 2 - 2,
+    left: '12.5%',
+    right: '12.5%',
+    flexDirection: 'row',
+  },
+  trackBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: Colors.border,
+    overflow: 'hidden',
+  },
+  trackFill: {
+    height: '100%',
+  },
+  trackStop: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  trackDot: {
+    width: TRACK_DOT,
+    height: TRACK_DOT,
+    borderRadius: TRACK_DOT / 2,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  trackDotCurrent: {
+    transform: [{ scale: 1.4 }],
+  },
+  trackLabel: {
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  trackHint: {
+    marginTop: 4,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
   undoText: {
     fontSize: 13,

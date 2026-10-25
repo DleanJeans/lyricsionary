@@ -532,14 +532,9 @@ export default function LearnScreen() {
                   }}
                   accessibilityRole="button"
                   accessibilityLabel="Gap to fill in"
-                  style={[
-                    styles.gap,
-                    isGapSelected && styles.gapSelected,
-                    { fontSize, lineHeight: fontSize * 1.6 - 4 },
-                  ]}
+                  style={[styles.gap, isGapSelected && styles.gapSelected, { fontSize, lineHeight: fontSize * 1.6 }]}
                 >
-                  {/* Keeps the word's width so the line doesn't move once it's filled in */}
-                  {word}
+                  {GAP}
                 </Text>
               </View>
             );
@@ -752,7 +747,7 @@ export default function LearnScreen() {
     const gapLine = selectedLine.split(/(\s+)/).map((token) => {
       if (removeSpecialChars(token).toLowerCase() !== selectedWord!.toLowerCase()) return token;
       seen++;
-      return seen === selectedOccurrence ? token.replace(removeSpecialChars(token), '＿＿＿') : token;
+      return seen === selectedOccurrence ? token.replace(removeSpecialChars(token), GAP) : token;
     }).join('');
     const hint = selectedTranslationLine || sense?.answer;
     return (
@@ -956,18 +951,12 @@ export default function LearnScreen() {
   );
 }
 
+// A gap in the lyrics, the same length whatever the missing word, so it doesn't give it away
+const GAP = '_____';
+
 const styles = StyleSheet.create({
-  gap: {
-    color: 'transparent',
-    borderBottomWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: Colors.primary,
-    marginBottom: 4,
-  },
-  gapSelected: {
-    borderStyle: 'solid',
-    backgroundColor: 'rgba(108, 92, 231, 0.18)',
-  },
+  gap: { color: Colors.primary },
+  gapSelected: { fontWeight: '700', backgroundColor: 'rgba(108, 92, 231, 0.18)' },
   gapCard: {
     alignSelf: 'stretch',
     backgroundColor: Colors.surface,

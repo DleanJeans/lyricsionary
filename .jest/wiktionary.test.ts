@@ -6,6 +6,7 @@ import {
   isMissingPage,
   parseDefinitions,
   parseEntry,
+  soundAlikeForms,
   stripDefinitionHtml,
 } from '../src/utils/wiktionary';
 
@@ -277,5 +278,18 @@ describe('inflected forms', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+describe('soundAlikeForms', () => {
+  it('drops a French silent ending', () => {
+    expect(soundAlikeForms('rires', 'French')).toEqual(['rire']);
+    expect(soundAlikeForms('choux', 'French')).toEqual(['chou']);
+    expect(soundAlikeForms('parlent', 'French')).toEqual(['parle']);
+  });
+
+  it('leaves other languages and short words alone', () => {
+    expect(soundAlikeForms('Herzen', 'German')).toEqual([]);
+    expect(soundAlikeForms('os', 'French')).toEqual([]);
   });
 });

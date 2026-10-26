@@ -414,23 +414,62 @@ function fetchPageHtml(title: string): Promise<string | null> {
   return request;
 }
 
+// Endings an inflection adds without changing how the word sounds, by language. French plurals of
+// nouns often have no IPA on Wiktionary (rires, pleurs, regards, choux, nuits) though they sound like
+// the singular; verb forms like parlent (parle) and adjective forms usually have their own.
+const SILENT_ENDINGS: Record<string, [ending: string, replacement: string][]> = {
+  french: [
+    ['ent', 'e'],
+    ['s', ''],
+    ['x', ''],
+  ],
+};
+
+/** Forms an inflected word sounds the same as, without its silent ending, e.g. "rire" for "rires" */
+export function soundAlikeForms(word: string, language: string): string[] {
+  const endings = SILENT_ENDINGS[getWiktionaryLanguage(language).trim().toLowerCase()] ?? [];
+  return endings
+    .filter(([ending]) => word.length > ending.length + 1 && word.endsWith(ending))
+    .map(([ending, replacement]) => word.slice(0, -ending.length) + replacement);
+}
+
 /**
  * IPA and pronunciation recordings from the word's Wiktionary page in the given language, trying the
- * other casing too like getWiktionaryDefinitions. Resolves null on failure.
+ * other casing too like getWiktionaryDefinitions. An inflected form without IPA of its own takes the IPA
+ * of the form it sounds like, e.g. rires from rire. Resolves null on failure.
  */
 export async function getWiktionaryPronunciation(word: string, language: string): Promise<WiktionaryPronunciation | null> {
   const lower = word.toLowerCase();
   const variants = [word, word === lower ? word.charAt(0).toUpperCase() + word.slice(1) : lower];
+  let found: { html: string; pronunciation: WiktionaryPronunciation } | undefined;
   try {
     for (const title of variants) {
       const html = await fetchPageHtml(title);
       if (!html) continue;
       const pronunciation = { ipa: parseIpa(html, language), audio: parseAudio(html, language).slice(0, MAX_AUDIO) };
-      if (pronunciation.ipa.length > 0 || pronunciation.audio.length > 0) return pronunciation;
+      found ??= { html, pronunciation };
+      if (pronunciation.ipa.length > 0 || pronunciation.audio.length > 0) {
+        found = { html, pronunciation };
+        break;
+      }
     }
-    return { ipa: [], audio: [] };
   } catch (error) {
     console.warn(`Wiktionary pronunciation failed for "${word}":`, error);
     return null;
   }
+  const pronunciation = found?.pronunciation ?? { ipa: [], audio: [] };
+  // Only an inflection's ending is silent, e.g. not moment's
+  const section = found && getLanguageSection(found.html, language);
+  if (pronunciation.ipa.length > 0 || !section || !isFormOf(section)) return pronunciation;
+  for (const form of soundAlikeForms(lower, language)) {
+    try {
+      const html = await fetchPageHtml(form);
+      const ipa = html ? parseIpa(html, language) : [];
+      // Only the first, since the page lists others too, e.g. rire's /ʁjɑ̃/ besides /ʁiʁ/
+      if (ipa.length > 0) return { ...pronunciation, ipa: ipa.slice(0, 1) };
+    } catch {
+      // The word's own recordings are still worth showing
+    }
+  }
+  return pronunciation;
 }

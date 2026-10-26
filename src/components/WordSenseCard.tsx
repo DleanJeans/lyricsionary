@@ -61,6 +61,7 @@ export default function WordSenseCard({
 }: WordSenseCardProps) {
   const canLowercase = !isRemoved && definition !== definition.toLowerCase();
   const [choosingType, setChoosingType] = useState(false);
+  const [editingIpa, setEditingIpa] = useState(false);
   // The chosen type, otherwise the one saving would find from the definition
   const shownType = partOfSpeech ?? findPartOfSpeech(definition, definitionSuggestions ?? []);
 
@@ -120,28 +121,16 @@ export default function WordSenseCard({
         ) : null}
       </View>
       <View style={styles.contextRow}>
-        <View style={styles.contextEmojiField}>
-          <TouchableOpacity style={styles.emojiButtonSmall} onPress={onEmojiPress}>
-            {emoji ? (
-              <Text style={styles.emojiButtonTextSmall}>{emoji}</Text>
-            ) : (
-              <Ionicons name="happy-outline" size={20} color={Colors.textMuted} />
-            )}
-          </TouchableOpacity>
-        </View>
-        <View style={styles.contextIpaField}>
-          <TextInput
-            style={[styles.fieldInput, styles.rowInput]}
-            value={ipa}
-            onChangeText={onIpaChange}
-            placeholder={ipaPlaceholder}
-            numberOfLines={1}
-            placeholderTextColor={Colors.textMuted}
-          />
-        </View>
+        <TouchableOpacity style={styles.emojiButton} onPress={onEmojiPress} accessibilityRole="button" accessibilityLabel="Choose emoji">
+          {emoji ? (
+            <Text style={styles.emojiButtonText}>{emoji}</Text>
+          ) : (
+            <Ionicons name="happy-outline" size={20} color={Colors.textMuted} />
+          )}
+        </TouchableOpacity>
         <View style={styles.contextDefinitionField}>
           <TextInput
-            style={[styles.fieldInput, styles.rowInput, canLowercase && styles.fieldInputWithButton]}
+            style={[styles.rowInput, canLowercase && styles.fieldInputWithButton]}
             value={definition}
             onChangeText={onDefinitionChange}
             placeholder="Definition"
@@ -159,19 +148,21 @@ export default function WordSenseCard({
           )}
         </View>
       </View>
-      {!isRemoved && onPartOfSpeechChange && definition.trim() !== '' && (
+      {!isRemoved ? (
         <View style={styles.typeRow}>
-          <TouchableOpacity
-            style={[styles.typeChip, !shownType && styles.typeChipUnset]}
-            onPress={() => setChoosingType((v) => !v)}
-            accessibilityRole="button"
-            accessibilityLabel={shownType ? `Word type: ${shownType}` : 'Set word type'}
-            accessibilityState={{ expanded: choosingType }}
-          >
-            <Text style={[styles.typeChipText, !shownType && styles.typeChipTextUnset]}>{shownType ?? 'set type'}</Text>
-            <Ionicons name={choosingType ? 'chevron-up' : 'chevron-down'} size={10} color={shownType ? Colors.textSecondary : Colors.primary} />
-          </TouchableOpacity>
-          {choosingType && PARTS_OF_SPEECH.filter((type) => type !== shownType).map((type) => (
+          {onPartOfSpeechChange && definition.trim() !== '' && (
+            <TouchableOpacity
+              style={[styles.typeChip, !shownType && styles.typeChipUnset]}
+              onPress={() => setChoosingType((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={shownType ? `Word type: ${shownType}` : 'Set word type'}
+              accessibilityState={{ expanded: choosingType }}
+            >
+              <Text style={[styles.typeChipText, !shownType && styles.typeChipTextUnset]}>{shownType ?? 'set type'}</Text>
+              <Ionicons name={choosingType ? 'chevron-up' : 'chevron-down'} size={10} color={shownType ? Colors.textSecondary : Colors.primary} />
+            </TouchableOpacity>
+          )}
+          {onPartOfSpeechChange && choosingType && PARTS_OF_SPEECH.filter((type) => type !== shownType).map((type) => (
             <TouchableOpacity
               key={type}
               style={styles.typeChip}
@@ -185,8 +176,36 @@ export default function WordSenseCard({
               <Text style={styles.typeChipText}>{type}</Text>
             </TouchableOpacity>
           ))}
+          {editingIpa ? (
+            <TextInput
+              style={[styles.typeChip, styles.ipaInput]}
+              value={ipa}
+              onChangeText={onIpaChange}
+              placeholder={ipaPlaceholder}
+              placeholderTextColor={Colors.textMuted}
+              numberOfLines={1}
+              autoFocus
+              onBlur={() => setEditingIpa(false)}
+              onSubmitEditing={() => setEditingIpa(false)}
+            />
+          ) : (
+            <TouchableOpacity
+              style={[styles.typeChip, !ipa && styles.ipaChipUnset]}
+              onPress={() => setEditingIpa(true)}
+              accessibilityRole="button"
+              accessibilityLabel={ipa ? `IPA: ${ipa}` : 'Add IPA'}
+            >
+              <Text style={styles.typeChipText}>{ipa || '+ IPA'}</Text>
+            </TouchableOpacity>
+          )}
         </View>
-      )}
+      ) : ipa ? (
+        <View style={styles.typeRow}>
+          <View style={styles.typeChip}>
+            <Text style={styles.typeChipText}>{ipa}</Text>
+          </View>
+        </View>
+      ) : null}
       {!isRemoved && definitionSuggestions && definitionSuggestions.length > 0 && (
         <View style={styles.suggestionsRow}>
           {definitionSuggestions
@@ -305,25 +324,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  // The emoji button and the definition share one box
   contextRow: {
     flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  // The emoji button and both inputs share one height
-  rowInput: {
     height: ROW_HEIGHT,
-    paddingVertical: 0,
-    paddingHorizontal: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
   },
-  contextEmojiField: {
-    width: 60,
-  },
-  contextIpaField: {
+  rowInput: {
     flex: 1,
+    paddingVertical: 0,
+    paddingHorizontal: 12,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  ipaInput: {
+    width: 130,
+    paddingVertical: 2,
+    fontSize: 12,
+    color: Colors.text,
+  },
+  ipaChipUnset: {
+    borderStyle: 'dashed',
   },
   contextDefinitionField: {
-    flex: 1.5,
+    flex: 1,
     justifyContent: 'center',
   },
   fieldInputWithButton: {
@@ -344,16 +372,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primaryLight,
   },
-  emojiButtonSmall: {
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    height: ROW_HEIGHT,
+  emojiButton: {
+    width: ROW_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRightWidth: 1,
+    borderRightColor: Colors.border,
   },
-  emojiButtonTextSmall: {
+  emojiButtonText: {
     fontSize: 22,
     textAlign: 'center',
   },

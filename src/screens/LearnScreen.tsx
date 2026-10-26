@@ -28,7 +28,7 @@ import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompound
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
-import { getWiktionaryDefinitions, type WiktionaryDefinition } from '../utils/wiktionary';
+import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
 const PREVIEW_MAX_WORDS = 8;
@@ -41,7 +41,6 @@ export default function LearnScreen() {
   const songs = useStore((s) => s.songs);
   const words = useStore((s) => s.words);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
-  const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const compoundSplits = useStore((s) => s.compoundSplits);
   const currentSongId = useStore((s) => s.currentSongId);
@@ -120,14 +119,9 @@ export default function LearnScreen() {
   // from the start. Show all turns it off for the rest of the visit.
   const lyricQuiz = !!route.params?.fillIn && route.params.songId === activeSongId;
   const [answeredGaps, setAnsweredGaps] = useState<Set<string>>(new Set());
-  // Words (lowercased) whose meaning quiz was answered since the song opened, practice included, so
-  // saving a word right after its practice quiz doesn't ask it again
+  // Words (lowercased) whose meaning quiz was answered since the song opened, so tapping one again
+  // doesn't ask it again
   const [answeredMeanings, setAnsweredMeanings] = useState<Set<string>>(new Set());
-  // Words (lowercased) opened unsaved since the song opened: their meanings were just read on the new
-  // word card, so the saved word's card doesn't quiz them
-  const [newWordsShown, setNewWordsShown] = useState<Set<string>>(new Set());
-  // A new word (lowercased) saved by answering its quiz, whose new word card stays to show the answer
-  const [savedFromQuiz, setSavedFromQuiz] = useState<string | null>(null);
   // The gap being answered, kept while its answer shows even though the word is no longer a gap
   const [gapTarget, setGapTarget] = useState<{ entryId: string; lineIndex: number; occurrence: number } | null>(null);
   const [isRendering, setIsRendering] = useState(true);
@@ -285,16 +279,8 @@ export default function LearnScreen() {
     setSeenAllTranslations(false);
     setAnsweredGaps(new Set());
     setAnsweredMeanings(new Set());
-    setNewWordsShown(new Set());
     setGapTarget(null);
   }, [activeSongId]);
-
-  useEffect(() => setSavedFromQuiz(null), [selectedWord, selectedLineIndex, selectedOccurrence]);
-
-  const isSelectedWordSaved = !!selectedWord && !!findSavedEntry(selectedWord);
-  useEffect(() => {
-    if (selectedWord && !isSelectedWordSaved) setNewWordsShown((prev) => new Set(prev).add(selectedWord.toLowerCase()));
-  }, [selectedWord, isSelectedWordSaved]);
 
   useEffect(() => {
     if (!blurTranslations && showTranslations) setSeenAllTranslations(true);
@@ -635,20 +621,49 @@ export default function LearnScreen() {
     return (best as { index: number } | null)?.index ?? null;
   }, [lines, selectedLineIndex, findWordEntry]);
 
-  // Wiktionary's definitions of the selected word when it isn't saved, for a meaning quiz on it
+  // Get translation line for the selected line
+  const selectedTranslationLine =
+    selectedLineIndex !== null && lines[selectedLineIndex]
+      ? lines[selectedLineIndex].translations
+          .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
+          .map((tl) => tl.text)
+          .join(' / ')
+      : undefined;
+
+  // A tapped new word is saved as Seen, as Look up and Save would: with Wiktionary's first IPA, its
+  // recordings, and the meaning found in the line's translation (or else the first) for this line.
+  // The saved word's card then quizzes that meaning. A word tapped away from before Wiktionary
+  // answers isn't saved.
   const songLanguage = song?.originalLanguages?.[0];
   const selectedWordSaved = !!selectedWord && !!findSavedEntry(selectedWord);
-  const [newWordDefinitions, setNewWordDefinitions] = useState<{ word: string; definitions: WiktionaryDefinition[] } | null>(null);
+  const selectedWordIgnored = !!selectedWord && !!songLanguage && isIgnoredWord(selectedWord, songLanguage);
   useEffect(() => {
-    if (!selectedWord || selectedWordSaved || !songLanguage) return;
+    if (!selectedWord || selectedWordSaved || selectedWordIgnored || !songLanguage || !song) return;
     let cancelled = false;
-    getWiktionaryDefinitions(selectedWord, songLanguage).then((definitions) => {
-      if (!cancelled) setNewWordDefinitions({ word: selectedWord, definitions: definitions ?? [] });
+    Promise.all([
+      getWiktionaryDefinitions(selectedWord, songLanguage),
+      getWiktionaryPronunciation(selectedWord, songLanguage),
+    ]).then(([definitions, pronunciation]) => {
+      if (cancelled) return;
+      const answer = definitions?.length ? pickDefinition(definitions, selectedTranslationLine) ?? definitions[0].text : undefined;
+      const context: WordContext = {
+        context: selectedLine ?? '',
+        definition: answer,
+        partOfSpeech: answer ? normalizePartOfSpeech(definitions!.find((d) => d.text === answer)?.partOfSpeech) : undefined,
+        songId: song.id,
+        songName: song.songName,
+        translation: selectedTranslationLine || undefined,
+        fromSong: !!selectedLine,
+        occurrence: selectedOccurrence,
+      };
+      // Without Wiktionary's answer the saved word's card fetches the IPA and recordings itself
+      void addOrUpdateWord(selectedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio);
     });
     return () => {
       cancelled = true;
     };
-  }, [selectedWord, selectedWordSaved, songLanguage]);
+    // Saved once per tap, with the line it was tapped in
+  }, [selectedWord, selectedWordSaved, selectedWordIgnored, songLanguage, selectedLineIndex, selectedOccurrence]);
 
   if (!song) {
     return (
@@ -668,15 +683,6 @@ export default function LearnScreen() {
   const selectedWordEntry = selectedWord
     ? findSavedEntry(selectedWord)
     : null;
-
-  // Get translation line for the selected line
-  const selectedTranslationLine =
-    selectedLineIndex !== null && lines[selectedLineIndex]
-      ? lines[selectedLineIndex].translations
-          .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
-          .map((tl) => tl.text)
-          .join(' / ')
-      : undefined;
 
   // Definitions of the selected word to look for in its line's translation
   const definitionsOf = (entry: WordEntry, line: string, occurrence?: number): string[] =>
@@ -733,81 +739,27 @@ export default function LearnScreen() {
     return legacy ? { answer: legacy.text.trim() } : null;
   };
 
-  const meaningQuiz = (
-    entry: WordEntry,
-    sense = quizSense(entry),
-    {
-      practice = false,
-      prompt = 'mean here?',
-      onAnswered,
-    }: { practice?: boolean; prompt?: string; onAnswered?: (correct: boolean) => void } = {}
-  ) => {
+  const meaningQuiz = (entry: WordEntry) => {
+    const sense = quizSense(entry);
     if (!sense) return null;
     // A German compound's parts aren't wrong meanings, e.g. Liebe in Liebesbrief
     const parts = isGermanSong ? getCompoundParts(entry.word, compoundSplits, knownGermanWords)?.map((p) => p.lemma) : undefined;
     return (
       <WordQuiz
-        // By word, so a new word's quiz stays when answering it saves the word
-        key={`meaning-${entry.word.toLowerCase()}-${selectedLineIndex}-${selectedOccurrence}`}
+        key={`meaning-${entry.id}-${selectedLineIndex}-${selectedOccurrence}`}
         entry={entry}
         kind="meaning"
-        practice={practice}
-        prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> {prompt}</>}
+        prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> mean here?</>}
         build={() => buildMeaningQuiz({ entry, ...sense, songId: song.id, excludeWords: parts }, useStore.getState().words)}
         hidden={selectedTranslationSeen}
-        alreadyAnswered={answeredMeanings.has(entry.word.toLowerCase()) || (!practice && newWordsShown.has(entry.word.toLowerCase()))}
+        alreadyAnswered={answeredMeanings.has(entry.word.toLowerCase())}
         onAnswered={(correct) => {
           setAnsweredMeanings((prev) => new Set(prev).add(entry.word.toLowerCase()));
           if (!correct) revealSelectedTranslation();
-          onAnswered?.(correct);
         }}
         isWide={isWide}
       />
     );
-  };
-
-  // An unsaved word's quiz asks about the Wiktionary meaning found in the line's translation, or else
-  // its first one. Answering it saves the word as Seen with that meaning for this line, and records
-  // the answer.
-  const newWordQuiz = (word: string) => {
-    if (newWordDefinitions?.word !== word || newWordDefinitions.definitions.length === 0) return null;
-    const { definitions } = newWordDefinitions;
-    const inLine = pickDefinition(definitions, selectedTranslationLine);
-    const answer = inLine ?? definitions[0].text;
-    const entry: WordEntry = {
-      id: '',
-      word,
-      language: songLanguage ?? '',
-      pronunciation: '',
-      contexts: [],
-      lastLookedUp: 0,
-      // Every meaning, so none of them shows up as a wrong option
-      definitions: definitions.map((d) => ({ text: d.text })),
-    };
-    const partOfSpeech = normalizePartOfSpeech((definitions.find((d) => d.text === answer) ?? definitions[0]).partOfSpeech);
-    const saved = savedFromQuiz === word.toLowerCase() ? findSavedEntry(word) : undefined;
-    const language = songLanguage ?? '';
-    const saveAndRecord = async (correct: boolean) => {
-      setSavedFromQuiz(word.toLowerCase());
-      const context: WordContext = {
-        context: selectedLine ?? '',
-        definition: answer,
-        partOfSpeech,
-        songId: song.id,
-        songName: song.songName,
-        translation: selectedTranslationLine || undefined,
-        fromSong: !!selectedLine,
-        occurrence: selectedOccurrence,
-      };
-      await addOrUpdateWord(word, language, undefined, [context], 'Seen');
-      const id = useStore.getState().words.find((w) => w.word.toLowerCase() === word.toLowerCase() && w.language === language)?.id;
-      if (id) await recordQuizAnswer(id, 'meaning', correct);
-    };
-    return meaningQuiz(saved ?? entry, { answer, partOfSpeech }, {
-      practice: !saved,
-      prompt: inLine ? 'mean here?' : 'mean?',
-      onAnswered: (correct) => void saveAndRecord(correct),
-    });
   };
 
   const gapWordEntry = gapTarget && selectedWord && gapTarget.lineIndex === selectedLineIndex && gapTarget.occurrence === selectedOccurrence
@@ -865,7 +817,7 @@ export default function LearnScreen() {
   })() : null;
 
   const wordPanel = gapPanel ?? (
-    selectedWord && selectedWordEntry && savedFromQuiz !== selectedWord.toLowerCase() ? (
+    selectedWord && selectedWordEntry ? (
       <View style={[styles.wordCardContainer]}>
         <WordCard
           item={selectedWordEntry}
@@ -895,7 +847,6 @@ export default function LearnScreen() {
         onClose={() => setSelectedWord(null)}
         isWide={isWide}
         occurrence={selectedOccurrence}
-        quiz={newWordQuiz(selectedWord)}
       />
     ) : null);
 

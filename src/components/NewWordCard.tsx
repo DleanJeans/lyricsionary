@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { ReactNode, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { isSameLanguage } from '../constants/languages';
 import { Colors } from '../constants/theme';
@@ -31,8 +31,6 @@ interface NewWordCardProps {
   onClose: () => void;
   isWide?: boolean;
   occurrence?: number;
-  /** Shown under the actions in Learn, e.g. a quiz on the word's Wiktionary meaning */
-  quiz?: ReactNode;
 }
 
 export default function NewWordCard({
@@ -46,7 +44,6 @@ export default function NewWordCard({
   onClose,
   isWide = false,
   occurrence,
-  quiz,
 }: NewWordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -58,7 +55,7 @@ export default function NewWordCard({
 
   const words = useStore((s) => s.words);
   const compoundSplits = useStore((s) => s.compoundSplits);
-  // Saved while the card is open, e.g. by answering its quiz
+  // Saved while the card is open, e.g. at a level picked from its NEW badge
   const saved = words.find((w) => w.word.toLowerCase() === word.toLowerCase() && isSameLanguage(w.language, language));
   const setCompoundSplit = useStore((s) => s.setCompoundSplit);
   const isGerman = isGermanLanguage(originalLanguages);
@@ -224,7 +221,6 @@ export default function NewWordCard({
         </View>
       )}
 
-      {quiz}
 
       <WordTransformButtons
         word={word}

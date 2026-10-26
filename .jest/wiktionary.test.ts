@@ -205,6 +205,28 @@ describe('form-of glosses with several meanings', () => {
   });
 });
 
+// meilleur's real definitions: the gloss follows the form-of span as plain text in brackets and quotes
+const MEILLEUR_BETTER =
+  '<span class="form-of-definition use-with-mention" about="#mwt17" typeof="mw:Transclusion"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#comparative" title="Appendix:Glossary">comparative degree</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="fr"><a rel="mw:WikiLink" href="/wiki/bon#French" title="bon">bon</a></i></span></span><link rel="mw:PageProp/Category" href="./Category:French_comparative_adjectives#MEILLEUR" about="#mwt17"> ("<a rel="mw:WikiLink" href="/wiki/better" title="better">better</a>")';
+const MEILLEUR_BEST =
+  '<span class="usage-label-sense" about="#mwt21" typeof="mw:Transclusion"></span> <span class="form-of-definition use-with-mention" about="#mwt22" typeof="mw:Transclusion"><a rel="mw:WikiLink" href="/wiki/Appendix:Glossary#superlative" title="Appendix:Glossary">superlative degree</a> of <span class="form-of-definition-link"><i class="Latn mention" lang="fr"><a rel="mw:WikiLink" href="/wiki/bon#French" title="bon">bon</a></i></span></span><link rel="mw:PageProp/Category" href="./Category:French_superlative_adjectives#MEILLEUR" about="#mwt22"> ("<a rel="mw:WikiLink" href="/wiki/best" title="best">best</a>")';
+
+describe('form-of glosses in brackets and quotes', () => {
+  it('reads meilleur as better and best', () => {
+    expect(getFormOfGloss(MEILLEUR_BETTER)).toBe('better');
+    expect(getFormOfGloss(MEILLEUR_BEST)).toBe('best');
+  });
+
+  it.each([
+    ['(“better”)', ['better']],
+    ['“good”, “nice”', ['good', 'nice']],
+    ['("good"; "fine")', ['good', 'fine']],
+  ])('unquotes %s', (gloss, expected) => {
+    const definition = `<span class="form-of-definition use-with-mention">comparative degree of <span class="form-of-definition-link"><i class="Latn mention" lang="fr"><a href="/wiki/bon#French" title="bon">bon</a></i></span></span> ${gloss}`;
+    expect(parseEntry({ fr: [section('French', 'Adjective', [definition])] }, 'French').glosses.map((d) => d.text)).toEqual(expected);
+  });
+});
+
 describe('languages under another name on Wiktionary', () => {
   it('reads Croatian from the Serbo-Croatian section', () => {
     const response = { sh: [section('Serbo-Croatian', 'Noun', ['<a href="/wiki/love" title="love">love</a>'])] };

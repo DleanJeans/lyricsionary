@@ -117,17 +117,26 @@ export function getFormOfGloss(html: string): string | undefined {
   const span = html.match(/<span\b[^>]*class="[^"]*\bmention-gloss\b(?!-)[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
   const gloss = span
     ? stripDefinitionHtml(span[1])
-    : (stripDefinitionHtml(html).match(/\bof\s+\S.*?\s[“"]([^“”"]+)[”"]\s*$/)?.[1] ?? getTextAfterFormOf(html));
+    : (stripDefinitionHtml(html).match(/\bof\s+[^\s“”"][^“”"]*?\s[“"]([^“”"]+)[”"]\s*$/)?.[1] ?? getTextAfterFormOf(html));
   return gloss?.trim() || undefined;
 }
 
-/** Plain text after the form-of span, e.g. "me" in 'accusative of ich: me'; not a nested list of forms */
+/**
+ * Plain text after the form-of span, e.g. "me" in 'accusative of ich: me' or "better" in
+ * 'comparative degree of bon ("better")'; not a nested list of forms
+ */
 function getTextAfterFormOf(html: string): string | undefined {
   const start = html.search(/<span\b[^>]*class="[^"]*\bform-of-definition\b(?!-)/i);
   if (start < 0) return undefined;
   const after = html.slice(getSpanEnd(html, start));
   if (/<(?:ol|ul|li)\b/i.test(after)) return undefined;
-  return stripDefinitionHtml(after).replace(/^[\s:;,.]+|[\s.]+$/g, '') || undefined;
+  const text = stripDefinitionHtml(after).replace(/^[\s:;,.]+|[\s.]+$/g, '');
+  return unquote(text.replace(/^\(([^()]*)\)$/, '$1').trim()) || undefined;
+}
+
+/** A gloss without the quotes around it, e.g. better from '"better"' or '“better”' */
+function unquote(text: string): string {
+  return text.replace(/^(["“‘'])([^"“”‘’']*)(["”’'])$/, '$2').trim();
 }
 
 /** Index just past the closing tag of the span that opens at start */
@@ -186,7 +195,8 @@ function splitShortGlosses(text: string): string[] {
   return text.split(';').flatMap((segment) => {
     const parts = segment
       .split(/,|\s+\/\s+/)
-      .map((part) => part.trim().replace(/\.$/, ''))
+      // Each meaning can be quoted on its own, e.g. '"good", "nice"'
+      .map((part) => unquote(part.trim().replace(/\.$/, '')))
       .filter(Boolean);
     return parts.every(isShort) ? parts : [];
   });

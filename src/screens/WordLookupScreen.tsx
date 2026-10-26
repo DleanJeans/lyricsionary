@@ -511,7 +511,7 @@ export default function WordLookupScreen() {
 
   const ipaPlaceholder = pronunciation
     ? (pronunciation.includes('/') ? pronunciation : `/${pronunciation}/`)
-    : 'e.g., /prəˌnʌnsiˈeɪʃən/';
+    : 'IPA';
 
   const existingWord = words.find(w => w.word.toLowerCase() === displayWord?.toLowerCase());
 

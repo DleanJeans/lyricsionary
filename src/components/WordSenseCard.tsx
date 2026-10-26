@@ -131,19 +131,21 @@ export default function WordSenseCard({
         </View>
         <View style={styles.contextIpaField}>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, styles.rowInput]}
             value={ipa}
             onChangeText={onIpaChange}
             placeholder={ipaPlaceholder}
+            numberOfLines={1}
             placeholderTextColor={Colors.textMuted}
           />
         </View>
         <View style={styles.contextDefinitionField}>
           <TextInput
-            style={[styles.fieldInput, canLowercase && styles.fieldInputWithButton]}
+            style={[styles.fieldInput, styles.rowInput, canLowercase && styles.fieldInputWithButton]}
             value={definition}
             onChangeText={onDefinitionChange}
             placeholder="Definition"
+            numberOfLines={1}
             placeholderTextColor={Colors.textMuted}
           />
           {canLowercase && (
@@ -216,6 +218,8 @@ export default function WordSenseCard({
     </View>
   );
 }
+
+const ROW_HEIGHT = 44;
 
 const styles = StyleSheet.create({
   typeRow: {
@@ -304,7 +308,13 @@ const styles = StyleSheet.create({
   contextRow: {
     flexDirection: 'row',
     gap: 8,
-    alignItems: 'flex-end',
+    alignItems: 'center',
+  },
+  // The emoji button and both inputs share one height
+  rowInput: {
+    height: ROW_HEIGHT,
+    paddingVertical: 0,
+    paddingHorizontal: 10,
   },
   contextEmojiField: {
     width: 60,
@@ -337,7 +347,7 @@ const styles = StyleSheet.create({
   emojiButtonSmall: {
     backgroundColor: Colors.surface,
     borderRadius: 10,
-    height: 48,
+    height: ROW_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,

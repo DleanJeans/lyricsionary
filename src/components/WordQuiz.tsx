@@ -203,7 +203,7 @@ function LevelTrack({ from, entry }: { from: WordEntry; entry: WordEntry }) {
 }
 
 const TRACK_DOT = 10;
-const TRACK_MS = 500;
+const TRACK_MS = 300;
 
 const styles = StyleSheet.create({
   container: {

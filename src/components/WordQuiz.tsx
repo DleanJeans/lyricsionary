@@ -116,13 +116,40 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
 }
 
 /** The four levels with the gap after the word's level filling up toward the next one */
+/** How full each gap between levels is, left to right, and the index of the word's level */
+function trackFills(entry: WordEntry) {
+  const level = entry.masteryLevel ?? 'Seen';
+  const levelIndex = MASTERY_LEVELS.indexOf(level);
+  const progress = levelProgress(level, entry.quiz);
+  const fills = MASTERY_LEVELS.slice(1).map((_, i) => (i < levelIndex ? 1 : i === levelIndex ? progress : 0));
+  return { fills, levelIndex };
+}
+
+/**
+ * When each gap and dot starts moving, so a jump of several levels fills the gaps one after another
+ * from the left, each dot lighting up once the gap before it is full, and empties them from the right
+ */
+function trackDelays(before: WordEntry, after: WordEntry) {
+  const a = trackFills(before).fills;
+  const b = trackFills(after).fills;
+  const changed = b.map((fill, i) => fill !== a[i]);
+  const forward = b.some((fill, i) => fill > a[i]);
+  const changedUpTo = (i: number) => changed.slice(0, i + 1).filter(Boolean).length;
+  const changedFrom = (i: number) => changed.slice(i).filter(Boolean).length;
+  return {
+    bars: b.map((_, i) => (forward ? changedUpTo(i) - 1 : changedFrom(i) - 1) * TRACK_MS),
+    // Dot i sits after gap i - 1
+    dots: MASTERY_LEVELS.map((_, i) => (forward ? changedUpTo(i - 1) : changedFrom(i)) * TRACK_MS),
+  };
+}
+
 function LevelTrack({ from, entry }: { from: WordEntry; entry: WordEntry }) {
   // Starts where the word was before the answer, then slides to where it is now, also back on Undo
-  const [shown, setShown] = useState(from);
-  useEffect(() => setShown(entry), [entry]);
+  const [track, setTrack] = useState(() => ({ shown: from, delays: trackDelays(from, from) }));
+  useEffect(() => setTrack((prev) => ({ shown: entry, delays: trackDelays(prev.shown, entry) })), [entry]);
+  const { shown, delays } = track;
   const level = shown.masteryLevel ?? 'Seen';
-  const levelIndex = MASTERY_LEVELS.indexOf(level);
-  const progress = levelProgress(level, shown.quiz);
+  const { fills, levelIndex } = trackFills(shown);
   const hint = progressHint(level, entry.quiz, Date.now());
   return (
     <View accessible accessibilityLabel={progressLabel(level, entry.quiz) ?? `${entry.word} is ${level}`}>
@@ -130,7 +157,7 @@ function LevelTrack({ from, entry }: { from: WordEntry; entry: WordEntry }) {
         {/* Runs between the first and last dot's centers, a quarter of the width per gap */}
         <View style={styles.trackBars}>
           {MASTERY_LEVELS.slice(1).map((next, i) => {
-            const fill = i < levelIndex ? 1 : i === levelIndex ? progress : 0;
+            const fill = fills[i];
             const from = getMasteryLevelColor(MASTERY_LEVELS[i]);
             const to = getMasteryLevelColor(next);
             return (
@@ -138,7 +165,12 @@ function LevelTrack({ from, entry }: { from: WordEntry; entry: WordEntry }) {
                 <Animated.View
                   style={[
                     styles.trackFill,
-                    { transitionProperty: 'width', transitionDuration: TRACK_MS, transitionTimingFunction: 'ease-out' },
+                    {
+                      transitionProperty: 'width',
+                      transitionDuration: TRACK_MS,
+                      transitionDelay: Math.max(0, delays.bars[i]),
+                      transitionTimingFunction: 'ease-out',
+                    },
                     { width: `${fill * 100}%`, backgroundColor: to, experimental_backgroundImage: `linear-gradient(to right, ${from}, ${to})` },
                   ]}
                 />
@@ -153,8 +185,7 @@ function LevelTrack({ from, entry }: { from: WordEntry; entry: WordEntry }) {
               <Animated.View
                 style={[
                   styles.trackDot,
-                  // Lights up once the bar before it has filled
-                  { transitionProperty: ['backgroundColor', 'borderColor', 'transform'], transitionDuration: 250, transitionDelay: TRACK_MS },
+                  { transitionProperty: ['backgroundColor', 'borderColor', 'transform'], transitionDuration: 250, transitionDelay: delays.dots[i] },
                   i <= levelIndex && { backgroundColor: color, borderColor: color },
                   i === levelIndex && styles.trackDotCurrent,
                 ]}

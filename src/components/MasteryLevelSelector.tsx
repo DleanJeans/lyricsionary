@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Colors } from '../constants/theme';
@@ -8,6 +9,8 @@ interface MasteryLevelSelectorProps {
   /** None for a word not saved yet */
   value?: MasteryLevel;
   onChange: (value: MasteryLevel) => void;
+  /** Adds a button after the levels that unsaves the word, e.g. one saved by an accidental tap */
+  onRemove?: () => void;
 }
 
 const levels: {
@@ -64,7 +67,7 @@ function MasteryOption({ level, active, onPress }: MasteryOptionProps) {
   );
 }
 
-export default function MasteryLevelSelector({ value, onChange }: MasteryLevelSelectorProps) {
+export default function MasteryLevelSelector({ value, onChange, onRemove }: MasteryLevelSelectorProps) {
   return (
     <View style={styles.selector}>
       {levels.map((level) => (
@@ -75,6 +78,16 @@ export default function MasteryLevelSelector({ value, onChange }: MasteryLevelSe
           onPress={() => onChange(level.value)}
         />
       ))}
+      {onRemove && (
+        <Pressable
+          style={({ pressed }) => [styles.removeButton, pressed && styles.buttonPressed]}
+          onPress={onRemove}
+          accessibilityRole="button"
+          accessibilityLabel="Remove word"
+        >
+          <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -97,6 +110,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  removeButton: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
   },
   buttonPressed: {
     opacity: 0.72,

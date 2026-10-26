@@ -117,6 +117,8 @@ interface AppState {
   ) => Promise<void>;
   setWordAudio: (id: string, audio: WiktionaryAudio[]) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
+  /** Puts a deleted word back as it was, e.g. on Undo */
+  restoreWord: (entry: WordEntry) => Promise<void>;
   /** Changes saved word fields without counting it as a look up, e.g. a word type found later */
   updateWordEntry: (id: string, changes: Partial<Omit<WordEntry, 'id'>>) => Promise<void>;
   /** Saves a word quiz answer, moving the word up a level when it has enough; returns the word before */
@@ -406,6 +408,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   deleteWord: async (id) => {
     const words = get().words.filter((w) => w.id !== id);
+    set({ words });
+    await persist(WORDS_KEY, JSON.stringify(words));
+  },
+
+  restoreWord: async (entry) => {
+    if (get().words.some((w) => w.id === entry.id)) return;
+    const words = [...get().words, entry];
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
   },

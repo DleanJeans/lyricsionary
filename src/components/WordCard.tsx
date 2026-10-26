@@ -32,6 +32,8 @@ interface WordCardProps {
   occurrence?: number;
   /** Shown under the word in Learn, e.g. a quiz on its meaning */
   quiz?: React.ReactNode;
+  /** Learn: unsaves the word from the level picker */
+  onRemove?: (item: WordEntry) => void;
 }
 
 export default function WordCard({
@@ -51,6 +53,7 @@ export default function WordCard({
   originalLanguages,
   occurrence,
   quiz,
+  onRemove,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -160,6 +163,7 @@ export default function WordCard({
                     setChoosingLevel(false);
                     void addOrUpdateWord(item.word, item.language, undefined, undefined, level);
                   }}
+                  onRemove={onRemove && (() => onRemove(item))}
                 />
               </View>
             )}

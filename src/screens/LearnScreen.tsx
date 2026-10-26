@@ -4,6 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, I18nManager, StyleSheet, TouchableOpacity, View } from 'react-native';
 import AnimatedHeight from '../components/AnimatedHeight';
+import Toast from '../components/Toast';
 import LearnActionBar from '../components/LearnActionBar';
 import { useWordProgress } from '../hooks/useWordProgress';
 import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
@@ -41,6 +42,8 @@ export default function LearnScreen() {
   const songs = useStore((s) => s.songs);
   const words = useStore((s) => s.words);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  const deleteWord = useStore((s) => s.deleteWord);
+  const restoreWord = useStore((s) => s.restoreWord);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const compoundSplits = useStore((s) => s.compoundSplits);
   const currentSongId = useStore((s) => s.currentSongId);
@@ -122,6 +125,13 @@ export default function LearnScreen() {
   // Words (lowercased) whose meaning quiz was answered since the song opened, so tapping one again
   // doesn't ask it again
   const [answeredMeanings, setAnsweredMeanings] = useState<Set<string>>(new Set());
+  // A word just removed from its card's level picker, offered back with Undo for a few seconds
+  const [removedWord, setRemovedWord] = useState<WordEntry | null>(null);
+  useEffect(() => {
+    if (!removedWord) return;
+    const timer = setTimeout(() => setRemovedWord(null), 5000);
+    return () => clearTimeout(timer);
+  }, [removedWord]);
   // The gap being answered, kept while its answer shows even though the word is no longer a gap
   const [gapTarget, setGapTarget] = useState<{ entryId: string; lineIndex: number; occurrence: number } | null>(null);
   const [isRendering, setIsRendering] = useState(true);
@@ -824,6 +834,12 @@ export default function LearnScreen() {
           showDelete={false}
           showClose={true}
           onClose={() => setSelectedWord(null)}
+          onRemove={(item) => {
+            // Closed first, so the word isn't saved again as a new word being tapped
+            setSelectedWord(null);
+            setRemovedWord(item);
+            void deleteWord(item.id);
+          }}
           source="Learn"
           songId={song.id}
           songName={song.songName}
@@ -967,6 +983,17 @@ export default function LearnScreen() {
           {lyricsView}
         </View>
       )}
+      {removedWord && (
+        <View style={styles.toastStack} pointerEvents="box-none">
+          <Toast
+            message={<>Removed<Text style={{ fontWeight: 'bold' }}> {removedWord.word}</Text></>}
+            onUndo={() => {
+              void restoreWord(removedWord);
+              setRemovedWord(null);
+            }}
+          />
+        </View>
+      )}
     </ScreenWrapper>
   );
 }
@@ -1102,6 +1129,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: Colors.surface,
+  },
+  toastStack: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
   },
   wordCardContainer: {
     marginHorizontal: 16,

@@ -631,14 +631,17 @@ export default function LearnScreen() {
     return (best as { index: number } | null)?.index ?? null;
   }, [lines, selectedLineIndex, findWordEntry]);
 
-  // Get translation line for the selected line
-  const selectedTranslationLine =
+  // Get translation line for the selected line, from the languages shown
+  const translationLineOf = (languages?: string[]) =>
     selectedLineIndex !== null && lines[selectedLineIndex]
       ? lines[selectedLineIndex].translations
-          .filter((tl) => tl.show && localSelectedLanguages.includes(tl.language))
+          .filter((tl) => tl.show && (!languages || languages.includes(tl.language)))
           .map((tl) => tl.text)
           .join(' / ')
       : undefined;
+  const shownTranslationLine = translationLineOf(localSelectedLanguages);
+  // A looked-up word's context keeps the line's translation even with translations turned off
+  const selectedTranslationLine = localSelectedLanguages.length ? shownTranslationLine : translationLineOf();
 
   // A tapped new word is saved as Seen, as Look up and Save would: with Wiktionary's first IPA, its
   // recordings, and the meaning found in the line's translation (or else the first) for this line.
@@ -785,7 +788,7 @@ export default function LearnScreen() {
       seen++;
       return seen === selectedOccurrence ? token.replace(removeSpecialChars(token), GAP) : token;
     }).join('');
-    const hint = selectedTranslationLine || sense?.answer;
+    const hint = shownTranslationLine || sense?.answer;
     return (
       <View style={[styles.wordCardContainer]}>
         <View style={[styles.gapCard, isWide && styles.gapCardWide]}>

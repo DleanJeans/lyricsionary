@@ -132,6 +132,7 @@ export default function WordSenseList({
               onContextChange={(value) => onUpdateWordSense(currentSenseIndex, 'context', value)}
               emoji={block.emoji}
               onEmojiPress={() => onEmojiPress(currentSenseIndex)}
+              onEmojiChange={(value) => onUpdateWordSense(currentSenseIndex, 'emoji', value)}
               ipa={block.ipa}
               onIpaChange={(value) => onUpdateWordSense(currentSenseIndex, 'ipa', value)}
               ipaPlaceholder={ipaPlaceholder}

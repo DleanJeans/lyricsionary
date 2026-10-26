@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, TextInput } from './Text'
 import { Ionicons } from '@expo/vector-icons';
+import { emojisByCategory } from 'rn-emoji-keyboard';
 import { Colors } from '../constants/theme';
 import SongContextBlock from './SongContextBlock';
 import SelectableTranslation from './SelectableTranslation';
 import type { WiktionaryDefinition } from '../utils/wiktionary';
+import { suggestEmoji } from '../utils/emojiSuggestion';
 import { findPartOfSpeech, PARTS_OF_SPEECH, type PartOfSpeech } from '../utils/partOfSpeech';
 
 interface WordSenseCardProps {
@@ -13,6 +15,7 @@ interface WordSenseCardProps {
   onContextChange: (value: string) => void;
   emoji: string;
   onEmojiPress: () => void;
+  onEmojiChange?: (value: string) => void;
   ipa: string;
   onIpaChange: (value: string) => void;
   ipaPlaceholder: string;
@@ -39,6 +42,7 @@ export default function WordSenseCard({
   onContextChange,
   emoji,
   onEmojiPress,
+  onEmojiChange,
   ipa,
   onIpaChange,
   ipaPlaceholder,
@@ -62,6 +66,11 @@ export default function WordSenseCard({
   const canLowercase = !isRemoved && definition !== definition.toLowerCase();
   const [choosingType, setChoosingType] = useState(false);
   const [editingIpa, setEditingIpa] = useState(false);
+  // Shown faded until tapped to keep it
+  const suggestedEmoji = useMemo(
+    () => (!emoji && onEmojiChange && !isRemoved ? suggestEmoji(definition, emojisByCategory) : null),
+    [emoji, onEmojiChange, isRemoved, definition]
+  );
   // The chosen type, otherwise the one saving would find from the definition
   const shownType = partOfSpeech ?? findPartOfSpeech(definition, definitionSuggestions ?? []);
 
@@ -121,13 +130,26 @@ export default function WordSenseCard({
         ) : null}
       </View>
       <View style={styles.contextRow}>
-        <TouchableOpacity style={styles.emojiButton} onPress={onEmojiPress} accessibilityRole="button" accessibilityLabel="Choose emoji">
-          {emoji ? (
-            <Text style={styles.emojiButtonText}>{emoji}</Text>
-          ) : (
-            <Ionicons name="happy-outline" size={20} color={Colors.textMuted} />
-          )}
-        </TouchableOpacity>
+        {suggestedEmoji ? (
+          <TouchableOpacity
+            style={styles.emojiButton}
+            onPress={() => onEmojiChange?.(suggestedEmoji)}
+            onLongPress={onEmojiPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Use suggested emoji ${suggestedEmoji}`}
+            accessibilityHint="Long press to choose another emoji"
+          >
+            <Text style={[styles.emojiButtonText, styles.emojiSuggested]}>{suggestedEmoji}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.emojiButton} onPress={onEmojiPress} accessibilityRole="button" accessibilityLabel="Choose emoji">
+            {emoji ? (
+              <Text style={styles.emojiButtonText}>{emoji}</Text>
+            ) : (
+              <Ionicons name="happy-outline" size={20} color={Colors.textMuted} />
+            )}
+          </TouchableOpacity>
+        )}
         <View style={styles.contextDefinitionField}>
           <TextInput
             style={[styles.rowInput, canLowercase && styles.fieldInputWithButton]}
@@ -382,6 +404,9 @@ const styles = StyleSheet.create({
   emojiButtonText: {
     fontSize: 22,
     textAlign: 'center',
+  },
+  emojiSuggested: {
+    opacity: 0.4,
   },
   suggestionsRow: {
     flexDirection: 'row',

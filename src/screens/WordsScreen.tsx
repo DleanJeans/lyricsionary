@@ -37,6 +37,8 @@ interface PendingDeletion {
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
 export default function WordsScreen() {
   const navigation = useNavigation<any>();
   const words = useStore((s) => s.words);
@@ -73,6 +75,7 @@ export default function WordsScreen() {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   // Only words answered wrong lately
   const [trickyOnly, setTrickyOnly] = useState(false);
+  const [thisWeekOnly, setThisWeekOnly] = useState(false);
   const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
@@ -197,8 +200,14 @@ export default function WordsScreen() {
   );
   const now = Date.now();
   const trickyCount = languageFilteredWords.filter((w) => isTricky(w.quiz, now)).length;
+  // Saved in the last 7 days, like the sidebar's count
+  const savedThisWeek = (w: WordEntry) => (w.savedAt ?? 0) > now - WEEK_MS;
+  const thisWeekCount = languageFilteredWords.filter(savedThisWeek).length;
   const levelFilteredWords = languageFilteredWords.filter(
-    (w) => (!selectedLevel || (w.masteryLevel || 'Seen') === selectedLevel) && (!trickyOnly || isTricky(w.quiz, now))
+    (w) =>
+      (!selectedLevel || (w.masteryLevel || 'Seen') === selectedLevel) &&
+      (!trickyOnly || isTricky(w.quiz, now)) &&
+      (!thisWeekOnly || savedThisWeek(w))
   );
 
   // Apply search filter: the word, its language, IPA or any of its meanings, ignoring accents
@@ -256,7 +265,7 @@ export default function WordsScreen() {
       icon="language-outline"
       label={showLanguageTabs ? 'Hide filters' : 'Show filters'}
       onPress={() => setShowLanguageTabs(!showLanguageTabs)}
-      selected={selectedLanguages.length > 0 || (showFrequency ? hideSavedInTop : !!selectedLevel || trickyOnly || !!songFilterId)}
+      selected={selectedLanguages.length > 0 || (showFrequency ? hideSavedInTop : !!selectedLevel || trickyOnly || thisWeekOnly || !!songFilterId)}
     />
   );
 
@@ -332,17 +341,16 @@ export default function WordsScreen() {
               levelCounts={levelCounts}
               leading={<SongFilter songs={songsWithWords} selectedSongId={songFilterId} onChange={setSelectedSongId} />}
             >
-              <FilterChip
-                icon={<Ionicons name="checkbox-outline" size={16} color={selecting ? Colors.white : Colors.textSecondary} />}
-                label="Select"
-                count={selecting ? selectedIds.size : searchedWords.length}
-                selected={selecting}
-                onPress={() => {
-                  setSelecting(!selecting);
-                  setSelectedIds(new Set());
-                }}
-                accessibilityLabel="Select words to edit together"
-              />
+              {(thisWeekCount > 0 || thisWeekOnly) && (
+                <FilterChip
+                  icon={<Ionicons name="calendar-outline" size={16} color={thisWeekOnly ? Colors.white : Colors.primaryLight} />}
+                  label="This week"
+                  count={thisWeekCount}
+                  selected={thisWeekOnly}
+                  onPress={() => setThisWeekOnly(!thisWeekOnly)}
+                  accessibilityLabel="Words saved in the last 7 days"
+                />
+              )}
               {(trickyCount > 0 || trickyOnly) && (
                 <FilterChip
                   icon={<Ionicons name="alert-circle-outline" size={16} color={trickyOnly ? Colors.white : Colors.warning} />}
@@ -363,6 +371,17 @@ export default function WordsScreen() {
                   accessibilityLabel="Sort by most missed in quizzes"
                 />
               )}
+              <FilterChip
+                icon={<Ionicons name="checkbox-outline" size={16} color={selecting ? Colors.white : Colors.textSecondary} />}
+                label="Select"
+                count={selecting ? selectedIds.size : searchedWords.length}
+                selected={selecting}
+                onPress={() => {
+                  setSelecting(!selecting);
+                  setSelectedIds(new Set());
+                }}
+                accessibilityLabel="Select words to edit together"
+              />
             </MasteryLevelTabs>
           )}
         </View>
@@ -436,6 +455,7 @@ export default function WordsScreen() {
               setSelectedLanguages([]);
               setSelectedLevel(null);
               setTrickyOnly(false);
+              setThisWeekOnly(false);
               setSelectedSongId(null);
             }}
           />

@@ -24,6 +24,8 @@ import IconButton from '../components/IconButton';
 import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
+import ReviewSession from '../components/ReviewSession';
+import { buildReviewItems, dueWords, ReviewItem } from '../utils/reviewQuiz';
 
 interface PendingDeletion {
   id: string;
@@ -51,6 +53,7 @@ export default function WordsScreen() {
   const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<MasteryLevel | null>(null);
+  const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
   const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -125,6 +128,12 @@ export default function WordsScreen() {
     const level = w.masteryLevel || 'Seen';
     levelCounts[level] = (levelCounts[level] ?? 0) + 1;
   }
+  // A quiz for each word in the chosen languages that a quiz now would move toward its next level
+  const due = React.useMemo(
+    () => buildReviewItems(dueWords(languageFilteredWords, Date.now()), words),
+    // languageFilteredWords comes from these
+    [words, selectedLanguages, pendingDeletions],
+  );
   const levelFilteredWords = selectedLevel
     ? languageFilteredWords.filter((w) => (w.masteryLevel || 'Seen') === selectedLevel)
     : languageFilteredWords;
@@ -255,6 +264,20 @@ export default function WordsScreen() {
           )}
         </View>
       )}
+      {!showFrequency && due.length > 0 && (
+        <TouchableOpacity
+          style={styles.reviewButton}
+          onPress={() => setReviewing(due)}
+          accessibilityRole="button"
+          accessibilityLabel={`Review ${due.length} due ${due.length === 1 ? 'word' : 'words'}`}
+        >
+          <Ionicons name="flash-outline" size={18} color={Colors.white} />
+          <Text style={styles.reviewButtonText}>
+            Review {due.length} due {due.length === 1 ? 'word' : 'words'}
+          </Text>
+        </TouchableOpacity>
+      )}
+      {reviewing && <ReviewSession items={reviewing} onClose={() => setReviewing(null)} isWide={isWide} />}
       {showFrequency ? (
         searchedFrequencies.length === 0 ? (
           <EmptyState
@@ -335,6 +358,22 @@ export default function WordsScreen() {
 }
 
 const styles = StyleSheet.create({
+  reviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+  },
+  reviewButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.white,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',

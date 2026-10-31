@@ -34,6 +34,7 @@ import { getRomanceBaseWord } from '../utils/romanceClitics';
 import { addStressMark, isStressLanguage, removeStressMarks } from '../utils/russianStress';
 import { romanizeLine } from '../utils/romanize';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
+import { lineWords } from '../utils/reviewQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
@@ -947,7 +948,7 @@ export default function LearnScreen() {
               partOfSpeech: sense?.partOfSpeech,
               songId: song.id,
               // Words the line shows can't be what's missing from it
-              excludeWords: selectedLine.split(/\s+/).map(removeSpecialChars).filter(Boolean),
+              excludeWords: [...selectedLine.split(/\s+/).map(removeSpecialChars), ...lineWords(selectedLine)].filter(Boolean),
             }, useStore.getState().words)}
             onAnswered={() => setAnsweredGaps((prev) => new Set(prev).add(gapWordEntry.id))}
             isWide={isWide}

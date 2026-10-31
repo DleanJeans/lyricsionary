@@ -43,6 +43,21 @@ const localDay = (time: number) => {
 export const isCoolingDown = (quiz: QuizStats | undefined, now: number) =>
   !!quiz?.lastAnsweredAt && now - quiz.lastAnsweredAt < QUIZ_RULES.cooldownMs;
 
+/**
+ * Whether a quiz now would count toward the word's next level: not quizzed in the last few hours,
+ * a Recognized word not counted yet today, and a Recalled word not quizzed for 14 days
+ */
+export function isDue(entry: { masteryLevel?: MasteryLevel; quiz?: QuizStats }, now: number): boolean {
+  const level = entry.masteryLevel ?? 'Seen';
+  if (!quizKindFor(level) || isCoolingDown(entry.quiz, now)) return false;
+  if (level === 'Recognized') return entry.quiz?.lastCountedDay !== localDay(now);
+  if (level === 'Recalled') {
+    const last = entry.quiz?.lastAnsweredAt;
+    return last === undefined || now - last >= QUIZ_RULES.knownAfterDays * DAY_MS;
+  }
+  return true;
+}
+
 /** How many more correct answers the word needs for its next level, e.g. "2 more to Recognized" */
 export function progressLabel(level: MasteryLevel | undefined, quiz: QuizStats | undefined): string | null {
   const streak = quiz?.streak ?? 0;

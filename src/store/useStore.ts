@@ -5,7 +5,7 @@ import { isSameLanguage } from '../constants/languages';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
 import type { WiktionaryAudio } from '../utils/wiktionary';
-import { QuizKind, recordAnswer } from '../utils/wordQuiz';
+import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
 import { ActivityLog, addActivity, DayActivity } from '../utils/activity';
 
 const SONGS_KEY = '@lyricsionary_songs';
@@ -401,6 +401,7 @@ export const useStore = create<AppState>((set, get) => ({
         pronunciation: pronunciation ?? '',
         contexts: (contexts ?? []).filter(c => c.context || c.emoji || c.ipa || c.definition),
         lastLookedUp: Date.now(),
+        savedAt: Date.now(),
         masteryLevel: masteryLevel || 'Seen',
         audio,
       };
@@ -452,9 +453,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteWord: async (id) => {
+    const deleted = get().words.find((w) => w.id === id);
     const words = get().words.filter((w) => w.id !== id);
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
+    // A word saved and removed the same day, e.g. replaced by a phrase grown from it, wasn't learned
+    if (deleted?.savedAt && localDay(deleted.savedAt) === localDay(Date.now())) await get().recordActivity({ saved: -1 });
   },
 
   restoreWord: async (entry) => {
@@ -462,6 +466,7 @@ export const useStore = create<AppState>((set, get) => ({
     const words = [...get().words, entry];
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
+    if (entry.savedAt && localDay(entry.savedAt) === localDay(Date.now())) await get().recordActivity({ saved: 1 });
   },
 
   loadIgnoredWords: async () => {

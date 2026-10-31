@@ -66,6 +66,8 @@ export interface WordEntry {
   pronunciation: string;
   contexts: WordContext[];
   lastLookedUp: number;
+  /** When the word was first saved, for the sidebar's count of words saved this week */
+  savedAt?: number;
   masteryLevel?: MasteryLevel;
   /** Word quiz answers, which move the word up a level */
   quiz?: QuizStats;

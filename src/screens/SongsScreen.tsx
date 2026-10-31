@@ -13,7 +13,7 @@ import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Song, RootTabParamList } from '../types';
+import { MasteryLevel, Song, RootTabParamList, WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -26,6 +26,8 @@ import LanguageTabButtons from '../components/LanguageTabButtons';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useWordProgress } from '../hooks/useWordProgress';
+import SongLevelBar from '../components/SongLevelBar';
+import { countKnownWords } from '../utils/wordFrequency';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 
 const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'nextToLearn', 'aZ', 'zA'] as const;
@@ -146,6 +148,29 @@ export default function SongsScreen() {
       if (canFillGaps(index)) gaps.set(song.id, countGaps(song.originalLyrics, (word) => gapWord(index, word, now)));
     }
     return gaps;
+  }, [songs, words]);
+
+  // Each song's saved words by level: the ones in its lyrics and the ones saved from it
+  const songLevels = useMemo(() => {
+    const levels = new Map<string, Partial<Record<MasteryLevel, number>>>();
+    for (const song of songs) {
+      const index = songWordIndex(words, song.originalLanguages);
+      const entries = new Set<WordEntry>();
+      // Read like the song's word count, so phrases, Chinese words and Korean stems are found too
+      countKnownWords(song.originalLyrics, (word) => {
+        const entry = index.get(word.toLowerCase());
+        if (entry) entries.add(entry);
+        return !!entry;
+      }, song.originalLanguages);
+      for (const word of words) if (word.contexts?.some((c) => c.songId === song.id)) entries.add(word);
+      const counts: Partial<Record<MasteryLevel, number>> = {};
+      for (const entry of entries) {
+        const level = entry.masteryLevel ?? 'Seen';
+        counts[level] = (counts[level] ?? 0) + 1;
+      }
+      levels.set(song.id, counts);
+    }
+    return levels;
   }, [songs, words]);
 
   const sortedSongs = [...songs].sort((a, b) => {
@@ -291,6 +316,7 @@ export default function SongsScreen() {
               ))}
             </View>
           </View>
+          {songLevels.get(item.id) && <SongLevelBar counts={songLevels.get(item.id)!} />}
           {matchedLine && (
             <View style={styles.matchedLineContainer}>
               <HighlightedText text={matchedLine} query={searchQuery} style={styles.matchedLine} numberOfLines={1} />

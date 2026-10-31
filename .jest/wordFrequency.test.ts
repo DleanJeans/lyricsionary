@@ -18,6 +18,13 @@ describe('countWordOccurrences', () => {
     expect(result).toEqual([{ word: 'Ich', language: 'German', count: 3, songCount: 1 }]);
   });
 
+  it("spells a word as it's written within a line rather than at a line's start", () => {
+    const result = countWordOccurrences([
+      { originalLyrics: 'Des bijoux\nDes fleurs\nun peu des deux', originalLanguages: ['French'] },
+    ]);
+    expect(result[0]).toEqual({ word: 'des', language: 'French', count: 3, songCount: 1 });
+  });
+
   it('counts the number of songs a word appears in', () => {
     const result = countWordOccurrences([
       { originalLyrics: 'Herz Herz', originalLanguages: ['German'] },

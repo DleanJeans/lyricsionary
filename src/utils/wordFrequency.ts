@@ -48,13 +48,17 @@ export function countWordOccurrences(
   songs: SongLyrics[],
   isIgnored: (word: string, language: string) => boolean = () => false
 ): WordFrequency[] {
-  const entries = new Map<string, { language: string; count: number; songs: Set<number>; spellings: Map<string, number> }>();
+  const entries = new Map<string, { language: string; count: number; songs: Set<number>; spellings: Map<string, { count: number; midLine: number }> }>();
 
   songs.forEach((song, songIndex) => {
     const songLanguage = song.originalLanguages?.[0] || 'unknown';
     // By name, so a song saved as "fr" and one saved as "French" count together
     const language = getLanguageNameFromCode(songLanguage) ?? songLanguage;
-    for (const token of song.originalLyrics.split(/\s+/)) {
+    // A line's first word is capitalized whatever it is, e.g. "Des" in "Des bijoux de chez Chanel"
+    const tokens = song.originalLyrics.split('\n').flatMap((line) =>
+      line.split(/\s+/).filter(Boolean).map((token, index) => ({ token, startsLine: index === 0 }))
+    );
+    for (const { token, startsLine } of tokens) {
       const cleaned = cleanToken(token);
       const word = getFullWord(cleaned, song.originalLanguages) ?? withoutTrailingApostrophes(cleaned);
       if (!isLyricWord(word)) continue;
@@ -67,13 +71,17 @@ export function countWordOccurrences(
       }
       entry.count++;
       entry.songs.add(songIndex);
-      entry.spellings.set(word, (entry.spellings.get(word) ?? 0) + 1);
+      const spelling = entry.spellings.get(word) ?? { count: 0, midLine: 0 };
+      spelling.count++;
+      if (!startsLine) spelling.midLine++;
+      entry.spellings.set(word, spelling);
     }
   });
 
   return [...entries.values()]
     .map((e) => ({
-      word: [...e.spellings.entries()].sort((a, b) => b[1] - a[1])[0][0],
+      // Spelled as it's most often written within a line, e.g. "des" over a line's first "Des"
+      word: [...e.spellings.entries()].sort((a, b) => b[1].midLine - a[1].midLine || b[1].count - a[1].count)[0][0],
       language: e.language,
       count: e.count,
       songCount: e.songs.size,

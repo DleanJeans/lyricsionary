@@ -35,6 +35,7 @@ import { addStressMark, isStressLanguage, removeStressMarks } from '../utils/rus
 import { romanizeLine } from '../utils/romanize';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { lineWords } from '../utils/reviewQuiz';
+import LineDrill from '../components/LineDrill';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
@@ -290,6 +291,10 @@ export default function LearnScreen() {
   // Updates as words are saved or ignored, like the song's progress in Songs
   const progressSongs = useMemo(() => (song ? [song] : []), [song]);
   const wordProgress = useWordProgress(progressSongs).get(song?.id ?? '');
+
+  // Fill in the lyrics: the gap card rebuilds its whole line from shuffled words instead
+  const [drillingLine, setDrillingLine] = useState(false);
+  useEffect(() => setDrillingLine(false), [gapTarget]);
 
   // Opened at a word, e.g. from another song's word card: select it on its line and scroll there
   const [scrollToLine, setScrollToLine] = useState<{ index: number; key: number } | null>(null);
@@ -945,37 +950,53 @@ export default function LearnScreen() {
       <View style={[styles.wordCardContainer]}>
         <View style={[styles.gapCard, isWide && styles.gapCardWide]}>
           <View style={styles.gapCardHeader}>
-            <Text style={styles.gapCardTitle}>Fill in the gap</Text>
-            <TouchableOpacity
-              onPress={() => {
-                setGapTarget(null);
-                setSelectedWord(null);
-              }}
-              hitSlop={4}
-              accessibilityRole="button"
-              accessibilityLabel="Close gap"
-            >
-              <Ionicons name="close" size={22} color={Colors.textSecondary} />
-            </TouchableOpacity>
+            <Text style={styles.gapCardTitle}>{drillingLine ? 'Rebuild the line' : 'Fill in the gap'}</Text>
+            <View style={styles.gapCardTools}>
+              <TouchableOpacity
+                onPress={() => setDrillingLine(!drillingLine)}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={drillingLine ? 'Back to the gap' : 'Rebuild the whole line'}
+              >
+                <Ionicons name={drillingLine ? 'arrow-undo-outline' : 'shuffle-outline'} size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setGapTarget(null);
+                  setSelectedWord(null);
+                }}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel="Close gap"
+              >
+                <Ionicons name="close" size={22} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text style={styles.gapCardLine}>{gapLine}</Text>
-          {hint ? <Text style={styles.gapCardHint}>{hint}</Text> : null}
-          <WordQuiz
-            key={`lyric-${gapWordEntry.id}-${selectedLineIndex}-${selectedOccurrence}`}
-            entry={gapWordEntry}
-            kind="lyric"
-            prompt="Which word goes in the gap?"
-            build={() => buildLyricQuiz({
-              entry: gapWordEntry,
-              answer: gapWordEntry.word,
-              partOfSpeech: sense?.partOfSpeech,
-              songId: song.id,
-              // Words the line shows can't be what's missing from it
-              excludeWords: [...selectedLine.split(/\s+/).map(removeSpecialChars), ...lineWords(selectedLine)].filter(Boolean),
-            }, useStore.getState().words)}
-            onAnswered={() => setAnsweredGaps((prev) => new Set(prev).add(gapWordEntry.id))}
-            isWide={isWide}
-          />
+          {drillingLine ? (
+            <LineDrill key={`drill-${selectedLineIndex}`} line={selectedLine} hint={shownTranslationLine || undefined} />
+          ) : (
+            <>
+              <Text style={styles.gapCardLine}>{gapLine}</Text>
+              {hint ? <Text style={styles.gapCardHint}>{hint}</Text> : null}
+              <WordQuiz
+                key={`lyric-${gapWordEntry.id}-${selectedLineIndex}-${selectedOccurrence}`}
+                entry={gapWordEntry}
+                kind="lyric"
+                prompt="Which word goes in the gap?"
+                build={() => buildLyricQuiz({
+                  entry: gapWordEntry,
+                  answer: gapWordEntry.word,
+                  partOfSpeech: sense?.partOfSpeech,
+                  songId: song.id,
+                  // Words the line shows can't be what's missing from it
+                  excludeWords: [...selectedLine.split(/\s+/).map(removeSpecialChars), ...lineWords(selectedLine)].filter(Boolean),
+                }, useStore.getState().words)}
+                onAnswered={() => setAnsweredGaps((prev) => new Set(prev).add(gapWordEntry.id))}
+                isWide={isWide}
+              />
+            </>
+          )}
         </View>
       </View>
     );
@@ -1184,6 +1205,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  gapCardTools: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
   },
   gapCardTitle: {
     fontSize: 13,

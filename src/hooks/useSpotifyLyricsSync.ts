@@ -37,6 +37,8 @@ export interface SpotifyLyricsSync {
   loopCount: number;
   /** Loops a line until called again, or stops looping */
   toggleLoop: (lineIndex: number | null) => void;
+  /** Plays one line and pauses at its end, e.g. for dictation */
+  playLine: (lineIndex: number) => Promise<void>;
 }
 
 /** Follows Spotify while it plays the song open in Learn, and seeks it by lyric line */
@@ -102,7 +104,19 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
   const [loopLine, setLoopLine] = useState<number | null>(null);
   const [loopCount, setLoopCount] = useState(0);
   const loopSeekRef = useRef(0);
-  useEffect(() => setLoopLine(null), [song?.id]);
+  // A line played on its own, paused when it ends
+  const [stopAfterLine, setStopAfterLine] = useState<number | null>(null);
+  useEffect(() => {
+    setLoopLine(null);
+    setStopAfterLine(null);
+  }, [song?.id]);
+  useEffect(() => {
+    if (stopAfterLine === null || !isThisSong || !playback?.isPlaying) return;
+    const end = lineEndTime(times, stopAfterLine, playback.durationMs);
+    if (end === null || progress < end - 150) return;
+    setStopAfterLine(null);
+    void run(() => pauseSpotify());
+  });
   useEffect(() => {
     if (loopLine === null || !isThisSong || !playback?.isPlaying) return;
     const start = times[loopLine];
@@ -167,9 +181,16 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
         return;
       }
       setLoopLine(lineIndex);
+      setStopAfterLine(null);
       setLoopCount(0);
       loopSeekRef.current = Date.now();
       void seekToLine(lineIndex);
+    },
+    playLine: async (lineIndex) => {
+      setLoopLine(null);
+      // Set once the seek shows, so the old position doesn't count as the line having ended
+      await seekToLine(lineIndex);
+      setStopAfterLine(lineIndex);
     },
   };
 }

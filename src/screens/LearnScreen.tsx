@@ -44,6 +44,7 @@ import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitE
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
+import Dictation from '../components/Dictation';
 
 const PREVIEW_MAX_WORDS = 8;
 
@@ -326,6 +327,9 @@ export default function LearnScreen() {
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
   const [followSpotify, setFollowSpotify] = useState(true);
+  // Dictation: a line hidden until it's written down from listening
+  const [dictation, setDictation] = useState<{ lineIndex: number; checked: boolean } | null>(null);
+  useEffect(() => setDictation(null), [song?.id]);
   useEffect(() => {
     if (followSpotify && spotify.currentLine !== null) setScrollToLine({ index: spotify.currentLine, key: Date.now() });
   }, [followSpotify, spotify.currentLine]);
@@ -1092,7 +1096,17 @@ export default function LearnScreen() {
         occurrence={selectedOccurrence}
       />
     ) : null);
-  const wordPanel = gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry) ? (
+  const dictationPanel = dictation && lines[dictation.lineIndex] ? (
+    <Dictation
+      key={dictation.lineIndex}
+      line={lines[dictation.lineIndex].original}
+      onPlay={() => void spotify.playLine(dictation.lineIndex)}
+      onChecked={(checked) => setDictation({ lineIndex: dictation.lineIndex, checked })}
+      onClose={() => setDictation(null)}
+    />
+  ) : null;
+
+  const wordPanel = dictationPanel ?? gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry) ? (
     <View>
       {wordSpots.length > 1 && (
         <WordSpotStepper
@@ -1125,6 +1139,11 @@ export default function LearnScreen() {
           selectedLineIndex={selectedLineIndex}
           follow={followSpotify}
           onToggleFollow={() => setFollowSpotify((f) => !f)}
+          onDictation={(lineIndex) => {
+            setSelectedWord(null);
+            setDictation({ lineIndex, checked: false });
+            void spotify.playLine(lineIndex);
+          }}
         />
       )}
       <LearnLyricsView
@@ -1144,6 +1163,7 @@ export default function LearnScreen() {
         onRevealOriginal={(lineIndex) => setRevealedOriginals((prev) => new Set(prev).add(lineIndex))}
         scrollToLine={scrollToLine}
         playingLineIndex={spotify.currentLine}
+        dictationLineIndex={dictation && !dictation.checked ? dictation.lineIndex : null}
         scrollKey={song.id}
       />
     </>

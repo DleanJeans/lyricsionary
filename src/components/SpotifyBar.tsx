@@ -28,12 +28,15 @@ export default function SpotifyBar({
   selectedLineIndex,
   follow,
   onToggleFollow,
+  onDictation,
 }: {
   sync: SpotifyLyricsSync;
   /** The line of the tapped word, to play from */
   selectedLineIndex: number | null;
   follow: boolean;
   onToggleFollow: () => void;
+  /** Hides the line and plays it, to write it down */
+  onDictation?: (lineIndex: number) => void;
 }) {
   const canPlaySelected = selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
   // Loops the tapped word's line, or else the one playing
@@ -70,6 +73,9 @@ export default function SpotifyBar({
               <Ionicons name="play" size={14} color={Colors.white} />
               <Text style={styles.fromLineText}>Line</Text>
             </TouchableOpacity>
+          )}
+          {canPlaySelected && onDictation && (
+            <ControlButton icon="create-outline" label="Write the line from listening" onPress={() => onDictation(selectedLineIndex!)} />
           )}
           {(looping || lineToLoop !== null) && (
             <TouchableOpacity

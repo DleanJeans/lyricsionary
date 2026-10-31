@@ -38,6 +38,8 @@ interface LearnLyricsViewProps {
   onRevealOriginal?: (lineIndex: number) => void;
   /** Scrolls the line into view each time key changes */
   scrollToLine?: { index: number; key: number } | null;
+  /** A line hidden for dictation, to write it from listening */
+  dictationLineIndex?: number | null;
   /** The line Spotify is playing */
   playingLineIndex?: number | null;
   /** Remembers the scroll position under this key, e.g. the song's id, and goes back to it */
@@ -111,6 +113,7 @@ export function LearnLyricsLine({
   reverse = false,
   revealedOriginals,
   onRevealOriginal,
+  dictationLineIndex,
 }: LearnLyricsViewProps & {
   line: LearnLine;
   lineIndex: number;
@@ -122,8 +125,9 @@ export function LearnLyricsLine({
   const romanized = shown.find((translation) => isRomanized(translation.language))?.text ||
     (showTranslations ? line.romanized : undefined);
   // Reversed, a line with a translation to go from is hidden until tapped, its romanization with it
-  const hidden = reverse && !!line.original.trim() && !revealedOriginals?.has(lineIndex) &&
-    shown.some((translation) => !isRomanized(translation.language) && translation.text.trim());
+  const hidden = (reverse && !!line.original.trim() && !revealedOriginals?.has(lineIndex) &&
+    shown.some((translation) => !isRomanized(translation.language) && translation.text.trim())) ||
+    lineIndex === dictationLineIndex;
   return (
     <View style={styles.lineBlock}>
       {hidden ? (

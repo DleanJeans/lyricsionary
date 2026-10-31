@@ -60,6 +60,7 @@ export default function LearnScreen() {
   const deleteWord = useStore((s) => s.deleteWord);
   const restoreWord = useStore((s) => s.restoreWord);
   const ignoredWords = useStore((s) => s.ignoredWords);
+  const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   const compoundSplits = useStore((s) => s.compoundSplits);
   const currentSongId = useStore((s) => s.currentSongId);
   const storedFontSize = useStore((s) => s.fontSize);
@@ -158,8 +159,8 @@ export default function LearnScreen() {
   // Words (lowercased) whose meaning quiz was answered since the song opened, so tapping one again
   // doesn't ask it again
   const [answeredMeanings, setAnsweredMeanings] = useState<Set<string>>(new Set());
-  // A word just removed from its card's level picker, offered back with Undo for a few seconds
-  const [removedWord, setRemovedWord] = useState<WordEntry | null>(null);
+  // A word just removed from its card's level picker, or ignored, offered back with Undo for a few seconds
+  const [removedWord, setRemovedWord] = useState<{ entry: WordEntry; ignored?: boolean } | null>(null);
   useEffect(() => {
     if (!removedWord) return;
     const timer = setTimeout(() => setRemovedWord(null), 5000);
@@ -925,6 +926,8 @@ export default function LearnScreen() {
   // The saved word's card then quizzes that meaning. A word tapped away from before Wiktionary
   // answers isn't saved.
   const songLanguage = song?.originalLanguages?.[0];
+  // Words are ignored per song language, like on the new word card
+  const ignoreLanguage = songLanguage || 'unknown';
   const selectedWordSaved = !!selectedWord && !!findSavedEntry(selectedWord);
   const selectedWordIgnored = !!selectedWord && !!songLanguage && isIgnoredWord(selectedWord, songLanguage);
   useEffect(() => {
@@ -1175,7 +1178,14 @@ export default function LearnScreen() {
           onRemove={(item) => {
             // Closed first, so the word isn't saved again as a new word being tapped
             setSelectedWord(null);
-            setRemovedWord(item);
+            setRemovedWord({ entry: item });
+            void deleteWord(item.id);
+          }}
+          onIgnore={(item) => {
+            // Ignored first, so the word isn't saved again while it stays selected; its card then
+            // shows it as ignored, with the button to unignore it
+            void toggleIgnoredWord(item.word, ignoreLanguage);
+            setRemovedWord({ entry: item, ignored: true });
             void deleteWord(item.id);
           }}
           source="Learn"
@@ -1430,9 +1440,13 @@ export default function LearnScreen() {
       {removedWord && (
         <View style={styles.toastStack} pointerEvents="box-none">
           <Toast
-            message={<>Removed<Text style={{ fontWeight: 'bold' }}> {removedWord.word}</Text></>}
+            message={<>{removedWord.ignored ? 'Ignored' : 'Removed'}<Text style={{ fontWeight: 'bold' }}> {removedWord.entry.word}</Text></>}
             onUndo={() => {
-              void restoreWord(removedWord);
+              // Saved back first, so unignoring a selected word doesn't save it as a new word
+              void restoreWord(removedWord.entry);
+              if (removedWord.ignored && isIgnoredWord(removedWord.entry.word, ignoreLanguage)) {
+                void toggleIgnoredWord(removedWord.entry.word, ignoreLanguage);
+              }
               setRemovedWord(null);
             }}
           />

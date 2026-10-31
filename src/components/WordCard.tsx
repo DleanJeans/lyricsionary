@@ -37,6 +37,8 @@ interface WordCardProps {
   quiz?: React.ReactNode;
   /** Learn: unsaves the word from the level picker */
   onRemove?: (item: WordEntry) => void;
+  /** Learn: unsaves the word and ignores it, as the new word card's Ignore button does */
+  onIgnore?: (item: WordEntry) => void;
 }
 
 export default function WordCard({
@@ -57,6 +59,7 @@ export default function WordCard({
   occurrence,
   quiz,
   onRemove,
+  onIgnore,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -142,15 +145,28 @@ export default function WordCard({
                 </View>
                 <Text style={styles.titleWordText}>{item.word}</Text>
               </View>
-              <TouchableOpacity
-                onPress={onClose}
-                style={styles.toolButton}
-                hitSlop={4}
-                accessibilityRole="button"
-                accessibilityLabel={`Close ${item.word}`}
-              >
-                <Ionicons name="close" size={22} color={Colors.textSecondary} />
-              </TouchableOpacity>
+              <View style={styles.headerTools}>
+                {onIgnore && (
+                  <TouchableOpacity
+                    onPress={() => onIgnore(item)}
+                    style={styles.toolButton}
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityLabel="Ignore Word"
+                  >
+                    <Ionicons name="eye-off-outline" size={20} color={Colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={onClose}
+                  style={styles.toolButton}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Close ${item.word}`}
+                >
+                  <Ionicons name="close" size={22} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
             </View>
             {(ipa || wiktionary.audio.length > 0) && (
               <View style={styles.ipaRow}>
@@ -250,10 +266,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  toolButton: {
-    padding: 6,
+  headerTools: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: -6,
     marginRight: -6,
+  },
+  toolButton: {
+    padding: 6,
   },
   ipaRow: {
     flexDirection: 'row',

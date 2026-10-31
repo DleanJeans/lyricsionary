@@ -138,6 +138,9 @@ interface AppState {
   ) => Promise<void>;
   setWordAudio: (id: string, audio: WiktionaryAudio[]) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
+  /** Bulk edit in Words: many words at once */
+  deleteWords: (ids: string[]) => Promise<void>;
+  setWordsLevel: (ids: string[], level: MasteryLevel) => Promise<void>;
   /** Merges a form saved apart into a word, e.g. voulez into veux, keeping its contexts and quiz answers */
   mergeWords: (keepId: string, fromId: string) => Promise<void>;
   /** Splits a merged form back out as its own word, with the contexts whose line has it */
@@ -502,6 +505,28 @@ export const useStore = create<AppState>((set, get) => ({
     await persist(WORDS_KEY, JSON.stringify(words));
     // A word saved and removed the same day, e.g. replaced by a phrase grown from it, wasn't learned
     if (deleted?.savedAt && localDay(deleted.savedAt) === localDay(Date.now())) await get().recordActivity({ saved: -1 });
+  },
+
+  deleteWords: async (ids) => {
+    const remove = new Set(ids);
+    const today = localDay(Date.now());
+    const savedToday = get().words.filter((w) => remove.has(w.id) && w.savedAt && localDay(w.savedAt) === today).length;
+    const words = get().words.filter((w) => !remove.has(w.id));
+    set({ words });
+    await persist(WORDS_KEY, JSON.stringify(words));
+    if (savedToday) await get().recordActivity({ saved: -savedToday });
+  },
+
+  setWordsLevel: async (ids, level) => {
+    const change = new Set(ids);
+    const now = Date.now();
+    const words = get().words.map((w) => {
+      if (!change.has(w.id)) return w;
+      const event = levelChangeEvent(w.masteryLevel, level, now);
+      return event ? { ...w, masteryLevel: level, history: addWordEvent(w.history, event) } : w;
+    });
+    set({ words });
+    await persist(WORDS_KEY, JSON.stringify(words));
   },
 
   mergeWords: async (keepId, fromId) => {

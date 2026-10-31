@@ -24,6 +24,7 @@ import IconButton from '../components/IconButton';
 import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
+import BulkEditBar from '../components/BulkEditBar';
 import ReviewSession from '../components/ReviewSession';
 import SongFilter from '../components/SongFilter';
 import { buildReviewItems, dueWords, ReviewItem } from '../utils/reviewQuiz';
@@ -40,6 +41,11 @@ export default function WordsScreen() {
   const navigation = useNavigation<any>();
   const words = useStore((s) => s.words);
   const deleteWord = useStore((s) => s.deleteWord);
+  const deleteWords = useStore((s) => s.deleteWords);
+  const setWordsLevel = useStore((s) => s.setWordsLevel);
+  // Select mode, for setting the level of or deleting many words at once
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const songs = useStore((s) => s.songs);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
@@ -326,6 +332,17 @@ export default function WordsScreen() {
               levelCounts={levelCounts}
               leading={<SongFilter songs={songsWithWords} selectedSongId={songFilterId} onChange={setSelectedSongId} />}
             >
+              <FilterChip
+                icon={<Ionicons name="checkbox-outline" size={16} color={selecting ? Colors.white : Colors.textSecondary} />}
+                label="Select"
+                count={selecting ? selectedIds.size : searchedWords.length}
+                selected={selecting}
+                onPress={() => {
+                  setSelecting(!selecting);
+                  setSelectedIds(new Set());
+                }}
+                accessibilityLabel="Select words to edit together"
+              />
               {(trickyCount > 0 || trickyOnly) && (
                 <FilterChip
                   icon={<Ionicons name="alert-circle-outline" size={16} color={trickyOnly ? Colors.white : Colors.warning} />}
@@ -350,7 +367,25 @@ export default function WordsScreen() {
           )}
         </View>
       )}
-      {!showFrequency && due.length > 0 && (
+      {!showFrequency && selecting && (
+        <BulkEditBar
+          count={selectedIds.size}
+          allSelected={searchedWords.length > 0 && searchedWords.every((w) => selectedIds.has(w.id))}
+          onToggleAll={() =>
+            setSelectedIds(searchedWords.every((w) => selectedIds.has(w.id)) ? new Set() : new Set(searchedWords.map((w) => w.id)))
+          }
+          onSetLevel={(level) => void setWordsLevel([...selectedIds], level)}
+          onDelete={() => {
+            void deleteWords([...selectedIds]);
+            setSelectedIds(new Set());
+          }}
+          onDone={() => {
+            setSelecting(false);
+            setSelectedIds(new Set());
+          }}
+        />
+      )}
+      {!showFrequency && !selecting && due.length > 0 && (
         <TouchableOpacity
           style={styles.reviewButton}
           onPress={() => setReviewing(due)}
@@ -411,17 +446,44 @@ export default function WordsScreen() {
           numColumns={numColumns}
           data={searchedWords}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <WordCard
-              item={item}
-              isWide={isWide}
-              searchQuery={searchQuery}
-              showDelete={true}
-              showClose={false}
-              onDelete={handleDelete}
-              source="Words"
-            />
-          )}
+          extraData={selecting ? selectedIds : null}
+          renderItem={({ item }) => {
+            const card = (
+              <WordCard
+                item={item}
+                isWide={isWide}
+                searchQuery={searchQuery}
+                showDelete={!selecting}
+                showClose={false}
+                onDelete={handleDelete}
+                source="Words"
+              />
+            );
+            if (!selecting) return card;
+            const checked = selectedIds.has(item.id);
+            // The card under a cover that takes the taps, to select it instead of opening it
+            return (
+              <View style={[styles.selectable, isWide && styles.selectableWide]}>
+                {card}
+                <TouchableOpacity
+                  style={[styles.selectCover, checked && styles.selectCoverChecked]}
+                  onPress={() =>
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(item.id)) next.delete(item.id);
+                      else next.add(item.id);
+                      return next;
+                    })
+                  }
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked }}
+                  accessibilityLabel={`Select ${item.word}`}
+                >
+                  <Ionicons name={checked ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={checked ? Colors.primary : Colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            );
+          }}
           columnWrapperStyle={isWide ? styles.row : undefined}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -526,6 +588,24 @@ const styles = StyleSheet.create({
   },
   row: {
     gap: 10,
+  },
+  selectable: {
+    position: 'relative',
+  },
+  selectableWide: {
+    flex: 1,
+  },
+  selectCover: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'flex-end',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectCoverChecked: {
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(108,92,231,0.12)',
   },
   toastStack: {
     position: 'absolute',

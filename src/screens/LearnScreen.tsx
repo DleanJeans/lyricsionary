@@ -34,6 +34,8 @@ import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/w
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
 const PREVIEW_MAX_WORDS = 8;
+// One kanji, hiragana or katakana, as renderPressableText splits Japanese lyrics
+const JAPANESE_CHARACTER = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]$/u;
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -363,7 +365,7 @@ export default function LearnScreen() {
       }
     });
     return (
-      <View style={{ flexDirection: isRtlSong !== !!I18nManager.isRTL ? 'row-reverse' : 'row', flexWrap: 'wrap' }}>
+      <View style={{ flexDirection: isRtlSong !== !!I18nManager.isRTL ? 'row-reverse' : 'row', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         {textWords.map((word, i) => {
           if (!word.trim()) {
             return <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6 }}>{word}</Text>;
@@ -550,20 +552,27 @@ export default function LearnScreen() {
               ? getMasteryLevelColor(wordEntry.masteryLevel)
               : Colors.text;
 
+          // Japanese characters keep no empty space above them, so a line with nothing to show
+          // above it stays as tight as the lyrics themselves
+          const hasAnnotation = !!shouldShowEmoji || !!displayContent;
+          const keepAnnotationSpace = hasAnnotation || !JAPANESE_CHARACTER.test(word);
+
           return (
             <View key={i} style={{ alignItems: 'center' }}>
-              <View style={styles.annotationSpace}>
-                {shouldShowEmoji && (
-                  <Text style={styles.wordAnnotation}>
-                    {effectiveEmoji}
-                  </Text>
-                )}
-                {displayContent && (
-                  <Text style={styles.wordAnnotation} numberOfLines={1}>
-                    {displayContent}
-                  </Text>
-                )}
-              </View>
+              {keepAnnotationSpace && (
+                <View style={styles.annotationSpace}>
+                  {shouldShowEmoji && (
+                    <Text style={styles.wordAnnotation}>
+                      {effectiveEmoji}
+                    </Text>
+                  )}
+                  {displayContent && (
+                    <Text style={styles.wordAnnotation} numberOfLines={1}>
+                      {displayContent}
+                    </Text>
+                  )}
+                </View>
+              )}
               <Text
                 onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
                 style={{

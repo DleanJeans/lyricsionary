@@ -5,6 +5,7 @@ import { Colors } from '../constants/theme';
 import { Text } from './Text';
 import { findDefinitionHighlights } from '../utils/definitionHighlight';
 import { detectSongSections, type SectionKind, type SongSection } from '../utils/songSections';
+import { getScrollPosition, setScrollPosition } from '../services/scrollPositions';
 
 export interface LearnLine {
   original: string;
@@ -39,6 +40,8 @@ interface LearnLyricsViewProps {
   scrollToLine?: { index: number; key: number } | null;
   /** The line Spotify is playing */
   playingLineIndex?: number | null;
+  /** Remembers the scroll position under this key, e.g. the song's id, and goes back to it */
+  scrollKey?: string;
 }
 
 function TranslationLine({
@@ -182,7 +185,7 @@ function SectionBox({ section, children }: { section: SongSection; children: Rea
 }
 
 export default function LearnLyricsView(props: LearnLyricsViewProps) {
-  const { lines, showSections, scrollToLine } = props;
+  const { lines, showSections, scrollToLine, scrollKey } = props;
   const scrollRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null);
   const lineRefs = useRef(new Map<number, View>());
@@ -203,6 +206,16 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     () => (showSections ? detectSongSections(originals.split('\n')) : []),
     [originals, showSections]
   );
+
+  // Goes back to where the song was left, once its lines have laid out
+  const restoredRef = useRef<string | null>(null);
+  const restoreScroll = () => {
+    if (!scrollKey || restoredRef.current === scrollKey) return;
+    restoredRef.current = scrollKey;
+    void getScrollPosition(scrollKey).then((y) => {
+      if (y > 0) scrollRef.current?.scrollTo({ y, animated: false });
+    });
+  };
 
   const renderLine = (lineIndex: number) => (
     <View
@@ -239,6 +252,13 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
       ref={scrollRef}
       style={styles.lyricsScroll}
       contentContainerStyle={styles.lyricsContent}
+      onContentSizeChange={(_w, h) => {
+        if (h > 0 && lines.length > 0) restoreScroll();
+      }}
+      onScroll={(event) => {
+        if (scrollKey && restoredRef.current === scrollKey) setScrollPosition(scrollKey, event.nativeEvent.contentOffset.y);
+      }}
+      scrollEventThrottle={200}
     >
       <View ref={contentRef} collapsable={false}>
         {content}

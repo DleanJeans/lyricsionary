@@ -1091,6 +1091,7 @@ export default function LearnScreen() {
         onRevealOriginal={(lineIndex) => setRevealedOriginals((prev) => new Set(prev).add(lineIndex))}
         scrollToLine={scrollToLine}
         playingLineIndex={spotify.currentLine}
+        scrollKey={song.id}
       />
     </>
   );

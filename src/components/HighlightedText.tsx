@@ -35,15 +35,16 @@ export default function HighlightedText({
     parts.push({ text: text.slice(lastIndex), highlight: false });
   }
 
+  // Text sets its own font size and font on each nested Text, so the parts are given the
+  // outer text's, or the highlighted part of a word title would shrink to the default size
+  const flat = StyleSheet.flatten(style) ?? {};
+  const font = { fontSize: flat.fontSize, fontWeight: flat.fontWeight, fontFamily: flat.fontFamily, lineHeight: flat.lineHeight };
+
   return (
     <Text style={style} numberOfLines={numberOfLines}>
-      {parts.map((part, i) =>
-        part.highlight ? (
-          <Text key={i} style={styles.highlight}>{part.text}</Text>
-        ) : (
-          <Text key={i}>{part.text}</Text>
-        )
-      )}
+      {parts.map((part, i) => (
+        <Text key={i} style={part.highlight ? [font, styles.highlight] : font}>{part.text}</Text>
+      ))}
     </Text>
   );
 }

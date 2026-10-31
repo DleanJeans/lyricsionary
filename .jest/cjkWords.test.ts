@@ -1,5 +1,5 @@
 import { cjkCharacterCount, groupCjkTokens, isCjkWord } from '../src/utils/cjkWords';
-import { splitLyricTokens } from '../src/utils/cleanLyrics';
+import { removeSpecialChars, splitLyricTokens } from '../src/utils/cleanLyrics';
 import { countKnownWords, countWords } from '../src/utils/wordFrequency';
 
 describe('splitLyricTokens', () => {
@@ -40,5 +40,21 @@ describe('counting Japanese words', () => {
     expect(countWords(lyrics)).toBe(12);
     const saved = new Set(['二人', '夜']);
     expect(countKnownWords(lyrics, (word: string) => saved.has(word), ['Japanese'])).toBe(3);
+  });
+});
+
+describe('Thai', () => {
+  it('splits Thai into consonants with their vowels and tone marks', () => {
+    expect(splitLyricTokens('ไม่เป็นไร')).toEqual(['ไม่', 'เป็', 'น', 'ไร']);
+  });
+
+  it('joins the characters of a saved Thai word', () => {
+    expect(groupCjkTokens(splitLyricTokens('ฉันรักเธอ ความรัก'), (word) => word === 'ความรัก' || word === 'ฉัน'))
+      .toEqual(['ฉัน', 'รั', 'ก', 'เธ', 'อ', ' ', 'ความรัก']);
+  });
+
+  it('keeps Thai vowel and tone marks when cleaning a word', () => {
+    expect(removeSpecialChars('น้ำตา,')).toBe('น้ำตา');
+    expect(cjkCharacterCount('ความรัก')).toBe(5);
   });
 });

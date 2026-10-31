@@ -1,5 +1,8 @@
-// Chinese and Japanese don't put spaces between words, so Learn lays their lyrics out one character
-// at a time and joins the characters of saved words, e.g. 二人 in 二人だけの空, back into one word
+import { splitLyricTokens } from './cleanLyrics';
+
+// Chinese, Japanese and Thai don't put spaces between words, so Learn lays their lyrics out one
+// character at a time and joins the characters of saved words, e.g. 二人 in 二人だけの空 or ความรัก,
+// back into one word
 
 const CJK = '\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}';
 /** A Chinese or Japanese token: one or more characters, a long vowel mark kept with its kana (ラー) */
@@ -7,10 +10,14 @@ const CJK_WORD = new RegExp(`^[${CJK}][${CJK}ー]*$`, 'u');
 /** The longest saved word looked for, in characters */
 const MAX_WORD_LENGTH = 8;
 
-export const isCjkWord = (token: string): boolean => CJK_WORD.test(token);
+/** A Thai token: consonants with their vowel and tone marks */
+const THAI_WORD = /^[\u0E01-\u0E4E]+$/u;
+
+/** Whether a token is Chinese, Japanese or Thai, written without spaces between words */
+export const isCjkWord = (token: string): boolean => CJK_WORD.test(token) || THAI_WORD.test(token);
 
 /**
- * Joins runs of single Chinese or Japanese character tokens into the longest words `isWord` accepts,
+ * Joins runs of single Chinese, Japanese or Thai character tokens into the longest words `isWord` accepts,
  * e.g. ["二", "人", "だ", "け"] -> ["二人", "だ", "け"] when 二人 is saved. Other tokens stay as they are.
  */
 export function groupCjkTokens(tokens: string[], isWord: (word: string) => boolean): string[] {
@@ -30,5 +37,8 @@ export function groupCjkTokens(tokens: string[], isWord: (word: string) => boole
   return grouped;
 }
 
-/** Characters in a Chinese or Japanese word, each counted as a word of the song: 二人 is 2, ラー is 1 */
-export const cjkCharacterCount = (word: string): number => word.replace(/ー/g, '').length;
+/**
+ * Characters in a Chinese, Japanese or Thai word, each counted as a word of the song: 二人 is 2, ラー
+ * is 1 and ไม่เป็นไร is 4, as Learn lays them out
+ */
+export const cjkCharacterCount = (word: string): number => splitLyricTokens(word).length;

@@ -310,6 +310,19 @@ export default function SongsScreen() {
               style={styles.songName}
               numberOfLines={1}
             />
+            {(() => {
+              // Every word saved (or ignored): complete; and every saved word at Known: mastered
+              const progress = wordProgress.get(item.id);
+              if (!progress || progress.total === 0 || progress.newWords > 0) return null;
+              const levels = songLevels.get(item.id) ?? {};
+              const mastered = Object.entries(levels).every(([level, count]) => level === 'Known' || !count);
+              return (
+                <View style={[styles.completeBadge, mastered && styles.masteredBadge]} accessibilityLabel={mastered ? 'Mastered' : 'Complete'}>
+                  <Ionicons name={mastered ? 'trophy' : 'checkmark-circle'} size={12} color={mastered ? Colors.warning : Colors.success} />
+                  <Text style={[styles.completeText, mastered && styles.masteredText]}>{mastered ? 'Mastered' : 'Complete'}</Text>
+                </View>
+              );
+            })()}
           </View>
           <HighlightedText
             text={item.artistName || 'Unknown Artist'}
@@ -607,6 +620,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
+  },
+  completeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 184, 148, 0.15)',
+  },
+  masteredBadge: {
+    backgroundColor: 'rgba(253, 203, 110, 0.15)',
+  },
+  completeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.success,
+  },
+  masteredText: {
+    color: Colors.warning,
   },
   songNameRow: {
     flexDirection: 'row',

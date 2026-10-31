@@ -32,6 +32,7 @@ import { groupCjkTokens, groupSpacedWords, isCjkWord, isVietnameseSong } from '.
 import { getKoreanStem, isKoreanLanguage } from '../utils/koreanWords';
 import { getRomanceBaseWord } from '../utils/romanceClitics';
 import { addStressMark, isStressLanguage, removeStressMarks } from '../utils/russianStress';
+import { romanizeLine } from '../utils/romanize';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
@@ -239,6 +240,10 @@ export default function LearnScreen() {
     const timer = setTimeout(() => {
       const originalLines = song.originalLyrics.split('\n');
       const translationLines = song.translations.map((t) => t.lyrics.split('\n'));
+      // A song in Cyrillic, Greek, Korean, Hindi or Arabic without a Romanized version gets one made here
+      const romanizeLanguage = song.translations.some((t) => isRomanized(t.language))
+        ? null
+        : song.originalLanguages?.[0] ?? '';
       const newLines = originalLines.map((line, i) => {
         const originalNormalized = normalizeText(line);
         const translations = translationLines.map((tl, ti) => {
@@ -255,6 +260,7 @@ export default function LearnScreen() {
         return {
           original: line,
           translations,
+          romanized: romanizeLanguage !== null ? romanizeLine(line, romanizeLanguage) ?? undefined : undefined,
         };
       });
       setComputedLines(newLines);
@@ -269,6 +275,7 @@ export default function LearnScreen() {
       ? computedLines.map((line) => ({
           ...line,
           translations: line.translations.map((tl) => (isRomanized(tl.language) ? { ...tl, show: false } : tl)),
+          romanized: undefined,
         }))
       : computedLines,
     [computedLines, lyricQuiz]

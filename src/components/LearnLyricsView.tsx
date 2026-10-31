@@ -13,6 +13,8 @@ export interface LearnLine {
     text: string;
     show: boolean;
   }[];
+  /** Made offline for a song in Cyrillic, Greek, Korean, Hindi or Arabic without a Romanized version */
+  romanized?: string;
 }
 
 interface LearnLyricsViewProps {
@@ -103,12 +105,13 @@ export function LearnLyricsLine({
     ? line.translations.filter((translation) => translation.show && selectedLanguages.includes(translation.language))
     : [];
   // The romanized line reads the original out, so it sits right under it and is never blurred
-  const romanized = shown.find((translation) => isRomanized(translation.language));
+  const romanized = shown.find((translation) => isRomanized(translation.language))?.text ||
+    (showTranslations ? line.romanized : undefined);
   return (
     <View style={styles.lineBlock}>
       {renderPressableText(line.original, lineIndex)}
-      {!!romanized?.text && (
-        <Text style={[styles.romanizedLine, { fontSize: fontSize - 2 }]}>{romanized.text}</Text>
+      {!!romanized && (
+        <Text style={[styles.romanizedLine, { fontSize: fontSize - 2 }]}>{romanized}</Text>
       )}
       {shown
         .filter((translation) => !isRomanized(translation.language))

@@ -100,8 +100,11 @@ export default function LearnActionBar({
       </View>
       {/* Beside the Show all button there's no room for one line, so the line count goes under the words */}
       <Text style={[styles.lineCounter, onShowAllLyrics && styles.lineCounterStacked]} numberOfLines={onShowAllLyrics ? 2 : 1}>
+        {/* With the line by line button there's no room for the line count beside the words; line by line counts the lines */}
         {wordProgress
-          ? `${wordProgress.label}${onShowAllLyrics ? '\n' : ' · '}${lineCount} lines`
+          ? onToggleLineByLine && !onShowAllLyrics
+            ? wordProgress.label
+            : `${wordProgress.label}${onShowAllLyrics ? '\n' : ' · '}${lineCount} lines`
           : `${lineCount} lines`}
       </Text>
       {wordProgress && (

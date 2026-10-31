@@ -13,6 +13,8 @@ export interface ReviewItem {
   wordAt?: { start: number; end: number };
   /** The line's translation, or the word's meaning when the line has none, to fill the gap from */
   hint?: string;
+  /** Asked from the word's recording instead of its line: "Which word did you hear?" */
+  listen?: boolean;
 }
 
 /** The line's words, also split at apostrophes, e.g. amour in l'amour */
@@ -78,7 +80,10 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
             random
           );
     if (!quiz) continue;
+    // A word with a recording is sometimes heard instead of read, and always when its line lacks it
+    const listen = kind === 'lyric' && !!entry.audio?.length && (!wordAt || random() < 0.5);
     items.push({
+      listen,
       entry,
       kind,
       quiz,

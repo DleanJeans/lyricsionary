@@ -99,3 +99,21 @@ describe('pickReviewItems', () => {
     expect(picked.map((i) => i.entry.word)).not.toEqual(['a', 'b', 'c']);
   });
 });
+
+describe('listening quiz', () => {
+  const others = [word('chat', 'cat'), word('chien', 'dog'), word('maison', 'house')];
+  const audio = [{ title: 'Fr-cœur.ogg', url: 'https://x/Fr-cœur.ogg', label: '' }];
+
+  it('sometimes asks a word with a recording by ear', () => {
+    const recognized = word('cœur', 'heart', { masteryLevel: 'Recognized', audio }, 'Mon cœur bat');
+    expect(buildReviewItems([recognized], [recognized, ...others], () => 0.1)[0].listen).toBe(true);
+    expect(buildReviewItems([recognized], [recognized, ...others], () => 0.9)[0].listen).toBe(false);
+  });
+
+  it('always asks by ear when the line lacks the word, and never for a meaning quiz', () => {
+    const lineless = word('cœur', 'heart', { masteryLevel: 'Recognized', audio });
+    expect(buildReviewItems([lineless], [lineless, ...others], () => 0.9)[0].listen).toBe(true);
+    const seen = word('cœur', 'heart', { audio });
+    expect(buildReviewItems([seen], [seen, ...others], () => 0.1)[0].listen).toBe(false);
+  });
+});

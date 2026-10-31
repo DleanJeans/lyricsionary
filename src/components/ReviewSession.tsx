@@ -4,6 +4,7 @@ import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { Colors } from '../constants/theme';
 import { pickReviewItems, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import { Text } from './Text';
+import PronunciationAudio from './PronunciationAudio';
 import WordQuiz from './WordQuiz';
 
 interface ReviewSessionProps {
@@ -110,11 +111,13 @@ function ReviewQuestion({
   onAnswered: (correct: boolean) => void;
   isWide?: boolean;
 }) {
-  const { entry, kind, line, wordAt, hint } = item;
+  const { entry, kind, line, wordAt, hint, listen } = item;
   const lineWord = line && wordAt ? line.slice(wordAt.start, wordAt.end) : null;
   const songName = entry.contexts?.find((c) => c.context?.trim() === line)?.songName;
-  // A lyric quiz blanks the word out of the line, and shows no line it couldn't find the word in
-  const showLine = !!line && (kind === 'meaning' || !!lineWord);
+  // A lyric quiz blanks the word out of the line, and shows no line it couldn't find the word in. A
+  // listening quiz shows the line and meaning once answered.
+  const showLine = !!line && (kind === 'meaning' || !!lineWord) && (!listen || answered);
+  const showHint = !!hint && (!listen || answered);
   return (
     <View style={styles.question}>
       {showLine && (
@@ -122,7 +125,7 @@ function ReviewQuestion({
           {lineWord && wordAt ? (
             <>
               {line!.slice(0, wordAt.start)}
-              {kind === 'lyric' && !answered ? (
+              {kind === 'lyric' && !answered && !listen ? (
                 GAP
               ) : (
                 <Text style={[styles.line, styles.lineWord, kind === 'lyric' && styles.lineAnswer]}>{lineWord}</Text>
@@ -135,7 +138,8 @@ function ReviewQuestion({
         </Text>
       )}
       {showLine && songName ? <Text style={styles.songName}>{songName}</Text> : null}
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {listen && !answered && <PronunciationAudio audio={entry.audio ?? []} />}
+      {showHint ? <Text style={styles.hint}>{hint}</Text> : null}
       <WordQuiz
         entry={entry}
         kind={kind}
@@ -144,6 +148,8 @@ function ReviewQuestion({
             <>
               What does <Text style={styles.quizWord}>{entry.word}</Text> mean{showLine ? ' here' : ''}?
             </>
+          ) : listen ? (
+            'Which word did you hear?'
           ) : lineWord ? (
             'Which word goes in the gap?'
           ) : (

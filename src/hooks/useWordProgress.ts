@@ -4,6 +4,7 @@ import { getLanguageNameFromCode } from '../constants/languages';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Song } from '../types';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
+import { spellingsOf } from '../utils/wordForms';
 import { countKnownWords, countWords } from '../utils/wordFrequency';
 
 export interface WordProgress {
@@ -32,10 +33,12 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
     const anyLanguage = new Set<string>();
     for (const entry of words) {
       const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
-      // A Russian word saved with its stress mark, like любо́вь, is the lyrics' любовь
-      const word = removeStressMarks(entry.word.toLowerCase());
-      keys.add(`${language}\u0000${word}`);
-      anyLanguage.add(word);
+      // A Russian word saved with its stress mark, like любо́вь, is the lyrics' любовь; a merged form is known too
+      for (const spelling of spellingsOf(entry)) {
+        const word = removeStressMarks(spelling.toLowerCase());
+        keys.add(`${language}\u0000${word}`);
+        anyLanguage.add(word);
+      }
     }
     return { savedWordKeys: keys, savedWordsAnyLanguage: anyLanguage };
   }, [words]);

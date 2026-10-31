@@ -26,6 +26,7 @@ interface WordQuizProps {
 export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
+  const recordActivity = useStore((s) => s.recordActivity);
   // Asked only when the quiz is for the word's level, decided once so moving up a level keeps the
   // answer on screen. A word quizzed in the last few hours isn't asked again, e.g. when the chorus
   // repeats it.
@@ -70,6 +71,8 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (!before) return;
     setUndone(true);
     void updateWordEntry(entry.id, { masteryLevel: before.masteryLevel, quiz: before.quiz });
+    // Undo is only offered for a level up
+    void recordActivity({ levelUps: -1 });
   };
 
 

@@ -3,15 +3,17 @@ import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
 import { isSameLanguage } from '../constants/languages';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
-import { MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
+import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
 import type { WiktionaryAudio } from '../utils/wiktionary';
 import { QuizKind, recordAnswer } from '../utils/wordQuiz';
+import { ActivityLog, addActivity, DayActivity } from '../utils/activity';
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
 const IGNORED_WORDS_KEY = '@lyricsionary_ignored_words';
 const COMPOUND_SPLITS_KEY = '@lyricsionary_compound_splits';
 const LEARN_SETTINGS_KEY = '@lyricsionary_learn_settings';
+const ACTIVITY_KEY = '@lyricsionary_activity';
 
 export interface IgnoredWord {
   word: string;
@@ -131,6 +133,10 @@ interface AppState {
   updateWordEntry: (id: string, changes: Partial<Omit<WordEntry, 'id'>>) => Promise<void>;
   /** Saves a word quiz answer, moving the word up a level when it has enough; returns the word before */
   recordQuizAnswer: (id: string, kind: QuizKind, correct: boolean) => Promise<WordEntry | undefined>;
+  /** What was done each day, for the sidebar's progress card */
+  activity: ActivityLog;
+  loadActivity: () => Promise<void>;
+  recordActivity: (changes: DayActivity) => Promise<void>;
 
   // Ignore list actions
   loadIgnoredWords: () => Promise<void>;
@@ -248,6 +254,7 @@ export const useStore = create<AppState>((set, get) => ({
     );
     set({ songs });
     await persist(SONGS_KEY, JSON.stringify(songs));
+    await get().recordActivity({ opened: 1 });
   },
 
   setMatchedSongs: (searchQuery, count) => set({ matchedSongsSearchQuery: searchQuery, matchedSongsCount: count }),
@@ -401,6 +408,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
+    if (!existing) await get().recordActivity({ saved: 1 });
   },
 
   setWordAudio: async (id, audio) => {
@@ -419,8 +427,28 @@ export const useStore = create<AppState>((set, get) => ({
   recordQuizAnswer: async (id, kind, correct) => {
     const before = get().words.find((w) => w.id === id);
     if (!before) return undefined;
-    await get().updateWordEntry(id, recordAnswer(before.masteryLevel, before.quiz, kind, correct, Date.now()));
+    const after = recordAnswer(before.masteryLevel, before.quiz, kind, correct, Date.now());
+    await get().updateWordEntry(id, after);
+    const levelUp = MASTERY_LEVELS.indexOf(after.masteryLevel) > MASTERY_LEVELS.indexOf(before.masteryLevel ?? 'Seen');
+    await get().recordActivity(levelUp ? { answers: 1, levelUps: 1 } : { answers: 1 });
     return before;
+  },
+
+  activity: {},
+
+  loadActivity: async () => {
+    try {
+      const json = await AsyncStorage.getItem(ACTIVITY_KEY);
+      if (json) set({ activity: JSON.parse(json) });
+    } catch (e) {
+      console.error('Failed to load activity', e);
+    }
+  },
+
+  recordActivity: async (changes) => {
+    const activity = addActivity(get().activity, changes, Date.now());
+    set({ activity });
+    await persist(ACTIVITY_KEY, JSON.stringify(activity));
   },
 
   deleteWord: async (id) => {

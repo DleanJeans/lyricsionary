@@ -39,6 +39,7 @@ export default function App() {
   const loadIgnoredWords = useStore((s) => s.loadIgnoredWords);
   const loadCompoundSplits = useStore((s) => s.loadCompoundSplits);
   const loadLearnSettings = useStore((s) => s.loadLearnSettings);
+  const loadActivity = useStore((s) => s.loadActivity);
   const [dataLoaded, setDataLoaded] = useState(false);
   usePartOfSpeechBackfill(dataLoaded);
 
@@ -69,7 +70,7 @@ export default function App() {
 
     let mounted = true;
     async function initialize() {
-      await Promise.all([loadSongs(), loadWords(), loadIgnoredWords(), loadCompoundSplits(), loadLearnSettings()]);
+      await Promise.all([loadSongs(), loadWords(), loadIgnoredWords(), loadCompoundSplits(), loadLearnSettings(), loadActivity()]);
       if (mounted) setDataLoaded(true);
       await checkForUpdates();
     }
@@ -78,7 +79,7 @@ export default function App() {
     return () => {
       mounted = false;
     };
-  }, [loadSongs, loadWords, loadIgnoredWords, loadCompoundSplits, loadLearnSettings]);
+  }, [loadSongs, loadWords, loadIgnoredWords, loadCompoundSplits, loadLearnSettings, loadActivity]);
 
   // Tapping the now playing notification opens the saved song in Learn,
   // or starts the automatic lyrics + translation flow in Editor

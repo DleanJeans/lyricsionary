@@ -34,7 +34,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const quizKindFor = (level?: MasteryLevel): QuizKind | null =>
   !level || level === 'Seen' ? 'meaning' : level === 'Known' ? null : 'lyric';
 
-const localDay = (time: number) => {
+export const localDay = (time: number) => {
   const date = new Date(time);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };

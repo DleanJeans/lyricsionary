@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { findSavedWord, hasSpelling, mergeWordEntries } from '../src/utils/wordForms';
+import { findSavedWord, hasSpelling, mergeWordEntries, splitForm } from '../src/utils/wordForms';
 import { songWordIndex, gapWord } from '../src/utils/lyricGaps';
 
 const entry = (over: Partial<WordEntry>): WordEntry => ({
@@ -74,5 +74,22 @@ describe('finding a merged form', () => {
     expect(index.get('veux')).toBe(known);
     expect(gapWord(index, 'veux', Date.now())).toBeUndefined();
     expect(gapWord(index, 'vouloir', Date.now())).toBe(known);
+  });
+});
+
+describe('splitForm', () => {
+  it('gives the form back its contexts', () => {
+    const merged = entry({
+      word: 'veux',
+      forms: ['voulez'],
+      contexts: [{ context: 'Je veux' }, { context: 'Vous voulez, hein' }],
+      masteryLevel: 'Recalled',
+    });
+    const [kept, split] = splitForm(merged, 'voulez', 'new', 5);
+    expect(kept.forms).toBeUndefined();
+    expect(kept.contexts.map((c) => c.context)).toEqual(['Je veux']);
+    expect(kept.masteryLevel).toBe('Recalled');
+    expect(split).toMatchObject({ id: 'new', word: 'voulez', language: 'French', masteryLevel: 'Seen', savedAt: 5 });
+    expect(split.contexts.map((c) => c.context)).toEqual(['Vous voulez, hein']);
   });
 });

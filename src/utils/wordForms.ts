@@ -1,6 +1,7 @@
 import { MASTERY_LEVELS, type WordContext, type WordEntry } from '../types';
 import type { QuizStats } from './wordQuiz';
 import { mergeHistories } from './wordHistory';
+import { findWordSpots } from './wordLines';
 import { isSameLanguage } from '../constants/languages';
 
 /** How a saved word is written: as saved, then the forms merged into it, e.g. vouloir, veux, voulez */
@@ -79,4 +80,31 @@ export function mergeWordEntries(keep: WordEntry, from: WordEntry): WordEntry {
     savedAt: keep.savedAt !== undefined && from.savedAt !== undefined ? Math.min(keep.savedAt, from.savedAt) : keep.savedAt ?? from.savedAt,
     lastLookedUp: Math.max(keep.lastLookedUp, from.lastLookedUp),
   };
+}
+
+/**
+ * Undoes a merge for one form: it becomes its own word again, taking the contexts whose line has it,
+ * e.g. "Vous voulez" for voulez. Quiz answers stay with the word, as they can't be told apart.
+ */
+export function splitForm(entry: WordEntry, form: string, id: string, now: number): [WordEntry, WordEntry] {
+  const hasForm = (c: WordContext) => findWordSpots([c.context], form, () => false).length > 0;
+  const moved = entry.contexts.filter(hasForm);
+  const kept: WordEntry = {
+    ...entry,
+    forms: (entry.forms ?? []).filter((f) => f !== form),
+    contexts: entry.contexts.filter((c) => !hasForm(c)),
+  };
+  if (kept.forms!.length === 0) delete kept.forms;
+  const split: WordEntry = {
+    id,
+    word: form,
+    language: entry.language,
+    pronunciation: '',
+    contexts: moved,
+    lastLookedUp: now,
+    savedAt: now,
+    masteryLevel: 'Seen',
+    history: [{ at: now, level: 'Seen', saved: true }],
+  };
+  return [kept, split];
 }

@@ -11,12 +11,14 @@ interface MergeFormsProps {
   words: WordEntry[];
   /** Merges the picked word into this one */
   onMerge: (from: WordEntry) => void;
+  /** Splits a merged form back out as its own word */
+  onUnmerge: (form: string) => void;
 }
 
 const MAX_SHOWN = 8;
 
 /** On a saved word's page: its merged forms, and a search for a form saved apart to merge in, e.g. voulez into veux */
-export default function MergeForms({ entry, words, onMerge }: MergeFormsProps) {
+export default function MergeForms({ entry, words, onMerge, onUnmerge }: MergeFormsProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<WordEntry | null>(null);
@@ -37,6 +39,14 @@ export default function MergeForms({ entry, words, onMerge }: MergeFormsProps) {
           {entry.forms!.map((form) => (
             <View key={form} style={styles.formChip}>
               <Text style={styles.formText}>{form}</Text>
+              <TouchableOpacity
+                onPress={() => onUnmerge(form)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Unmerge ${form}`}
+              >
+                <Ionicons name="close" size={14} color={Colors.textSecondary} />
+              </TouchableOpacity>
             </View>
           ))}
         </View>
@@ -112,6 +122,9 @@ const styles = StyleSheet.create({
   container: { gap: 8 },
   forms: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   formChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: Colors.surfaceLight,
     borderRadius: 12,
     paddingHorizontal: 10,

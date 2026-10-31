@@ -59,6 +59,7 @@ export default function WordLookupScreen() {
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const mergeWords = useStore((s) => s.mergeWords);
+  const unmergeForm = useStore((s) => s.unmergeForm);
   const deleteWord = useStore((s) => s.deleteWord);
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -667,6 +668,10 @@ export default function WordLookupScreen() {
                   // The page fills in again from the merged word, with the form's contexts
                   filledLookupRef.current = undefined;
                   void mergeWords(existingWord.id, from.id);
+                }}
+                onUnmerge={(form) => {
+                  filledLookupRef.current = undefined;
+                  void unmergeForm(existingWord.id, form);
                 }}
               />
             </View>

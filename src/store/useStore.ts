@@ -6,7 +6,7 @@ import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordCo
 import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
 import { ActivityLog, addActivity, DayActivity } from '../utils/activity';
-import { findSavedWord, mergeWordEntries } from '../utils/wordForms';
+import { findSavedWord, mergeWordEntries, splitForm } from '../utils/wordForms';
 import { addWordEvent, levelChangeEvent } from '../utils/wordHistory';
 
 const SONGS_KEY = '@lyricsionary_songs';
@@ -134,6 +134,8 @@ interface AppState {
   deleteWord: (id: string) => Promise<void>;
   /** Merges a form saved apart into a word, e.g. voulez into veux, keeping its contexts and quiz answers */
   mergeWords: (keepId: string, fromId: string) => Promise<void>;
+  /** Splits a merged form back out as its own word, with the contexts whose line has it */
+  unmergeForm: (id: string, form: string) => Promise<void>;
   /** Puts a deleted word back as it was, e.g. on Undo */
   restoreWord: (entry: WordEntry) => Promise<void>;
   /** Changes saved word fields without counting it as a look up, e.g. a word type found later */
@@ -498,6 +500,15 @@ export const useStore = create<AppState>((set, get) => ({
     if (!keep || !from || keepId === fromId) return;
     const merged = mergeWordEntries(keep, from);
     const words = get().words.filter((w) => w.id !== fromId).map((w) => (w.id === keepId ? merged : w));
+    set({ words });
+    await persist(WORDS_KEY, JSON.stringify(words));
+  },
+
+  unmergeForm: async (id, form) => {
+    const entry = get().words.find((w) => w.id === id);
+    if (!entry?.forms?.includes(form)) return;
+    const [kept, split] = splitForm(entry, form, uuidv4(), Date.now());
+    const words = [...get().words.map((w) => (w.id === id ? kept : w)), split];
     set({ words });
     await persist(WORDS_KEY, JSON.stringify(words));
   },

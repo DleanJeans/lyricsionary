@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
-import { isSameLanguage } from '../constants/languages';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
 import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
 import { ActivityLog, addActivity, DayActivity } from '../utils/activity';
+import { findSavedWord, mergeWordEntries } from '../utils/wordForms';
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
@@ -131,6 +131,8 @@ interface AppState {
   ) => Promise<void>;
   setWordAudio: (id: string, audio: WiktionaryAudio[]) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
+  /** Merges a form saved apart into a word, e.g. voulez into veux, keeping its contexts and quiz answers */
+  mergeWords: (keepId: string, fromId: string) => Promise<void>;
   /** Puts a deleted word back as it was, e.g. on Undo */
   restoreWord: (entry: WordEntry) => Promise<void>;
   /** Changes saved word fields without counting it as a look up, e.g. a word type found later */
@@ -385,9 +387,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addOrUpdateWord: async (word, language, pronunciation, contexts, masteryLevel, audio) => {
-    const existing = get().words.find(
-      (w) => w.word.toLowerCase() === word.toLowerCase() && isSameLanguage(w.language, language)
-    );
+    const existing = findSavedWord(get().words, word, language);
     let words: WordEntry[];
     if (existing) {
       words = get().words.map((w) =>
@@ -483,6 +483,16 @@ export const useStore = create<AppState>((set, get) => ({
     await persist(WORDS_KEY, JSON.stringify(words));
     // A word saved and removed the same day, e.g. replaced by a phrase grown from it, wasn't learned
     if (deleted?.savedAt && localDay(deleted.savedAt) === localDay(Date.now())) await get().recordActivity({ saved: -1 });
+  },
+
+  mergeWords: async (keepId, fromId) => {
+    const keep = get().words.find((w) => w.id === keepId);
+    const from = get().words.find((w) => w.id === fromId);
+    if (!keep || !from || keepId === fromId) return;
+    const merged = mergeWordEntries(keep, from);
+    const words = get().words.filter((w) => w.id !== fromId).map((w) => (w.id === keepId ? merged : w));
+    set({ words });
+    await persist(WORDS_KEY, JSON.stringify(words));
   },
 
   restoreWord: async (entry) => {

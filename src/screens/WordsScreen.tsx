@@ -86,11 +86,16 @@ export default function WordsScreen() {
   }, [words, wordFrequencies, showFrequency]);
 
   // Saved words by language and lowercase word, for coloring the Top list (the first one wins, like find);
-  // keyed by languageKey so a word saved under "French" colors a song's "fr" word
-  const savedWordIndex = React.useMemo(
-    () => new Map([...words].reverse().map((w) => [`${languageKey(w.language)}\u0000${w.word.toLowerCase()}`, w])),
-    [words],
-  );
+  // keyed by languageKey so a word saved under "French" colors a song's "fr" word. A form merged into
+  // a word counts as saved, after any word saved with that spelling
+  const savedWordIndex = React.useMemo(() => {
+    const reversed = [...words].reverse();
+    const key = (w: WordEntry, spelling: string) => `${languageKey(w.language)}\u0000${spelling.toLowerCase()}`;
+    return new Map<string, WordEntry>([
+      ...reversed.flatMap((w) => (w.forms ?? []).map((form) => [key(w, form), w] as const)),
+      ...reversed.map((w) => [key(w, w.word), w] as const),
+    ]);
+  }, [words]);
   const isSavedFrequency = (w: WordFrequency) => savedWordIndex.has(`${languageKey(w.language)}\u0000${w.word.toLowerCase()}`);
 
   const languageFrequencies = wordFrequencies.filter(

@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { isSameLanguage } from '../constants/languages';
 import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { isWordIgnored, useStore } from '../store/useStore';
@@ -19,6 +18,7 @@ import MasteryLevelSelector from './MasteryLevelSelector';
 import PronunciationAudio from './PronunciationAudio';
 import { Text } from './Text';
 import WordTransformButtons from './WordTransformButtons';
+import { findSavedWord } from '../utils/wordForms';
 
 interface NewWordCardProps {
   word: string;
@@ -56,7 +56,7 @@ export default function NewWordCard({
   const words = useStore((s) => s.words);
   const compoundSplits = useStore((s) => s.compoundSplits);
   // Saved while the card is open, e.g. at a level picked from its NEW badge
-  const saved = words.find((w) => w.word.toLowerCase() === word.toLowerCase() && isSameLanguage(w.language, language));
+  const saved = findSavedWord(words, word, language);
   const setCompoundSplit = useStore((s) => s.setCompoundSplit);
   const isGerman = isGermanLanguage(originalLanguages);
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);

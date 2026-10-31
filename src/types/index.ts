@@ -72,6 +72,8 @@ export interface WordEntry {
   /** Word quiz answers, which move the word up a level */
   quiz?: QuizStats;
   emoji?: string;
+  /** Other spellings merged into this word, e.g. veux and voulez for vouloir */
+  forms?: string[];
   /** The user's own note, e.g. a mnemonic or a grammar tip */
   note?: string;
   definitions?: { text: string; songId?: string; songName?: string; lyricsLine?: string }[];

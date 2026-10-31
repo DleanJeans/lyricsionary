@@ -35,6 +35,8 @@ import { emojiData } from '../utils/emojiData';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import { getScrapeGoogleIpaJS } from '../utils/scrapeGoogleIpaJS';
+import { findSavedWord } from '../utils/wordForms';
+import MergeForms from '../components/MergeForms';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -55,6 +57,7 @@ export default function WordLookupScreen() {
   const words = useStore((s) => s.words);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
+  const mergeWords = useStore((s) => s.mergeWords);
   const deleteWord = useStore((s) => s.deleteWord);
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -173,11 +176,7 @@ export default function WordLookupScreen() {
   const [wiktionaryRedirect, setWiktionaryRedirect] = useState<{ from: string; to: string } | null>(null);
   const wiktionaryWord = wiktionaryRedirect && wiktionaryRedirect.from === displayWord ? wiktionaryRedirect.to : displayWord;
 
-  const findExistingWord = () => words.find((entry) =>
-    wordId
-      ? entry.id === wordId
-      : entry.word.toLowerCase() === displayWord?.toLowerCase() && isSameLanguage(entry.language, language)
-  );
+  const findExistingWord = () => (wordId ? words.find((entry) => entry.id === wordId) : findSavedWord(words, displayWord, language));
 
   useEffect(() => {
     setDisplayWord(word);
@@ -478,9 +477,7 @@ export default function WordLookupScreen() {
       wiktionaryPronunciation.loaded ? pronunciationAudio : undefined
     );
     // The note is kept apart from what addOrUpdateWord merges
-    const saved = useStore.getState().words.find(
-      (w) => w.word.toLowerCase() === displayWord.toLowerCase() && isSameLanguage(w.language, language)
-    );
+    const saved = findSavedWord(useStore.getState().words, displayWord, language);
     if (saved && (saved.note ?? '') !== note.trim()) await updateWordEntry(saved.id, { note: note.trim() || undefined });
 
     if (source === 'Words') {
@@ -547,7 +544,7 @@ export default function WordLookupScreen() {
     ? (pronunciation.includes('/') ? pronunciation : `/${pronunciation}/`)
     : 'IPA';
 
-  const existingWord = words.find(w => w.word.toLowerCase() === displayWord?.toLowerCase());
+  const existingWord = findExistingWord();
 
   return (
     <KeyboardAvoidingView
@@ -658,6 +655,21 @@ export default function WordLookupScreen() {
               accessibilityLabel="Note"
             />
           </View>
+
+          {existingWord && (
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Forms</Text>
+              <MergeForms
+                entry={existingWord}
+                words={words}
+                onMerge={(from) => {
+                  // The page fills in again from the merged word, with the form's contexts
+                  filledLookupRef.current = undefined;
+                  void mergeWords(existingWord.id, from.id);
+                }}
+              />
+            </View>
+          )}
 
           <Text style={styles.fieldLabel}>Contexts</Text>
           <WordSenseList

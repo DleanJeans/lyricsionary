@@ -10,12 +10,18 @@ export function songWordIndex(words: WordEntry[], originalLanguages: string[] | 
     (originalLanguages ?? []).map((language) => (getLanguageNameFromCode(language) ?? language).toLowerCase())
   );
   const index = new Map<string, WordEntry>();
-  for (const entry of words) {
+  const inSong = words.filter((entry) => {
     const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
-    if (songLanguages.size === 0 || songLanguages.has(language)) {
-      // A Russian word saved with its stress mark, like любо́вь, is the lyrics' любовь
-      const key = removeStressMarks(entry.word.toLowerCase());
-      if (!index.has(key)) index.set(key, entry);
+    return songLanguages.size === 0 || songLanguages.has(language);
+  });
+  // A word saved on its own comes before the same spelling merged into another word as a form
+  for (const spellings of [(entry: WordEntry) => [entry.word], (entry: WordEntry) => entry.forms ?? []]) {
+    for (const entry of inSong) {
+      for (const spelling of spellings(entry)) {
+        // A Russian word saved with its stress mark, like любо́вь, is the lyrics' любовь
+        const key = removeStressMarks(spelling.toLowerCase());
+        if (!index.has(key)) index.set(key, entry);
+      }
     }
   }
   return index;
@@ -27,6 +33,8 @@ export const canFillGaps = (index: Map<string, WordEntry>) => index.size >= 3;
 /** The saved word a lyric word is a gap for, as saved, when it's learned enough to recall and not just quizzed */
 export function gapWord(index: Map<string, WordEntry>, cleanedWord: string, now: number): WordEntry | undefined {
   const entry = index.get(cleanedWord.toLowerCase());
+  // A merged form isn't a gap: the answer would be spelled as the saved word, not as the lyrics
+  if (entry && removeStressMarks(entry.word.toLowerCase()) !== cleanedWord.toLowerCase()) return undefined;
   return entry && quizKindFor(entry.masteryLevel) === 'lyric' && !isCoolingDown(entry.quiz, now) ? entry : undefined;
 }
 

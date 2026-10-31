@@ -303,6 +303,8 @@ export default function LearnScreen() {
 
   // Spotify: follows the song while it plays, highlighting and scrolling to its line, and seeks by line
   const spotifyConnected = useStore((s) => s.spotifyConnected);
+  const wideWordSpacing = useStore((s) => s.wideWordSpacing);
+  const toggleWideWordSpacing = useStore((s) => s.toggleWideWordSpacing);
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
   const [followSpotify, setFollowSpotify] = useState(true);
@@ -470,10 +472,22 @@ export default function LearnScreen() {
           : i === selectedIndex + 2 && /^[^\S\n]+$/.test(textWords[selectedIndex + 1]) && !isCjkWord(cleanedWord)
       );
     return (
-      <View style={{ flexDirection: isRtlSong !== !!I18nManager.isRTL ? 'row-reverse' : 'row', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <View
+        style={{
+          flexDirection: isRtlSong !== !!I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexWrap: 'wrap',
+          alignItems: 'flex-end',
+          rowGap: wideWordSpacing ? fontSize * 0.4 : 0,
+        }}
+      >
         {textWords.map((word, i) => {
           if (!word.trim()) {
-            return <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6 }}>{word}</Text>;
+            // Wide spacing: more room between words, so a tap lands on the one meant
+            return (
+              <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6, marginHorizontal: wideWordSpacing ? fontSize * 0.3 : 0 }}>
+                {word}
+              </Text>
+            );
           }
 
           const cleanedWord = cleanLyricWord(word);
@@ -752,7 +766,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1155,6 +1169,8 @@ export default function LearnScreen() {
           onToggleBlur={toggleBlurTranslations}
           reverseLyrics={reverseLyrics}
           onToggleReverseLyrics={toggleReverseLyrics}
+          wideWordSpacing={wideWordSpacing}
+          onToggleWideWordSpacing={toggleWideWordSpacing}
           showMasteryLevelColors={showMasteryLevelColors}
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
           previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}

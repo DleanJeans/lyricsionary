@@ -31,6 +31,7 @@ describe('Learn settings', () => {
       showEmoji: true,
       showSections: false,
       reverseLyrics: true,
+      wideWordSpacing: false,
     });
 
     useStore.setState({ fontSize: 18, blurTranslations: true, showIpa: true, showSections: true, reverseLyrics: false });

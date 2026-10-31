@@ -24,6 +24,8 @@ interface LearnSettingsMenuProps {
   onToggleBlur: () => void;
   reverseLyrics: boolean;
   onToggleReverseLyrics: () => void;
+  wideWordSpacing: boolean;
+  onToggleWideWordSpacing: () => void;
   showMasteryLevelColors: boolean;
   onToggleShowMasteryLevelColors: () => void;
   showSections: boolean;
@@ -132,6 +134,8 @@ export default function LearnSettingsMenu({
   onToggleBlur,
   reverseLyrics,
   onToggleReverseLyrics,
+  wideWordSpacing,
+  onToggleWideWordSpacing,
   showMasteryLevelColors,
   onToggleShowMasteryLevelColors,
   showSections,
@@ -259,6 +263,13 @@ export default function LearnSettingsMenu({
                 icon={<Ionicons name="swap-vertical-outline" size={18} color={chipIconColor(reverseLyrics)} />}
                 selected={reverseLyrics}
                 onPress={onToggleReverseLyrics}
+              />
+              {/* More room between words, for easier tapping */}
+              <Chip
+                label="Wide spacing"
+                icon={<Ionicons name="resize-outline" size={18} color={chipIconColor(wideWordSpacing)} />}
+                selected={wideWordSpacing}
+                onPress={onToggleWideWordSpacing}
               />
               {/* Debug: copy the detected sections to check them */}
               <TouchableOpacity

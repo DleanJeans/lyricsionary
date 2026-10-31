@@ -1,5 +1,6 @@
 import { isGermanLanguage } from './compoundWords';
 import { getKoreanStem, isKoreanLanguage } from './koreanWords';
+import { getRomanceBaseWord } from './romanceClitics';
 import {
   contractedPrefixRegex,
   germanCliticEsRegex,
@@ -56,6 +57,10 @@ export function getWordTransforms(word: string, language?: string): string[] {
   // A Korean word without its particles (e.g., "너를" -> "너")
   const koreanStem = language && isKoreanLanguage([language]) ? getKoreanStem(word, { loose: true }) : null;
   if (koreanStem) transforms.push(koreanStem);
+
+  // A Spanish or Portuguese verb without its pronouns (e.g., "dímelo" -> "di", "amo-te" -> "amo")
+  const romanceBase = language ? getRomanceBaseWord(word, [language], { loose: true }) : null;
+  if (romanceBase) transforms.push(romanceBase);
 
   return transforms;
 }

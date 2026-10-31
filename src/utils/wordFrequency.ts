@@ -3,6 +3,7 @@ import { cjkCharacterCount, groupCjkTokens, groupSpacedWords, isCjkWord, isVietn
 import { cleanLyricWord, isLyricWord, removeSpecialChars, splitLyricTokens } from './cleanLyrics';
 import { isGermanLanguage } from './compoundWords';
 import { getKoreanStem, isKoreanLanguage } from './koreanWords';
+import { getRomanceBaseWord } from './romanceClitics';
 import { getGermanExpandedForm, splitElisionParts } from './wordTransform';
 
 export interface WordFrequency {
@@ -37,6 +38,10 @@ function getFullWord(word: string, languages: string[] | undefined): string | nu
   if (isGermanLanguage(languages)) return getGermanExpandedForm(word, 'German');
   // A Korean word without its particles, e.g. 너 for 너를
   if (isKoreanLanguage(languages)) return getKoreanStem(word);
+  // A Spanish or Portuguese verb without its pronouns or a preposition without its article, e.g. di for
+  // dímelo or de for del
+  const romance = getRomanceBaseWord(word, languages);
+  if (romance) return romance;
   if (!languages?.some((language) => ELISION_LANGUAGES.has(language.toLowerCase()))) return null;
   const parts = splitElisionParts(word);
   return parts ? parts[parts.length - 1] : null;

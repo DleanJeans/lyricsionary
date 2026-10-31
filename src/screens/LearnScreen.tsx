@@ -30,6 +30,7 @@ import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompound
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 import { groupCjkTokens, groupSpacedWords, isCjkWord, isVietnameseSong } from '../utils/cjkWords';
 import { getKoreanStem, isKoreanLanguage } from '../utils/koreanWords';
+import { getRomanceBaseWord } from '../utils/romanceClitics';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
@@ -111,10 +112,14 @@ export default function LearnScreen() {
       // A Korean word without its particles, e.g. 너 for 너를
       const koreanStem = isKoreanSong ? getKoreanStem(cleanedWord, { loose: true }) : null;
       if (koreanStem) return findWordEntry(koreanStem);
+      // A Spanish or Portuguese verb without its pronouns or a preposition without its article, e.g. di
+      // for dímelo, amo for amo-te, de for del
+      const romanceBase = getRomanceBaseWord(cleanedWord, song?.originalLanguages, { loose: true });
+      if (romanceBase) return findWordEntry(romanceBase);
       const expanded = isGermanSong ? getGermanExpandedForm(cleanedWord, 'German') : null;
       return expanded ? findWordEntry(expanded) : undefined;
     },
-    [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong]
+    [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong, song?.originalLanguages]
   );
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
@@ -740,14 +745,16 @@ export default function LearnScreen() {
   useEffect(() => {
     if (!selectedWord || selectedWordSaved || selectedWordIgnored || !songLanguage || !song) return;
     let cancelled = false;
-    // A Korean word Wiktionary doesn't have is saved without its particles, e.g. 너 for 너를
-    const koreanStem = isKoreanSong ? getKoreanStem(selectedWord, { loose: true }) : null;
+    // A word Wiktionary doesn't have is saved as what it's about: a Korean word without its particles,
+    // e.g. 너 for 너를, or a Spanish or Portuguese verb without its pronouns, e.g. amar for amarte
+    const baseWord = (isKoreanSong ? getKoreanStem(selectedWord, { loose: true }) : null) ??
+      getRomanceBaseWord(selectedWord, song.originalLanguages, { loose: true });
     const lookUp = (word: string) =>
       Promise.all([getWiktionaryDefinitions(word, songLanguage), getWiktionaryPronunciation(word, songLanguage)])
         .then(([definitions, pronunciation]) => ({ word, definitions, pronunciation }));
     lookUp(selectedWord).then(async (found) => {
-      if (koreanStem && !found.definitions?.length) {
-        const stemFound = await lookUp(koreanStem);
+      if (baseWord && !found.definitions?.length) {
+        const stemFound = await lookUp(baseWord);
         if (stemFound.definitions?.length) found = stemFound;
       }
       return found;

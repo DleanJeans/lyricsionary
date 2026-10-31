@@ -61,6 +61,10 @@ export default function LearnScreen() {
   const setSelectedTranslationLanguages = useStore((s) => s.setSelectedTranslationLanguages);
   const blurTranslations = useStore((s) => s.blurTranslations);
   const toggleBlurTranslations = useStore((s) => s.toggleBlurTranslations);
+  const reverseLyrics = useStore((s) => s.reverseLyrics);
+  const toggleReverseLyrics = useStore((s) => s.toggleReverseLyrics);
+  // Reverse mode: the original lines tapped to show
+  const [revealedOriginals, setRevealedOriginals] = useState<Set<number>>(new Set());
   const showMasteryLevelColors = useStore((s) => s.showMasteryLevelColors);
   const toggleShowMasteryLevelColors = useStore((s) => s.toggleShowMasteryLevelColors);
   const showIpa = useStore((s) => s.showIpa);
@@ -316,6 +320,10 @@ export default function LearnScreen() {
   useEffect(() => {
     setUnblurredTranslations(new Set());
   }, [blurTranslations, activeSongId]);
+
+  useEffect(() => {
+    setRevealedOriginals(new Set());
+  }, [reverseLyrics, activeSongId]);
 
   useEffect(() => {
     setSeenTranslationLines(new Set());
@@ -850,7 +858,7 @@ export default function LearnScreen() {
     selectedLineIndex !== null &&
     showTranslations &&
     selectedLineTranslationCount > 0 &&
-    (!blurTranslations || seenAllTranslations || seenTranslationLines.has(selectedLineIndex));
+    (!blurTranslations || reverseLyrics || seenAllTranslations || seenTranslationLines.has(selectedLineIndex));
 
   const revealSelectedTranslation = () => {
     if (selectedLineIndex === null || !blurTranslations) return;
@@ -1022,6 +1030,9 @@ export default function LearnScreen() {
       highlightLineIndex={selectedLineIndex}
       highlightDefinitions={selectedDefinitions}
       showSections={showSections}
+      reverse={reverseLyrics && showTranslations && !lyricQuiz}
+      revealedOriginals={revealedOriginals}
+      onRevealOriginal={(lineIndex) => setRevealedOriginals((prev) => new Set(prev).add(lineIndex))}
     />
   );
 
@@ -1082,6 +1093,8 @@ export default function LearnScreen() {
           onCopySections={() => Clipboard.setStringAsync(formatSongSections(song.originalLyrics.split('\n')))}
           blurTranslations={blurTranslations}
           onToggleBlur={toggleBlurTranslations}
+          reverseLyrics={reverseLyrics}
+          onToggleReverseLyrics={toggleReverseLyrics}
           showMasteryLevelColors={showMasteryLevelColors}
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
           previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}

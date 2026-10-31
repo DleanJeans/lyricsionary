@@ -22,6 +22,8 @@ interface LearnSettingsMenuProps {
   onShowEmojiChange: (show: boolean) => void;
   blurTranslations: boolean;
   onToggleBlur: () => void;
+  reverseLyrics: boolean;
+  onToggleReverseLyrics: () => void;
   showMasteryLevelColors: boolean;
   onToggleShowMasteryLevelColors: () => void;
   showSections: boolean;
@@ -128,6 +130,8 @@ export default function LearnSettingsMenu({
   onShowEmojiChange,
   blurTranslations,
   onToggleBlur,
+  reverseLyrics,
+  onToggleReverseLyrics,
   showMasteryLevelColors,
   onToggleShowMasteryLevelColors,
   showSections,
@@ -184,6 +188,7 @@ export default function LearnSettingsMenu({
                   selectedLanguages={selectedLanguages}
                   blurTranslations={blurTranslations}
                   unblurredTranslations={NO_UNBLURRED}
+                  reverse={reverseLyrics && showTranslations}
                   renderPressableText={renderPressableText}
                   onTranslationPress={() => {}}
                 />
@@ -247,6 +252,13 @@ export default function LearnSettingsMenu({
                 icon={<Ionicons name="albums-outline" size={18} color={chipIconColor(showSections)} />}
                 selected={showSections}
                 onPress={onToggleShowSections}
+              />
+              {/* Translations show and the lyrics blur, to recall each line from its meaning */}
+              <Chip
+                label="Reverse"
+                icon={<Ionicons name="swap-vertical-outline" size={18} color={chipIconColor(reverseLyrics)} />}
+                selected={reverseLyrics}
+                onPress={onToggleReverseLyrics}
               />
               {/* Debug: copy the detected sections to check them */}
               <TouchableOpacity

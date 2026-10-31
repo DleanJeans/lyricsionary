@@ -19,6 +19,7 @@ describe('Learn settings', () => {
     store.toggleBlurTranslations();
     store.setShowIpa(false);
     store.toggleShowSections();
+    store.toggleReverseLyrics();
     await flush();
 
     expect(JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}')).toEqual({
@@ -29,11 +30,12 @@ describe('Learn settings', () => {
       showIpaBrackets: true,
       showEmoji: true,
       showSections: false,
+      reverseLyrics: true,
     });
 
-    useStore.setState({ fontSize: 18, blurTranslations: true, showIpa: true, showSections: true });
+    useStore.setState({ fontSize: 18, blurTranslations: true, showIpa: true, showSections: true, reverseLyrics: false });
     await useStore.getState().loadLearnSettings();
-    expect(useStore.getState()).toMatchObject({ fontSize: 22, blurTranslations: false, showIpa: false, showSections: false });
+    expect(useStore.getState()).toMatchObject({ fontSize: 22, blurTranslations: false, showIpa: false, showSections: false, reverseLyrics: true });
   });
 
   it('keeps defaults for missing or malformed values', async () => {

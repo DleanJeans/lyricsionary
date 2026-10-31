@@ -31,6 +31,10 @@ interface LearnLyricsViewProps {
   highlightDefinitions?: string[][];
   // Box and label the song's sections, like the verses and chorus
   showSections?: boolean;
+  /** Translations show and each original line is blurred until tapped, to recall it from the meaning */
+  reverse?: boolean;
+  revealedOriginals?: Set<number>;
+  onRevealOriginal?: (lineIndex: number) => void;
 }
 
 function TranslationLine({
@@ -97,6 +101,9 @@ export function LearnLyricsLine({
   onTranslationPress,
   highlightLineIndex,
   highlightDefinitions,
+  reverse = false,
+  revealedOriginals,
+  onRevealOriginal,
 }: LearnLyricsViewProps & {
   line: LearnLine;
   lineIndex: number;
@@ -107,10 +114,27 @@ export function LearnLyricsLine({
   // The romanized line reads the original out, so it sits right under it and is never blurred
   const romanized = shown.find((translation) => isRomanized(translation.language))?.text ||
     (showTranslations ? line.romanized : undefined);
+  // Reversed, a line with a translation to go from is hidden until tapped, its romanization with it
+  const hidden = reverse && !!line.original.trim() && !revealedOriginals?.has(lineIndex) &&
+    shown.some((translation) => !isRomanized(translation.language) && translation.text.trim());
   return (
     <View style={styles.lineBlock}>
-      {renderPressableText(line.original, lineIndex)}
-      {!!romanized && (
+      {hidden ? (
+        <TouchableOpacity
+          onPress={() => onRevealOriginal?.(lineIndex)}
+          activeOpacity={0.7}
+          style={[styles.translationContainer, styles.blurredContainer]}
+          accessibilityRole="button"
+          accessibilityLabel="Show the original line"
+        >
+          <View pointerEvents="none" style={styles.blurredText}>
+            {renderPressableText(line.original, lineIndex)}
+          </View>
+        </TouchableOpacity>
+      ) : (
+        renderPressableText(line.original, lineIndex)
+      )}
+      {!!romanized && !hidden && (
         <Text style={[styles.romanizedLine, { fontSize: fontSize - 2 }]}>{romanized}</Text>
       )}
       {shown
@@ -122,7 +146,7 @@ export function LearnLyricsLine({
               key={translationIndex}
               text={translation.text}
               fontSize={fontSize}
-              isBlurred={blurTranslations && !unblurredTranslations.has(translationKey)}
+              isBlurred={!reverse && blurTranslations && !unblurredTranslations.has(translationKey)}
               onPress={() => onTranslationPress(lineIndex, translationIndex)}
               highlightDefinitions={lineIndex === highlightLineIndex ? highlightDefinitions : undefined}
             />

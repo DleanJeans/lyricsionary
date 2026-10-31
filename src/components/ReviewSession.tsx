@@ -138,7 +138,7 @@ function ReviewQuestion({
         </Text>
       )}
       {showLine && songName ? <Text style={styles.songName}>{songName}</Text> : null}
-      {listen && !answered && <PronunciationAudio audio={entry.audio ?? []} />}
+      {listen && !answered && <PronunciationAudio audio={entry.audio ?? []} autoPlay />}
       {showHint ? <Text style={styles.hint}>{hint}</Text> : null}
       <WordQuiz
         entry={entry}

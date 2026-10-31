@@ -29,9 +29,17 @@ const PLAYER_HTML = `<!DOCTYPE html><html><body><script>
 
 const AudioPlayer = forwardRef<AudioPlayerHandle, Props>(({ onFinished }, ref) => {
   const webViewRef = useRef<WebView>(null);
+  // A play asked for before the page has loaded, e.g. autoplay as the player first shows
+  const loadedRef = useRef(false);
+  const pendingRef = useRef<string | null>(null);
+  const inject = (url: string) =>
+    webViewRef.current?.injectJavaScript(`window.playAudio && window.playAudio(${JSON.stringify(url)}); true;`);
 
   useImperativeHandle(ref, () => ({
-    play: (url) => webViewRef.current?.injectJavaScript(`window.playAudio && window.playAudio(${JSON.stringify(url)}); true;`),
+    play: (url) => {
+      if (loadedRef.current) inject(url);
+      else pendingRef.current = url;
+    },
   }));
 
   return (
@@ -42,6 +50,11 @@ const AudioPlayer = forwardRef<AudioPlayerHandle, Props>(({ onFinished }, ref) =
       javaScriptEnabled
       mediaPlaybackRequiresUserAction={false}
       onMessage={(event) => onFinished(event.nativeEvent.data)}
+      onLoadEnd={() => {
+        loadedRef.current = true;
+        if (pendingRef.current) inject(pendingRef.current);
+        pendingRef.current = null;
+      }}
     />
   );
 });

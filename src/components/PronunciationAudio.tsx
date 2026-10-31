@@ -10,14 +10,23 @@ interface Props {
   audio: WiktionaryAudio[];
   /** Small pills that sit inline, e.g. next to the IPA */
   compact?: boolean;
+  /** Plays the first recording when it shows, e.g. for a listening quiz */
+  autoPlay?: boolean;
 }
 
 /** Buttons that play the word's Wiktionary pronunciation recordings, labeled by accent */
-export default function PronunciationAudio({ audio, compact = false }: Props) {
+export default function PronunciationAudio({ audio, compact = false, autoPlay = false }: Props) {
   const playerRef = useRef<AudioPlayerHandle>(null);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
 
   useEffect(() => setPlayingUrl(null), [audio]);
+
+  // Once per recording list shown
+  useEffect(() => {
+    if (!autoPlay || !audio[0]) return;
+    setPlayingUrl(audio[0].url);
+    playerRef.current?.play(audio[0].url);
+  }, [autoPlay, audio]);
 
   if (audio.length === 0) return null;
 

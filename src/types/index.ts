@@ -59,6 +59,18 @@ export function toMasteryLevel(level?: string): MasteryLevel {
   }
 }
 
+/** Something that happened to a saved word: a quiz answer, or its level set by hand or when saved */
+export interface WordEvent {
+  at: number;
+  /** A quiz answer: which quiz and whether it was right */
+  kind?: 'meaning' | 'lyric';
+  correct?: boolean;
+  /** The level the word went to, when this changed it */
+  level?: MasteryLevel;
+  /** The word was saved, at `level` */
+  saved?: boolean;
+}
+
 export interface WordEntry {
   id: string;
   word: string;
@@ -72,6 +84,8 @@ export interface WordEntry {
   /** Word quiz answers, which move the word up a level */
   quiz?: QuizStats;
   emoji?: string;
+  /** Quiz answers and level changes, oldest first */
+  history?: WordEvent[];
   /** Other spellings merged into this word, e.g. veux and voulez for vouloir */
   forms?: string[];
   /** The user's own note, e.g. a mnemonic or a grammar tip */

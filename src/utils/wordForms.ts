@@ -1,5 +1,6 @@
 import { MASTERY_LEVELS, type WordContext, type WordEntry } from '../types';
 import type { QuizStats } from './wordQuiz';
+import { mergeHistories } from './wordHistory';
 import { isSameLanguage } from '../constants/languages';
 
 /** How a saved word is written: as saved, then the forms merged into it, e.g. vouloir, veux, voulez */
@@ -74,6 +75,7 @@ export function mergeWordEntries(keep: WordEntry, from: WordEntry): WordEntry {
     audio: keep.audio?.length ? keep.audio : from.audio ?? keep.audio,
     masteryLevel: ahead.masteryLevel ?? 'Seen',
     quiz: mergeQuiz(ahead.quiz, behind.quiz),
+    history: mergeHistories(keep.history, from.history),
     savedAt: keep.savedAt !== undefined && from.savedAt !== undefined ? Math.min(keep.savedAt, from.savedAt) : keep.savedAt ?? from.savedAt,
     lastLookedUp: Math.max(keep.lastLookedUp, from.lastLookedUp),
   };

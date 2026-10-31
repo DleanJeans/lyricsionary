@@ -7,6 +7,7 @@ import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
 import { ActivityLog, addActivity, DayActivity } from '../utils/activity';
 import { findSavedWord, mergeWordEntries } from '../utils/wordForms';
+import { addWordEvent, levelChangeEvent } from '../utils/wordHistory';
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
@@ -389,6 +390,7 @@ export const useStore = create<AppState>((set, get) => ({
   addOrUpdateWord: async (word, language, pronunciation, contexts, masteryLevel, audio) => {
     const existing = findSavedWord(get().words, word, language);
     let words: WordEntry[];
+    const levelChange = existing ? levelChangeEvent(existing.masteryLevel, masteryLevel, Date.now()) : null;
     if (existing) {
       words = get().words.map((w) =>
         w.id === existing.id
@@ -402,6 +404,7 @@ export const useStore = create<AppState>((set, get) => ({
                 ? contexts.filter(c => c.context || c.emoji || c.ipa || c.definition)
                 : w.contexts,
               masteryLevel: masteryLevel !== undefined ? masteryLevel : w.masteryLevel,
+              history: levelChange ? addWordEvent(w.history, levelChange) : w.history,
               audio: audio ?? w.audio,
             }
           : w
@@ -416,6 +419,7 @@ export const useStore = create<AppState>((set, get) => ({
         lastLookedUp: Date.now(),
         savedAt: Date.now(),
         masteryLevel: masteryLevel || 'Seen',
+        history: [{ at: Date.now(), level: masteryLevel || 'Seen', saved: true }],
         audio,
       };
       words = [...get().words, entry];
@@ -441,8 +445,11 @@ export const useStore = create<AppState>((set, get) => ({
   recordQuizAnswer: async (id, kind, correct) => {
     const before = get().words.find((w) => w.id === id);
     if (!before) return undefined;
-    const after = recordAnswer(before.masteryLevel, before.quiz, kind, correct, Date.now());
-    await get().updateWordEntry(id, after);
+    const now = Date.now();
+    const after = recordAnswer(before.masteryLevel, before.quiz, kind, correct, now);
+    const changed = after.masteryLevel !== (before.masteryLevel ?? 'Seen');
+    const history = addWordEvent(before.history, { at: now, kind, correct, ...(changed ? { level: after.masteryLevel } : {}) });
+    await get().updateWordEntry(id, { ...after, history });
     const levelUp = MASTERY_LEVELS.indexOf(after.masteryLevel) > MASTERY_LEVELS.indexOf(before.masteryLevel ?? 'Seen');
     await get().recordActivity(levelUp ? { answers: 1, levelUps: 1 } : { answers: 1 });
     return before;

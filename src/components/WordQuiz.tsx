@@ -70,7 +70,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const undo = () => {
     if (!before) return;
     setUndone(true);
-    void updateWordEntry(entry.id, { masteryLevel: before.masteryLevel, quiz: before.quiz });
+    void updateWordEntry(entry.id, { masteryLevel: before.masteryLevel, quiz: before.quiz, history: before.history });
     // Undo is only offered for a level up
     void recordActivity({ levelUps: -1 });
   };

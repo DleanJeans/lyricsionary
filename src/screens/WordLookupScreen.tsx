@@ -37,6 +37,7 @@ import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import { getScrapeGoogleIpaJS } from '../utils/scrapeGoogleIpaJS';
 import { findSavedWord } from '../utils/wordForms';
 import MergeForms from '../components/MergeForms';
+import AnswerHistory from '../components/AnswerHistory';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
@@ -668,6 +669,13 @@ export default function WordLookupScreen() {
                   void mergeWords(existingWord.id, from.id);
                 }}
               />
+            </View>
+          )}
+
+          {existingWord?.history && existingWord.history.length > 0 && (
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>History</Text>
+              <AnswerHistory history={existingWord.history} />
             </View>
           )}
 

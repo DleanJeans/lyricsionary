@@ -190,6 +190,13 @@ export default function WordCard({
                 />
               ) : null}
             </View>
+            {!!item.forms?.length && (
+              <View style={styles.formsChip} accessibilityLabel={`Also ${item.forms.join(', ')}`}>
+                <Text style={styles.formsChipText}>
+                  +{item.forms.length} {item.forms.length === 1 ? 'form' : 'forms'}
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </TouchableOpacity>
@@ -263,6 +270,16 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+  },
+  formsChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: Colors.surfaceLight,
+  },
+  formsChipText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
   },
   cardWordText: {
     fontSize: 18,

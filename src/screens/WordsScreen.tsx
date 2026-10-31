@@ -203,6 +203,7 @@ export default function WordsScreen() {
           w.language,
           w.pronunciation,
           w.note,
+          ...(w.forms ?? []),
           ...(w.definitions ?? []).map((d) => d.text),
           ...(w.contexts ?? []).map((c) => c.definition),
         ].some((text) => matchesSearch(text, searchQuery)),

@@ -8,6 +8,7 @@ import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { useStore } from '../store/useStore';
 import { WordEntry } from '../types';
+import AlsoInSongs from './AlsoInSongs';
 import MasteryLevelBadge from './MasteryLevelBadge';
 import MasteryLevelSelector from './MasteryLevelSelector';
 import HighlightedText from './HighlightedText';
@@ -168,6 +169,7 @@ export default function WordCard({
               </View>
             )}
             {quiz}
+            <AlsoInSongs item={item} songId={songId} />
           </>
         ) : (
           <View style={styles.cardRow}>

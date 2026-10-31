@@ -291,6 +291,21 @@ export default function LearnScreen() {
   const progressSongs = useMemo(() => (song ? [song] : []), [song]);
   const wordProgress = useWordProgress(progressSongs).get(song?.id ?? '');
 
+  // Opened at a word, e.g. from another song's word card: select it on its line and scroll there
+  const [scrollToLine, setScrollToLine] = useState<{ index: number; key: number } | null>(null);
+  const focus = route.params?.focus;
+  useEffect(() => {
+    if (!focus || isRendering) return;
+    const lineIndex = lines.findIndex((line) => line.original === focus.line);
+    if (lineIndex === -1) return;
+    setSelectedWord(focus.word);
+    setSelectedLine(focus.line);
+    setSelectedLineIndex(lineIndex);
+    setSelectedOccurrence(focus.occurrence ?? 1);
+    setScrollToLine({ index: lineIndex, key: Date.now() });
+    navigation.setParams({ focus: undefined });
+  }, [focus, isRendering, lines, navigation]);
+
   // Turn off loading state once lines are computed
   useEffect(() => {
     if (song && computedLines.length > 0) {
@@ -1033,6 +1048,7 @@ export default function LearnScreen() {
       reverse={reverseLyrics && showTranslations && !lyricQuiz}
       revealedOriginals={revealedOriginals}
       onRevealOriginal={(lineIndex) => setRevealedOriginals((prev) => new Set(prev).add(lineIndex))}
+      scrollToLine={scrollToLine}
     />
   );
 

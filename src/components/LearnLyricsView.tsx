@@ -1,4 +1,4 @@
-import React, { useMemo, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { isRomanized } from '../constants/languages';
 import { Colors } from '../constants/theme';
@@ -35,6 +35,8 @@ interface LearnLyricsViewProps {
   reverse?: boolean;
   revealedOriginals?: Set<number>;
   onRevealOriginal?: (lineIndex: number) => void;
+  /** Scrolls the line into view each time key changes */
+  scrollToLine?: { index: number; key: number } | null;
 }
 
 function TranslationLine({
@@ -179,7 +181,22 @@ function SectionBox({ section, children }: { section: SongSection; children: Rea
 }
 
 export default function LearnLyricsView(props: LearnLyricsViewProps) {
-  const { lines, showSections } = props;
+  const { lines, showSections, scrollToLine } = props;
+  const scrollRef = useRef<ScrollView>(null);
+  const contentRef = useRef<View>(null);
+  const lineRefs = useRef(new Map<number, View>());
+
+  useEffect(() => {
+    if (!scrollToLine) return;
+    // After the lines have laid out
+    const timer = setTimeout(() => {
+      const line = lineRefs.current.get(scrollToLine.index);
+      if (!line || !contentRef.current) return;
+      line.measureLayout(contentRef.current, (_x, y) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: true }));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [scrollToLine]);
+
   const originals = lines.map((line) => line.original).join('\n');
   const sections = useMemo(
     () => (showSections ? detectSongSections(originals.split('\n')) : []),
@@ -187,12 +204,16 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
   );
 
   const renderLine = (lineIndex: number) => (
-    <LearnLyricsLine
+    <View
       key={lineIndex}
-      {...props}
-      line={lines[lineIndex]}
-      lineIndex={lineIndex}
-    />
+      collapsable={false}
+      ref={(view) => {
+        if (view) lineRefs.current.set(lineIndex, view);
+        else lineRefs.current.delete(lineIndex);
+      }}
+    >
+      <LearnLyricsLine {...props} line={lines[lineIndex]} lineIndex={lineIndex} />
+    </View>
   );
 
   // Lines inside a section go in its box, the blank lines between sections stay outside
@@ -213,10 +234,13 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.lyricsScroll}
       contentContainerStyle={styles.lyricsContent}
     >
-      {content}
+      <View ref={contentRef} collapsable={false}>
+        {content}
+      </View>
     </ScrollView>
   );
 }

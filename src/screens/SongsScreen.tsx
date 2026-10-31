@@ -27,6 +27,7 @@ import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useWordProgress } from '../hooks/useWordProgress';
 import SongLevelBar from '../components/SongLevelBar';
+import SpotifyNowPlaying from '../components/SpotifyNowPlaying';
 import { countKnownWords } from '../utils/wordFrequency';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 
@@ -428,6 +429,11 @@ export default function SongsScreen() {
           />
         </View>
       )}
+
+      <SpotifyNowPlaying
+        onOpen={(song) => handlePressSong(song)}
+        onFetch={(songName, artistName) => navigation.navigate('Editor', { autoFetchSong: { songName, artistName } })}
+      />
 
       <View style={styles.sortRow}>{sortChip}</View>
 

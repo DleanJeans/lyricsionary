@@ -44,6 +44,7 @@ import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitE
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
+import LineNote from '../components/LineNote';
 import Dictation from '../components/Dictation';
 
 const PREVIEW_MAX_WORDS = 8;
@@ -1187,7 +1188,7 @@ export default function LearnScreen() {
     />
   ) : null;
 
-  const wordPanel = dictationPanel ?? gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry) ? (
+  const wordPanel = dictationPanel ?? gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry || selectedLine?.trim()) ? (
     <View>
       {wordSpots.length > 1 && (
         <WordSpotStepper
@@ -1197,6 +1198,7 @@ export default function LearnScreen() {
         />
       )}
       {selectedWordEntry && <LemmaMergeHint entry={selectedWordEntry} />}
+      {!!selectedLine?.trim() && <LineNote key={selectedLine} song={song} line={selectedLine} />}
       {wordCardPanel}
     </View>
   ) : wordCardPanel);
@@ -1254,6 +1256,7 @@ export default function LearnScreen() {
         foundLineIndex={foundLine}
         onlyLines={trickyLinesOnly ? trickyLines : null}
         scrollKey={song.id}
+        lineNotes={song.lineNotes}
       />
       {copiedLine && (
         <View style={styles.toastStack} pointerEvents="box-none">

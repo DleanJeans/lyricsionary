@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { isRomanized } from '../constants/languages';
@@ -5,6 +6,7 @@ import { Colors } from '../constants/theme';
 import { Text } from './Text';
 import { findDefinitionHighlights } from '../utils/definitionHighlight';
 import { detectSongSections, type SectionKind, type SongSection } from '../utils/songSections';
+import { getLineNote } from '../utils/lineNotes';
 import { getScrollPosition, setScrollPosition } from '../services/scrollPositions';
 
 export interface LearnLine {
@@ -46,6 +48,8 @@ interface LearnLyricsViewProps {
   foundLineIndex?: number | null;
   /** The line Spotify is playing */
   playingLineIndex?: number | null;
+  /** Notes on lines, by line text (Song.lineNotes) */
+  lineNotes?: Record<string, string>;
   /** Remembers the scroll position under this key, e.g. the song's id, and goes back to it */
   scrollKey?: string;
 }
@@ -118,6 +122,7 @@ export function LearnLyricsLine({
   revealedOriginals,
   onRevealOriginal,
   dictationLineIndex,
+  lineNotes,
 }: LearnLyricsViewProps & {
   line: LearnLine;
   lineIndex: number;
@@ -132,6 +137,7 @@ export function LearnLyricsLine({
   const hidden = (reverse && !!line.original.trim() && !revealedOriginals?.has(lineIndex) &&
     shown.some((translation) => !isRomanized(translation.language) && translation.text.trim())) ||
     lineIndex === dictationLineIndex;
+  const note = getLineNote(lineNotes, line.original);
   return (
     <View style={styles.lineBlock}>
       {hidden ? (
@@ -166,6 +172,12 @@ export function LearnLyricsLine({
             />
           );
         })}
+      {!!note && !hidden && (
+        <View style={styles.noteRow}>
+          <Ionicons name="chatbox-ellipses-outline" size={12} color={Colors.primaryLight} style={styles.noteIcon} />
+          <Text style={[styles.noteText, { fontSize: Math.max(12, fontSize - 4) }]}>{note}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -304,6 +316,17 @@ const styles = StyleSheet.create({
   },
   lineBlock: {
     marginBottom: 6,
+  },
+  noteRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 2,
+  },
+  noteIcon: { marginTop: 3 },
+  noteText: {
+    flex: 1,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
   },
   sectionBox: {
     borderWidth: 1,

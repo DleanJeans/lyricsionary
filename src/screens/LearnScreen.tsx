@@ -36,6 +36,8 @@ import { romanizeLine } from '../utils/romanize';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { lineWords } from '../utils/reviewQuiz';
 import LineDrill from '../components/LineDrill';
+import SpotifyBar from '../components/SpotifyBar';
+import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
@@ -298,6 +300,15 @@ export default function LearnScreen() {
 
   // Opened at a word, e.g. from another song's word card: select it on its line and scroll there
   const [scrollToLine, setScrollToLine] = useState<{ index: number; key: number } | null>(null);
+
+  // Spotify: follows the song while it plays, highlighting and scrolling to its line, and seeks by line
+  const spotifyConnected = useStore((s) => s.spotifyConnected);
+  const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
+  const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
+  const [followSpotify, setFollowSpotify] = useState(true);
+  useEffect(() => {
+    if (followSpotify && spotify.currentLine !== null) setScrollToLine({ index: spotify.currentLine, key: Date.now() });
+  }, [followSpotify, spotify.currentLine]);
   const focus = route.params?.focus;
   useEffect(() => {
     if (!focus || isRendering) return;
@@ -1054,23 +1065,34 @@ export default function LearnScreen() {
   );
 
   const lyricsView = (
-    <LearnLyricsView
-      lines={lines}
-      fontSize={fontSize}
-      showTranslations={showTranslations}
-      selectedLanguages={localSelectedLanguages}
-      blurTranslations={blurTranslations}
-      unblurredTranslations={unblurredTranslations}
-      renderPressableText={renderPressableText}
-      onTranslationPress={handleTranslationPress}
-      highlightLineIndex={selectedLineIndex}
-      highlightDefinitions={selectedDefinitions}
-      showSections={showSections}
-      reverse={reverseLyrics && showTranslations && !lyricQuiz}
-      revealedOriginals={revealedOriginals}
-      onRevealOriginal={(lineIndex) => setRevealedOriginals((prev) => new Set(prev).add(lineIndex))}
-      scrollToLine={scrollToLine}
-    />
+    <>
+      {spotifyConnected && (
+        <SpotifyBar
+          sync={spotify}
+          selectedLineIndex={selectedLineIndex}
+          follow={followSpotify}
+          onToggleFollow={() => setFollowSpotify((f) => !f)}
+        />
+      )}
+      <LearnLyricsView
+        lines={lines}
+        fontSize={fontSize}
+        showTranslations={showTranslations}
+        selectedLanguages={localSelectedLanguages}
+        blurTranslations={blurTranslations}
+        unblurredTranslations={unblurredTranslations}
+        renderPressableText={renderPressableText}
+        onTranslationPress={handleTranslationPress}
+        highlightLineIndex={selectedLineIndex}
+        highlightDefinitions={selectedDefinitions}
+        showSections={showSections}
+        reverse={reverseLyrics && showTranslations && !lyricQuiz}
+        revealedOriginals={revealedOriginals}
+        onRevealOriginal={(lineIndex) => setRevealedOriginals((prev) => new Set(prev).add(lineIndex))}
+        scrollToLine={scrollToLine}
+        playingLineIndex={spotify.currentLine}
+      />
+    </>
   );
 
   return (

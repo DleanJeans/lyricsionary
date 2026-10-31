@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Linking, Platform } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,6 +13,7 @@ import { useStore } from './src/store/useStore';
 import { NowPlayingRequest, setupNowPlayingNotifications, useNowPlayingResponse } from './src/services/nowPlayingNotification';
 import { findSavedSong } from './src/utils/nowPlaying';
 import { useReviewReminderResponse, useReviewReminderSchedule } from './src/services/reviewReminder';
+import { completeSpotifySignIn, isSpotifyCallback, isSpotifyConnected } from './src/services/spotify';
 import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 
 // Keep the splash screen visible while we fetch resources
@@ -19,6 +21,8 @@ SplashScreen.preventAutoHideAsync();
 
 const linking = {
   prefixes: ['lyricsionary://', 'lyricsionary-dev://', 'exp+lyricsionary://'],
+  // Spotify's sign-in comes back to its own handler, not a screen
+  filter: (url: string) => !isSpotifyCallback(url),
   config: {
     screens: {
       Editor: 'editor/:songId?',
@@ -111,6 +115,25 @@ export default function App() {
       }
     })();
   }, [navigationReady, nowPlayingRequest]);
+
+  // Finishes Spotify sign-in when its page sends the app back, and knows whether it's signed in
+  useEffect(() => {
+    const { setSpotifyConnected } = useStore.getState();
+    void isSpotifyConnected().then(setSpotifyConnected);
+    const handle = async (url: string | null) => {
+      if (!url || !isSpotifyCallback(url)) return;
+      try {
+        if (await completeSpotifySignIn(url)) setSpotifyConnected(true);
+      } catch (error) {
+        console.error('Spotify sign-in failed:', error);
+      }
+      // On web the sign-in lands on its own path; go back to the app's start
+      if (Platform.OS === 'web') window.history.replaceState(null, '', '/');
+    };
+    void Linking.getInitialURL().then(handle);
+    const subscription = Linking.addEventListener('url', ({ url }) => void handle(url));
+    return () => subscription.remove();
+  }, []);
 
   // The review reminder opens Words, where the Review button is
   useEffect(() => {

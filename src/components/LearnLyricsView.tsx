@@ -37,6 +37,8 @@ interface LearnLyricsViewProps {
   onRevealOriginal?: (lineIndex: number) => void;
   /** Scrolls the line into view each time key changes */
   scrollToLine?: { index: number; key: number } | null;
+  /** The line Spotify is playing */
+  playingLineIndex?: number | null;
 }
 
 function TranslationLine({
@@ -206,6 +208,7 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     <View
       key={lineIndex}
       collapsable={false}
+      style={lineIndex === props.playingLineIndex ? styles.playingLine : undefined}
       ref={(view) => {
         if (view) lineRefs.current.set(lineIndex, view);
         else lineRefs.current.delete(lineIndex);
@@ -252,6 +255,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     paddingBottom: 40,
+  },
+  playingLine: {
+    marginHorizontal: -6,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(29, 185, 84, 0.12)',
   },
   lineBlock: {
     marginBottom: 6,

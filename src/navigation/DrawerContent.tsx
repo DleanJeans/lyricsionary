@@ -8,6 +8,7 @@ import { Colors } from '../constants/theme';
 import VersionInfo from '../components/VersionInfo';
 import DataTransfer from '../components/DataTransfer';
 import ProgressStats from '../components/ProgressStats';
+import SpotifyConnect from '../components/SpotifyConnect';
 import Constants from 'expo-constants';
 
 export default function DrawerContent(props: DrawerContentComponentProps) {
@@ -24,6 +25,10 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
         <View style={styles.divider} />
 
         <ProgressStats />
+
+        <View style={styles.divider} />
+
+        <SpotifyConnect />
 
         <View style={styles.divider} />
 

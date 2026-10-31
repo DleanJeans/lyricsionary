@@ -5,6 +5,9 @@ const KEY_PREFIX = '@lyricsionary_';
 const DEVICE_ONLY_KEYS = [
   '@lyricsionary_last_media',
   '@lyricsionary_last_notified_media',
+  // A Spotify sign-in is for this install, and its tokens shouldn't travel in a backup file
+  '@lyricsionary_spotify_auth',
+  '@lyricsionary_spotify_pending',
 ];
 const FORMAT = 'lyricsionary-backup';
 const VERSION = 1;

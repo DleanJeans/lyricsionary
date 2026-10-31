@@ -141,6 +141,9 @@ interface AppState {
   /** A 7 PM notification when words are due */
   reviewReminder: boolean;
   setReviewReminder: (on: boolean) => Promise<void>;
+  /** Signed in to Spotify, for seeking it by lyric line in Learn */
+  spotifyConnected: boolean;
+  setSpotifyConnected: (connected: boolean) => void;
 
   // Ignore list actions
   loadIgnoredWords: () => Promise<void>;
@@ -452,6 +455,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   reviewReminder: false,
+
+  spotifyConnected: false,
+  setSpotifyConnected: (connected) => set({ spotifyConnected: connected }),
 
   setReviewReminder: async (on) => {
     set({ reviewReminder: on });

@@ -12,13 +12,15 @@ import { asciiBytes, base64Url, sha256 } from '../utils/sha256';
 const CLIENT_ID_KEY = '@lyricsionary_spotify_client_id';
 const AUTH_KEY = '@lyricsionary_spotify_auth';
 const PENDING_KEY = '@lyricsionary_spotify_pending';
-const SCOPE = 'user-read-playback-state user-modify-playback-state';
+const SCOPE = 'user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
 const API = 'https://api.spotify.com/v1';
 
 interface SpotifyAuth {
   accessToken: string;
   refreshToken?: string;
   expiresAt: number;
+  /** What the sign-in allowed; private playlists need a sign-in from after they were added */
+  scope?: string;
 }
 
 export interface SpotifyPlayback {
@@ -88,7 +90,7 @@ export async function startSpotifySignIn(): Promise<void> {
 
 const queryOf = (url: string) => new URLSearchParams(url.includes('?') ? url.slice(url.indexOf('?') + 1).split('#')[0] : '');
 
-async function saveTokens(response: Response, refreshToken?: string): Promise<SpotifyAuth> {
+async function saveTokens(response: Response, refreshToken?: string, previousScope?: string): Promise<SpotifyAuth> {
   if (!response.ok) throw new SpotifyError('failed', `Spotify sign-in failed (${response.status}).`);
   const body = await response.json();
   const auth: SpotifyAuth = {
@@ -96,6 +98,7 @@ async function saveTokens(response: Response, refreshToken?: string): Promise<Sp
     refreshToken: body.refresh_token ?? refreshToken,
     // A minute early, so a token doesn't run out mid-request
     expiresAt: Date.now() + (body.expires_in - 60) * 1000,
+    scope: body.scope ?? previousScope,
   };
   await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(auth));
   return auth;
@@ -141,7 +144,7 @@ async function accessToken(): Promise<string> {
     await signOutOfSpotify();
     throw new SpotifyError('signed-out', 'Connect Spotify again in the sidebar.');
   }
-  return (await saveTokens(response, auth.refreshToken)).accessToken;
+  return (await saveTokens(response, auth.refreshToken, auth.scope)).accessToken;
 }
 
 async function api(path: string, init: RequestInit = {}): Promise<Response> {
@@ -195,6 +198,53 @@ export async function playSongOnSpotify(songName: string, artistName: string, po
   const uri = (await search.json())?.tracks?.items?.[0]?.uri;
   if (!uri) throw new SpotifyError('not-found', `Couldn't find ${songName} on Spotify.`);
   await api('/me/player/play', { method: 'PUT', body: JSON.stringify({ uris: [uri], position_ms: Math.round(positionMs) }) });
+}
+
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  trackCount: number;
+}
+
+export interface SpotifyTrack {
+  name: string;
+  /** Every artist, joined with ", " like the playback */
+  artists: string;
+}
+
+/** Whether the sign-in can read private playlists; a sign-in from before they were added can't */
+export async function canReadPrivatePlaylists(): Promise<boolean> {
+  const auth: SpotifyAuth | null = JSON.parse((await AsyncStorage.getItem(AUTH_KEY)) ?? 'null');
+  return !!auth?.scope?.includes('playlist-read-private');
+}
+
+/** The user's playlists, their own and followed ones */
+export async function getSpotifyPlaylists(): Promise<SpotifyPlaylist[]> {
+  const playlists: SpotifyPlaylist[] = [];
+  let path: string | null = '/me/playlists?limit=50';
+  while (path && playlists.length < 200) {
+    const body: any = await (await api(path)).json();
+    for (const item of body?.items ?? []) {
+      if (item?.id) playlists.push({ id: item.id, name: item.name ?? '', trackCount: item.tracks?.total ?? 0 });
+    }
+    path = body?.next ? body.next.replace(API, '') : null;
+  }
+  return playlists;
+}
+
+/** A playlist's songs, up to 500 */
+export async function getSpotifyPlaylistTracks(id: string): Promise<SpotifyTrack[]> {
+  const tracks: SpotifyTrack[] = [];
+  let path: string | null = `/playlists/${id}/tracks?limit=100&fields=next,items(track(name,artists(name)))`;
+  while (path && tracks.length < 500) {
+    const body: any = await (await api(path)).json();
+    for (const item of body?.items ?? []) {
+      if (!item?.track?.name) continue;
+      tracks.push({ name: item.track.name, artists: (item.track.artists ?? []).map((a: { name: string }) => a.name).join(', ') });
+    }
+    path = body?.next ? body.next.replace(API, '') : null;
+  }
+  return tracks;
 }
 
 export const spotifyErrorMessage = (error: unknown) =>

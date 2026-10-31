@@ -28,6 +28,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { useWordProgress } from '../hooks/useWordProgress';
 import SongLevelBar from '../components/SongLevelBar';
 import SpotifyNowPlaying from '../components/SpotifyNowPlaying';
+import SpotifyPlaylists from '../components/SpotifyPlaylists';
 import ReviewSession from '../components/ReviewSession';
 import { buildReviewItems, dueWords, type ReviewItem } from '../utils/reviewQuiz';
 import { countKnownWords } from '../utils/wordFrequency';
@@ -46,6 +47,8 @@ export default function SongsScreen() {
   const deleteSong = useStore((s) => s.deleteSong);
   const updateSong = useStore((s) => s.updateSong);
   const [showArchived, setShowArchived] = useState(false);
+  const spotifyConnected = useStore((s) => s.spotifyConnected);
+  const [showPlaylists, setShowPlaylists] = useState(false);
   const trackSongOpen = useStore((s) => s.trackSongOpen);
   const setMatchedSongs = useStore((s) => s.setMatchedSongs);
   const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
@@ -493,6 +496,17 @@ export default function SongsScreen() {
 
       <View style={styles.sortRow}>
         {sortChip}
+        {spotifyConnected && (
+          <TouchableOpacity
+            style={styles.sortChip}
+            onPress={() => setShowPlaylists(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Your Spotify playlists"
+          >
+            <Ionicons name="list" size={16} color="#1DB954" />
+            <Text style={styles.sortChipLabel}>Playlists</Text>
+          </TouchableOpacity>
+        )}
         {archivedCount > 0 && (
           <TouchableOpacity
             style={[styles.sortChip, showArchived && styles.sortChipActive]}
@@ -546,6 +560,14 @@ export default function SongsScreen() {
           columnWrapperStyle={isWide ? styles.row : undefined}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+        />
+      )}
+      {showPlaylists && (
+        <SpotifyPlaylists
+          onClose={() => setShowPlaylists(false)}
+          onOpen={(song) => handlePressSong(song)}
+          onFetch={(songName, artistName) => navigation.navigate('Editor', { autoFetchSong: { songName, artistName } })}
+          isWide={isWide}
         />
       )}
       {reviewing && <ReviewSession dueItems={reviewing} onClose={() => setReviewing(null)} isWide={isWide} />}

@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Platform, StyleSheet, Switch, View } from 'react-native';
+import { Platform, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { allowReviewReminders } from '../services/reviewReminder';
-import { dayStreak, weekTotals } from '../utils/activity';
+import { answersToday, DAILY_GOALS, dayStreak, nextDailyGoal, weekTotals } from '../utils/activity';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { REMINDER_HOUR } from '../utils/reviewReminder';
 import { Text } from './Text';
 
@@ -15,6 +16,35 @@ function Stat({ icon, color, value, label }: { icon: keyof typeof Ionicons.glyph
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.label}>{label}</Text>
     </View>
+  );
+}
+
+const isGoal = (value: unknown): value is number => typeof value === 'number' && DAILY_GOALS.includes(value);
+
+/** Today's quiz answers toward a goal of a few a day; tapping the goal changes it */
+function DailyGoal({ answers }: { answers: number }) {
+  const [goal, setGoal] = usePersistedState('@lyricsionary_daily_goal', 0, isGoal);
+  const done = goal > 0 && answers >= goal;
+  return (
+    <TouchableOpacity
+      style={styles.goal}
+      onPress={() => setGoal(nextDailyGoal(goal))}
+      accessibilityRole="button"
+      accessibilityLabel={goal ? `Daily goal: ${answers} of ${goal} answers. Tap to change it` : 'Set a daily goal'}
+    >
+      <View style={styles.goalRow}>
+        <Ionicons name={done ? 'checkmark-circle' : 'flag-outline'} size={16} color={done ? Colors.success : Colors.textSecondary} />
+        <Text style={styles.goalText}>
+          {goal ? `${Math.min(answers, goal)} of ${goal} answers today` : 'Set a daily goal'}
+        </Text>
+        <Text style={styles.goalChange}>{goal ? 'Change' : 'Off'}</Text>
+      </View>
+      {goal > 0 && (
+        <View style={styles.goalTrack}>
+          <View style={[styles.goalFill, { width: `${Math.min(100, (answers / goal) * 100)}%` }, done && styles.goalFillDone]} />
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -41,6 +71,7 @@ export default function ProgressStats() {
         <Stat icon="bookmark" color={Colors.primaryLight} value={week.saved} label="words saved this week" />
         <Stat icon="trending-up" color={Colors.success} value={week.levelUps} label="level ups this week" />
       </View>
+      <DailyGoal answers={answersToday(activity, now)} />
       {week.answers > 0 && (
         <Text style={styles.caption}>
           {week.answers} quiz {week.answers === 1 ? 'answer' : 'answers'} in the last 7 days
@@ -104,6 +135,40 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: Colors.text,
+  },
+  goal: {
+    gap: 6,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surfaceLight,
+  },
+  goalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  goalText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.text,
+  },
+  goalChange: {
+    fontSize: 12,
+    color: Colors.primaryLight,
+  },
+  goalTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.border,
+    overflow: 'hidden',
+  },
+  goalFill: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+  goalFillDone: {
+    backgroundColor: Colors.success,
   },
   caption: {
     fontSize: 12,

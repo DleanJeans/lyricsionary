@@ -1,4 +1,4 @@
-import { addActivity, dayStreak, weekTotals } from '../src/utils/activity';
+import { addActivity, answersToday, dayStreak, nextDailyGoal, weekTotals } from '../src/utils/activity';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date(2026, 9, 31, 9).getTime();
@@ -32,5 +32,17 @@ describe('activity', () => {
     log = addActivity(log, { saved: 3 }, now - 6 * DAY);
     log = addActivity(log, { saved: 10 }, now - 7 * DAY);
     expect(weekTotals(log, now)).toEqual({ saved: 5, answers: 0, levelUps: 1, opened: 0 });
+  });
+});
+
+describe('daily goal', () => {
+  it('cycles through the goals and back to off', () => {
+    expect([0, 10, 20, 30, 50].map(nextDailyGoal)).toEqual([10, 20, 30, 50, 0]);
+  });
+  it("counts today's answers", () => {
+    const now = new Date(2026, 9, 31, 15).getTime();
+    const log = addActivity(addActivity({}, { answers: 3 }, now - 86400000), { answers: 4 }, now);
+    expect(answersToday(log, now)).toBe(4);
+    expect(answersToday({}, now)).toBe(0);
   });
 });

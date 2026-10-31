@@ -66,3 +66,11 @@ export function weekTotals(log: ActivityLog, now: number): Required<DayActivity>
   }
   return totals;
 }
+
+/** Quiz answers a day to aim for, picked by tapping the goal; 0 is no goal */
+export const DAILY_GOALS = [0, 10, 20, 30, 50];
+
+export const nextDailyGoal = (goal: number) => DAILY_GOALS[(DAILY_GOALS.indexOf(goal) + 1) % DAILY_GOALS.length];
+
+/** Today's quiz answers */
+export const answersToday = (log: ActivityLog, now: number) => log[localDay(now)]?.answers ?? 0;

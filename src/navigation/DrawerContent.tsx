@@ -9,6 +9,7 @@ import VersionInfo from '../components/VersionInfo';
 import DataTransfer from '../components/DataTransfer';
 import BackupNudge from '../components/BackupNudge';
 import ProgressStats from '../components/ProgressStats';
+import WordOfTheDay from '../components/WordOfTheDay';
 import SpotifyConnect from '../components/SpotifyConnect';
 import Constants from 'expo-constants';
 
@@ -27,6 +28,12 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
 
         <ProgressStats />
         <BackupNudge />
+        <WordOfTheDay
+          onOpen={(songId, focus) => {
+            props.navigation.closeDrawer();
+            props.navigation.navigate('Tabs', { screen: 'Learn', params: { songId, focus } });
+          }}
+        />
 
         <View style={styles.divider} />
 

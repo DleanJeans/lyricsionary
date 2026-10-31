@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { ActivityIndicator, I18nManager, StyleSheet, TouchableOpacity, View } from 'react-native';
 import AnimatedHeight from '../components/AnimatedHeight';
 import Toast from '../components/Toast';
@@ -22,20 +22,19 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
-import { isLyricWord, removeSpecialChars, splitEdgePunctuation } from '../utils/cleanLyrics';
+import { isLyricWord, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
 import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
+import { groupCjkTokens, isCjkWord } from '../utils/cjkWords';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 
 const PREVIEW_MAX_WORDS = 8;
-// One kanji, hiragana or katakana, as renderPressableText splits Japanese lyrics
-const JAPANESE_CHARACTER = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]$/u;
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -333,14 +332,32 @@ export default function LearnScreen() {
     }
   };
 
+  // The word the last tap saved as new, which a longer Chinese or Japanese word grown from it replaces
+  const autoSavedWordRef = useRef<string | null>(null);
+
   const handleWordPress = (word: string, line: string, lineIndex: number, occurrence: number) => {
     const cleaned = removeSpecialChars(word);
+    autoSavedWordRef.current = null;
     if (isLyricWord(cleaned)) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
       setSelectedLineIndex(lineIndex);
       setSelectedOccurrence(occurrence);
     }
+  };
+
+  // Selects the Chinese or Japanese word grown by one more character, e.g. 二 -> 二人, ending at `end` in the line
+  const growSelection = (word: string, line: string, lineIndex: number, end: number) => {
+    const autoSaved = autoSavedWordRef.current;
+    autoSavedWordRef.current = null;
+    if (autoSaved && autoSaved === selectedWord) {
+      const entry = findSavedEntry(autoSaved);
+      if (entry && entry.contexts.length <= 1) void deleteWord(entry.id);
+    }
+    setSelectedWord(word);
+    setSelectedLine(line);
+    setSelectedLineIndex(lineIndex);
+    setSelectedOccurrence(Math.max(1, line.slice(0, end).split(word).length - 1));
   };
 
   const handleTranslationPress = (lineIndex: number, translationIndex: number) => {
@@ -360,12 +377,21 @@ export default function LearnScreen() {
   };
 
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
-    // CJK scripts do not separate words with spaces. Keep whitespace and
-    // Latin words intact, but expose each CJK character as a selectable token.
-    const textWords = text.match(/\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}|[^\s]+|\s+/gu) ?? [];
+    // CJK scripts do not separate words with spaces, so each CJK character is a selectable token, joined
+    // back into a word when the characters are a saved word, or the word being selected, e.g. 二人
+    const isSelectedLine = lineIndex === selectedLineIndex;
+    const textWords = groupCjkTokens(
+      splitLyricTokens(text),
+      (candidate) => (isSelectedLine && candidate === selectedWord) || !!findSavedEntry(candidate)
+    );
     const occurrenceMap: Record<number, number> = {};
     const wordCountMap: Record<string, number> = {};
+    // Where each token ends in the line, so a grown selection knows which occurrence it is
+    const tokenEnds: number[] = [];
+    let offset = 0;
     textWords.forEach((w, i) => {
+      offset += w.length;
+      tokenEnds[i] = offset;
       if (!w.trim()) return;
       const cleaned = removeSpecialChars(w);
       if (cleaned) {
@@ -373,6 +399,10 @@ export default function LearnScreen() {
         occurrenceMap[i] = wordCountMap[cleaned.toLowerCase()];
       }
     });
+    // Tapping the Chinese or Japanese character right after the selected word adds it to the word
+    const selectedIndex = isSelectedLine && selectedWord && isCjkWord(selectedWord)
+      ? textWords.findIndex((w, i) => removeSpecialChars(w) === selectedWord && occurrenceMap[i] === selectedOccurrence)
+      : -1;
     return (
       <View style={{ flexDirection: isRtlSong !== !!I18nManager.isRTL ? 'row-reverse' : 'row', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         {textWords.map((word, i) => {
@@ -567,7 +597,7 @@ export default function LearnScreen() {
           // Japanese characters keep no empty space above them, so a line with nothing to show
           // above it stays as tight as the lyrics themselves
           const hasAnnotation = !!shouldShowEmoji || !!displayContent;
-          const keepAnnotationSpace = hasAnnotation || !JAPANESE_CHARACTER.test(word);
+          const keepAnnotationSpace = hasAnnotation || !isCjkWord(word);
 
           return (
             <View key={i} style={{ alignItems: 'center' }}>
@@ -586,7 +616,11 @@ export default function LearnScreen() {
                 </View>
               )}
               <Text
-                onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
+                onPress={() =>
+                  selectedIndex >= 0 && i === selectedIndex + 1 && isCjkWord(cleanedWord)
+                    ? growSelection(selectedWord + cleanedWord, text, lineIndex, tokenEnds[i])
+                    : handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)
+                }
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
@@ -710,6 +744,7 @@ export default function LearnScreen() {
         occurrence: selectedOccurrence,
       };
       // Without Wiktionary's answer the saved word's card fetches the IPA and recordings itself
+      autoSavedWordRef.current = selectedWord;
       void addOrUpdateWord(selectedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio);
     });
     return () => {

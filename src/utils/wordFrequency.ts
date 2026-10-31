@@ -1,5 +1,6 @@
 import { getLanguageNameFromCode } from '../constants/languages';
-import { isLyricWord, removeSpecialChars } from './cleanLyrics';
+import { cjkCharacterCount, groupCjkTokens, isCjkWord } from './cjkWords';
+import { isLyricWord, removeSpecialChars, splitLyricTokens } from './cleanLyrics';
 import { isGermanLanguage } from './compoundWords';
 import { getGermanExpandedForm, splitElisionParts } from './wordTransform';
 
@@ -56,7 +57,7 @@ export function countWordOccurrences(
     const language = getLanguageNameFromCode(songLanguage) ?? songLanguage;
     // A line's first word is capitalized whatever it is, e.g. "Des" in "Des bijoux de chez Chanel"
     const tokens = song.originalLyrics.split('\n').flatMap((line) =>
-      line.split(/\s+/).filter(Boolean).map((token, index) => ({ token, startsLine: index === 0 }))
+      splitLyricTokens(line).filter((token) => token.trim()).map((token, index) => ({ token, startsLine: index === 0 }))
     );
     for (const { token, startsLine } of tokens) {
       const cleaned = cleanToken(token);
@@ -89,9 +90,12 @@ export function countWordOccurrences(
     .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
 }
 
-/** The words in `lyrics` without punctuation, skipping tokens like "—", "...", "2" or the "x2" in "(x2)" */
+/**
+ * The words in `lyrics` without punctuation, skipping tokens like "—", "...", "2" or the "x2" in "(x2)";
+ * each Chinese, Japanese or Korean character is one, as Learn lets each be tapped
+ */
 function lyricWords(lyrics: string): string[] {
-  return lyrics.split(/\s+/).map(cleanToken).filter(isLyricWord);
+  return splitLyricTokens(lyrics).map(cleanToken).filter(isLyricWord);
 }
 
 /** The number of words in `lyrics`; dashes, ellipses, numbers and repeat markers aren't words to learn */
@@ -102,11 +106,19 @@ export function countWords(lyrics: string): number {
 /**
  * Count the words in `lyrics` that `isKnown` accepts (saved or ignored), out of
  * the words countWords counts. A shortened word is
- * known when its full word is, e.g. "j'aime" when "aime" is, or "hab'n" when "haben" is.
+ * known when its full word is, e.g. "j'aime" when "aime" is, or "hab'n" when "haben" is. Each
+ * character of a saved Chinese or Japanese word is known, e.g. both of 二人's.
  */
 export function countKnownWords(lyrics: string, isKnown: (word: string) => boolean, languages?: string[]): number {
   let count = 0;
-  for (const cleaned of lyricWords(lyrics)) {
+  // Chinese and Japanese characters in a saved word like 二人 are each known
+  for (const token of groupCjkTokens(splitLyricTokens(lyrics), isKnown)) {
+    const cleaned = cleanToken(token);
+    if (!isLyricWord(cleaned)) continue;
+    if (isCjkWord(cleaned)) {
+      if (isKnown(cleaned)) count += cjkCharacterCount(cleaned);
+      continue;
+    }
     const word = withoutTrailingApostrophes(cleaned);
     const full = getFullWord(cleaned, languages);
     if (isKnown(word) || (full && isKnown(full))) count++;

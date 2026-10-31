@@ -57,6 +57,16 @@ export function cleanGeniusLyrics(lyrics: string): string {
 export const removeSpecialChars = (word: string) => {
   return word.replace(/[^\p{L}\p{N}'-]/gu, '');
 }
+/**
+ * A lyric line's words, spaces and punctuation, as Learn lays them out to tap: Chinese, Japanese and
+ * Korean don't separate words with spaces, so each of their characters is its own token, with a
+ * Japanese long vowel mark kept on the kana before it, e.g. "「ラーメン」" -> "「", "ラー", "メ", "ン", "」"
+ */
+export const splitLyricTokens = (text: string): string[] =>
+  text.match(
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]ー*|\p{Script=Hangul}|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]+|\s+/gu
+  ) ?? [];
+
 // A lyric token's punctuation before and after the word, e.g. "(mich?)" -> "(", "mich", "?)"
 export const splitEdgePunctuation = (token: string) => {
   const leading = token.match(/^[^\p{L}\p{N}'-]*/u)?.[0] ?? '';

@@ -11,6 +11,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useStore } from './src/store/useStore';
 import { NowPlayingRequest, setupNowPlayingNotifications, useNowPlayingResponse } from './src/services/nowPlayingNotification';
 import { findSavedSong } from './src/utils/nowPlaying';
+import { useReviewReminderResponse, useReviewReminderSchedule } from './src/services/reviewReminder';
 import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 
 // Keep the splash screen visible while we fetch resources
@@ -42,6 +43,11 @@ export default function App() {
   const loadActivity = useStore((s) => s.loadActivity);
   const [dataLoaded, setDataLoaded] = useState(false);
   usePartOfSpeechBackfill(dataLoaded);
+  const words = useStore((s) => s.words);
+  const reviewReminder = useStore((s) => s.reviewReminder);
+  useReviewReminderSchedule(words, reviewReminder, dataLoaded);
+  const [reviewReminderTapped, setReviewReminderTapped] = useState(false);
+  useReviewReminderResponse(() => setReviewReminderTapped(true));
 
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({
@@ -105,6 +111,15 @@ export default function App() {
       }
     })();
   }, [navigationReady, nowPlayingRequest]);
+
+  // The review reminder opens Words, where the Review button is
+  useEffect(() => {
+    if (!navigationReady || !reviewReminderTapped) return;
+    setReviewReminderTapped(false);
+    const nav = navigationRef as any;
+    if (navigationRef.getRootState()?.routeNames.includes('Tabs')) nav.navigate('Tabs', { screen: 'Words' });
+    else nav.navigate('Words');
+  }, [navigationReady, reviewReminderTapped, navigationRef]);
 
   // Hide splash screen when fonts are loaded
   useEffect(() => {

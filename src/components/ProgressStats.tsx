@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, Switch, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
+import { allowReviewReminders } from '../services/reviewReminder';
 import { dayStreak, weekTotals } from '../utils/activity';
+import { REMINDER_HOUR } from '../utils/reviewReminder';
 import { Text } from './Text';
 
 function Stat({ icon, color, value, label }: { icon: keyof typeof Ionicons.glyphMap; color: string; value: number; label: string }) {
@@ -19,6 +21,15 @@ function Stat({ icon, color, value, label }: { icon: keyof typeof Ionicons.glyph
 /** The day streak and this week's saved words and level ups, from the activity log */
 export default function ProgressStats() {
   const activity = useStore((s) => s.activity);
+  const reviewReminder = useStore((s) => s.reviewReminder);
+  const setReviewReminder = useStore((s) => s.setReviewReminder);
+  const toggleReminder = async (on: boolean) => {
+    // Turned on only once notifications are allowed
+    if (on && !(await allowReviewReminders())) return;
+    await setReviewReminder(on);
+  };
+  const hour12 = REMINDER_HOUR % 12 || 12;
+  const reminderTime = `${hour12} ${REMINDER_HOUR < 12 ? 'AM' : 'PM'}`;
   const now = Date.now();
   const streak = dayStreak(activity, now);
   const week = weekTotals(activity, now);
@@ -34,6 +45,19 @@ export default function ProgressStats() {
         <Text style={styles.caption}>
           {week.answers} quiz {week.answers === 1 ? 'answer' : 'answers'} in the last 7 days
         </Text>
+      )}
+      {Platform.OS !== 'web' && (
+        <View style={styles.reminderRow}>
+          <Ionicons name="notifications-outline" size={18} color={Colors.textSecondary} />
+          <Text style={styles.reminderText}>Remind me at {reminderTime} when words are due</Text>
+          <Switch
+            value={reviewReminder}
+            onValueChange={(on) => void toggleReminder(on)}
+            trackColor={{ true: Colors.primary, false: Colors.border }}
+            thumbColor={Colors.white}
+            accessibilityLabel="Daily review reminder"
+          />
+        </View>
       )}
     </View>
   );
@@ -70,6 +94,16 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     color: Colors.textSecondary,
+  },
+  reminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reminderText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.text,
   },
   caption: {
     fontSize: 12,

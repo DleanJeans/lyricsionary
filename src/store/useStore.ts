@@ -14,6 +14,7 @@ const IGNORED_WORDS_KEY = '@lyricsionary_ignored_words';
 const COMPOUND_SPLITS_KEY = '@lyricsionary_compound_splits';
 const LEARN_SETTINGS_KEY = '@lyricsionary_learn_settings';
 const ACTIVITY_KEY = '@lyricsionary_activity';
+const REVIEW_REMINDER_KEY = '@lyricsionary_review_reminder';
 
 export interface IgnoredWord {
   word: string;
@@ -137,6 +138,9 @@ interface AppState {
   activity: ActivityLog;
   loadActivity: () => Promise<void>;
   recordActivity: (changes: DayActivity) => Promise<void>;
+  /** A 7 PM notification when words are due */
+  reviewReminder: boolean;
+  setReviewReminder: (on: boolean) => Promise<void>;
 
   // Ignore list actions
   loadIgnoredWords: () => Promise<void>;
@@ -439,11 +443,19 @@ export const useStore = create<AppState>((set, get) => ({
 
   loadActivity: async () => {
     try {
-      const json = await AsyncStorage.getItem(ACTIVITY_KEY);
+      const [json, reminder] = await Promise.all([AsyncStorage.getItem(ACTIVITY_KEY), AsyncStorage.getItem(REVIEW_REMINDER_KEY)]);
       if (json) set({ activity: JSON.parse(json) });
+      if (reminder) set({ reviewReminder: JSON.parse(reminder) === true });
     } catch (e) {
       console.error('Failed to load activity', e);
     }
+  },
+
+  reviewReminder: false,
+
+  setReviewReminder: async (on) => {
+    set({ reviewReminder: on });
+    await persist(REVIEW_REMINDER_KEY, JSON.stringify(on));
   },
 
   recordActivity: async (changes) => {

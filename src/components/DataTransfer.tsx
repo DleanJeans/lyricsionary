@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
-import { Backup, backupFileName, createBackup, parseBackup, restoreBackup, summarizeBackup } from '../services/backup';
+import { Backup, backupFileName, createBackup, markBackedUp, parseBackup, restoreBackup, summarizeBackup } from '../services/backup';
 import { pickBackupFile, saveBackupFile, saveSafetyCopy } from '../services/backupFile';
 import ConfirmDialog from './ConfirmDialog';
 import { Text } from './Text';
@@ -25,6 +25,15 @@ function describeBackup(backup: Backup) {
   const { songs, words } = summarizeBackup(backup);
   const date = backup.exportedAt ? ` on ${new Date(backup.exportedAt).toLocaleString()}` : '';
   return `${plural(songs, 'song')} and ${plural(words, 'word')} from ${backup.appName}${date}.`;
+}
+
+/** Saves a backup file of everything, resolving its name, or null when the save was cancelled */
+export async function exportBackupToFile(): Promise<string | null> {
+  const backup = await createBackup(appName);
+  const fileName = backupFileName();
+  if (!(await saveBackupFile(JSON.stringify(backup), fileName))) return null;
+  await markBackedUp();
+  return fileName;
 }
 
 /** Export and import every song, word and setting, e.g. to move them between the prod and dev builds */
@@ -50,9 +59,8 @@ export default function DataTransfer() {
 
   const exportToFile = () =>
     run(async () => {
-      const backup = await createBackup(appName);
-      const fileName = backupFileName();
-      if (await saveBackupFile(JSON.stringify(backup), fileName)) {
+      const fileName = await exportBackupToFile();
+      if (fileName) {
         setStatus({
           text: `Saved ${fileName}`,
         });
@@ -62,6 +70,7 @@ export default function DataTransfer() {
   const copyToClipboard = () =>
     run(async () => {
       await Clipboard.setStringAsync(JSON.stringify(await createBackup(appName)));
+      await markBackedUp();
       setStatus({
         text: 'Copied. Paste it in the other app.',
       });

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 import VersionInfo from '../components/VersionInfo';
 import DataTransfer from '../components/DataTransfer';
+import BackupNudge from '../components/BackupNudge';
 import ProgressStats from '../components/ProgressStats';
 import SpotifyConnect from '../components/SpotifyConnect';
 import Constants from 'expo-constants';
@@ -25,6 +26,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
         <View style={styles.divider} />
 
         <ProgressStats />
+        <BackupNudge />
 
         <View style={styles.divider} />
 

@@ -8,7 +8,12 @@ const DEVICE_ONLY_KEYS = [
   // A Spotify sign-in is for this install, and its tokens shouldn't travel in a backup file
   '@lyricsionary_spotify_auth',
   '@lyricsionary_spotify_pending',
+  // When this install last exported, for the sidebar's nudge to back up
+  '@lyricsionary_last_backup',
 ];
+const LAST_BACKUP_KEY = '@lyricsionary_last_backup';
+const BACKUP_NUDGE_DAYS = 7;
+const BACKUP_NUDGE_MIN_WORDS = 10;
 const FORMAT = 'lyricsionary-backup';
 const VERSION = 1;
 
@@ -101,3 +106,18 @@ export async function restoreBackup(backup: Backup): Promise<void> {
 }
 
 export const backupFileName = (date = new Date()) => `lyricsionary-backup-${date.toISOString().slice(0, 10)}.json`;
+
+export async function getLastBackupAt(): Promise<number | null> {
+  try {
+    const value = Number(await AsyncStorage.getItem(LAST_BACKUP_KEY));
+    return value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export const markBackedUp = (now = Date.now()) => AsyncStorage.setItem(LAST_BACKUP_KEY, String(now));
+
+/** A week without a backup, once there are enough words to lose */
+export const needsBackup = (lastBackupAt: number | null, wordCount: number, now: number) =>
+  wordCount >= BACKUP_NUDGE_MIN_WORDS && (lastBackupAt === null || now - lastBackupAt >= BACKUP_NUDGE_DAYS * 86_400_000);

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createBackup, parseBackup, restoreBackup, summarizeBackup } from '../src/services/backup';
+import { createBackup, needsBackup, parseBackup, restoreBackup, summarizeBackup } from '../src/services/backup';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -63,5 +63,16 @@ describe('Backup', () => {
       })
     );
     expect(backup.data).toEqual({ '@lyricsionary_words': '[]' });
+  });
+});
+
+describe('needsBackup', () => {
+  const day = 86_400_000;
+  const now = 100 * day;
+  it('nudges after a week, or when never backed up, once there are enough words', () => {
+    expect(needsBackup(null, 10, now)).toBe(true);
+    expect(needsBackup(null, 9, now)).toBe(false);
+    expect(needsBackup(now - 6 * day, 50, now)).toBe(false);
+    expect(needsBackup(now - 7 * day, 50, now)).toBe(true);
   });
 });

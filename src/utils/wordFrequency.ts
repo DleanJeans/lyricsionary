@@ -1,6 +1,6 @@
 import { getLanguageNameFromCode } from '../constants/languages';
-import { cjkCharacterCount, groupCjkTokens, isCjkWord } from './cjkWords';
-import { isLyricWord, removeSpecialChars, splitLyricTokens } from './cleanLyrics';
+import { cjkCharacterCount, groupCjkTokens, groupSpacedWords, isCjkWord, isVietnameseSong } from './cjkWords';
+import { cleanLyricWord, isLyricWord, removeSpecialChars, splitLyricTokens } from './cleanLyrics';
 import { isGermanLanguage } from './compoundWords';
 import { getGermanExpandedForm, splitElisionParts } from './wordTransform';
 
@@ -112,7 +112,15 @@ export function countWords(lyrics: string): number {
 export function countKnownWords(lyrics: string, isKnown: (word: string) => boolean, languages?: string[]): number {
   let count = 0;
   // Chinese and Japanese characters in a saved word like 二人 are each known
-  for (const token of groupCjkTokens(splitLyricTokens(lyrics), isKnown)) {
+  const tokens = groupCjkTokens(splitLyricTokens(lyrics), isKnown);
+  // Each syllable of a saved Vietnamese word like yêu thương is known
+  for (const token of isVietnameseSong(languages) ? groupSpacedWords(tokens, isKnown) : tokens) {
+    if (/\s/.test(token.trim())) {
+      const syllables = cleanLyricWord(token);
+      if (isKnown(syllables)) count += syllables.split(' ').length;
+      else count += lyricWords(token).filter((word) => isKnown(withoutTrailingApostrophes(word))).length;
+      continue;
+    }
     const cleaned = cleanToken(token);
     if (!isLyricWord(cleaned)) continue;
     if (isCjkWord(cleaned)) {

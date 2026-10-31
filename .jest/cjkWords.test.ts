@@ -1,4 +1,4 @@
-import { cjkCharacterCount, groupCjkTokens, isCjkWord } from '../src/utils/cjkWords';
+import { cjkCharacterCount, groupCjkTokens, groupSpacedWords, isCjkWord } from '../src/utils/cjkWords';
 import { removeSpecialChars, splitLyricTokens } from '../src/utils/cleanLyrics';
 import { countKnownWords, countWords } from '../src/utils/wordFrequency';
 
@@ -56,5 +56,23 @@ describe('Thai', () => {
   it('keeps Thai vowel and tone marks when cleaning a word', () => {
     expect(removeSpecialChars('น้ำตา,')).toBe('น้ำตา');
     expect(cjkCharacterCount('ความรัก')).toBe(5);
+  });
+});
+
+describe('Vietnamese', () => {
+  const saved = new Set(['yêu thương', 'em']);
+  const isWord = (word: string) => saved.has(word);
+
+  it('joins the syllables of a saved word, keeping its punctuation', () => {
+    expect(groupSpacedWords(splitLyricTokens('Anh yêu thương, em'), isWord)).toEqual(['Anh', ' ', 'yêu thương,', ' ', 'em']);
+  });
+
+  it("doesn't join syllables across lines", () => {
+    expect(groupSpacedWords(splitLyricTokens('yêu\nthương'), isWord)).toEqual(['yêu', '\n', 'thương']);
+  });
+
+  it('counts each syllable of a saved word as known', () => {
+    expect(countKnownWords('Anh yêu thương em', isWord, ['Vietnamese'])).toBe(3);
+    expect(countWords('Anh yêu thương em')).toBe(4);
   });
 });

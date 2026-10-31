@@ -1,4 +1,4 @@
-import { splitLyricTokens } from './cleanLyrics';
+import { cleanLyricWord, splitLyricTokens } from './cleanLyrics';
 
 // Chinese, Japanese and Thai don't put spaces between words, so Learn lays their lyrics out one
 // character at a time and joins the characters of saved words, e.g. 二人 in 二人だけの空 or ความรัก,
@@ -42,3 +42,33 @@ export function groupCjkTokens(tokens: string[], isWord: (word: string) => boole
  * is 1 and ไม่เป็นไร is 4, as Learn lays them out
  */
 export const cjkCharacterCount = (word: string): number => splitLyricTokens(word).length;
+
+/** The most syllables a Vietnamese word is looked for with, e.g. 2 for yêu thương */
+const MAX_SPACED_WORDS = 4;
+
+const isSpace = (token: string) => /^[^\S\n]+$/.test(token);
+
+/**
+ * Joins Vietnamese syllables, which are written apart, into the longest words `isWord` accepts (asked
+ * without punctuation), e.g. ["yêu", " ", "thương,", " ", "em"] -> ["yêu thương,", " ", "em"]
+ */
+export function groupSpacedWords(tokens: string[], isWord: (word: string) => boolean): string[] {
+  const grouped: string[] = [];
+  for (let i = 0; i < tokens.length; ) {
+    if (!tokens[i].trim()) {
+      grouped.push(tokens[i++]);
+      continue;
+    }
+    // Word tokens i, i + 2, ... with single spaces between them
+    let end = i + 1;
+    while (end + 1 < tokens.length && (end - i) / 2 < MAX_SPACED_WORDS - 1 && isSpace(tokens[end]) && tokens[end + 1].trim()) end += 2;
+    while (end > i + 1 && !isWord(cleanLyricWord(tokens.slice(i, end).join('')))) end -= 2;
+    grouped.push(tokens.slice(i, end).join(''));
+    i = end;
+  }
+  return grouped;
+}
+
+/** Whether the song is in Vietnamese, whose words of several syllables are written with spaces */
+export const isVietnameseSong = (languages?: string[]): boolean =>
+  !!languages?.some((language) => ['vietnamese', 'vi'].includes(language.toLowerCase()));

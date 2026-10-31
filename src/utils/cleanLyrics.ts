@@ -75,5 +75,7 @@ export const splitEdgePunctuation = (token: string) => {
   const trailing = token.slice(leading.length).match(/[^\p{L}\p{N}'-]*$/u)?.[0] ?? '';
   return { leading, core: token.slice(leading.length, token.length - trailing.length), trailing };
 };
+// A lyric token without punctuation; a word of several, like Vietnamese "yêu thương,", keeps one space between them
+export const cleanLyricWord = (token: string) => token.split(/\s+/).map(removeSpecialChars).filter(Boolean).join(' ');
 // Whether a cleaned lyric token is a word to learn: it has a letter and isn't a repeat marker like "x2" in "(x2)"
 export const isLyricWord = (cleaned: string) => /\p{L}/u.test(cleaned) && !/^(x\d+|\d+x)$/i.test(cleaned);

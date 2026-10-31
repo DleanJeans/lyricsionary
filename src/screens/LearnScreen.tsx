@@ -22,13 +22,13 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
-import { isLyricWord, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
+import { cleanLyricWord, isLyricWord, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
 import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
-import { groupCjkTokens, isCjkWord } from '../utils/cjkWords';
+import { groupCjkTokens, groupSpacedWords, isCjkWord, isVietnameseSong } from '../utils/cjkWords';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
@@ -82,6 +82,7 @@ export default function LearnScreen() {
   const songLanguages = (song?.originalLanguages ?? []).map((language) => language.toLowerCase());
   const hasFrenchLanguage = songLanguages.some((language) => language === 'french' || language === 'fr');
   const hasItalianLanguage = songLanguages.some((language) => language === 'italian' || language === 'it');
+  const isVietnamese = isVietnameseSong(song?.originalLanguages);
   // Arabic or Hebrew lyrics lay their words out from the right (I18nManager.isRTL is undefined on web)
   const isRtlSong = !!song?.originalLanguages?.[0] && isRtlLanguage(song.originalLanguages[0]);
   // The saved word a lyric word stands for: itself, or else what its shortened form is about, e.g.
@@ -336,7 +337,7 @@ export default function LearnScreen() {
   const autoSavedWordRef = useRef<string | null>(null);
 
   const handleWordPress = (word: string, line: string, lineIndex: number, occurrence: number) => {
-    const cleaned = removeSpecialChars(word);
+    const cleaned = cleanLyricWord(word);
     autoSavedWordRef.current = null;
     if (isLyricWord(cleaned)) {
       setSelectedWord(cleaned);
@@ -379,11 +380,11 @@ export default function LearnScreen() {
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
     // CJK scripts do not separate words with spaces, so each CJK character is a selectable token, joined
     // back into a word when the characters are a saved word, or the word being selected, e.g. 二人
+    // Vietnamese syllables, written apart, join the same way, e.g. yêu thương
     const isSelectedLine = lineIndex === selectedLineIndex;
-    const textWords = groupCjkTokens(
-      splitLyricTokens(text),
-      (candidate) => (isSelectedLine && candidate === selectedWord) || !!findSavedEntry(candidate)
-    );
+    const isWord = (candidate: string) => (isSelectedLine && candidate === selectedWord) || !!findSavedEntry(candidate);
+    const cjkGrouped = groupCjkTokens(splitLyricTokens(text), isWord);
+    const textWords = isVietnamese ? groupSpacedWords(cjkGrouped, isWord) : cjkGrouped;
     const occurrenceMap: Record<number, number> = {};
     const wordCountMap: Record<string, number> = {};
     // Where each token ends in the line, so a grown selection knows which occurrence it is
@@ -393,16 +394,23 @@ export default function LearnScreen() {
       offset += w.length;
       tokenEnds[i] = offset;
       if (!w.trim()) return;
-      const cleaned = removeSpecialChars(w);
+      const cleaned = cleanLyricWord(w);
       if (cleaned) {
         wordCountMap[cleaned.toLowerCase()] = (wordCountMap[cleaned.toLowerCase()] || 0) + 1;
         occurrenceMap[i] = wordCountMap[cleaned.toLowerCase()];
       }
     });
-    // Tapping the Chinese or Japanese character right after the selected word adds it to the word
-    const selectedIndex = isSelectedLine && selectedWord && isCjkWord(selectedWord)
-      ? textWords.findIndex((w, i) => removeSpecialChars(w) === selectedWord && occurrenceMap[i] === selectedOccurrence)
+    // Tapping the Chinese, Japanese or Thai character right after the selected word adds it to the word,
+    // as does tapping the next Vietnamese syllable
+    const selectedIndex = isSelectedLine && selectedWord && (isCjkWord(selectedWord) || isVietnamese)
+      ? textWords.findIndex((w, i) => cleanLyricWord(w) === selectedWord && occurrenceMap[i] === selectedOccurrence)
       : -1;
+    const growsSelection = (i: number, cleanedWord: string) =>
+      selectedIndex >= 0 && (
+        isCjkWord(selectedWord!)
+          ? i === selectedIndex + 1 && isCjkWord(cleanedWord)
+          : i === selectedIndex + 2 && /^[^\S\n]+$/.test(textWords[selectedIndex + 1]) && !isCjkWord(cleanedWord)
+      );
     return (
       <View style={{ flexDirection: isRtlSong !== !!I18nManager.isRTL ? 'row-reverse' : 'row', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         {textWords.map((word, i) => {
@@ -410,7 +418,7 @@ export default function LearnScreen() {
             return <Text key={i} style={{ fontSize, lineHeight: fontSize * 1.6 }}>{word}</Text>;
           }
 
-          const cleanedWord = removeSpecialChars(word);
+          const cleanedWord = cleanLyricWord(word);
 
           const hasContractedPrefixWord = hasContractedPrefix(cleanedWord);
 
@@ -617,8 +625,8 @@ export default function LearnScreen() {
               )}
               <Text
                 onPress={() =>
-                  selectedIndex >= 0 && i === selectedIndex + 1 && isCjkWord(cleanedWord)
-                    ? growSelection(selectedWord + cleanedWord, text, lineIndex, tokenEnds[i])
+                  growsSelection(i, cleanedWord)
+                    ? growSelection(`${selectedWord}${isCjkWord(cleanedWord) ? '' : ' '}${cleanedWord}`, text, lineIndex, tokenEnds[i])
                     : handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)
                 }
                 style={{
@@ -678,7 +686,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isVietnamese, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA

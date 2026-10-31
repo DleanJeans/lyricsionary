@@ -326,6 +326,8 @@ export default function LearnScreen() {
   // Spotify: follows the song while it plays, highlighting and scrolling to its line, and seeks by line
   const spotifyConnected = useStore((s) => s.spotifyConnected);
   const wideWordSpacing = useStore((s) => s.wideWordSpacing);
+  const highlightNewWords = useStore((s) => s.highlightNewWords);
+  const toggleHighlightNewWords = useStore((s) => s.toggleHighlightNewWords);
   const toggleWideWordSpacing = useStore((s) => s.toggleWideWordSpacing);
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
@@ -601,6 +603,8 @@ export default function LearnScreen() {
                     const isPartActiveOccurrence = isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
                     const partColor = isPartSelected
                       ? Colors.primary
+                      : highlightNewWords
+                      ? (partEntry ? Colors.textMuted : Colors.text)
                       : (showMasteryLevelColors && partEntry?.masteryLevel)
                         ? getMasteryLevelColor(partEntry.masteryLevel)
                         : Colors.text;
@@ -711,6 +715,9 @@ export default function LearnScreen() {
             ? Colors.primary
             : isIgnored
               ? Colors.textMuted
+              : highlightNewWords
+              // Only the words left to learn stand out
+              ? (wordEntry ? Colors.textMuted : Colors.text)
               : (showMasteryLevelColors && wordEntry?.masteryLevel)
               ? getMasteryLevelColor(wordEntry.masteryLevel)
               : Colors.text;
@@ -756,6 +763,8 @@ export default function LearnScreen() {
                       const partEntry = compoundEntries?.[pi];
                       const partColor = isSelected
                         ? Colors.primary
+                        : highlightNewWords
+                        ? (partEntry ? Colors.textMuted : Colors.text)
                         : (showMasteryLevelColors && partEntry?.masteryLevel)
                           ? getMasteryLevelColor(partEntry.masteryLevel)
                           : Colors.text;
@@ -807,7 +816,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1268,6 +1277,8 @@ export default function LearnScreen() {
           onToggleReverseLyrics={toggleReverseLyrics}
           wideWordSpacing={wideWordSpacing}
           onToggleWideWordSpacing={toggleWideWordSpacing}
+          highlightNewWords={highlightNewWords}
+          onToggleHighlightNewWords={toggleHighlightNewWords}
           showMasteryLevelColors={showMasteryLevelColors}
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
           previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}

@@ -50,7 +50,7 @@ function persist(key: string, value: string): Promise<void> {
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
 // current song's selected translation languages.
-const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing'] as const;
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -80,6 +80,8 @@ interface AppState {
   reverseLyrics: boolean;
   /** More room between Learn's words, for easier tapping on a phone */
   wideWordSpacing: boolean;
+  /** Learn dims saved words and shows the new ones bright, instead of level colors */
+  highlightNewWords: boolean;
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
@@ -118,6 +120,7 @@ interface AppState {
   toggleShowSections: () => void;
   toggleReverseLyrics: () => void;
   toggleWideWordSpacing: () => void;
+  toggleHighlightNewWords: () => void;
   loadLearnSettings: () => Promise<void>;
 
   // Word actions
@@ -198,6 +201,7 @@ export const useStore = create<AppState>((set, get) => ({
   showSections: true,
   reverseLyrics: false,
   wideWordSpacing: false,
+  highlightNewWords: false,
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
@@ -316,6 +320,7 @@ export const useStore = create<AppState>((set, get) => ({
   toggleReverseLyrics: () => setLearnSettings({ reverseLyrics: !get().reverseLyrics }),
 
   toggleWideWordSpacing: () => setLearnSettings({ wideWordSpacing: !get().wideWordSpacing }),
+  toggleHighlightNewWords: () => setLearnSettings({ highlightNewWords: !get().highlightNewWords }),
 
   loadLearnSettings: async () => {
     try {

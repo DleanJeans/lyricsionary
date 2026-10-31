@@ -301,6 +301,9 @@ export default function LearnScreen() {
   // Fill in the lyrics: the gap card rebuilds its whole line from shuffled words instead
   const [drillingLine, setDrillingLine] = useState(false);
   useEffect(() => setDrillingLine(false), [gapTarget]);
+  // Now and then the gap is on the word's line from another song it was saved from, to recall it out of this song too
+  const [gapElsewhere, setGapElsewhere] = useState(false);
+  useEffect(() => setGapElsewhere(Math.random() < 1 / 3), [gapTarget]);
 
   // Opened at a word, e.g. from another song's word card: select it on its line and scroll there
   const [scrollToLine, setScrollToLine] = useState<{ index: number; key: number } | null>(null);
@@ -992,13 +995,20 @@ export default function LearnScreen() {
 
   const gapPanel = gapWordEntry && selectedLine !== null ? (() => {
     const sense = quizSense(gapWordEntry);
+    // The word's line in another song it was saved from, if any
+    const otherContext = gapWordEntry.contexts.find(
+      (c) => c.songId && c.songId !== song.id && c.context && findWordSpots([c.context], selectedWord!, () => false).length > 0
+    );
+    const elsewhere = gapElsewhere && !!otherContext;
+    const quizLine = elsewhere ? otherContext!.context : selectedLine;
+    const quizOccurrence = elsewhere ? 1 : selectedOccurrence;
     // The line with this occurrence of the word blanked out, filled in with the word once answered
     const answered = answeredGaps.has(gapWordEntry.id);
     let seen = 0;
-    const gapLine = selectedLine.split(/(\s+)/).map((token, i) => {
+    const gapLine = quizLine.split(/(\s+)/).map((token, i) => {
       if (removeSpecialChars(token).toLowerCase() !== selectedWord!.toLowerCase()) return token;
       seen++;
-      if (seen !== selectedOccurrence) return token;
+      if (seen !== quizOccurrence) return token;
       const { leading, core, trailing } = splitEdgePunctuation(token);
       return (
         <React.Fragment key={i}>
@@ -1008,13 +1018,23 @@ export default function LearnScreen() {
         </React.Fragment>
       );
     });
-    const hint = shownTranslationLine || sense?.answer;
+    const hint = (elsewhere ? otherContext!.translation : shownTranslationLine) || sense?.answer;
     return (
       <View style={[styles.wordCardContainer]}>
         <View style={[styles.gapCard, isWide && styles.gapCardWide]}>
           <View style={styles.gapCardHeader}>
             <Text style={styles.gapCardTitle}>{drillingLine ? 'Rebuild the line' : 'Fill in the gap'}</Text>
             <View style={styles.gapCardTools}>
+              {otherContext && (
+                <TouchableOpacity
+                  onPress={() => setGapElsewhere(!elsewhere)}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel={elsewhere ? 'Back to this song' : 'Try it in another song'}
+                >
+                  <Ionicons name={elsewhere ? 'musical-note' : 'musical-notes-outline'} size={20} color={elsewhere ? Colors.primaryLight : Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 onPress={() => setDrillingLine(!drillingLine)}
                 hitSlop={4}
@@ -1037,13 +1057,18 @@ export default function LearnScreen() {
             </View>
           </View>
           {drillingLine ? (
-            <LineDrill key={`drill-${selectedLineIndex}`} line={selectedLine} hint={shownTranslationLine || undefined} />
+            <LineDrill
+              key={`drill-${selectedLineIndex}-${elsewhere}`}
+              line={quizLine}
+              hint={(elsewhere ? otherContext!.translation : shownTranslationLine) || undefined}
+            />
           ) : (
             <>
+              {elsewhere && <Text style={styles.gapCardSong}>From {otherContext!.songName ?? 'another song'}</Text>}
               <Text style={styles.gapCardLine}>{gapLine}</Text>
               {hint ? <Text style={styles.gapCardHint}>{hint}</Text> : null}
               <WordQuiz
-                key={`lyric-${gapWordEntry.id}-${selectedLineIndex}-${selectedOccurrence}`}
+                key={`lyric-${gapWordEntry.id}-${selectedLineIndex}-${selectedOccurrence}-${elsewhere}`}
                 entry={gapWordEntry}
                 kind="lyric"
                 prompt="Which word goes in the gap?"
@@ -1053,7 +1078,7 @@ export default function LearnScreen() {
                   partOfSpeech: sense?.partOfSpeech,
                   songId: song.id,
                   // Words the line shows can't be what's missing from it
-                  excludeWords: [...selectedLine.split(/\s+/).map(removeSpecialChars), ...lineWords(selectedLine)].filter(Boolean),
+                  excludeWords: [...quizLine.split(/\s+/).map(removeSpecialChars), ...lineWords(quizLine)].filter(Boolean),
                 }, useStore.getState().words)}
                 onAnswered={() => setAnsweredGaps((prev) => new Set(prev).add(gapWordEntry.id))}
                 isWide={isWide}
@@ -1337,6 +1362,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: Colors.success,
+  },
+  gapCardSong: {
+    fontSize: 12,
+    color: Colors.primaryLight,
   },
   gapCardHint: {
     fontSize: 14,

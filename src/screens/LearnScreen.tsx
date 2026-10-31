@@ -25,6 +25,7 @@ import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
 import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
+import { formatIpa } from '../utils/ipaDisplay';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
@@ -58,6 +59,8 @@ export default function LearnScreen() {
   const toggleShowMasteryLevelColors = useStore((s) => s.toggleShowMasteryLevelColors);
   const showIpa = useStore((s) => s.showIpa);
   const setShowIpa = useStore((s) => s.setShowIpa);
+  const showIpaBrackets = useStore((s) => s.showIpaBrackets);
+  const toggleShowIpaBrackets = useStore((s) => s.toggleShowIpaBrackets);
   const showEmoji = useStore((s) => s.showEmoji);
   const setShowEmoji = useStore((s) => s.setShowEmoji);
   const showSections = useStore((s) => s.showSections);
@@ -410,7 +413,7 @@ export default function LearnScreen() {
             if (showIpa && mainEntry) {
               const ipaValue = ctx?.ipa || mainEntry.pronunciation;
               if (ipaValue) {
-                displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
+                displayContent = formatIpa(ipaValue, showIpaBrackets);
               }
             }
 
@@ -477,7 +480,7 @@ export default function LearnScreen() {
           if (showIpa && wordEntry) {
             const ipaValue = wordCtx?.ipa || wordEntry.pronunciation;
             if (ipaValue) {
-              displayContent = ipaValue.includes('/') ? ipaValue : `/${ipaValue}/`;
+              displayContent = formatIpa(ipaValue, showIpaBrackets);
             }
           }
 
@@ -501,7 +504,7 @@ export default function LearnScreen() {
               compoundParts,
               compoundEntries.map((entry) => entry && (findWordContext(entry, text)?.ipa || entry.pronunciation))
             );
-            if (compoundIpa) displayContent = `/${compoundIpa}/`;
+            if (compoundIpa) displayContent = formatIpa(compoundIpa, showIpaBrackets);
           }
 
           // and its parts' emojis side by side, e.g. Liebesbrief -> 💕✉️ (parts without one are skipped)
@@ -604,7 +607,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -944,6 +947,8 @@ export default function LearnScreen() {
           availableLanguages={song.translations.map(t => t.language)}
           showIpa={showIpa}
           onShowIpaChange={setShowIpa}
+          showIpaBrackets={showIpaBrackets}
+          onToggleShowIpaBrackets={toggleShowIpaBrackets}
           showEmoji={showEmoji}
           onShowEmojiChange={setShowEmoji}
           showSections={showSections}

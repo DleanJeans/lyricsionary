@@ -26,6 +26,7 @@ describe('Learn settings', () => {
       blurTranslations: false,
       showMasteryLevelColors: true,
       showIpa: false,
+      showIpaBrackets: true,
       showEmoji: true,
       showSections: false,
     });

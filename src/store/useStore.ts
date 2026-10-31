@@ -46,7 +46,7 @@ function persist(key: string, value: string): Promise<void> {
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
 // current song's selected translation languages.
-const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showEmoji', 'showSections'] as const;
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -67,6 +67,7 @@ interface AppState {
   blurTranslations: boolean;
   showMasteryLevelColors: boolean;
   showIpa: boolean;
+  showIpaBrackets: boolean;  // Slashes or brackets around the IPA above words
   showEmoji: boolean;
   showSections: boolean;
   matchedSongsSearchQuery: string | null;
@@ -101,6 +102,7 @@ interface AppState {
   toggleBlurTranslations: () => void;
   toggleShowMasteryLevelColors: () => void;
   setShowIpa: (show: boolean) => void;
+  toggleShowIpaBrackets: () => void;
   setShowEmoji: (show: boolean) => void;
   toggleShowSections: () => void;
   loadLearnSettings: () => Promise<void>;
@@ -162,6 +164,7 @@ export const useStore = create<AppState>((set, get) => ({
   blurTranslations: true,
   showMasteryLevelColors: true,
   showIpa: true,
+  showIpaBrackets: true,
   showEmoji: true,
   showSections: true,
   matchedSongsSearchQuery: null,
@@ -270,6 +273,8 @@ export const useStore = create<AppState>((set, get) => ({
   toggleShowMasteryLevelColors: () => setLearnSettings({ showMasteryLevelColors: !get().showMasteryLevelColors }),
 
   setShowIpa: (showIpa) => setLearnSettings({ showIpa }),
+
+  toggleShowIpaBrackets: () => setLearnSettings({ showIpaBrackets: !get().showIpaBrackets }),
 
   setShowEmoji: (showEmoji) => setLearnSettings({ showEmoji }),
 

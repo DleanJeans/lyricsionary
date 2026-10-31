@@ -3,6 +3,7 @@ import React, { useState, type ReactNode } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LANGUAGES } from '../constants/languages';
 import { Colors } from '../constants/theme';
+import { formatIpa } from '../utils/ipaDisplay';
 import { LearnLyricsLine, type LearnLine } from './LearnLyricsView';
 import { Text } from './Text';
 
@@ -15,6 +16,8 @@ interface LearnSettingsMenuProps {
   availableLanguages: string[];
   showIpa: boolean;
   onShowIpaChange: (show: boolean) => void;
+  showIpaBrackets: boolean;
+  onToggleShowIpaBrackets: () => void;
   showEmoji: boolean;
   onShowEmojiChange: (show: boolean) => void;
   blurTranslations: boolean;
@@ -42,12 +45,14 @@ const SAMPLE_WORDS = [
 
 function SamplePreview({
   showIpa,
+  showIpaBrackets,
   showEmoji,
   showMasteryLevelColors,
   blurTranslations,
   showTranslations,
 }: {
   showIpa: boolean;
+  showIpaBrackets: boolean;
   showEmoji: boolean;
   showMasteryLevelColors: boolean;
   blurTranslations: boolean;
@@ -60,7 +65,7 @@ function SamplePreview({
           <View key={word.text} style={styles.sampleWord}>
             <View style={styles.sampleAnnotations}>
               {showEmoji && !!word.emoji && <Text style={styles.sampleAnnotation}>{word.emoji}</Text>}
-              {showIpa && <Text style={styles.sampleAnnotation}>{word.ipa}</Text>}
+              {showIpa && <Text style={styles.sampleAnnotation}>{formatIpa(word.ipa, showIpaBrackets)}</Text>}
             </View>
             <Text style={{ fontSize: 18, color: showMasteryLevelColors ? word.color : Colors.text }}>
               {word.text}
@@ -117,6 +122,8 @@ export default function LearnSettingsMenu({
   availableLanguages,
   showIpa,
   onShowIpaChange,
+  showIpaBrackets,
+  onToggleShowIpaBrackets,
   showEmoji,
   onShowEmojiChange,
   blurTranslations,
@@ -183,6 +190,7 @@ export default function LearnSettingsMenu({
               ) : (
                 <SamplePreview
                   showIpa={showIpa}
+                  showIpaBrackets={showIpaBrackets}
                   showEmoji={showEmoji}
                   showMasteryLevelColors={showMasteryLevelColors}
                   blurTranslations={blurTranslations}
@@ -205,6 +213,14 @@ export default function LearnSettingsMenu({
                 selected={showIpa}
                 onPress={() => onShowIpaChange(!showIpa)}
               />
+              {showIpa && (
+                <Chip
+                  label="Slashes"
+                  icon={<Text style={[styles.slashesIcon, { color: chipIconColor(showIpaBrackets) }]}>/ /</Text>}
+                  selected={showIpaBrackets}
+                  onPress={onToggleShowIpaBrackets}
+                />
+              )}
             </View>
 
             {languagesToShow.length > 0 && (
@@ -346,6 +362,10 @@ const styles = StyleSheet.create({
   },
   flag: {
     fontSize: 16,
+  },
+  slashesIcon: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   tiles: {
     flexDirection: 'row',

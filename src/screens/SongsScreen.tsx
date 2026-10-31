@@ -89,10 +89,11 @@ export default function SongsScreen() {
     }
   }, [isLoadingSong]);
 
-  // Get all unique languages from songs and count occurrences
+  // Get all unique languages from the songs listed (archived ones or the rest) and count occurrences
   const { availableLanguages, languageCounts } = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    songs.forEach((song) => {
+    const archivedShown = showArchived && songs.some((song) => song.archivedAt);
+    songs.filter((song) => !!song.archivedAt === archivedShown).forEach((song) => {
       (song.originalLanguages ?? []).forEach((lang) => {
         counts[lang] = (counts[lang] ?? 0) + 1;
       });
@@ -101,7 +102,7 @@ export default function SongsScreen() {
       availableLanguages: Object.keys(counts).sort(),
       languageCounts: counts,
     };
-  }, [songs]);
+  }, [songs, showArchived]);
 
   // Helper function to find matched line in lyrics
   // The first line with the search, and the song's own line there, as a translation's lines follow the song's

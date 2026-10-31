@@ -33,7 +33,7 @@ import { getKoreanStem, isKoreanLanguage } from '../utils/koreanWords';
 import { getRomanceBaseWord } from '../utils/romanceClitics';
 import { addStressMark, isStressLanguage, removeStressMarks } from '../utils/russianStress';
 import { romanizeLine } from '../utils/romanize';
-import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
+import { buildLyricQuiz, buildMeaningQuiz, isTricky, quizKindFor } from '../utils/wordQuiz';
 import { lineWords } from '../utils/reviewQuiz';
 import LineDrill from '../components/LineDrill';
 import SpotifyBar from '../components/SpotifyBar';
@@ -350,6 +350,25 @@ export default function LearnScreen() {
     void Clipboard.setStringAsync([line.original.trim(), ...translations].join('\n'));
     setCopiedLine(true);
   };
+
+  // Filling in the lyrics: only the lines with saved words answered wrong lately, to drill the hard parts
+  const [trickyLinesOnly, setTrickyLinesOnly] = useState(false);
+  useEffect(() => setTrickyLinesOnly(false), [song?.id, lyricQuiz]);
+  const trickyLines = useMemo(() => {
+    if (!lyricQuiz) return new Set<number>();
+    const now = Date.now();
+    const found = new Set<number>();
+    lines.forEach((line, lineIndex) => {
+      for (const token of splitLyricTokens(line.original)) {
+        const entry = wordEntryIndex.get(cleanLyricWord(token).toLowerCase());
+        if (entry && quizKindFor(entry.masteryLevel) === 'lyric' && isTricky(entry.quiz, now)) {
+          found.add(lineIndex);
+          return;
+        }
+      }
+    });
+    return found;
+  }, [lyricQuiz, lines, wordEntryIndex]);
 
   // Dictation: a line hidden until it's written down from listening
   const [dictation, setDictation] = useState<{ lineIndex: number; checked: boolean } | null>(null);
@@ -1190,6 +1209,8 @@ export default function LearnScreen() {
       onDecreaseFontSize={() => setFontSize(fontSize - 1)}
       onIncreaseFontSize={() => setFontSize(fontSize + 1)}
       onShowAllLyrics={lyricQuiz ? () => navigation.setParams({ fillIn: false }) : undefined}
+      trickyLinesOnly={trickyLinesOnly}
+      onToggleTrickyLines={lyricQuiz && (trickyLines.size > 0 || trickyLinesOnly) ? () => setTrickyLinesOnly(!trickyLinesOnly) : undefined}
       onNextLine={nextLine !== null && !lyricQuiz ? () => {
         setFoundLine(nextLine);
         setScrollToLine({ index: nextLine, key: Date.now() });
@@ -1231,6 +1252,7 @@ export default function LearnScreen() {
         playingLineIndex={spotify.currentLine}
         dictationLineIndex={dictation && !dictation.checked ? dictation.lineIndex : null}
         foundLineIndex={foundLine}
+        onlyLines={trickyLinesOnly ? trickyLines : null}
         scrollKey={song.id}
       />
       {copiedLine && (

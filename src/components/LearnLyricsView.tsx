@@ -40,6 +40,8 @@ interface LearnLyricsViewProps {
   scrollToLine?: { index: number; key: number } | null;
   /** A line hidden for dictation, to write it from listening */
   dictationLineIndex?: number | null;
+  /** Shows only these lines, e.g. the ones with words answered wrong lately */
+  onlyLines?: Set<number> | null;
   /** A line to point out, e.g. one found by searching the lyrics */
   foundLineIndex?: number | null;
   /** The line Spotify is playing */
@@ -223,7 +225,7 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     });
   };
 
-  const renderLine = (lineIndex: number) => (
+  const renderLine = (lineIndex: number) => props.onlyLines && !props.onlyLines.has(lineIndex) ? null : (
     <View
       key={lineIndex}
       collapsable={false}
@@ -248,6 +250,12 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     }
     const sectionLines: ReactNode[] = [];
     for (let i = section.start; i <= section.end; i++) sectionLines.push(renderLine(i));
+    // A section with none of the lines shown is left out
+    if (sectionLines.every((line) => line === null)) {
+      lineIndex = section.end;
+      sectionIndex++;
+      continue;
+    }
     content.push(<SectionBox key={`section-${lineIndex}`} section={section}>{sectionLines}</SectionBox>);
     lineIndex = section.end;
     sectionIndex++;

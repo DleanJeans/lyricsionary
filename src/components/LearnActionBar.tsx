@@ -18,6 +18,9 @@ interface LearnActionBarProps {
   onShowAllLyrics?: () => void;
   /** Goes to the line with the fewest new words left, when there is one */
   onNextLine?: () => void;
+  /** While filling in the lyrics: shows only the lines with words answered wrong lately */
+  trickyLinesOnly?: boolean;
+  onToggleTrickyLines?: () => void;
 }
 
 export default function LearnActionBar({
@@ -28,6 +31,8 @@ export default function LearnActionBar({
   onIncreaseFontSize,
   onShowAllLyrics,
   onNextLine,
+  trickyLinesOnly = false,
+  onToggleTrickyLines,
 }: LearnActionBarProps) {
   const canDecrease = fontSize > 12;
   const canIncrease = fontSize < 32;
@@ -58,6 +63,16 @@ export default function LearnActionBar({
         {onNextLine && (
           <TouchableOpacity onPress={onNextLine} hitSlop={8} style={styles.nextLine} accessibilityRole="button" accessibilityLabel="Go to the next line to learn">
             <Ionicons name="flag-outline" size={18} color={Colors.primaryLight} />
+          </TouchableOpacity>
+        )}
+        {onToggleTrickyLines && (
+          <TouchableOpacity
+            style={[styles.quizButton, trickyLinesOnly && styles.trickyOn]}
+            onPress={onToggleTrickyLines}
+            accessibilityRole="button"
+            accessibilityLabel={trickyLinesOnly ? 'Show every line' : 'Only lines with tricky words'}
+          >
+            <Ionicons name="alert-circle-outline" size={16} color={trickyLinesOnly ? Colors.white : Colors.warning} />
           </TouchableOpacity>
         )}
         {onShowAllLyrics && (
@@ -99,6 +114,10 @@ export default function LearnActionBar({
 }
 
 const styles = StyleSheet.create({
+  trickyOn: {
+    backgroundColor: Colors.warning,
+    borderColor: Colors.warning,
+  },
   nextLine: {
     marginLeft: 4,
     padding: 4,

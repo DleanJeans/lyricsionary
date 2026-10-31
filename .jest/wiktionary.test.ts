@@ -243,6 +243,13 @@ describe('inflected forms', () => {
     expect(parseEntry({ de: [section('German', 'Verb', FRAGT)] }, 'German')).toEqual({ glosses: [], definitions: [], lemmas: ['fragen'] });
   });
 
+  it('knows the base form of a form with its own meaning, e.g. Gefühle of Gefühl', () => {
+    const definition = `<span class="form-of-definition use-with-mention">comparative degree of <span class="form-of-definition-link"><i class="Latn mention" lang="fr"><a href="/wiki/bon#French" title="bon">bon</a></i></span></span> "better"`;
+    const entry = parseEntry({ fr: [section('French', 'Adjective', [definition])] }, 'French');
+    expect(entry.glosses.map((d) => d.text)).toEqual(['better']);
+    expect(entry.lemmas).toEqual(['bon']);
+  });
+
   it('reads fragen without its usage notes and styles', () => {
     expect(texts({ de: [section('German', 'Verb', FRAGEN)] }, 'German')).toEqual(['to ask', 'to ask for', 'to ask after', 'to wonder']);
   });

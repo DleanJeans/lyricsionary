@@ -242,8 +242,9 @@ export function parseEntry(response: unknown, language: string): WiktionaryEntry
             const parts = splitShortGlosses(formOfGloss);
             for (const gloss of parts.length > 0 ? parts : [formOfGloss]) add(entry.glosses, partOfSpeech, gloss);
           }
-          // Without a gloss, "inflection of fragen" says nothing about the meaning by itself
-          else if (lemma && !entry.lemmas.includes(lemma)) entry.lemmas.push(lemma);
+          // Without a gloss, "inflection of fragen" says nothing about the meaning by itself, so its base
+          // form's meanings are used; with one, the base form still says what word this is a form of
+          if (lemma && !entry.lemmas.includes(lemma)) entry.lemmas.push(lemma);
           continue;
         }
         for (const gloss of getShortGlosses(definition)) add(entry.glosses, partOfSpeech, gloss);
@@ -296,6 +297,29 @@ async function getDefinitionsForTitle(title: string, language: string, depth: nu
     }
   }
   return entry.definitions.slice(0, MAX_DEFINITIONS);
+}
+
+/**
+ * The words this one is a form of, following chains like vidée -> vidé -> vider, e.g. vouloir for veux.
+ * Resolves [] when it isn't a form of anything or the page can't be read.
+ */
+export async function getWiktionaryLemmas(word: string, language: string): Promise<string[]> {
+  const lemmas: string[] = [];
+  const visit = async (title: string, depth: number) => {
+    const entry = parseEntry(await fetchDefinitionResponse(title), language);
+    for (const lemma of entry.lemmas.filter((l) => l !== title && l !== word).slice(0, MAX_LEMMAS)) {
+      if (lemmas.includes(lemma)) continue;
+      lemmas.push(lemma);
+      if (depth < MAX_LEMMA_DEPTH) await visit(lemma, depth + 1);
+    }
+  };
+  try {
+    await visit(word, 1);
+    if (lemmas.length === 0 && word !== word.toLowerCase()) await visit(word.toLowerCase(), 1);
+  } catch {
+    // No hint is better than a wrong one
+  }
+  return lemmas;
 }
 
 /**

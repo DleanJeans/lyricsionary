@@ -43,6 +43,7 @@ import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/w
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
+import LemmaMergeHint from '../components/LemmaMergeHint';
 
 const PREVIEW_MAX_WORDS = 8;
 
@@ -1091,13 +1092,16 @@ export default function LearnScreen() {
         occurrence={selectedOccurrence}
       />
     ) : null);
-  const wordPanel = gapPanel ?? (wordCardPanel && wordSpots.length > 1 ? (
+  const wordPanel = gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry) ? (
     <View>
-      <WordSpotStepper
-        count={wordSpots.length}
-        index={wordSpotIndex}
-        onStep={goToWordSpot}
-      />
+      {wordSpots.length > 1 && (
+        <WordSpotStepper
+          count={wordSpots.length}
+          index={wordSpotIndex}
+          onStep={goToWordSpot}
+        />
+      )}
+      {selectedWordEntry && <LemmaMergeHint entry={selectedWordEntry} />}
       {wordCardPanel}
     </View>
   ) : wordCardPanel);

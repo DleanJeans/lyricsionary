@@ -12,7 +12,7 @@ import {
 } from '../services/spotify';
 import { getSyncedLyrics } from '../services/syncedLyrics';
 import type { Song } from '../types';
-import { isSameTrack, lineAtTime, matchSyncedLines, parseLrc, stepLine } from '../utils/syncedLyrics';
+import { isSameTrack, lineAtTime, lineEndTime, matchSyncedLines, parseLrc, stepLine } from '../utils/syncedLyrics';
 
 const POLL_MS = 1500;
 const TICK_MS = 250;
@@ -31,6 +31,12 @@ export interface SpotifyLyricsSync {
   replayLine: () => Promise<void>;
   stepLine: (step: 1 | -1) => Promise<void>;
   togglePlay: () => Promise<void>;
+  /** The line playing over and over, if any */
+  loopLine: number | null;
+  /** How many times the looped line has started again */
+  loopCount: number;
+  /** Loops a line until called again, or stops looping */
+  toggleLoop: (lineIndex: number | null) => void;
 }
 
 /** Follows Spotify while it plays the song open in Learn, and seeks it by lyric line */
@@ -92,6 +98,24 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
   const progress = playback ? playback.progressMs + (playback.isPlaying ? Math.max(0, now - playback.readAt) : 0) : 0;
   const currentLine = isThisSong && times.length ? lineAtTime(times, progress) : null;
 
+  // Looping a line: back to its start whenever it ends, so it can be sung along to
+  const [loopLine, setLoopLine] = useState<number | null>(null);
+  const [loopCount, setLoopCount] = useState(0);
+  const loopSeekRef = useRef(0);
+  useEffect(() => setLoopLine(null), [song?.id]);
+  useEffect(() => {
+    if (loopLine === null || !isThisSong || !playback?.isPlaying) return;
+    const start = times[loopLine];
+    const end = lineEndTime(times, loopLine, playback.durationMs);
+    if (start == null || end === null) return;
+    const outside = progress >= end - 150 || progress < start - 1000;
+    // Spotify reports the seek a moment later, so one seek at a time
+    if (!outside || Date.now() - loopSeekRef.current < 1500) return;
+    loopSeekRef.current = Date.now();
+    setLoopCount((count) => count + 1);
+    void seekToLine(loopLine);
+  });
+
   const run = async (action: () => Promise<void>) => {
     try {
       await action();
@@ -135,5 +159,17 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
       if (target !== null) await seekToLine(target);
     },
     togglePlay: () => run(() => (playback?.isPlaying ? pauseSpotify() : resumeSpotify())),
+    loopLine,
+    loopCount,
+    toggleLoop: (lineIndex) => {
+      if (loopLine !== null || lineIndex === null || times[lineIndex] == null) {
+        setLoopLine(null);
+        return;
+      }
+      setLoopLine(lineIndex);
+      setLoopCount(0);
+      loopSeekRef.current = Date.now();
+      void seekToLine(lineIndex);
+    },
   };
 }

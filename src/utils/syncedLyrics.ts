@@ -103,6 +103,15 @@ export function lineAtTime(times: (number | null)[], progressMs: number): number
   return best;
 }
 
+/** When a line stops playing: the next line's start, or a few seconds in for the last one */
+export function lineEndTime(times: (number | null)[], lineIndex: number, durationMs?: number): number | null {
+  const start = times[lineIndex];
+  if (start === null || start === undefined) return null;
+  const later = times.filter((t): t is number => t !== null && t > start);
+  if (later.length > 0) return Math.min(...later);
+  return durationMs !== undefined ? Math.min(start + 8000, durationMs) : start + 8000;
+}
+
 /** The next or previous timed line from a line, skipping lines with no time */
 export function stepLine(times: (number | null)[], from: number, step: 1 | -1): number | null {
   for (let i = from + step; i >= 0 && i < times.length; i += step) if (times[i] !== null) return i;

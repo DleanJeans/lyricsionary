@@ -1,4 +1,4 @@
-import { isSameTrack, lineAtTime, lineSimilarity, matchSyncedLines, parseLrc, stepLine } from '../src/utils/syncedLyrics';
+import { isSameTrack, lineAtTime, lineEndTime, lineSimilarity, matchSyncedLines, parseLrc, stepLine } from '../src/utils/syncedLyrics';
 
 describe('parseLrc', () => {
   it('reads timed lines, skipping empty ones and tags', () => {
@@ -52,5 +52,20 @@ describe('isSameTrack', () => {
     expect(isSameTrack('Je veux', 'Zaz', 'Je veux - Live', 'ZAZ')).toBe(true);
     expect(isSameTrack('99 Luftballons', 'Nena', '99 Luftballons (Remastered)', 'Nena')).toBe(true);
     expect(isSameTrack('Je veux', 'Zaz', 'Les passants', 'Zaz')).toBe(false);
+  });
+});
+
+describe('lineEndTime', () => {
+  const times = [1000, null, 4000, 9000];
+  it('ends at the next timed line', () => {
+    expect(lineEndTime(times, 0)).toBe(4000);
+    expect(lineEndTime(times, 2)).toBe(9000);
+  });
+  it('gives the last line a few seconds, within the song', () => {
+    expect(lineEndTime(times, 3)).toBe(17000);
+    expect(lineEndTime(times, 3, 12000)).toBe(12000);
+  });
+  it('has none for an untimed line', () => {
+    expect(lineEndTime(times, 1)).toBeNull();
   });
 });

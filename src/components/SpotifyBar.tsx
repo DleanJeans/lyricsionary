@@ -36,6 +36,9 @@ export default function SpotifyBar({
   onToggleFollow: () => void;
 }) {
   const canPlaySelected = selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
+  // Loops the tapped word's line, or else the one playing
+  const lineToLoop = canPlaySelected ? selectedLineIndex : sync.isThisSong ? sync.currentLine : null;
+  const looping = sync.loopLine !== null;
   const status =
     sync.error ??
     (sync.timings === 'loading'
@@ -66,6 +69,18 @@ export default function SpotifyBar({
             >
               <Ionicons name="play" size={14} color={Colors.white} />
               <Text style={styles.fromLineText}>Line</Text>
+            </TouchableOpacity>
+          )}
+          {(looping || lineToLoop !== null) && (
+            <TouchableOpacity
+              style={[styles.loop, looping && styles.loopOn]}
+              onPress={() => sync.toggleLoop(lineToLoop)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={looping ? 'Stop looping the line' : 'Loop the line'}
+            >
+              <Ionicons name="repeat" size={18} color={looping ? Colors.white : Colors.text} />
+              {looping && sync.loopCount > 0 && <Text style={styles.loopCount}>{sync.loopCount}</Text>}
             </TouchableOpacity>
           )}
           {sync.isThisSong && (
@@ -126,6 +141,22 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     backgroundColor: SPOTIFY_GREEN,
+  },
+  loop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  loopOn: {
+    backgroundColor: SPOTIFY_GREEN,
+  },
+  loopCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.white,
   },
   fromLineText: {
     fontSize: 12,

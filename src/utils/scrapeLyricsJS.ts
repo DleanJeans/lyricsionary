@@ -30,18 +30,77 @@ const _scrapeLyricsLogic = `
     }
   }
 
-  // Genius
+  // Genius: the Translations dropdown lists the song's other versions (the original, a Romanization,
+  // translations). Each one is fetched and sent along; a version that can't be fetched, e.g. behind
+  // Genius's captcha, is sent without its text so the app can open it for the user
   if (url.includes('genius.com')) {
-    const genius = document.querySelectorAll('[data-lyrics-container="true"]');
-    if (genius.length > 0) {
-      genius.forEach(el => { lyrics += el.innerText + '\\n'; });
-      // Extract language from Genius preloaded state
+    const lyricsText = (doc) => {
+      const containers = [...doc.querySelectorAll('[data-lyrics-container="true"]')];
+      if (!containers.length) return '';
+      return containers.map((container) => {
+        const clone = container.cloneNode(true);
+        clone.querySelectorAll('[data-exclude-from-selection]').forEach((el) => el.remove());
+        clone.querySelectorAll('br').forEach((br) => br.replaceWith('\\n'));
+        return clone.textContent;
+      }).join('\\n');
+    };
+    const isOriginalPath = (path) => !/^\\/Genius-/i.test(path);
+    const pathOf = (href) => {
       try {
-        languageCode = window.__PRELOADED_STATE__.songPage.trackingData["Lyrics Language"] || '';
+        return new URL(href, url).pathname;
       } catch (e) {
-        consoleLog('Failed to extract language from Genius: ' + e.message);
+        return '';
       }
-      sendLyrics(lyrics, languageCode);
+    };
+    lyrics = lyricsText(document);
+    if (lyrics) {
+      const path = window.location.pathname;
+      // { url, language, isOriginal }, language a code like "ja" or "romanization", or the dropdown's label
+      let versions = [];
+      try {
+        const state = window.__PRELOADED_STATE__;
+        languageCode = state.songPage.trackingData.find((t) => t.key === 'Lyrics Language')?.value || '';
+        const songs = state.entities.songs;
+        const song = songs[state.songPage.song];
+        // The page data can be for another song after client-side navigation
+        if (pathOf(song.url) === path) {
+          const isOriginal = (s) => !/^Genius\\b.*\\b(?:Translations?|Romanizations?)\\b/i.test(s.artistNames || '') && isOriginalPath(pathOf(s.url));
+          versions = [song.id, ...(song.translationSongs || []).filter((id) => id !== song.id)]
+            .map((id) => songs[id])
+            .filter((s) => s && s.url)
+            .map((s) => ({ url: s.url, language: s.language || '', isOriginal: isOriginal(s) }));
+        }
+      } catch (e) {
+        consoleLog('Failed to read the versions from Genius page data: ' + e.message);
+      }
+      if (!versions.length) {
+        versions = [
+          { url: url.split(/[?#]/)[0], language: languageCode, isOriginal: isOriginalPath(path) },
+          ...[...document.querySelectorAll('a[class*="TranslationLink"]')].map((a) => ({
+            url: a.href,
+            language: a.textContent.trim(),
+            isOriginal: isOriginalPath(pathOf(a.href)),
+          })),
+        ];
+      }
+      const current = versions[0];
+      current.text = lyrics;
+      current.title = document.title;
+      Promise.all(versions.slice(1).map((version) =>
+        fetch(version.url, { credentials: 'include' })
+          .then((response) => response.text())
+          .then((html) => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const text = lyricsText(doc);
+            if (text) {
+              version.text = text;
+              version.title = doc.title;
+            }
+          })
+          .catch((e) => consoleLog('Failed to fetch ' + version.url + ': ' + e.message))
+      )).then(() => {
+        sendLyrics(lyrics, languageCode, { geniusVersions: versions });
+      });
       return;
     }
   }

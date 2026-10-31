@@ -203,19 +203,31 @@ export default function EditorScreen() {
     if (url) setPendingSourceUrls((prev) => ({ ...prev, [targetTab]: url }));
     if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
 
-    // A translation that came with the original (LyricsTranslate, Musixmatch, Letras) fills in its language's tab, adding it if needed
-    const scrapedTranslation = route.params?.scrapedTranslation as string | undefined;
-    const translationLanguage = findTranslationLanguageName((route.params?.scrapedTranslationLanguage as string | undefined) ?? '');
-    if (targetTab === 0 && scrapedTranslation && translationLanguage) {
-      const existing = translations.findIndex((t) => t.language === translationLanguage);
-      const translationTab = (existing >= 0 ? existing : translations.length) + 1;
-      setTranslations((prev) => {
-        const index = prev.findIndex((t) => t.language === translationLanguage);
-        if (index < 0) return [...prev, { language: translationLanguage, lyrics: scrapedTranslation }];
-        return prev.map((t, i) => (i === index ? { ...t, lyrics: scrapedTranslation } : t));
+    // Translations that came with the original (LyricsTranslate, Musixmatch, Letras, Genius's other versions) fill in
+    // their languages' tabs, adding them if needed
+    const scrapedTranslations = ((route.params?.scrapedTranslations ?? []) as { language: string; lyrics: string; url?: string; title?: string }[])
+      .map((t) => ({ ...t, language: findTranslationLanguageName(t.language ?? '') }))
+      .filter((t): t is typeof t & { language: string } => targetTab === 0 && !!t.lyrics && !!t.language);
+    if (scrapedTranslations.length) {
+      const languages = translations.map((t) => t.language);
+      scrapedTranslations.forEach((t) => {
+        if (!languages.includes(t.language)) languages.push(t.language);
+        const translationTab = languages.indexOf(t.language) + 1;
+        const sourceUrl = t.url || url;
+        if (sourceUrl) setPendingSourceUrls((prev) => ({ ...prev, [translationTab]: sourceUrl }));
+        const pageTitle = t.title ?? title;
+        if (pageTitle !== undefined) setPendingPageTitles((prev) => ({ ...prev, [translationTab]: pageTitle }));
       });
-      if (url) setPendingSourceUrls((prev) => ({ ...prev, [translationTab]: url }));
-      if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [translationTab]: title }));
+      setTranslations((prev) => {
+        let updated = [...prev];
+        scrapedTranslations.forEach(({ language, lyrics }) => {
+          const index = updated.findIndex((t) => t.language === language);
+          updated = index < 0
+            ? [...updated, { language, lyrics }]
+            : updated.map((t, i) => (i === index ? { ...t, lyrics } : t));
+        });
+        return updated;
+      });
     }
     setActiveTab(targetTab);
     if (url) setShowSourceUrl(true);
@@ -224,11 +236,11 @@ export default function EditorScreen() {
     const { autoFetch: currentAutoFetch } = useStore.getState();
     if (currentAutoFetch?.step === 'lyrics' && targetTab === 0) {
       // Done already when the page had the translation too
-      setAutoFetch(scrapedTranslation && translationLanguage ? null : { ...currentAutoFetch, step: 'translation' });
+      setAutoFetch(scrapedTranslations.length ? null : { ...currentAutoFetch, step: 'translation' });
     } else if (currentAutoFetch?.step === 'translating' && targetTab > 0) {
       setAutoFetch(null);
     }
-    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined, scrapedTranslation: undefined, scrapedTranslationLanguage: undefined });
+    navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined, scrapedTranslations: undefined });
   }, [route.params?.scrapedLyrics]);
 
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);

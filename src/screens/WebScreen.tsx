@@ -26,6 +26,7 @@ import { joinChunks, remapTranslation } from '../utils/deeplTranslation';
 import { detectLyricsJS } from '../utils/detectLyricsJS';
 import { detectTranslationJS } from '../utils/detectTranslationJS';
 import { followLyricsLinkJS } from '../utils/followLyricsLinkJS';
+import { GeniusVersion, mergeGeniusVersions, splitGeniusVersions, translationLanguageOf } from '../utils/geniusVersions';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
@@ -68,6 +69,8 @@ export default function WebScreen() {
   // Pages already scraped or followed automatically, so repeated detection messages act once
   const autoScrapedUrl = useRef<string | null>(null);
   const autoFollowedUrl = useRef<string | null>(null);
+  // A Genius song's versions while some still need their page opened, e.g. to get past the captcha
+  const geniusImport = useRef<GeniusVersion[] | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -141,6 +144,41 @@ export default function WebScreen() {
     }
   };
 
+  // Genius sends every version of the song from its Translations dropdown. Getting the original, it fills in a
+  // tab for each of the others; a translation tab takes its language's version. A version that couldn't be
+  // fetched is opened here so the user can get past Genius's captcha, and is scraped once its lyrics show
+  const handleGeniusVersions = (data: any) => {
+    const versions = mergeGeniusVersions(geniusImport.current, data.geniusVersions as GeniusVersion[]);
+    if (scrapeTargetTab > 0) {
+      geniusImport.current = null;
+      const target = versions.find((v) => v.text && translationLanguageOf(v) === scrapeTargetLanguage) ?? data.geniusVersions[0];
+      navigation.navigate('Editor', {
+        scrapedLyrics: cleanGeniusLyrics(target.text!.trim()),
+        scrapedSourceUrl: target.url,
+        scrapedPageTitle: target.title ?? '',
+        scrapedTargetTab: scrapeTargetTab,
+      });
+      return;
+    }
+    const missing = versions.find((v) => !v.text);
+    if (missing) {
+      geniusImport.current = versions;
+      setToast(`Opening the ${translationLanguageOf(missing) ?? missing.language} version. Solve the captcha if Genius shows one`);
+      setWebUrl(missing.url);
+      return;
+    }
+    geniusImport.current = null;
+    const { original, translations } = splitGeniusVersions(versions);
+    navigation.navigate('Editor', {
+      scrapedLyrics: cleanGeniusLyrics(original.text!.trim()),
+      scrapedSourceUrl: original.url,
+      scrapedPageTitle: original.title ?? '',
+      scrapedTargetTab: 0,
+      scrapedLanguageCode: translationLanguageOf(original) ?? original.language,
+      scrapedTranslations: translations.map((t) => ({ ...t, lyrics: cleanGeniusLyrics(t.lyrics.trim()) })),
+    });
+  };
+
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -155,6 +193,10 @@ export default function WebScreen() {
       }
       if (data.type === 'translationDetected') {
         setWaitingForTranslation(!data.hasTranslation);
+        return;
+      }
+      if (data.type === 'lyrics' && Array.isArray(data.geniusVersions) && data.text) {
+        handleGeniusVersions(data);
         return;
       }
       // A page with a translation too (LyricsTranslate, Musixmatch, Letras) sends it along: it fills in a translation
@@ -176,8 +218,9 @@ export default function WebScreen() {
           scrapedPageTitle: data.title ?? '',
           scrapedTargetTab: scrapeTargetTab,
           scrapedLanguageCode: data.languageCode || '',
-          scrapedTranslation: withTranslation ? pageTranslation : undefined,
-          scrapedTranslationLanguage: withTranslation ? data.translationLanguage : undefined,
+          scrapedTranslations: withTranslation
+            ? [{ language: data.translationLanguage, lyrics: pageTranslation, url: currentUrl, title: data.title ?? '' }]
+            : undefined,
         });
       }
       if (data.type === 'translation' && data.text) {

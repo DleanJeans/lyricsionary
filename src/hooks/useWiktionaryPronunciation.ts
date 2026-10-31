@@ -11,6 +11,8 @@ interface Options {
 interface Result extends WiktionaryPronunciation {
   /** False until the page loads (or fails), so an empty audio list isn't mistaken for "none" */
   loaded: boolean;
+  /** True while the page is being fetched */
+  pending: boolean;
 }
 
 const EMPTY: WiktionaryPronunciation = { ipa: [], audio: [] };
@@ -22,20 +24,26 @@ export function useWiktionaryPronunciation(
   { enabled = true, savedAudio, needsIpa = true }: Options = {}
 ): Result {
   const [pronunciation, setPronunciation] = useState<WiktionaryPronunciation | null>(null);
+  const [settled, setSettled] = useState(false);
   const skip = !!savedAudio && !needsIpa;
+  const fetches = enabled && !skip && !!word && !!language;
 
   useEffect(() => {
     setPronunciation(null);
-    if (!enabled || skip || !word || !language) return;
+    setSettled(false);
+    if (!fetches) return;
     let cancelled = false;
     getWiktionaryPronunciation(word, language).then((result) => {
-      if (!cancelled) setPronunciation(result ?? null);
+      if (cancelled) return;
+      setPronunciation(result ?? null);
+      setSettled(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [word, language, enabled, skip]);
+  }, [word, language, fetches]);
 
-  if (savedAudio) return { ipa: pronunciation?.ipa ?? [], audio: savedAudio, loaded: true };
-  return { ...(pronunciation ?? EMPTY), loaded: pronunciation !== null };
+  const pending = fetches && !settled;
+  if (savedAudio) return { ipa: pronunciation?.ipa ?? [], audio: savedAudio, loaded: true, pending };
+  return { ...(pronunciation ?? EMPTY), loaded: pronunciation !== null, pending };
 }

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
-import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { isWordIgnored, useStore } from '../store/useStore';
@@ -31,6 +31,8 @@ interface NewWordCardProps {
   onClose: () => void;
   isWide?: boolean;
   occurrence?: number;
+  /** Its meaning and IPA are still being fetched from Wiktionary */
+  loading?: boolean;
 }
 
 export default function NewWordCard({
@@ -44,6 +46,7 @@ export default function NewWordCard({
   onClose,
   isWide = false,
   occurrence,
+  loading = false,
 }: NewWordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -106,6 +109,7 @@ export default function NewWordCard({
   };
 
   const showSplit = isGerman && !isIgnored;
+  const isFetching = loading || wiktionary.pending;
 
   return (
     <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
@@ -151,10 +155,18 @@ export default function NewWordCard({
           </TouchableOpacity>
         </View>
       </View>
-      {(wiktionary.ipa.length > 0 || wiktionary.audio.length > 0) && (
+      {(wiktionary.ipa.length > 0 || wiktionary.audio.length > 0 || isFetching) && (
         <View style={styles.ipaRow}>
           {wiktionary.ipa.length > 0 && <Text style={styles.ipaText}>{wiktionary.ipa.join(', ')}</Text>}
           <PronunciationAudio audio={wiktionary.audio} compact />
+          {isFetching && (
+            <View style={styles.loadingRow} accessibilityLabel="Loading from Wiktionary">
+              <ActivityIndicator size="small" color={Colors.textSecondary} />
+              <Text style={styles.loadingText}>
+                {wiktionary.pending ? (loading ? 'Loading IPA and meaning…' : 'Loading IPA…') : 'Loading meaning…'}
+              </Text>
+            </View>
+          )}
         </View>
       )}
       {showSplit && compoundParts && !isEditingSplit && (
@@ -309,6 +321,15 @@ const styles = StyleSheet.create({
   ipaText: {
     color: Colors.textSecondary,
     fontSize: 15,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  loadingText: {
+    color: Colors.textMuted,
+    fontSize: 13,
   },
   compoundText: {
     marginTop: 4,

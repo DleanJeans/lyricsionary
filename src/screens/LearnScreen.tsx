@@ -930,9 +930,12 @@ export default function LearnScreen() {
   const ignoreLanguage = songLanguage || 'unknown';
   const selectedWordSaved = !!selectedWord && !!findSavedEntry(selectedWord);
   const selectedWordIgnored = !!selectedWord && !!songLanguage && isIgnoredWord(selectedWord, songLanguage);
+  // The tapped word whose meaning and IPA are still being fetched, so its card shows them loading
+  const [fetchingWord, setFetchingWord] = useState<string | null>(null);
   useEffect(() => {
     if (!selectedWord || selectedWordSaved || selectedWordIgnored || !songLanguage || !song) return;
     let cancelled = false;
+    setFetchingWord(selectedWord);
     // A word Wiktionary doesn't have is saved as what it's about: a Korean word without its particles,
     // e.g. 너 for 너를, or a Spanish or Portuguese verb without its pronouns, e.g. amar for amarte
     const baseWord = (isKoreanSong ? getKoreanStem(selectedWord, { loose: true }) : null) ??
@@ -948,6 +951,7 @@ export default function LearnScreen() {
       return found;
     }).then(({ word: savedWord, definitions, pronunciation }) => {
       if (cancelled) return;
+      setFetchingWord(null);
       const answer = definitions?.length ? pickDefinition(definitions, selectedTranslationLine) ?? definitions[0].text : undefined;
       const context: WordContext = {
         context: selectedLine ?? '',
@@ -965,6 +969,7 @@ export default function LearnScreen() {
     });
     return () => {
       cancelled = true;
+      setFetchingWord(null);
     };
     // Saved once per tap, with the line it was tapped in
   }, [selectedWord, selectedWordSaved, selectedWordIgnored, songLanguage, selectedLineIndex, selectedOccurrence]);
@@ -1211,6 +1216,7 @@ export default function LearnScreen() {
         onClose={() => setSelectedWord(null)}
         isWide={isWide}
         occurrence={selectedOccurrence}
+        loading={fetchingWord === selectedWord}
       />
     ) : null);
   const dictationPanel = dictation && lines[dictation.lineIndex] ? (

@@ -27,7 +27,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import ReviewSession from '../components/ReviewSession';
 import SongFilter from '../components/SongFilter';
 import { buildReviewItems, dueWords, ReviewItem } from '../utils/reviewQuiz';
-import { isTricky } from '../utils/wordQuiz';
+import { compareMostMissed, isTricky } from '../utils/wordQuiz';
 
 interface PendingDeletion {
   id: string;
@@ -52,7 +52,12 @@ export default function WordsScreen() {
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
-  const sortedWords = [...words].sort((a, b) => b.lastLookedUp - a.lastLookedUp);
+  // Most missed first, by the share of quiz answers that were wrong, kept across restarts
+  const [mostMissed, setMostMissed] = usePersistedState('@lyricsionary_words_most_missed', false, isBoolean);
+  const sortedWords = [...words].sort((a, b) =>
+    (mostMissed ? compareMostMissed(a.quiz, b.quiz) : 0) || b.lastLookedUp - a.lastLookedUp
+  );
+  const hasMissedWords = words.some((w) => (w.quiz?.wrong ?? 0) > 0);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showLanguageTabs, setShowLanguageTabs] = useState(true);
@@ -328,6 +333,16 @@ export default function WordsScreen() {
                   selected={trickyOnly}
                   onPress={() => setTrickyOnly(!trickyOnly)}
                   accessibilityLabel="Words answered wrong lately"
+                />
+              )}
+              {(hasMissedWords || mostMissed) && (
+                <FilterChip
+                  icon={<Ionicons name="trending-down" size={16} color={mostMissed ? Colors.white : Colors.danger} />}
+                  label="Most missed"
+                  count={languageFilteredWords.filter((w) => (w.quiz?.wrong ?? 0) > 0).length}
+                  selected={mostMissed}
+                  onPress={() => setMostMissed(!mostMissed)}
+                  accessibilityLabel="Sort by most missed in quizzes"
                 />
               )}
             </MasteryLevelTabs>

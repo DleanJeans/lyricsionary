@@ -70,6 +70,15 @@ export function isTricky(quiz: QuizStats | undefined, now: number): boolean {
   return quiz.lastCorrectAt !== quiz.lastAnsweredAt;
 }
 
+/**
+ * Most missed first: the larger share of wrong answers, then more of them; words never answered
+ * wrong keep their order after these
+ */
+export function compareMostMissed(a: QuizStats | undefined, b: QuizStats | undefined): number {
+  const share = (q: QuizStats | undefined) => (q && q.wrong > 0 ? q.wrong / (q.wrong + q.correct) : 0);
+  return share(b) - share(a) || (b?.wrong ?? 0) - (a?.wrong ?? 0);
+}
+
 /** How many more correct answers the word needs for its next level, e.g. "2 more to Recognized" */
 export function progressLabel(level: MasteryLevel | undefined, quiz: QuizStats | undefined): string | null {
   const streak = quiz?.streak ?? 0;

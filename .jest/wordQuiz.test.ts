@@ -1,6 +1,6 @@
 import type { WordEntry } from '../src/types';
 import type { PartOfSpeech } from '../src/utils/partOfSpeech';
-import { buildLyricQuiz, checkTypedAnswer, isTricky, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
+import { buildLyricQuiz, checkTypedAnswer, compareMostMissed, isTricky, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
 
 const DAY = 24 * 60 * 60 * 1000;
 const start = new Date(2026, 9, 25, 12).getTime();
@@ -235,5 +235,13 @@ describe('isTricky', () => {
   it('reads words answered before lastWrongAt was kept by their last answer', () => {
     expect(isTricky({ streak: 0, correct: 1, wrong: 1, lastAnsweredAt: 5, lastCorrectAt: 2 }, start)).toBe(true);
     expect(isTricky({ streak: 1, correct: 1, wrong: 1, lastAnsweredAt: 5, lastCorrectAt: 5 }, start)).toBe(false);
+  });
+});
+
+describe('compareMostMissed', () => {
+  const q = (correct: number, wrong: number) => ({ streak: 0, correct, wrong });
+  it('puts the larger share of wrong answers first, then more of them', () => {
+    const sorted = [q(5, 0), q(1, 1), q(0, 2), q(3, 1), q(2, 2), undefined].sort(compareMostMissed);
+    expect(sorted).toEqual([q(0, 2), q(2, 2), q(1, 1), q(3, 1), q(5, 0), undefined]);
   });
 });

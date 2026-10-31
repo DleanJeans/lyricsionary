@@ -10,6 +10,7 @@ import { useStore } from '../store/useStore';
 import { WordEntry } from '../types';
 import AlsoInSongs from './AlsoInSongs';
 import QuickNote from './QuickNote';
+import DueLabel from './DueLabel';
 import MasteryLevelBadge from './MasteryLevelBadge';
 import MasteryLevelSelector from './MasteryLevelSelector';
 import HighlightedText from './HighlightedText';
@@ -169,6 +170,7 @@ export default function WordCard({
                 />
               </View>
             )}
+            <DueLabel entry={item} />
             <QuickNote entry={item} />
             {quiz}
             <AlsoInSongs item={item} songId={songId} />

@@ -79,6 +79,39 @@ export function compareMostMissed(a: QuizStats | undefined, b: QuizStats | undef
   return share(b) - share(a) || (b?.wrong ?? 0) - (a?.wrong ?? 0);
 }
 
+/** When a quiz will next count toward the word's next level: now when due, null for a Known word */
+export function nextDueAt(entry: { masteryLevel?: MasteryLevel; quiz?: QuizStats }, now: number): number | null {
+  const level = entry.masteryLevel ?? 'Seen';
+  if (!quizKindFor(level)) return null;
+  if (isDue(entry, now)) return now;
+  const last = entry.quiz?.lastAnsweredAt ?? now;
+  let at = last + QUIZ_RULES.cooldownMs;
+  if (level === 'Recognized' && entry.quiz?.lastCountedDay === localDay(now)) {
+    const tomorrow = new Date(now);
+    tomorrow.setHours(24, 0, 0, 0);
+    at = Math.max(at, tomorrow.getTime());
+  }
+  if (level === 'Recalled') at = Math.max(at, last + QUIZ_RULES.knownAfterDays * DAY_MS);
+  return Math.max(at, now);
+}
+
+/** "Due now", "Due in 3 hours", "Due tomorrow" or "Due in 12 days", for the word card */
+export function dueLabel(dueAt: number, now: number): string {
+  const ms = dueAt - now;
+  if (ms <= 0) return 'Due for a quiz now';
+  const hours = Math.ceil(ms / (60 * 60 * 1000));
+  if (hours < 12) return `Next quiz in ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  const startOf = (t: number) => {
+    const d = new Date(t);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  };
+  const days = Math.round((startOf(dueAt) - startOf(now)) / DAY_MS);
+  if (days <= 0) return `Next quiz in ${hours} hours`;
+  if (days === 1) return 'Next quiz tomorrow';
+  return `Next quiz in ${days} days`;
+}
+
 /** How many more correct answers the word needs for its next level, e.g. "2 more to Recognized" */
 export function progressLabel(level: MasteryLevel | undefined, quiz: QuizStats | undefined): string | null {
   const streak = quiz?.streak ?? 0;

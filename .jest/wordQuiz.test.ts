@@ -1,6 +1,6 @@
 import type { WordEntry } from '../src/types';
 import type { PartOfSpeech } from '../src/utils/partOfSpeech';
-import { buildLyricQuiz, checkTypedAnswer, compareMostMissed, isTricky, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
+import { buildLyricQuiz, checkTypedAnswer, compareMostMissed, dueLabel, isTricky, nextDueAt, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
 
 const DAY = 24 * 60 * 60 * 1000;
 const start = new Date(2026, 9, 25, 12).getTime();
@@ -243,5 +243,30 @@ describe('compareMostMissed', () => {
   it('puts the larger share of wrong answers first, then more of them', () => {
     const sorted = [q(5, 0), q(1, 1), q(0, 2), q(3, 1), q(2, 2), undefined].sort(compareMostMissed);
     expect(sorted).toEqual([q(0, 2), q(2, 2), q(1, 1), q(3, 1), q(5, 0), undefined]);
+  });
+});
+
+describe('nextDueAt and dueLabel', () => {
+  const hour = 60 * 60 * 1000;
+  const day = 24 * hour;
+  const now = new Date(2026, 9, 31, 15).getTime();
+  it('is now for a due word and null for a Known one', () => {
+    expect(nextDueAt({ masteryLevel: 'Seen' }, now)).toBe(now);
+    expect(nextDueAt({ masteryLevel: 'Known' }, now)).toBeNull();
+  });
+  it('waits out the cooldown after an answer', () => {
+    const at = nextDueAt({ masteryLevel: 'Seen', quiz: { streak: 1, correct: 1, wrong: 0, lastAnsweredAt: now - hour } }, now);
+    expect(at).toBe(now + 3 * hour);
+    expect(dueLabel(at!, now)).toBe('Next quiz in 3 hours');
+  });
+  it('waits until tomorrow for a Recognized word counted today', () => {
+    const at = nextDueAt({ masteryLevel: 'Recognized', quiz: { streak: 1, correct: 1, wrong: 0, lastAnsweredAt: now - 5 * hour, lastCountedDay: '2026-10-31' } }, now);
+    expect(at).toBe(new Date(2026, 10, 1).getTime());
+  });
+  it('waits 14 days for a Recalled word', () => {
+    const at = nextDueAt({ masteryLevel: 'Recalled', quiz: { streak: 0, correct: 3, wrong: 0, lastAnsweredAt: now - 2 * day } }, now);
+    expect(dueLabel(at!, now)).toBe('Next quiz in 12 days');
+    expect(dueLabel(now + day, now)).toBe('Next quiz tomorrow');
+    expect(dueLabel(now, now)).toBe('Due for a quiz now');
   });
 });

@@ -19,6 +19,9 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   destructive?: boolean;
   loading?: boolean;
+  /** A third choice between cancel and confirm, e.g. Archive instead of Delete */
+  altText?: string;
+  onAlt?: () => void;
 }
 
 export default function ConfirmDialog({
@@ -31,6 +34,8 @@ export default function ConfirmDialog({
   onCancel,
   destructive = false,
   loading = false,
+  altText,
+  onAlt,
 }: ConfirmDialogProps) {
   return (
     <Modal
@@ -57,6 +62,17 @@ export default function ConfirmDialog({
             >
               <Text style={[styles.modalCancelText, loading && styles.modalButtonTextDisabled]}>{cancelText}</Text>
             </Pressable>
+            {altText && onAlt && (
+              <Pressable
+                style={({ pressed }) => [styles.modalConfirm, styles.modalAlt, pressed && !loading && styles.modalButtonPressed]}
+                onPress={onAlt}
+                disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel={altText}
+              >
+                <Text style={styles.modalConfirmText}>{altText}</Text>
+              </Pressable>
+            )}
             <Pressable
               style={({ pressed }) => [
                 styles.modalConfirm,
@@ -135,6 +151,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 10,
+  },
+  modalAlt: {
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: 16,
   },
   modalConfirmDestructive: {
     backgroundColor: Colors.danger,

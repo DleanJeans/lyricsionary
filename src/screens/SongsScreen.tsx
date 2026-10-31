@@ -44,6 +44,8 @@ export default function SongsScreen() {
   const songs = useStore((s) => s.songs);
   const setCurrentSongId = useStore((s) => s.setCurrentSongId);
   const deleteSong = useStore((s) => s.deleteSong);
+  const updateSong = useStore((s) => s.updateSong);
+  const [showArchived, setShowArchived] = useState(false);
   const trackSongOpen = useStore((s) => s.trackSongOpen);
   const setMatchedSongs = useStore((s) => s.setMatchedSongs);
   const setIsLoadingSong = useStore((s) => s.setIsLoadingSong);
@@ -141,6 +143,14 @@ export default function SongsScreen() {
     }
   };
 
+  // Archived songs leave the list but keep their words and progress
+  const toggleArchived = () => {
+    if (songToDelete) {
+      void updateSong(songToDelete.id, { archivedAt: songToDelete.archivedAt ? undefined : Date.now() });
+      setSongToDelete(null);
+    }
+  };
+
   const cancelDelete = () => {
     setSongToDelete(null);
   };
@@ -197,7 +207,9 @@ export default function SongsScreen() {
   }, [songWords, words]);
   const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
 
-  const sortedSongs = [...songs].sort((a, b) => {
+  const archivedCount = songs.filter((s) => s.archivedAt).length;
+  const listed = archivedCount && showArchived ? songs.filter((s) => s.archivedAt) : songs.filter((s) => !s.archivedAt);
+  const sortedSongs = [...listed].sort((a, b) => {
     switch (sortMode) {
       case 'lastOpened':
         return (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0);
@@ -479,7 +491,20 @@ export default function SongsScreen() {
         onFetch={(songName, artistName) => navigation.navigate('Editor', { autoFetchSong: { songName, artistName } })}
       />
 
-      <View style={styles.sortRow}>{sortChip}</View>
+      <View style={styles.sortRow}>
+        {sortChip}
+        {archivedCount > 0 && (
+          <TouchableOpacity
+            style={[styles.sortChip, showArchived && styles.sortChipActive]}
+            onPress={() => setShowArchived((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={showArchived ? 'Back to songs' : `Show ${archivedCount} archived songs`}
+          >
+            <Ionicons name={showArchived ? 'archive' : 'archive-outline'} size={16} color={showArchived ? Colors.white : Colors.textSecondary} />
+            <Text style={[styles.sortChipLabel, showArchived && styles.sortChipLabelActive]}>{`Archived ${archivedCount}`}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {filteredSongs.length === 0 ? (
         songs.length === 0 ? (
@@ -489,6 +514,14 @@ export default function SongsScreen() {
             message="Add a song to start practicing lyrics and looking up words."
             actionLabel="Create New Lyrics"
             onAction={() => navigation.navigate('Editor')}
+          />
+        ) : listed.length === 0 ? (
+          <EmptyState
+            icon="archive-outline"
+            title="Every song is archived"
+            message="Archived songs keep their words. Open them to put one back."
+            actionLabel="Show archived"
+            onAction={() => setShowArchived(true)}
           />
         ) : (
           <EmptyState
@@ -519,7 +552,11 @@ export default function SongsScreen() {
       <ConfirmDialog
         visible={songToDelete !== null}
         title={`Delete Song: ${songToDelete?.songName}`}
-        message={`This action cannot be undone.`}
+        message={songToDelete?.archivedAt
+          ? 'This action cannot be undone. Or unarchive it to put it back in the list.'
+          : 'This action cannot be undone. Or archive it to hide it from the list and keep its words.'}
+        altText={songToDelete?.archivedAt ? 'Unarchive' : 'Archive'}
+        onAlt={toggleArchived}
         confirmText="Delete"
         cancelText="Cancel"
         onConfirm={confirmDelete}
@@ -550,6 +587,7 @@ const styles = StyleSheet.create({
   },
   sortRow: {
     flexDirection: 'row',
+    gap: 8,
     marginBottom: 12,
   },
   sortChip: {
@@ -562,6 +600,13 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingHorizontal: 10,
     paddingVertical: 6,
+  },
+  sortChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  sortChipLabelActive: {
+    color: Colors.white,
   },
   sortChipLabel: {
     fontSize: 13,

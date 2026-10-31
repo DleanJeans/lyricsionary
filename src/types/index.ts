@@ -17,6 +17,8 @@ export interface Song {
   openCount?: number;
   /** Notes on lines, by the line's text so every repeat of a line shares one */
   lineNotes?: Record<string, string>;
+  /** Hidden from the Songs list, with its words kept */
+  archivedAt?: number;
 }
 
 export interface Translation {

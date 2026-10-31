@@ -1,4 +1,4 @@
-import { cleanGeniusLyrics, isLyricWord } from '../src/utils/cleanLyrics';
+import { cleanGeniusLyrics, isLyricWord, splitEdgePunctuation } from '../src/utils/cleanLyrics';
 
 describe('cleanGeniusLyrics', () => {
   it('removes the translations header, section tags and extra blank lines', () => {
@@ -23,5 +23,13 @@ describe('isLyricWord', () => {
     expect(isLyricWord('3X')).toBe(false);
     expect(isLyricWord('99')).toBe(false);
     expect(isLyricWord('')).toBe(false);
+  });
+});
+
+describe('splitEdgePunctuation', () => {
+  it('splits the punctuation before and after a word', () => {
+    expect(splitEdgePunctuation('(mich?)')).toEqual({ leading: '(', core: 'mich', trailing: '?)' });
+    expect(splitEdgePunctuation("l'amour,")).toEqual({ leading: '', core: "l'amour", trailing: ',' });
+    expect(splitEdgePunctuation('Zeit')).toEqual({ leading: '', core: 'Zeit', trailing: '' });
   });
 });

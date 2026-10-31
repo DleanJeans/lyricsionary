@@ -22,7 +22,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
-import { isLyricWord, removeSpecialChars } from '../utils/cleanLyrics';
+import { isLyricWord, removeSpecialChars, splitEdgePunctuation } from '../utils/cleanLyrics';
 import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
@@ -393,8 +393,7 @@ export default function LearnScreen() {
           if (elisionParts && elisionParts.length > 1) {
             // Compute display parts by splitting the original text to match the cleaned parts
             // The punctuation around the word stays uncolored, e.g. the comma in l'amour,
-            const leading = word.match(/^[^\p{L}\p{N}'-]*/u)?.[0] ?? '';
-            const trailing = word.slice(leading.length).match(/[^\p{L}\p{N}'-]*$/u)?.[0] ?? '';
+            const { leading, trailing } = splitEdgePunctuation(word);
             const cleanStart = leading.length;
             const cleanEnd = word.length - trailing.length;
 
@@ -556,6 +555,7 @@ export default function LearnScreen() {
             );
           }
 
+          const edgePunctuation = splitEdgePunctuation(word);
           const wordColor = isSelected
             ? Colors.primary
             : isIgnored
@@ -590,7 +590,7 @@ export default function LearnScreen() {
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
-                  color: wordColor,
+                  color: Colors.text,
                   fontWeight: isActiveOccurrence ? '700' : '400',
                 }}
               >
@@ -621,7 +621,23 @@ export default function LearnScreen() {
                     })}
                     {word.slice(compoundStart + cleanedWord.length)}
                   </>
-                ) : word}
+                ) : (
+                  // The punctuation around the word stays uncolored, e.g. the question mark in mich?
+                  <>
+                    {edgePunctuation.leading}
+                    <Text
+                      style={{
+                        color: wordColor,
+                        fontWeight: isActiveOccurrence ? '700' : '400',
+                        fontSize,
+                        lineHeight: fontSize * 1.6,
+                      }}
+                    >
+                      {edgePunctuation.core}
+                    </Text>
+                    {edgePunctuation.trailing}
+                  </>
+                )}
               </Text>
             </View>
           );

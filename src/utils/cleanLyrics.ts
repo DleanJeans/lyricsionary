@@ -57,5 +57,11 @@ export function cleanGeniusLyrics(lyrics: string): string {
 export const removeSpecialChars = (word: string) => {
   return word.replace(/[^\p{L}\p{N}'-]/gu, '');
 }
+// A lyric token's punctuation before and after the word, e.g. "(mich?)" -> "(", "mich", "?)"
+export const splitEdgePunctuation = (token: string) => {
+  const leading = token.match(/^[^\p{L}\p{N}'-]*/u)?.[0] ?? '';
+  const trailing = token.slice(leading.length).match(/[^\p{L}\p{N}'-]*$/u)?.[0] ?? '';
+  return { leading, core: token.slice(leading.length, token.length - trailing.length), trailing };
+};
 // Whether a cleaned lyric token is a word to learn: it has a letter and isn't a repeat marker like "x2" in "(x2)"
 export const isLyricWord = (cleaned: string) => /\p{L}/u.test(cleaned) && !/^(x\d+|\d+x)$/i.test(cleaned);

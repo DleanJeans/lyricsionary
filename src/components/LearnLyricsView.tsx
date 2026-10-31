@@ -129,9 +129,8 @@ export function LearnLyricsLine({
           accessibilityRole="button"
           accessibilityLabel="Show the original line"
         >
-          <View pointerEvents="none" style={styles.blurredText}>
-            {renderPressableText(line.original, lineIndex)}
-          </View>
+          {/* Plain text, since mastery colors, IPA and emoji would hint at the words */}
+          <Text style={[styles.hiddenLine, { fontSize }, styles.blurredText]}>{line.original}</Text>
         </TouchableOpacity>
       ) : (
         renderPressableText(line.original, lineIndex)
@@ -280,6 +279,10 @@ const styles = StyleSheet.create({
   sectionLabelText: {
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  hiddenLine: {
+    color: Colors.text,
+    paddingVertical: 4,
   },
   romanizedLine: {
     color: Colors.textSecondary,

@@ -13,6 +13,7 @@ export interface QuizStats {
   wrong: number;
   lastAnsweredAt?: number;
   lastCorrectAt?: number;
+  lastWrongAt?: number;
   /** The local day ("2026-10-25") of the last answer that counted toward the next level */
   lastCountedDay?: string;
 }
@@ -56,6 +57,17 @@ export function isDue(entry: { masteryLevel?: MasteryLevel; quiz?: QuizStats }, 
     return last === undefined || now - last >= QUIZ_RULES.knownAfterDays * DAY_MS;
   }
   return true;
+}
+
+/** Days a wrong answer keeps a word on the Tricky list */
+const TRICKY_DAYS = 7;
+
+/** Whether the word was answered wrong in the last week, or its last answer was wrong */
+export function isTricky(quiz: QuizStats | undefined, now: number): boolean {
+  if (!quiz || quiz.wrong === 0 || quiz.lastAnsweredAt === undefined) return false;
+  if (quiz.lastWrongAt !== undefined && now - quiz.lastWrongAt < TRICKY_DAYS * DAY_MS) return true;
+  // Answered before lastWrongAt was kept: the last answer was wrong when it wasn't the last right one
+  return quiz.lastCorrectAt !== quiz.lastAnsweredAt;
 }
 
 /** How many more correct answers the word needs for its next level, e.g. "2 more to Recognized" */
@@ -108,7 +120,7 @@ export function recordAnswer(
   const before: QuizStats = quiz ?? { streak: 0, correct: 0, wrong: 0 };
   const answered: QuizStats = { ...before, lastAnsweredAt: now };
   if (!correct) {
-    return { masteryLevel: current, quiz: { ...answered, streak: 0, wrong: before.wrong + 1 } };
+    return { masteryLevel: current, quiz: { ...answered, streak: 0, wrong: before.wrong + 1, lastWrongAt: now } };
   }
   const right: QuizStats = { ...answered, correct: before.correct + 1, lastCorrectAt: now };
   const day = localDay(now);

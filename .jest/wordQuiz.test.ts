@@ -1,6 +1,6 @@
 import type { WordEntry } from '../src/types';
 import type { PartOfSpeech } from '../src/utils/partOfSpeech';
-import { buildLyricQuiz, checkTypedAnswer, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
+import { buildLyricQuiz, checkTypedAnswer, isTricky, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
 
 const DAY = 24 * 60 * 60 * 1000;
 const start = new Date(2026, 9, 25, 12).getTime();
@@ -214,5 +214,26 @@ describe('checkTypedAnswer', () => {
   it('is wrong for another word or nothing', () => {
     expect(checkTypedAnswer('amor', 'amour')).toBe('wrong');
     expect(checkTypedAnswer(' ', 'amour')).toBe('wrong');
+  });
+});
+
+describe('isTricky', () => {
+  it('keeps a word answered wrong for a week', () => {
+    const wrong = recordAnswer('Seen', undefined, 'meaning', false, start).quiz;
+    expect(isTricky(wrong, start + DAY)).toBe(true);
+    expect(isTricky(wrong, start + 8 * DAY)).toBe(true); // still its last answer
+    const fixed = recordAnswer('Seen', wrong, 'meaning', true, start + DAY).quiz;
+    expect(isTricky(fixed, start + 2 * DAY)).toBe(true);
+    expect(isTricky(fixed, start + 8 * DAY)).toBe(false);
+  });
+
+  it('is never tricky without a wrong answer', () => {
+    expect(isTricky(undefined, start)).toBe(false);
+    expect(isTricky(recordAnswer('Seen', undefined, 'meaning', true, start).quiz, start)).toBe(false);
+  });
+
+  it('reads words answered before lastWrongAt was kept by their last answer', () => {
+    expect(isTricky({ streak: 0, correct: 1, wrong: 1, lastAnsweredAt: 5, lastCorrectAt: 2 }, start)).toBe(true);
+    expect(isTricky({ streak: 1, correct: 1, wrong: 1, lastAnsweredAt: 5, lastCorrectAt: 5 }, start)).toBe(false);
   });
 });

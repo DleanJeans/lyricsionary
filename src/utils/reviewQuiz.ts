@@ -1,7 +1,7 @@
 import type { WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
 import { isCjkWord } from './cjkWords';
-import { buildLyricQuiz, buildMeaningQuiz, isDue, Quiz, QuizKind, quizKindFor } from './wordQuiz';
+import { buildLyricQuiz, buildMeaningQuiz, isDue, isTricky, Quiz, QuizKind, quizKindFor } from './wordQuiz';
 
 export interface ReviewItem {
   entry: WordEntry;
@@ -43,12 +43,19 @@ const pickContext = (entry: WordEntry): WordContext | undefined => {
 };
 
 /**
- * A quiz for each word that's due (isDue), the ones not quizzed for longest first. A word whose quiz
+ * A quiz for each word that's due (isDue), tricky ones (isTricky) first, then the ones not quizzed
+ * for longest. A word whose quiz
  * can't be made, e.g. one with no meaning or too few other saved words in its language, is left out.
  */
 export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], random = Math.random): ReviewItem[] {
   const items: ReviewItem[] = [];
-  const ordered = [...dueWords].sort((a, b) => (a.quiz?.lastAnsweredAt ?? 0) - (b.quiz?.lastAnsweredAt ?? 0));
+  // Tricky words first, then the ones not quizzed for longest
+  const now = Date.now();
+  const ordered = [...dueWords].sort(
+    (a, b) =>
+      Number(isTricky(b.quiz, now)) - Number(isTricky(a.quiz, now)) ||
+      (a.quiz?.lastAnsweredAt ?? 0) - (b.quiz?.lastAnsweredAt ?? 0)
+  );
   for (const entry of ordered) {
     const kind = quizKindFor(entry.masteryLevel);
     if (!kind) continue;

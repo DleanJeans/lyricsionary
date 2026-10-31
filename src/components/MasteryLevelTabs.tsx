@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { getMasteryLevelColor } from '../constants/theme';
 import { MASTERY_LEVELS, MasteryLevel } from '../types';
@@ -8,10 +8,12 @@ interface MasteryLevelTabsProps {
   selectedLevel: MasteryLevel | null;
   onLevelChange: (level: MasteryLevel | null) => void;
   levelCounts: Partial<Record<MasteryLevel, number>>;
+  /** More chips after the levels, e.g. Tricky */
+  children?: ReactNode;
 }
 
 // Filters saved words by level, one level at a time like the language filters
-export default function MasteryLevelTabs({ selectedLevel, onLevelChange, levelCounts }: MasteryLevelTabsProps) {
+export default function MasteryLevelTabs({ selectedLevel, onLevelChange, levelCounts, children }: MasteryLevelTabsProps) {
   return (
     <ScrollView
       horizontal
@@ -30,6 +32,7 @@ export default function MasteryLevelTabs({ selectedLevel, onLevelChange, levelCo
           accessibilityLabel={`${level} words filter`}
         />
       ))}
+      {children}
     </ScrollView>
   );
 }

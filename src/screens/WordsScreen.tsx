@@ -26,6 +26,7 @@ import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
 import ReviewSession from '../components/ReviewSession';
 import { buildReviewItems, dueWords, ReviewItem } from '../utils/reviewQuiz';
+import { isTricky } from '../utils/wordQuiz';
 
 interface PendingDeletion {
   id: string;
@@ -53,6 +54,8 @@ export default function WordsScreen() {
   const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<MasteryLevel | null>(null);
+  // Only words answered wrong lately
+  const [trickyOnly, setTrickyOnly] = useState(false);
   const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
@@ -134,9 +137,11 @@ export default function WordsScreen() {
     // languageFilteredWords comes from these
     [words, selectedLanguages, pendingDeletions],
   );
-  const levelFilteredWords = selectedLevel
-    ? languageFilteredWords.filter((w) => (w.masteryLevel || 'Seen') === selectedLevel)
-    : languageFilteredWords;
+  const now = Date.now();
+  const trickyCount = languageFilteredWords.filter((w) => isTricky(w.quiz, now)).length;
+  const levelFilteredWords = languageFilteredWords.filter(
+    (w) => (!selectedLevel || (w.masteryLevel || 'Seen') === selectedLevel) && (!trickyOnly || isTricky(w.quiz, now))
+  );
 
   // Apply search filter: the word, its language, IPA or any of its meanings, ignoring accents
   const searchedWords = searchQuery.trim()
@@ -191,7 +196,7 @@ export default function WordsScreen() {
       icon="language-outline"
       label={showLanguageTabs ? 'Hide filters' : 'Show filters'}
       onPress={() => setShowLanguageTabs(!showLanguageTabs)}
-      selected={selectedLanguages.length > 0 || (showFrequency ? hideSavedInTop : !!selectedLevel)}
+      selected={selectedLanguages.length > 0 || (showFrequency ? hideSavedInTop : !!selectedLevel || trickyOnly)}
     />
   );
 
@@ -260,7 +265,18 @@ export default function WordsScreen() {
               />
             </View>
           ) : (
-            <MasteryLevelTabs selectedLevel={selectedLevel} onLevelChange={setSelectedLevel} levelCounts={levelCounts} />
+            <MasteryLevelTabs selectedLevel={selectedLevel} onLevelChange={setSelectedLevel} levelCounts={levelCounts}>
+              {(trickyCount > 0 || trickyOnly) && (
+                <FilterChip
+                  icon={<Ionicons name="alert-circle-outline" size={16} color={trickyOnly ? Colors.white : Colors.warning} />}
+                  label="Tricky"
+                  count={trickyCount}
+                  selected={trickyOnly}
+                  onPress={() => setTrickyOnly(!trickyOnly)}
+                  accessibilityLabel="Words answered wrong lately"
+                />
+              )}
+            </MasteryLevelTabs>
           )}
         </View>
       )}
@@ -314,6 +330,7 @@ export default function WordsScreen() {
               setSearchQuery('');
               setSelectedLanguages([]);
               setSelectedLevel(null);
+              setTrickyOnly(false);
             }}
           />
         )

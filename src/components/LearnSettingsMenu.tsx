@@ -28,6 +28,8 @@ interface LearnSettingsMenuProps {
   onToggleWideWordSpacing: () => void;
   highlightNewWords: boolean;
   onToggleHighlightNewWords: () => void;
+  quietKnownWords: boolean;
+  onToggleQuietKnownWords: () => void;
   showMasteryLevelColors: boolean;
   onToggleShowMasteryLevelColors: () => void;
   showSections: boolean;
@@ -140,6 +142,8 @@ export default function LearnSettingsMenu({
   onToggleWideWordSpacing,
   highlightNewWords,
   onToggleHighlightNewWords,
+  quietKnownWords,
+  onToggleQuietKnownWords,
   showMasteryLevelColors,
   onToggleShowMasteryLevelColors,
   showSections,
@@ -281,6 +285,13 @@ export default function LearnSettingsMenu({
                 icon={<Ionicons name="sparkles-outline" size={18} color={chipIconColor(highlightNewWords)} />}
                 selected={highlightNewWords}
                 onPress={onToggleHighlightNewWords}
+              />
+              {/* Known words without IPA and emoji, so the lyrics are less busy */}
+              <Chip
+                label="Quiet known"
+                icon={<Ionicons name="checkmark-done-outline" size={18} color={chipIconColor(quietKnownWords)} />}
+                selected={quietKnownWords}
+                onPress={onToggleQuietKnownWords}
               />
               {/* Debug: copy the detected sections to check them */}
               <TouchableOpacity

@@ -329,6 +329,8 @@ export default function LearnScreen() {
   const wideWordSpacing = useStore((s) => s.wideWordSpacing);
   const highlightNewWords = useStore((s) => s.highlightNewWords);
   const toggleHighlightNewWords = useStore((s) => s.toggleHighlightNewWords);
+  const quietKnownWords = useStore((s) => s.quietKnownWords);
+  const toggleQuietKnownWords = useStore((s) => s.toggleQuietKnownWords);
   const toggleWideWordSpacing = useStore((s) => s.toggleWideWordSpacing);
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
@@ -605,8 +607,10 @@ export default function LearnScreen() {
 
             const ctx = mainEntry ? findWordContext(mainEntry, text, occurrenceMap[i] || 1) : null;
 
+            // Known words go without IPA and emoji
+            const quiet = quietKnownWords && mainEntry?.masteryLevel === 'Known';
             let displayContent = '';
-            if (showIpa && mainEntry) {
+            if (showIpa && mainEntry && !quiet) {
               const ipaValue = ctx?.ipa || mainEntry.pronunciation;
               if (ipaValue) {
                 displayContent = formatIpa(ipaValue, showIpaBrackets);
@@ -616,7 +620,7 @@ export default function LearnScreen() {
             const contextEmoji = ctx?.emoji;
             const globalEmoji = mainEntry?.emoji;
             const effectiveEmoji = contextEmoji || globalEmoji;
-            const shouldShowEmoji = showEmoji && mainEntry && effectiveEmoji &&
+            const shouldShowEmoji = showEmoji && mainEntry && !quiet && effectiveEmoji &&
               effectiveEmoji !== getFlagForLanguage(mainEntry.language);
 
             return (
@@ -677,8 +681,10 @@ export default function LearnScreen() {
 
           const wordCtx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
 
+          // Known words go without IPA and emoji, unless tapped
+          const quiet = quietKnownWords && wordEntry?.masteryLevel === 'Known' && !isActiveOccurrence;
           let displayContent = '';
-          if (showIpa && wordEntry) {
+          if (showIpa && wordEntry && !quiet) {
             const ipaValue = wordCtx?.ipa || wordEntry.pronunciation;
             if (ipaValue) {
               displayContent = formatIpa(ipaValue, showIpaBrackets);
@@ -688,7 +694,7 @@ export default function LearnScreen() {
           const contextEmoji = wordCtx?.emoji;
           const globalEmoji = wordEntry?.emoji;
           let effectiveEmoji = contextEmoji || globalEmoji;
-          let shouldShowEmoji = showEmoji && wordEntry && effectiveEmoji &&
+          let shouldShowEmoji = showEmoji && wordEntry && !quiet && effectiveEmoji &&
             effectiveEmoji !== getFlagForLanguage(wordEntry.language);
 
           const isIgnored = !!cleanedWord && isIgnoredWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
@@ -856,7 +862,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1329,6 +1335,8 @@ export default function LearnScreen() {
           onToggleWideWordSpacing={toggleWideWordSpacing}
           highlightNewWords={highlightNewWords}
           onToggleHighlightNewWords={toggleHighlightNewWords}
+          quietKnownWords={quietKnownWords}
+          onToggleQuietKnownWords={toggleQuietKnownWords}
           showMasteryLevelColors={showMasteryLevelColors}
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
           previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}

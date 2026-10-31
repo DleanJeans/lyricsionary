@@ -50,7 +50,7 @@ function persist(key: string, value: string): Promise<void> {
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
 // current song's selected translation languages.
-const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords'] as const;
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords', 'quietKnownWords'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -82,6 +82,8 @@ interface AppState {
   wideWordSpacing: boolean;
   /** Learn dims saved words and shows the new ones bright, instead of level colors */
   highlightNewWords: boolean;
+  /** Known words drop their IPA and emoji, which they no longer need */
+  quietKnownWords: boolean;
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
@@ -121,6 +123,7 @@ interface AppState {
   toggleReverseLyrics: () => void;
   toggleWideWordSpacing: () => void;
   toggleHighlightNewWords: () => void;
+  toggleQuietKnownWords: () => void;
   loadLearnSettings: () => Promise<void>;
 
   // Word actions
@@ -202,6 +205,7 @@ export const useStore = create<AppState>((set, get) => ({
   reverseLyrics: false,
   wideWordSpacing: false,
   highlightNewWords: false,
+  quietKnownWords: true,
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
@@ -321,6 +325,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   toggleWideWordSpacing: () => setLearnSettings({ wideWordSpacing: !get().wideWordSpacing }),
   toggleHighlightNewWords: () => setLearnSettings({ highlightNewWords: !get().highlightNewWords }),
+  toggleQuietKnownWords: () => setLearnSettings({ quietKnownWords: !get().quietKnownWords }),
 
   loadLearnSettings: async () => {
     try {

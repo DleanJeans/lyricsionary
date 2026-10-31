@@ -33,6 +33,7 @@ describe('Learn settings', () => {
       reverseLyrics: true,
       wideWordSpacing: false,
       highlightNewWords: false,
+      quietKnownWords: true,
     });
 
     useStore.setState({ fontSize: 18, blurTranslations: true, showIpa: true, showSections: true, reverseLyrics: false });

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { pickReviewItems, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
+import type { Quiz } from '../utils/wordQuiz';
 import { Text } from './Text';
 import PronunciationAudio from './PronunciationAudio';
 import WordQuiz from './WordQuiz';
@@ -16,19 +17,38 @@ interface ReviewSessionProps {
 
 const GAP = '_____';
 
+/** The same options in another order, so a retried word isn't answered from where it was */
+function reshuffle(quiz: Quiz): Quiz {
+  const order = quiz.options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return { options: order.map((i) => quiz.options[i]), answerIndex: order.indexOf(quiz.answerIndex) };
+}
+
 /** One quiz after another for every due word, then how many were right */
 export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessionProps) {
   // Asks how many first when more words are due than the smallest session
   const [session, setSession] = useState<ReviewItem[] | null>(() =>
     dueItems.length <= REVIEW_SIZES[0] ? pickReviewItems(dueItems, dueItems.length) : null
   );
-  const items = session ?? [];
+  // Words answered wrong come back once at the end, for practice that isn't saved
+  const [retries, setRetries] = useState<ReviewItem[]>([]);
+  const firstTries = session ?? [];
+  const items = [...firstTries, ...retries];
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
   const item: ReviewItem | undefined = items[index];
+  const isRetry = index >= firstTries.length;
   const answered = answers.length > index;
   const finished = !!session && index >= items.length;
-  const right = answers.filter(Boolean).length;
+  // The score is the first tries; retries are practice
+  const right = answers.slice(0, firstTries.length).filter(Boolean).length;
+  const onAnswered = (correct: boolean) => {
+    setAnswers((prev) => [...prev, correct]);
+    if (!correct && !isRetry && item) setRetries((prev) => [...prev, { ...item, quiz: reshuffle(item.quiz) }]);
+  };
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -36,7 +56,13 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
         <View style={[styles.card, isWide && styles.cardWide]}>
           <View style={styles.header}>
             <Text style={styles.title}>
-              {!session ? `${dueItems.length} words due` : finished ? 'Review done' : `Review ${index + 1} of ${items.length}`}
+              {!session
+                ? `${dueItems.length} words due`
+                : finished
+                  ? 'Review done'
+                  : isRetry
+                    ? `Once more: ${index - firstTries.length + 1} of ${retries.length}`
+                    : `Review ${index + 1} of ${firstTries.length}`}
             </Text>
             <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close review">
               <Ionicons name="close" size={22} color={Colors.textSecondary} />
@@ -69,18 +95,24 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
             ) : finished ? (
               <View style={styles.summary}>
                 <Ionicons name="trophy-outline" size={40} color={Colors.primaryLight} />
-                <Text style={styles.summaryText}>{`${right} of ${answers.length} right`}</Text>
+                <Text style={styles.summaryText}>{`${right} of ${firstTries.length} right`}</Text>
+                {retries.length > 0 && (
+                  <Text style={styles.sizeHint}>
+                    {`${answers.slice(firstTries.length).filter(Boolean).length} of ${retries.length} missed ${retries.length === 1 ? 'word' : 'words'} right the second time`}
+                  </Text>
+                )}
                 <TouchableOpacity style={styles.button} onPress={onClose} accessibilityRole="button" accessibilityLabel="Done">
                   <Text style={styles.buttonText}>Done</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <ReviewQuestion
-                key={item.entry.id}
+                key={`${item.entry.id}-${isRetry}`}
                 item={item}
                 answered={answered}
-                onAnswered={(correct) => setAnswers((prev) => [...prev, correct])}
+                onAnswered={onAnswered}
                 isWide={isWide}
+                practice={isRetry}
               />
             )}
           </ScrollView>
@@ -105,11 +137,13 @@ function ReviewQuestion({
   answered,
   onAnswered,
   isWide,
+  practice,
 }: {
   item: ReviewItem;
   answered: boolean;
   onAnswered: (correct: boolean) => void;
   isWide?: boolean;
+  practice?: boolean;
 }) {
   const { entry, kind, line, wordAt, hint, listen } = item;
   const lineWord = line && wordAt ? line.slice(wordAt.start, wordAt.end) : null;
@@ -159,6 +193,7 @@ function ReviewQuestion({
         build={() => item.quiz}
         onAnswered={onAnswered}
         isWide={isWide}
+        practice={practice}
       />
     </View>
   );

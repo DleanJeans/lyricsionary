@@ -20,10 +20,12 @@ interface WordQuizProps {
   alreadyAnswered?: boolean;
   onAnswered?: (correct: boolean) => void;
   isWide?: boolean;
+  /** Asked again for practice, e.g. a review's missed word: always shown, and the answer isn't saved */
+  practice?: boolean;
 }
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -31,6 +33,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   // answer on screen. A word quizzed in the last few hours isn't asked again, e.g. when the chorus
   // repeats it.
   const [quiz] = useState(() =>
+    practice ? build() :
     alreadyAnswered || quizKindFor(entry.masteryLevel) !== kind || isCoolingDown(entry.quiz, Date.now()) ? null : build()
   );
   // The word before the answer, where the level track starts
@@ -55,6 +58,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (answered) return;
     setChosen(index);
     onAnswered?.(index === quiz.answerIndex);
+    if (practice) return;
     setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex)) ?? null);
   };
 
@@ -64,6 +68,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     setTypedResult(result);
     const right = result !== 'wrong';
     onAnswered?.(right);
+    if (practice) return;
     setBefore((await recordQuizAnswer(entry.id, kind, right)) ?? null);
   };
 
@@ -178,7 +183,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
           <Text style={styles.giveUpText}>I don't remember</Text>
         </TouchableOpacity>
       )}
-      {answered && <LevelTrack from={unanswered} entry={current} />}
+      {answered && !practice && <LevelTrack from={unanswered} entry={current} />}
     </View>
   );
 }

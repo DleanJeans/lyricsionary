@@ -34,12 +34,16 @@ import { getGermanExpandedForm } from '../utils/wordTransform';
 import { emojiData } from '../utils/emojiData';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
+import { getScrapeGoogleIpaJS } from '../utils/scrapeGoogleIpaJS';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
 const wiktionaryPageUrl = (word: string) => `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
 // The id of a language's heading on a Wiktionary page, e.g. "Serbo-Croatian" for Croatian
 const wiktionarySectionId = (language: string) => getWiktionaryLanguage(language).replace(/ /g, '_');
+// Google's AI overview usually gives the IPA for "<word> <language> IPA", e.g. "Herz German IPA"
+const googleIpaUrl = (word: string, language: string) =>
+  `https://www.google.com/search?igu=1&q=${encodeURIComponent(`${word} ${language} IPA`)}`;
 
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
@@ -143,6 +147,10 @@ export default function WordLookupScreen() {
   const [pronunciation, setPronunciation] = useState('');
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('Seen');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
+  // The Google tab searches "<word> <language> IPA" for a word Wiktionary has no IPA for, and reads it
+  const [ipaSearch, setIpaSearch] = useState(false);
+  const ipaSearchRef = useRef(false);
+  ipaSearchRef.current = ipaSearch;
   const [definitionSuggestions, setDefinitionSuggestions] = useState<WiktionaryDefinition[]>([]);
 
   const uidRef = useRef(0);
@@ -335,7 +343,7 @@ export default function WordLookupScreen() {
 
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
-        ? `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`
+        ? (ipaSearchRef.current ? googleIpaUrl(displayWord, languageRef.current) : `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`)
         : `${wiktionaryPageUrl(wiktionaryWord!)}#${wiktionarySectionId(languageRef.current)}`;
       setCurrentUrl(url);
       setScrapedIpaResults([]);
@@ -344,6 +352,8 @@ export default function WordLookupScreen() {
     // Start each new word on Wiktionary when it has an entry, otherwise on Google; tapping a tab still switches
     if (entryCheckedWordRef.current !== displayWord) {
       entryCheckedWordRef.current = displayWord;
+      ipaSearchRef.current = false;
+      setIpaSearch(false);
       setLoading(true);
       const lowercase = displayWord.toLowerCase();
       hasWiktionaryEntry(displayWord).then(async (exists) => {
@@ -494,11 +504,22 @@ export default function WordLookupScreen() {
   };
 
   const switchToGoogle = () => {
+    setIpaSearch(false);
     setLookupSource('google');
   };
 
   const switchToWiktionary = () => {
+    setIpaSearch(false);
     setLookupSource('wiktionary');
+  };
+
+  const searchGoogleForIpa = () => {
+    if (!displayWord) return;
+    ipaSearchRef.current = true;
+    setIpaSearch(true);
+    setScrapedIpaResults([]);
+    setLookupSource('google');
+    setCurrentUrl(googleIpaUrl(displayWord, language));
   };
 
   const handleWebViewGoBack = () => {
@@ -507,7 +528,10 @@ export default function WordLookupScreen() {
     }
   };
 
-  const ipaOptions = cardIpa ?? (lookupSource === 'wiktionary' ? scrapedIpaResults : []);
+  const ipaOptions = cardIpa ?? (lookupSource === 'wiktionary' || ipaSearch ? scrapedIpaResults : []);
+  // Wiktionary has no IPA for the word in this language, so Google can be asked instead
+  const wiktionaryHasNoIpa = !cardIpa && wiktionaryPronunciation.loaded && wiktionaryPronunciation.ipa.length === 0
+    && !(lookupSource === 'wiktionary' && scrapedIpaResults.length > 0);
 
   const ipaPlaceholder = pronunciation
     ? (pronunciation.includes('/') ? pronunciation : `/${pronunciation}/`)
@@ -581,6 +605,17 @@ export default function WordLookupScreen() {
               placeholderTextColor={Colors.textMuted}
             />
             <PronunciationAudio audio={pronunciationAudio} />
+            {wiktionaryHasNoIpa && !pronunciation.trim() && !(ipaSearch && lookupSource === 'google') && (
+              <TouchableOpacity
+                style={styles.ipaSearchButton}
+                onPress={searchGoogleForIpa}
+                accessibilityRole="button"
+                accessibilityLabel={`Find the IPA of ${displayWord} on Google`}
+              >
+                <Ionicons name="logo-google" size={14} color={Colors.primary} />
+                <Text style={styles.ipaSearchButtonText}>No IPA on Wiktionary. Find it on Google</Text>
+              </TouchableOpacity>
+            )}
             {ipaOptions.length > 0 && (
               <View style={styles.ipaResultsRow}>
                 {ipaOptions.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
@@ -713,6 +748,8 @@ export default function WordLookupScreen() {
                   syncOuterAtBottom(scrollViewAtBottom);
                   if (lookupSource === 'wiktionary' && !cardIpa && webViewRef.current) {
                     webViewRef.current.injectJavaScript(getScrapeIpaJS(language));
+                  } else if (lookupSource === 'google' && ipaSearchRef.current && webViewRef.current) {
+                    webViewRef.current.injectJavaScript(getScrapeGoogleIpaJS());
                   }
                 }}
                 javaScriptEnabled
@@ -875,6 +912,19 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 8,
+  },
+  ipaSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  ipaSearchButtonText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
   ipaResultButton: {
     backgroundColor: Colors.surface,

@@ -25,6 +25,7 @@ import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
 import ReviewSession from '../components/ReviewSession';
+import SongFilter from '../components/SongFilter';
 import { buildReviewItems, dueWords, ReviewItem } from '../utils/reviewQuiz';
 import { isTricky } from '../utils/wordQuiz';
 
@@ -54,6 +55,8 @@ export default function WordsScreen() {
   const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<MasteryLevel | null>(null);
+  // Only the words saved from this song
+  const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   // Only words answered wrong lately
   const [trickyOnly, setTrickyOnly] = useState(false);
   const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
@@ -122,8 +125,30 @@ export default function WordsScreen() {
   const filteredWords = sortedWords.filter(w => !pendingIds.has(w.id));
 
   // Apply language filter
-  const languageFilteredWords =
+  const onlyLanguageWords =
     selectedLanguages.length > 0 ? filteredWords.filter((w) => selectedLanguages.includes(w.language)) : filteredWords;
+
+  // Songs the language's words were saved from, most words first, for the song filter
+  const songsWithWords = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const w of onlyLanguageWords) {
+      for (const songId of new Set((w.contexts ?? []).map((c) => c.songId).filter(Boolean) as string[])) {
+        counts.set(songId, (counts.get(songId) ?? 0) + 1);
+      }
+    }
+    return songs
+      .filter((song) => counts.has(song.id))
+      .map((song) => ({ song, count: counts.get(song.id)! }))
+      .sort((a, b) => b.count - a.count);
+    // onlyLanguageWords comes from these
+  }, [songs, words, selectedLanguages, pendingDeletions]);
+
+  // The song filter applies before the counts and Review, to review one song's words. A song with
+  // no words in the chosen languages doesn't filter.
+  const songFilterId = songsWithWords.some((s) => s.song.id === selectedSongId) ? selectedSongId : null;
+  const languageFilteredWords = songFilterId
+    ? onlyLanguageWords.filter((w) => (w.contexts ?? []).some((c) => c.songId === songFilterId))
+    : onlyLanguageWords;
 
   // Count each level among the language's words, then apply the level filter
   const levelCounts: Partial<Record<MasteryLevel, number>> = {};
@@ -135,7 +160,7 @@ export default function WordsScreen() {
   const due = React.useMemo(
     () => buildReviewItems(dueWords(languageFilteredWords, Date.now()), words),
     // languageFilteredWords comes from these
-    [words, selectedLanguages, pendingDeletions],
+    [words, selectedLanguages, pendingDeletions, songFilterId],
   );
   const now = Date.now();
   const trickyCount = languageFilteredWords.filter((w) => isTricky(w.quiz, now)).length;
@@ -196,7 +221,7 @@ export default function WordsScreen() {
       icon="language-outline"
       label={showLanguageTabs ? 'Hide filters' : 'Show filters'}
       onPress={() => setShowLanguageTabs(!showLanguageTabs)}
-      selected={selectedLanguages.length > 0 || (showFrequency ? hideSavedInTop : !!selectedLevel || trickyOnly)}
+      selected={selectedLanguages.length > 0 || (showFrequency ? hideSavedInTop : !!selectedLevel || trickyOnly || !!songFilterId)}
     />
   );
 
@@ -265,7 +290,12 @@ export default function WordsScreen() {
               />
             </View>
           ) : (
-            <MasteryLevelTabs selectedLevel={selectedLevel} onLevelChange={setSelectedLevel} levelCounts={levelCounts}>
+            <MasteryLevelTabs
+              selectedLevel={selectedLevel}
+              onLevelChange={setSelectedLevel}
+              levelCounts={levelCounts}
+              leading={<SongFilter songs={songsWithWords} selectedSongId={songFilterId} onChange={setSelectedSongId} />}
+            >
               {(trickyCount > 0 || trickyOnly) && (
                 <FilterChip
                   icon={<Ionicons name="alert-circle-outline" size={16} color={trickyOnly ? Colors.white : Colors.warning} />}
@@ -331,6 +361,7 @@ export default function WordsScreen() {
               setSelectedLanguages([]);
               setSelectedLevel(null);
               setTrickyOnly(false);
+              setSelectedSongId(null);
             }}
           />
         )

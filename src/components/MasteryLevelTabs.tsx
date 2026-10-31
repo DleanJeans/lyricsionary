@@ -8,12 +8,14 @@ interface MasteryLevelTabsProps {
   selectedLevel: MasteryLevel | null;
   onLevelChange: (level: MasteryLevel | null) => void;
   levelCounts: Partial<Record<MasteryLevel, number>>;
+  /** A chip before the levels, e.g. the song filter */
+  leading?: ReactNode;
   /** More chips after the levels, e.g. Tricky */
   children?: ReactNode;
 }
 
 // Filters saved words by level, one level at a time like the language filters
-export default function MasteryLevelTabs({ selectedLevel, onLevelChange, levelCounts, children }: MasteryLevelTabsProps) {
+export default function MasteryLevelTabs({ selectedLevel, onLevelChange, levelCounts, leading, children }: MasteryLevelTabsProps) {
   return (
     <ScrollView
       horizontal
@@ -21,6 +23,7 @@ export default function MasteryLevelTabs({ selectedLevel, onLevelChange, levelCo
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
+      {leading}
       {MASTERY_LEVELS.filter((level) => (levelCounts[level] ?? 0) > 0).map((level) => (
         <FilterChip
           key={level}

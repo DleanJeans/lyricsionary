@@ -117,27 +117,40 @@ export function countWords(lyrics: string): number {
  * known when its full word is, e.g. "j'aime" when "aime" is, or "hab'n" when "haben" is. Each
  * character of a saved Chinese or Japanese word is known, e.g. both of 二人's.
  */
-export function countKnownWords(lyrics: string, isKnown: (word: string) => boolean, languages?: string[]): number {
+/** onUnknown hears each word that isn't known, as often as the lyrics have it */
+export function countKnownWords(
+  lyrics: string,
+  isKnown: (word: string) => boolean,
+  languages?: string[],
+  onUnknown?: (word: string) => void
+): number {
   let count = 0;
   // Chinese and Japanese characters in a saved word like 二人 are each known
   const tokens = groupCjkTokens(splitLyricTokens(lyrics), isKnown);
   // Each word of a saved phrase like "tout à fait" or Vietnamese yêu thương is known
   for (const token of groupSpacedWords(tokens, isKnown)) {
     if (/\s/.test(token.trim())) {
-      count += isKnown(cleanLyricWord(token))
-        ? lyricWords(token).length
-        : lyricWords(token).filter((word) => isKnown(withoutTrailingApostrophes(word))).length;
+      if (isKnown(cleanLyricWord(token))) {
+        count += lyricWords(token).length;
+        continue;
+      }
+      for (const word of lyricWords(token)) {
+        if (isKnown(withoutTrailingApostrophes(word))) count++;
+        else onUnknown?.(withoutTrailingApostrophes(word));
+      }
       continue;
     }
     const cleaned = cleanToken(token);
     if (!isLyricWord(cleaned)) continue;
     if (isCjkWord(cleaned)) {
       if (isKnown(cleaned)) count += cjkCharacterCount(cleaned);
+      else onUnknown?.(cleaned);
       continue;
     }
     const word = withoutTrailingApostrophes(cleaned);
     const full = getFullWord(cleaned, languages);
     if (isKnown(word) || (full && isKnown(full))) count++;
+    else onUnknown?.(word);
   }
   return count;
 }

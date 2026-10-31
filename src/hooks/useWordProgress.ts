@@ -10,6 +10,8 @@ export interface WordProgress {
   known: number;
   total: number;
   percent: number;
+  /** Different words not known yet, each counted once however often the song repeats it */
+  newWords: number;
   /** e.g. "12/40 words (30%)" */
   label: string;
 }
@@ -63,6 +65,7 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
       const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
       const isGermanSong = isGermanLanguage(song.originalLanguages);
       const total = countWords(song.originalLyrics);
+      const unknown = new Set<string>();
       const known = countKnownWords(song.originalLyrics, (word) => {
         const lower = word.toLowerCase();
         return (
@@ -72,9 +75,9 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
           isIgnored(word, ignoreLanguage) ||
           (isGermanSong && isKnownCompound(word))
         );
-      }, song.originalLanguages);
+      }, song.originalLanguages, (word) => unknown.add(word.toLowerCase()));
       const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
-      progress.set(song.id, { known, total, percent, label: `${known}/${total} words (${percent}%)` });
+      progress.set(song.id, { known, total, percent, newWords: unknown.size, label: `${known}/${total} words (${percent}%)` });
     }
     return progress;
   }, [songs, savedWordKeys, savedWordsAnyLanguage, ignoredWords, isKnownCompound]);

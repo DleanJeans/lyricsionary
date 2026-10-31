@@ -28,8 +28,9 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { useWordProgress } from '../hooks/useWordProgress';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 
-const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'aZ', 'zA'] as const;
+const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'nextToLearn', 'aZ', 'zA'] as const;
 type SortMode = (typeof SORT_MODES)[number];
+const newWordsLabel = (count: number) => (count === 0 ? 'Every word known' : `${count} new ${count === 1 ? 'word' : 'words'} to go`);
 const isSortMode = (value: unknown): value is SortMode => SORT_MODES.includes(value as SortMode);
 
 export default function SongsScreen() {
@@ -155,6 +156,11 @@ export default function SongsScreen() {
         return (b.openCount ?? 0) - (a.openCount ?? 0);
       case 'progress':
         return (wordProgress.get(b.id)?.percent ?? 0) - (wordProgress.get(a.id)?.percent ?? 0);
+      case 'nextToLearn': {
+        // The song with the fewest new words is the quickest to finish; finished songs go last
+        const left = (song: Song) => wordProgress.get(song.id)?.newWords || Infinity;
+        return left(a) - left(b) || (wordProgress.get(b.id)?.percent ?? 0) - (wordProgress.get(a.id)?.percent ?? 0);
+      }
       case 'aZ':
         return a.songName.toLowerCase().localeCompare(b.songName.toLowerCase());
       case 'zA':
@@ -204,6 +210,8 @@ export default function SongsScreen() {
         return 'stats-chart-outline';
       case 'progress':
         return 'trending-up-outline';
+      case 'nextToLearn':
+        return 'flag-outline';
       case 'aZ':
         return 'arrow-down';
       case 'zA':
@@ -221,6 +229,8 @@ export default function SongsScreen() {
         return 'most opened';
       case 'progress':
         return 'most words known';
+      case 'nextToLearn':
+        return 'fewest new words';
       case 'aZ':
         return 'title A to Z';
       case 'zA':
@@ -262,7 +272,11 @@ export default function SongsScreen() {
             {getFaviconUrl(item.sourceUrl ?? '') && (
               <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
             )}
-            <Text style={styles.metaText}>{wordProgress.get(item.id)?.label}</Text>
+            <Text style={styles.metaText}>
+              {sortMode === 'nextToLearn' && wordProgress.get(item.id)
+                ? newWordsLabel(wordProgress.get(item.id)!.newWords)
+                : wordProgress.get(item.id)?.label}
+            </Text>
             <View style={styles.languages}>
               {(item.originalLanguages ?? []).map((lang) => (
                 <Text key={`orig-${lang}`} style={styles.flag}>

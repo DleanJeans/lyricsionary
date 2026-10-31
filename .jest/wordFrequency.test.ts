@@ -97,3 +97,12 @@ describe('countWordOccurrences languages', () => {
     expect(result).toEqual([{ word: 'bonjour', language: 'French', count: 2, songCount: 2 }]);
   });
 });
+
+describe('countKnownWords onUnknown', () => {
+  it('hears each word not known, as often as it comes', () => {
+    const known = new Set(['ich', 'liebe', 'tout à fait']);
+    const unknown: string[] = [];
+    countKnownWords('Ich liebe dich,\nich liebe dich nicht! tout à fait 二人', (w) => known.has(w.toLowerCase()), undefined, (w) => unknown.push(w));
+    expect(unknown).toEqual(['dich', 'dich', 'nicht', '二', '人']);
+  });
+});

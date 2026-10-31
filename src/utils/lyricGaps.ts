@@ -1,3 +1,4 @@
+import { removeStressMarks } from './russianStress';
 import { getLanguageNameFromCode } from '../constants/languages';
 import type { WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
@@ -12,7 +13,8 @@ export function songWordIndex(words: WordEntry[], originalLanguages: string[] | 
   for (const entry of words) {
     const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
     if (songLanguages.size === 0 || songLanguages.has(language)) {
-      const key = entry.word.toLowerCase();
+      // A Russian word saved with its stress mark, like любо́вь, is the lyrics' любовь
+      const key = removeStressMarks(entry.word.toLowerCase());
       if (!index.has(key)) index.set(key, entry);
     }
   }

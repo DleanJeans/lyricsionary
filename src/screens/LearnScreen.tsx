@@ -31,6 +31,7 @@ import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 import { groupCjkTokens, groupSpacedWords, isCjkWord, isVietnameseSong } from '../utils/cjkWords';
 import { getKoreanStem, isKoreanLanguage } from '../utils/koreanWords';
 import { getRomanceBaseWord } from '../utils/romanceClitics';
+import { addStressMark, isStressLanguage, removeStressMarks } from '../utils/russianStress';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
@@ -86,6 +87,7 @@ export default function LearnScreen() {
   const hasItalianLanguage = songLanguages.some((language) => language === 'italian' || language === 'it');
   const isVietnamese = isVietnameseSong(song?.originalLanguages);
   const isKoreanSong = isKoreanLanguage(song?.originalLanguages);
+  const isStressSong = isStressLanguage(song?.originalLanguages);
   // Arabic or Hebrew lyrics lay their words out from the right (I18nManager.isRTL is undefined on web)
   const isRtlSong = !!song?.originalLanguages?.[0] && isRtlLanguage(song.originalLanguages[0]);
   // The saved word a lyric word stands for: itself, or else what its shortened form is about, e.g.
@@ -604,6 +606,12 @@ export default function LearnScreen() {
           }
 
           const edgePunctuation = splitEdgePunctuation(word);
+          // A saved Russian or Ukrainian word shows its stress from its IPA, e.g. любо́вь
+          const stressIpa = wordCtx?.ipa || wordEntry?.pronunciation;
+          const stressedWord = isStressSong && showIpa && stressIpa && wordEntry &&
+            removeStressMarks(cleanedWord.toLowerCase()) === removeStressMarks(wordEntry.word.toLowerCase())
+            ? addStressMark(edgePunctuation.core, stressIpa)
+            : edgePunctuation.core;
           const wordColor = isSelected
             ? Colors.primary
             : isIgnored
@@ -685,7 +693,7 @@ export default function LearnScreen() {
                         lineHeight: fontSize * 1.6,
                       }}
                     >
-                      {edgePunctuation.core}
+                      {stressedWord}
                     </Text>
                     {edgePunctuation.trailing}
                   </>
@@ -696,7 +704,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isVietnamese, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isVietnamese, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA

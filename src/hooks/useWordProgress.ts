@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { removeStressMarks } from '../utils/russianStress';
 import { getLanguageNameFromCode } from '../constants/languages';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Song } from '../types';
@@ -29,7 +30,8 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
     const anyLanguage = new Set<string>();
     for (const entry of words) {
       const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
-      const word = entry.word.toLowerCase();
+      // A Russian word saved with its stress mark, like любо́вь, is the lyrics' любовь
+      const word = removeStressMarks(entry.word.toLowerCase());
       keys.add(`${language}\u0000${word}`);
       anyLanguage.add(word);
     }

@@ -371,6 +371,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    // Without it the input keeps its default width on web and pushes the buttons beside it off screen
+    minWidth: 0,
     backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,

@@ -12,7 +12,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useStore } from './src/store/useStore';
 import { NowPlayingRequest, setupNowPlayingNotifications, useNowPlayingResponse } from './src/services/nowPlayingNotification';
 import { findSavedSong } from './src/utils/nowPlaying';
-import { useReviewReminderResponse, useReviewReminderSchedule } from './src/services/reviewReminder';
+import { useReviewReminderResponse, useReviewReminderSchedule, useStreakSaverSchedule } from './src/services/reviewReminder';
 import { completeSpotifySignIn, isSpotifyCallback, isSpotifyConnected } from './src/services/spotify';
 import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 
@@ -50,6 +50,9 @@ export default function App() {
   const words = useStore((s) => s.words);
   const reviewReminder = useStore((s) => s.reviewReminder);
   useReviewReminderSchedule(words, reviewReminder, dataLoaded);
+  // The same switch also saves the streak, with a 9 PM reminder on a day with nothing done yet
+  const activity = useStore((s) => s.activity);
+  useStreakSaverSchedule(activity, reviewReminder, dataLoaded);
   const [reviewReminderTapped, setReviewReminderTapped] = useState(false);
   useReviewReminderResponse(() => setReviewReminderTapped(true));
 

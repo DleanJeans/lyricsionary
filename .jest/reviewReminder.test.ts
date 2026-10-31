@@ -1,5 +1,6 @@
 import type { WordEntry } from '../src/types';
-import { dueCountAt, nextReminderTime, reminderBody } from '../src/utils/reviewReminder';
+import { dueCountAt, nextReminderTime, reminderBody, streakSaverBody, streakSaverTime } from '../src/utils/reviewReminder';
+import { localDay } from '../src/utils/wordQuiz';
 
 const at = (day: number, hour: number) => new Date(2026, 9, day, hour).getTime();
 
@@ -19,5 +20,25 @@ describe('review reminder', () => {
   it('says how many', () => {
     expect(reminderBody(1)).toMatch(/^1 word is due/);
     expect(reminderBody(3)).toMatch(/^3 words are due/);
+  });
+});
+
+describe('streak saver', () => {
+  const day = (d: number) => localDay(new Date(2026, 9, d, 12).getTime());
+
+  it('comes tonight at 9 PM while today has nothing done and the streak reached yesterday', () => {
+    const log = { [day(29)]: { answers: 3 }, [day(30)]: { opened: 1 } };
+    expect(streakSaverTime(log, at(31, 10))).toBe(at(31, 21));
+    expect(streakSaverTime(log, at(31, 22))).toBeNull();
+  });
+
+  it('moves to tomorrow once today counts', () => {
+    const log = { [day(30)]: { answers: 3 }, [day(31)]: { saved: 1 } };
+    expect(streakSaverTime(log, at(31, 10))).toBe(new Date(2026, 10, 1, 21).getTime());
+  });
+
+  it('stays off without a streak', () => {
+    expect(streakSaverTime({ [day(20)]: { answers: 1 } }, at(31, 10))).toBeNull();
+    expect(streakSaverBody(4)).toMatch(/^Your 4-day streak/);
   });
 });

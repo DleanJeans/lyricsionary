@@ -33,7 +33,7 @@ export function addActivity(log: ActivityLog, changes: DayActivity, now: number)
   return next;
 }
 
-const isActive = (activity?: DayActivity) =>
+export const isActive = (activity?: DayActivity) =>
   !!activity && ((activity.saved ?? 0) > 0 || (activity.answers ?? 0) > 0 || (activity.opened ?? 0) > 0);
 
 /**

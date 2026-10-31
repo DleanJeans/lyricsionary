@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore';
 import { allowReviewReminders } from '../services/reviewReminder';
 import { answersToday, DAILY_GOALS, dayStreak, nextDailyGoal, weekDays, weekTotals } from '../utils/activity';
 import { usePersistedState } from '../hooks/usePersistedState';
-import { REMINDER_HOUR } from '../utils/reviewReminder';
+import { REMINDER_HOUR, STREAK_SAVER_HOUR } from '../utils/reviewReminder';
 import { Text } from './Text';
 
 function Stat({ icon, color, value, label }: { icon: keyof typeof Ionicons.glyphMap; color: string; value: number; label: string }) {
@@ -84,8 +84,8 @@ export default function ProgressStats() {
     if (on && !(await allowReviewReminders())) return;
     await setReviewReminder(on);
   };
-  const hour12 = REMINDER_HOUR % 12 || 12;
-  const reminderTime = `${hour12} ${REMINDER_HOUR < 12 ? 'AM' : 'PM'}`;
+  const clock = (hour: number) => `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`;
+  const reminderTime = clock(REMINDER_HOUR);
   const now = Date.now();
   const streak = dayStreak(activity, now);
   const week = weekTotals(activity, now);
@@ -107,7 +107,7 @@ export default function ProgressStats() {
       {Platform.OS !== 'web' && (
         <View style={styles.reminderRow}>
           <Ionicons name="notifications-outline" size={18} color={Colors.textSecondary} />
-          <Text style={styles.reminderText}>Remind me at {reminderTime} when words are due</Text>
+          <Text style={styles.reminderText}>Remind me at {reminderTime} when words are due, and at {clock(STREAK_SAVER_HOUR)} before a streak breaks</Text>
           <Switch
             value={reviewReminder}
             onValueChange={(on) => void toggleReminder(on)}

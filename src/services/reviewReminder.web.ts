@@ -12,4 +12,10 @@ export async function scheduleReviewReminder(_words: WordEntry[], _enabled: bool
 
 export function useReviewReminderSchedule(_words: WordEntry[], _enabled: boolean, _ready: boolean): void {}
 
+import type { ActivityLog } from '../utils/activity';
+
+export async function scheduleStreakSaver(_log: ActivityLog, _enabled: boolean, _now?: number): Promise<void> {}
+
+export function useStreakSaverSchedule(_log: ActivityLog, _enabled: boolean, _ready: boolean): void {}
+
 export function useReviewReminderResponse(_onOpen: () => void): void {}

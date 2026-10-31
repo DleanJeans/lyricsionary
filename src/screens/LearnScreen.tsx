@@ -821,13 +821,22 @@ export default function LearnScreen() {
 
   const gapPanel = gapWordEntry && selectedLine !== null ? (() => {
     const sense = quizSense(gapWordEntry);
-    // The line with this occurrence of the word blanked out
+    // The line with this occurrence of the word blanked out, filled in with the word once answered
+    const answered = answeredGaps.has(gapWordEntry.id);
     let seen = 0;
-    const gapLine = selectedLine.split(/(\s+)/).map((token) => {
+    const gapLine = selectedLine.split(/(\s+)/).map((token, i) => {
       if (removeSpecialChars(token).toLowerCase() !== selectedWord!.toLowerCase()) return token;
       seen++;
-      return seen === selectedOccurrence ? token.replace(removeSpecialChars(token), GAP) : token;
-    }).join('');
+      if (seen !== selectedOccurrence) return token;
+      const { leading, core, trailing } = splitEdgePunctuation(token);
+      return (
+        <React.Fragment key={i}>
+          {leading}
+          {answered ? <Text style={styles.gapCardAnswer}>{core}</Text> : GAP}
+          {trailing}
+        </React.Fragment>
+      );
+    });
     const hint = shownTranslationLine || sense?.answer;
     return (
       <View style={[styles.wordCardContainer]}>
@@ -1077,6 +1086,11 @@ const styles = StyleSheet.create({
   gapCardLine: {
     fontSize: 18,
     color: Colors.text,
+  },
+  gapCardAnswer: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.success,
   },
   gapCardHint: {
     fontSize: 14,

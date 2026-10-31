@@ -21,6 +21,9 @@ interface LearnActionBarProps {
   /** While filling in the lyrics: shows only the lines with words answered wrong lately */
   trickyLinesOnly?: boolean;
   onToggleTrickyLines?: () => void;
+  /** One line at a time, in bigger text */
+  lineByLine?: boolean;
+  onToggleLineByLine?: () => void;
 }
 
 export default function LearnActionBar({
@@ -33,6 +36,8 @@ export default function LearnActionBar({
   onNextLine,
   trickyLinesOnly = false,
   onToggleTrickyLines,
+  lineByLine = false,
+  onToggleLineByLine,
 }: LearnActionBarProps) {
   const canDecrease = fontSize > 12;
   const canIncrease = fontSize < 32;
@@ -63,6 +68,17 @@ export default function LearnActionBar({
         {onNextLine && (
           <TouchableOpacity onPress={onNextLine} hitSlop={8} style={styles.nextLine} accessibilityRole="button" accessibilityLabel="Go to the next line to learn">
             <Ionicons name="flag-outline" size={18} color={Colors.primaryLight} />
+          </TouchableOpacity>
+        )}
+        {onToggleLineByLine && (
+          <TouchableOpacity
+            onPress={onToggleLineByLine}
+            hitSlop={8}
+            style={[styles.nextLine, lineByLine && styles.lineByLineOn]}
+            accessibilityRole="button"
+            accessibilityLabel={lineByLine ? 'Show every line' : 'Line by line'}
+          >
+            <Ionicons name="reader-outline" size={18} color={lineByLine ? Colors.white : Colors.primaryLight} />
           </TouchableOpacity>
         )}
         {onToggleTrickyLines && (
@@ -121,6 +137,10 @@ const styles = StyleSheet.create({
   nextLine: {
     marginLeft: 4,
     padding: 4,
+  },
+  lineByLineOn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
   },
   actionBar: {
     flexDirection: 'row',

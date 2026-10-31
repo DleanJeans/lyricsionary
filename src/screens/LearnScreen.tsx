@@ -62,7 +62,10 @@ export default function LearnScreen() {
   const ignoredWords = useStore((s) => s.ignoredWords);
   const compoundSplits = useStore((s) => s.compoundSplits);
   const currentSongId = useStore((s) => s.currentSongId);
-  const fontSize = useStore((s) => s.fontSize);
+  const storedFontSize = useStore((s) => s.fontSize);
+  // Line by line: one line at a time in bigger text, with the index of the line shown
+  const [lineByLine, setLineByLine] = useState<number | null>(null);
+  const fontSize = lineByLine !== null ? Math.min(storedFontSize + 8, 40) : storedFontSize;
   const setFontSize = useStore((s) => s.setFontSize);
   const showTranslations = useStore((s) => s.showTranslations);
   const toggleTranslations = useStore((s) => s.toggleTranslations);
@@ -295,6 +298,22 @@ export default function LearnScreen() {
 
   // Blank lines between verses aren't lyrics
   const lineCount = lines.filter((line) => line.original.trim()).length;
+  const contentLines = useMemo(
+    () => lines.flatMap((line, i) => (line.original.trim() ? [i] : [])),
+    [lines]
+  );
+  // Starts at the tapped or found line, or the first
+  const toggleLineByLine = () => {
+    if (lineByLine !== null) {
+      const at = lineByLine;
+      setLineByLine(null);
+      setScrollToLine({ index: at, key: Date.now() });
+      return;
+    }
+    const start = [selectedLineIndex, foundLine].find((i) => i !== null && contentLines.includes(i));
+    setLineByLine(start ?? contentLines[0]);
+  };
+  useEffect(() => setLineByLine(null), [song?.id]);
   // Updates as words are saved or ignored, like the song's progress in Songs
   const progressSongs = useMemo(() => (song ? [song] : []), [song]);
   const wordProgress = useWordProgress(progressSongs).get(song?.id ?? '');
@@ -1211,11 +1230,13 @@ export default function LearnScreen() {
 
   const actionBar = (
     <LearnActionBar
-      fontSize={fontSize}
+      fontSize={storedFontSize}
       lineCount={lineCount}
       wordProgress={wordProgress}
-      onDecreaseFontSize={() => setFontSize(fontSize - 1)}
-      onIncreaseFontSize={() => setFontSize(fontSize + 1)}
+      onDecreaseFontSize={() => setFontSize(storedFontSize - 1)}
+      onIncreaseFontSize={() => setFontSize(storedFontSize + 1)}
+      lineByLine={lineByLine !== null}
+      onToggleLineByLine={contentLines.length > 0 ? toggleLineByLine : undefined}
       onShowAllLyrics={lyricQuiz ? () => navigation.setParams({ fillIn: false }) : undefined}
       trickyLinesOnly={trickyLinesOnly}
       onToggleTrickyLines={lyricQuiz && (trickyLines.size > 0 || trickyLinesOnly) ? () => setTrickyLinesOnly(!trickyLinesOnly) : undefined}
@@ -1226,8 +1247,42 @@ export default function LearnScreen() {
     />
   );
 
+  const lineStep = lineByLine !== null ? contentLines.indexOf(lineByLine) : -1;
+  const stepLine = (delta: number) => {
+    const next = contentLines[lineStep + delta];
+    if (next === undefined) return;
+    setSelectedWord(null);
+    setLineByLine(next);
+  };
+  const lineByLineBar = lineByLine !== null && (
+    <View style={styles.lineByLineBar}>
+      <TouchableOpacity
+        onPress={() => stepLine(-1)}
+        disabled={lineStep <= 0}
+        hitSlop={8}
+        style={[styles.lineByLineButton, lineStep <= 0 && styles.lineByLineButtonOff]}
+        accessibilityRole="button"
+        accessibilityLabel="Previous line"
+      >
+        <Ionicons name="chevron-back" size={22} color={Colors.text} />
+      </TouchableOpacity>
+      <Text style={styles.lineByLineText}>{`Line ${lineStep + 1} of ${contentLines.length}`}</Text>
+      <TouchableOpacity
+        onPress={() => stepLine(1)}
+        disabled={lineStep >= contentLines.length - 1}
+        hitSlop={8}
+        style={[styles.lineByLineButton, lineStep >= contentLines.length - 1 && styles.lineByLineButtonOff]}
+        accessibilityRole="button"
+        accessibilityLabel="Next line"
+      >
+        <Ionicons name="chevron-forward" size={22} color={Colors.text} />
+      </TouchableOpacity>
+    </View>
+  );
+
   const lyricsView = (
     <>
+      {lineByLineBar}
       {spotifyConnected && (
         <SpotifyBar
           sync={spotify}
@@ -1260,7 +1315,7 @@ export default function LearnScreen() {
         playingLineIndex={spotify.currentLine}
         dictationLineIndex={dictation && !dictation.checked ? dictation.lineIndex : null}
         foundLineIndex={foundLine}
-        onlyLines={trickyLinesOnly ? trickyLines : null}
+        onlyLines={lineByLine !== null ? new Set([lineByLine]) : trickyLinesOnly ? trickyLines : null}
         scrollKey={song.id}
         lineNotes={song.lineNotes}
       />
@@ -1341,7 +1396,7 @@ export default function LearnScreen() {
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
           previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}
           previewLineIndex={previewLineIndex ?? 0}
-          fontSize={fontSize}
+          fontSize={storedFontSize}
           showTranslations={showTranslations}
           renderPressableText={renderPressableText}
         />
@@ -1391,6 +1446,28 @@ export default function LearnScreen() {
 const GAP = '_____';
 
 const styles = StyleSheet.create({
+  lineByLineBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    paddingVertical: 6,
+  },
+  lineByLineButton: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  lineByLineButtonOff: {
+    opacity: 0.35,
+  },
+  lineByLineText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
   gap: { color: Colors.primary },
   gapSelected: { fontWeight: '700', backgroundColor: 'rgba(108, 92, 231, 0.18)' },
   gapCard: {

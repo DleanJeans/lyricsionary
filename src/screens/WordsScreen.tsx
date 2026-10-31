@@ -277,7 +277,7 @@ export default function WordsScreen() {
           </Text>
         </TouchableOpacity>
       )}
-      {reviewing && <ReviewSession items={reviewing} onClose={() => setReviewing(null)} isWide={isWide} />}
+      {reviewing && <ReviewSession dueItems={reviewing} onClose={() => setReviewing(null)} isWide={isWide} />}
       {showFrequency ? (
         searchedFrequencies.length === 0 ? (
           <EmptyState

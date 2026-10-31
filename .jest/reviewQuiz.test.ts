@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { buildReviewItems, dueWords, findWordInLine, lineWords } from '../src/utils/reviewQuiz';
+import { buildReviewItems, dueWords, findWordInLine, lineWords, pickReviewItems } from '../src/utils/reviewQuiz';
 import { isDue } from '../src/utils/wordQuiz';
 
 const HOUR = 60 * 60 * 1000;
@@ -88,5 +88,14 @@ describe('buildReviewItems', () => {
 describe('lineWords', () => {
   it('splits at apostrophes too', () => {
     expect(lineWords("Je veux de l'amour, de la joie")).toEqual(['Je', 'veux', 'de', 'l', 'amour', 'de', 'la', 'joie']);
+  });
+});
+
+describe('pickReviewItems', () => {
+  it('takes the first ones and shuffles them', () => {
+    const items = ['a', 'b', 'c', 'd'].map((w) => ({ entry: word(w, w) }) as unknown as import('../src/utils/reviewQuiz').ReviewItem);
+    const picked = pickReviewItems(items, 3, () => 0);
+    expect(picked.map((i) => i.entry.word).sort()).toEqual(['a', 'b', 'c']);
+    expect(picked.map((i) => i.entry.word)).not.toEqual(['a', 'b', 'c']);
   });
 });

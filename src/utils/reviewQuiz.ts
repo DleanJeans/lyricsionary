@@ -84,3 +84,19 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
 }
 
 export const dueWords = (words: WordEntry[], now: number) => words.filter((w) => isDue(w, now));
+
+/** Review session sizes to pick from when more words are due than the smallest */
+export const REVIEW_SIZES = [10, 20];
+
+/**
+ * The words for a session of `size`: the ones waiting longest (buildReviewItems' order), shuffled
+ * so one language's words don't all come in a row
+ */
+export function pickReviewItems(items: ReviewItem[], size: number, random = Math.random): ReviewItem[] {
+  const picked = items.slice(0, size);
+  for (let i = picked.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [picked[i], picked[j]] = [picked[j], picked[i]];
+  }
+  return picked;
+}

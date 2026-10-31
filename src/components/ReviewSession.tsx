@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
-import type { ReviewItem } from '../utils/reviewQuiz';
+import { pickReviewItems, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import { Text } from './Text';
 import WordQuiz from './WordQuiz';
 
 interface ReviewSessionProps {
   /** A quiz for each due word (buildReviewItems) */
-  items: ReviewItem[];
+  dueItems: ReviewItem[];
   onClose: () => void;
   isWide?: boolean;
 }
@@ -16,12 +16,17 @@ interface ReviewSessionProps {
 const GAP = '_____';
 
 /** One quiz after another for every due word, then how many were right */
-export default function ReviewSession({ items, onClose, isWide }: ReviewSessionProps) {
+export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessionProps) {
+  // Asks how many first when more words are due than the smallest session
+  const [session, setSession] = useState<ReviewItem[] | null>(() =>
+    dueItems.length <= REVIEW_SIZES[0] ? pickReviewItems(dueItems, dueItems.length) : null
+  );
+  const items = session ?? [];
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
   const item: ReviewItem | undefined = items[index];
   const answered = answers.length > index;
-  const finished = index >= items.length;
+  const finished = !!session && index >= items.length;
   const right = answers.filter(Boolean).length;
 
   return (
@@ -30,19 +35,37 @@ export default function ReviewSession({ items, onClose, isWide }: ReviewSessionP
         <View style={[styles.card, isWide && styles.cardWide]}>
           <View style={styles.header}>
             <Text style={styles.title}>
-              {finished ? 'Review done' : `Review ${index + 1} of ${items.length}`}
+              {!session ? `${dueItems.length} words due` : finished ? 'Review done' : `Review ${index + 1} of ${items.length}`}
             </Text>
             <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close review">
               <Ionicons name="close" size={22} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          {!finished && (
+          {session && !finished && (
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${(answers.length / items.length) * 100}%` }]} />
             </View>
           )}
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-            {finished ? (
+            {!session ? (
+              <View style={styles.summary}>
+                <Text style={styles.summaryText}>How many do you want to review?</Text>
+                <View style={styles.sizes}>
+                  {[...REVIEW_SIZES.filter((size) => size < dueItems.length), dueItems.length].map((size) => (
+                    <TouchableOpacity
+                      key={size}
+                      style={styles.sizeButton}
+                      onPress={() => setSession(pickReviewItems(dueItems, size))}
+                      accessibilityRole="button"
+                      accessibilityLabel={size === dueItems.length ? `Review all ${size}` : `Review ${size}`}
+                    >
+                      <Text style={styles.buttonText}>{size === dueItems.length ? `All ${size}` : size}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={styles.sizeHint}>The words waiting longest come first</Text>
+              </View>
+            ) : finished ? (
               <View style={styles.summary}>
                 <Ionicons name="trophy-outline" size={40} color={Colors.primaryLight} />
                 <Text style={styles.summaryText}>{`${right} of ${answers.length} right`}</Text>
@@ -60,7 +83,7 @@ export default function ReviewSession({ items, onClose, isWide }: ReviewSessionP
               />
             )}
           </ScrollView>
-          {!finished && answered && (
+          {session && !finished && answered && (
             <TouchableOpacity
               style={[styles.button, styles.nextButton]}
               onPress={() => setIndex((i) => i + 1)}
@@ -225,6 +248,22 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     alignItems: 'center',
+  },
+  sizes: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  sizeButton: {
+    minWidth: 72,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  sizeHint: {
+    fontSize: 12,
+    color: Colors.textMuted,
   },
   nextButton: {
     alignSelf: 'stretch',

@@ -43,14 +43,15 @@ export function groupCjkTokens(tokens: string[], isWord: (word: string) => boole
  */
 export const cjkCharacterCount = (word: string): number => splitLyricTokens(word).length;
 
-/** The most syllables a Vietnamese word is looked for with, e.g. 2 for yêu thương */
+/** The most words a phrase is looked for with, e.g. 3 for "tout à fait", 2 for Vietnamese yêu thương */
 const MAX_SPACED_WORDS = 4;
 
 const isSpace = (token: string) => /^[^\S\n]+$/.test(token);
 
 /**
- * Joins Vietnamese syllables, which are written apart, into the longest words `isWord` accepts (asked
- * without punctuation), e.g. ["yêu", " ", "thương,", " ", "em"] -> ["yêu thương,", " ", "em"]
+ * Joins words written apart into the longest phrase `isWord` accepts (asked without punctuation), e.g.
+ * ["give", " ", "up,", " ", "baby"] -> ["give up,", " ", "baby"] or Vietnamese syllables into a word like
+ * yêu thương
  */
 export function groupSpacedWords(tokens: string[], isWord: (word: string) => boolean): string[] {
   const grouped: string[] = [];
@@ -68,7 +69,3 @@ export function groupSpacedWords(tokens: string[], isWord: (word: string) => boo
   }
   return grouped;
 }
-
-/** Whether the song is in Vietnamese, whose words of several syllables are written with spaces */
-export const isVietnameseSong = (languages?: string[]): boolean =>
-  !!languages?.some((language) => ['vietnamese', 'vi'].includes(language.toLowerCase()));

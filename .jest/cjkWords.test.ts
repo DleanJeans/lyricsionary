@@ -76,3 +76,9 @@ describe('Vietnamese', () => {
     expect(countWords('Anh yêu thương em')).toBe(4);
   });
 });
+
+describe('phrases', () => {
+  it('counts each word of a saved phrase as known in any language', () => {
+    expect(countKnownWords('I never give up, baby', (word: string) => word === 'give up', ['English'])).toBe(2);
+  });
+});

@@ -28,7 +28,7 @@ import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
-import { groupCjkTokens, groupSpacedWords, isCjkWord, isVietnameseSong } from '../utils/cjkWords';
+import { groupCjkTokens, groupSpacedWords, isCjkWord } from '../utils/cjkWords';
 import { getKoreanStem, isKoreanLanguage } from '../utils/koreanWords';
 import { getRomanceBaseWord } from '../utils/romanceClitics';
 import { addStressMark, isStressLanguage, removeStressMarks } from '../utils/russianStress';
@@ -86,7 +86,6 @@ export default function LearnScreen() {
   const songLanguages = (song?.originalLanguages ?? []).map((language) => language.toLowerCase());
   const hasFrenchLanguage = songLanguages.some((language) => language === 'french' || language === 'fr');
   const hasItalianLanguage = songLanguages.some((language) => language === 'italian' || language === 'it');
-  const isVietnamese = isVietnameseSong(song?.originalLanguages);
   const isKoreanSong = isKoreanLanguage(song?.originalLanguages);
   const isStressSong = isStressLanguage(song?.originalLanguages);
   // Arabic or Hebrew lyrics lay their words out from the right (I18nManager.isRTL is undefined on web)
@@ -399,11 +398,11 @@ export default function LearnScreen() {
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
     // CJK scripts do not separate words with spaces, so each CJK character is a selectable token, joined
     // back into a word when the characters are a saved word, or the word being selected, e.g. 二人
-    // Vietnamese syllables, written apart, join the same way, e.g. yêu thương
+    // Words written apart join into a saved or selected phrase the same way, e.g. "give up" or yêu thương
     const isSelectedLine = lineIndex === selectedLineIndex;
     const isWord = (candidate: string) => (isSelectedLine && candidate === selectedWord) || !!findSavedEntry(candidate);
     const cjkGrouped = groupCjkTokens(splitLyricTokens(text), isWord);
-    const textWords = isVietnamese ? groupSpacedWords(cjkGrouped, isWord) : cjkGrouped;
+    const textWords = groupSpacedWords(cjkGrouped, isWord);
     const occurrenceMap: Record<number, number> = {};
     const wordCountMap: Record<string, number> = {};
     // Where each token ends in the line, so a grown selection knows which occurrence it is
@@ -420,8 +419,8 @@ export default function LearnScreen() {
       }
     });
     // Tapping the Chinese, Japanese or Thai character right after the selected word adds it to the word,
-    // as does tapping the next Vietnamese syllable
-    const selectedIndex = isSelectedLine && selectedWord && (isCjkWord(selectedWord) || isVietnamese)
+    // as does tapping the next word after a space, to select a phrase
+    const selectedIndex = isSelectedLine && selectedWord
       ? textWords.findIndex((w, i) => cleanLyricWord(w) === selectedWord && occurrenceMap[i] === selectedOccurrence)
       : -1;
     const growsSelection = (i: number, cleanedWord: string) =>
@@ -439,7 +438,9 @@ export default function LearnScreen() {
 
           const cleanedWord = cleanLyricWord(word);
 
-          const hasContractedPrefixWord = hasContractedPrefix(cleanedWord);
+          // A phrase like "tout à fait" shows whole, as saved or being selected
+          const isPhrase = cleanedWord.includes(' ');
+          const hasContractedPrefixWord = !isPhrase && hasContractedPrefix(cleanedWord);
 
           // Check if this word should be split for elision rendering (e.g., l'essence → l' + essence, dell'umanità → dell' + umanità),
           // unless the whole word is saved (e.g., c'est)
@@ -562,7 +563,7 @@ export default function LearnScreen() {
 
           const isIgnored = !!cleanedWord && isIgnoredWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
 
-          const compoundParts = !wordEntry && !isIgnored && isGermanSong && cleanedWord
+          const compoundParts = !wordEntry && !isIgnored && isGermanSong && cleanedWord && !isPhrase
             ? getCompoundParts(cleanedWord, compoundSplits, knownGermanWords)
             : null;
           const compoundStart = compoundParts ? word.indexOf(cleanedWord) : -1;
@@ -711,7 +712,7 @@ export default function LearnScreen() {
         })}
       </View>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isVietnamese, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA

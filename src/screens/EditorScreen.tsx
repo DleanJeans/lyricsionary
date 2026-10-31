@@ -243,6 +243,15 @@ export default function EditorScreen() {
     navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined, scrapedTranslations: undefined });
   }, [route.params?.scrapedLyrics]);
 
+  // Web reads a page's lyrics in on its own only into a tab that's still empty
+  const setEditorFilledTabs = useStore((s) => s.setEditorFilledTabs);
+  const filledTabsKey = [originalLyrics, ...translations.map((t) => t.lyrics)]
+    .flatMap((lyrics, tab) => (lyrics.trim() ? [tab] : []))
+    .join(',');
+  useEffect(() => {
+    setEditorFilledTabs(filledTabsKey ? filledTabsKey.split(',').map(Number) : []);
+  }, [filledTabsKey]);
+
   const allEmpty = !songName && !artistName && !originalLyrics && translations.every((t) => !t.lyrics);
   const searchDisabled = !songName.trim() && !artistName.trim();
 

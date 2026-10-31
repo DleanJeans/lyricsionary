@@ -132,6 +132,10 @@ export default function WebScreen() {
     if (hasLyrics) {
       if (autoScrapedUrl.current === currentUrl) return;
       autoScrapedUrl.current = currentUrl;
+      // Lyrics already in the Editor's tab stay unless asked for: the button still reads the page in,
+      // as does getting a song's lyrics and translation from the now playing song
+      const { editorFilledTabs, autoFetch } = useStore.getState();
+      if (editorFilledTabs.includes(scrapeTargetTab) && !autoFetch) return;
       handleScrapeLyrics();
     } else if (
       useStore.getState().autoFetch?.step === 'lyrics' &&

@@ -58,6 +58,7 @@ interface AppState {
   webUrl: string;
   scrapeTargetTab: number;
   scrapeTargetLanguage: string | null;  // The target translation tab's language, null for the original
+  editorFilledTabs: number[];  // The Editor's tabs with lyrics (0 the original), which Web doesn't fill on its own
   deeplLineMap: number[] | null;  // Stores line mapping for DeepL translation
   deeplChunks: string[] | null;  // Stores chunks for multi-chunk DeepL translation
   deeplCurrentChunk: number;  // Current chunk index being translated
@@ -89,6 +90,7 @@ interface AppState {
   // Web actions
   setWebUrl: (url: string) => void;
   setScrapeTargetTab: (tab: number, language?: string | null) => void;
+  setEditorFilledTabs: (tabs: number[]) => void;
   setDeeplLineMap: (lineMap: number[] | null) => void;
   setDeeplChunks: (chunks: string[] | null) => void;
   setDeeplCurrentChunk: (index: number) => void;
@@ -156,6 +158,7 @@ export const useStore = create<AppState>((set, get) => ({
   webUrl: GOOGLE_SEARCH_URL,
   scrapeTargetTab: 0,
   scrapeTargetLanguage: null,
+  editorFilledTabs: [],
   deeplLineMap: null,
   deeplChunks: null,
   deeplCurrentChunk: 0,
@@ -249,6 +252,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setWebUrl: (url) => set({ webUrl: url }),
   setScrapeTargetTab: (tab, language = null) => set({ scrapeTargetTab: tab, scrapeTargetLanguage: language }),
+  setEditorFilledTabs: (tabs) => set({ editorFilledTabs: tabs }),
   setDeeplLineMap: (lineMap) => set({ deeplLineMap: lineMap }),
   setDeeplChunks: (chunks) => set({ deeplChunks: chunks }),
   setDeeplCurrentChunk: (index) => set({ deeplCurrentChunk: index }),

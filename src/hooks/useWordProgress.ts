@@ -17,11 +17,8 @@ export interface WordProgress {
   label: string;
 }
 
-/**
- * How many of each song's words are known (saved or ignored), by song id. Computed once per change
- * to the songs or known words, not on every render (typing in a search box re-renders a list).
- */
-export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
+/** Makes a checker for whether a song's word is known (saved, ignored or a compound of saved words) */
+function useKnownWordChecker(): (song: Song) => (word: string) => boolean {
   const words = useStore((s) => s.words);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const compoundSplits = useStore((s) => s.compoundSplits);
@@ -61,15 +58,12 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
   }, [words, compoundSplits]);
 
   return useMemo(() => {
-    const progress = new Map<string, WordProgress>();
     const isIgnored = makeIgnoredWordChecker(ignoredWords);
-    for (const song of songs) {
+    return (song: Song) => {
       const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
       const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
       const isGermanSong = isGermanLanguage(song.originalLanguages);
-      const total = countWords(song.originalLyrics);
-      const unknown = new Set<string>();
-      const known = countKnownWords(song.originalLyrics, (word) => {
+      return (word: string) => {
         const lower = word.toLowerCase();
         return (
           (languages.length === 0
@@ -78,10 +72,52 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
           isIgnored(word, ignoreLanguage) ||
           (isGermanSong && isKnownCompound(word))
         );
-      }, song.originalLanguages, (word) => unknown.add(word.toLowerCase()));
+      };
+    };
+  }, [savedWordKeys, savedWordsAnyLanguage, ignoredWords, isKnownCompound]);
+}
+
+/**
+ * How many of each song's words are known (saved or ignored), by song id. Computed once per change
+ * to the songs or known words, not on every render (typing in a search box re-renders a list).
+ */
+export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
+  const knownChecker = useKnownWordChecker();
+  return useMemo(() => {
+    const progress = new Map<string, WordProgress>();
+    for (const song of songs) {
+      const total = countWords(song.originalLyrics);
+      const unknown = new Set<string>();
+      const known = countKnownWords(song.originalLyrics, knownChecker(song), song.originalLanguages, (word) => unknown.add(word.toLowerCase()));
       const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
       progress.set(song.id, { known, total, percent, newWords: unknown.size, label: `${known}/${total} words (${percent}%)` });
     }
     return progress;
-  }, [songs, savedWordKeys, savedWordsAnyLanguage, ignoredWords, isKnownCompound]);
+  }, [songs, knownChecker]);
+}
+
+/**
+ * The line to learn next: the one with the fewest new words that still has some, so a line is
+ * finished in a few taps; the earliest of those. Null once every line is known.
+ */
+export function useNextLineToLearn(song: Song | undefined, lines: string[]): number | null {
+  const knownChecker = useKnownWordChecker();
+  return useMemo(() => {
+    if (!song) return null;
+    const isKnown = knownChecker(song);
+    return pickNextLine(lines.map((line) => {
+      let unknown = 0;
+      countKnownWords(line, isKnown, song.originalLanguages, () => unknown++);
+      return unknown;
+    }));
+  }, [song, lines, knownChecker]);
+}
+
+/** The line with the fewest new words above none, the earliest on a tie */
+export function pickNextLine(newWordCounts: number[]): number | null {
+  let best: number | null = null;
+  newWordCounts.forEach((count, index) => {
+    if (count > 0 && (best === null || count < newWordCounts[best])) best = index;
+  });
+  return best;
 }

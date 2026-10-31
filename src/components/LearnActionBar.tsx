@@ -16,6 +16,8 @@ interface LearnActionBarProps {
   onIncreaseFontSize: () => void;
   /** While saved words to recall are blanked out in the lyrics: ends that and shows the full lyrics */
   onShowAllLyrics?: () => void;
+  /** Goes to the line with the fewest new words left, when there is one */
+  onNextLine?: () => void;
 }
 
 export default function LearnActionBar({
@@ -25,6 +27,7 @@ export default function LearnActionBar({
   onDecreaseFontSize,
   onIncreaseFontSize,
   onShowAllLyrics,
+  onNextLine,
 }: LearnActionBarProps) {
   const canDecrease = fontSize > 12;
   const canIncrease = fontSize < 32;
@@ -52,6 +55,11 @@ export default function LearnActionBar({
           disabled={!canIncrease}
           style={styles.fontButton}
         />
+        {onNextLine && (
+          <TouchableOpacity onPress={onNextLine} hitSlop={8} style={styles.nextLine} accessibilityRole="button" accessibilityLabel="Go to the next line to learn">
+            <Ionicons name="flag-outline" size={18} color={Colors.primaryLight} />
+          </TouchableOpacity>
+        )}
         {onShowAllLyrics && (
           <TouchableOpacity style={styles.quizButton} onPress={onShowAllLyrics} accessibilityRole="button">
             <Ionicons name="eye-outline" size={16} color={Colors.primary} />
@@ -91,6 +99,10 @@ export default function LearnActionBar({
 }
 
 const styles = StyleSheet.create({
+  nextLine: {
+    marginLeft: 4,
+    padding: 4,
+  },
   actionBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',

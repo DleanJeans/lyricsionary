@@ -6,7 +6,7 @@ import { ActivityIndicator, I18nManager, StyleSheet, TouchableOpacity, View } fr
 import AnimatedHeight from '../components/AnimatedHeight';
 import Toast from '../components/Toast';
 import LearnActionBar from '../components/LearnActionBar';
-import { useWordProgress } from '../hooks/useWordProgress';
+import { useNextLineToLearn, useWordProgress } from '../hooks/useWordProgress';
 import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import EmptyState from '../components/EmptyState';
@@ -326,6 +326,7 @@ export default function LearnScreen() {
   const toggleWideWordSpacing = useStore((s) => s.toggleWideWordSpacing);
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
+  const nextLine = useNextLineToLearn(song, originalLines);
   const [followSpotify, setFollowSpotify] = useState(true);
   // Dictation: a line hidden until it's written down from listening
   const [dictation, setDictation] = useState<{ lineIndex: number; checked: boolean } | null>(null);
@@ -1135,6 +1136,10 @@ export default function LearnScreen() {
       onDecreaseFontSize={() => setFontSize(fontSize - 1)}
       onIncreaseFontSize={() => setFontSize(fontSize + 1)}
       onShowAllLyrics={lyricQuiz ? () => navigation.setParams({ fillIn: false }) : undefined}
+      onNextLine={nextLine !== null && !lyricQuiz ? () => {
+        setFoundLine(nextLine);
+        setScrollToLine({ index: nextLine, key: Date.now() });
+      } : undefined}
     />
   );
 

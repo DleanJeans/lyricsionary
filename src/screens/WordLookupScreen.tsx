@@ -54,6 +54,7 @@ export default function WordLookupScreen() {
 
   const words = useStore((s) => s.words);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  const updateWordEntry = useStore((s) => s.updateWordEntry);
   const deleteWord = useStore((s) => s.deleteWord);
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -146,6 +147,7 @@ export default function WordLookupScreen() {
   languageRef.current = language;
   const [pronunciation, setPronunciation] = useState('');
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('Seen');
+  const [note, setNote] = useState('');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
   // The Google tab searches "<word> <language> IPA" for a word Wiktionary has no IPA for, and reads it
   const [ipaSearch, setIpaSearch] = useState(false);
@@ -206,6 +208,7 @@ export default function WordLookupScreen() {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation || cardIpa?.[0] || '');
         setMasteryLevel(existingWord.masteryLevel || 'Seen');
+        setNote(existingWord.note ?? '');
 
         if (existingWord.contexts && existingWord.contexts.length > 0) {
           const exactMatchIndex = existingWord.contexts.findIndex(c =>
@@ -257,6 +260,7 @@ export default function WordLookupScreen() {
       } else {
         setPronunciation(cardIpa?.[0] ?? '');
         setMasteryLevel('Seen');
+        setNote('');
         setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
@@ -277,6 +281,7 @@ export default function WordLookupScreen() {
     if (language !== existing.language) return true;
     if (pronunciation !== existing.pronunciation) return true;
     if (masteryLevel !== (existing.masteryLevel || 'Seen')) return true;
+    if (note.trim() !== (existing.note ?? '')) return true;
     const normalizeSense = (s: any) => `${s.context || ''}|${s.emoji || ''}|${s.ipa || ''}|${s.definition || ''}|${s.songId || ''}|${s.occurrence || 1}|${s.partOfSpeech || ''}`;
     const currentNormalized = wordSenses
       .filter(b => b.context || b.emoji || b.ipa || b.definition)
@@ -288,7 +293,7 @@ export default function WordLookupScreen() {
       .sort()
       .join('||');
     return currentNormalized !== storedNormalized;
-  }, [displayWord, isNewWord, language, pronunciation, masteryLevel, wordSenses, words]);
+  }, [displayWord, isNewWord, language, pronunciation, masteryLevel, note, wordSenses, words]);
 
   // Suggest the word's Wiktionary definitions in the selected language for each context's definition
   useEffect(() => {
@@ -472,6 +477,11 @@ export default function WordLookupScreen() {
       displayWord, language, pronunciation, contexts, masteryLevel,
       wiktionaryPronunciation.loaded ? pronunciationAudio : undefined
     );
+    // The note is kept apart from what addOrUpdateWord merges
+    const saved = useStore.getState().words.find(
+      (w) => w.word.toLowerCase() === displayWord.toLowerCase() && isSameLanguage(w.language, language)
+    );
+    if (saved && (saved.note ?? '') !== note.trim()) await updateWordEntry(saved.id, { note: note.trim() || undefined });
 
     if (source === 'Words') {
       navigation.navigate('Words');
@@ -634,6 +644,19 @@ export default function WordLookupScreen() {
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Level</Text>
             <MasteryLevelSelector value={masteryLevel} onChange={setMasteryLevel} />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Note</Text>
+            <TextInput
+              style={[styles.fieldInput, styles.noteInput]}
+              value={note}
+              onChangeText={setNote}
+              placeholder="A mnemonic, a grammar tip..."
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              accessibilityLabel="Note"
+            />
           </View>
 
           <Text style={styles.fieldLabel}>Contexts</Text>
@@ -823,6 +846,10 @@ export default function WordLookupScreen() {
 }
 
 const styles = StyleSheet.create({
+  noteInput: {
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,

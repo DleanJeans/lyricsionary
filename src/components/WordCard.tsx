@@ -168,6 +168,12 @@ export default function WordCard({
                 />
               </View>
             )}
+            {!!item.note && (
+              <View style={styles.note}>
+                <Ionicons name="document-text-outline" size={14} color={Colors.textSecondary} />
+                <Text style={styles.noteText}>{item.note}</Text>
+              </View>
+            )}
             {quiz}
             <AlsoInSongs item={item} songId={songId} />
           </>
@@ -196,6 +202,17 @@ export default function WordCard({
 }
 
 const styles = StyleSheet.create({
+  note: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 10,
+  },
+  noteText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
   card: {
     alignSelf: 'stretch',
     backgroundColor: Colors.surface,

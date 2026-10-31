@@ -192,6 +192,7 @@ export default function WordsScreen() {
           w.word,
           w.language,
           w.pronunciation,
+          w.note,
           ...(w.definitions ?? []).map((d) => d.text),
           ...(w.contexts ?? []).map((c) => c.definition),
         ].some((text) => matchesSearch(text, searchQuery)),
@@ -225,7 +226,7 @@ export default function WordsScreen() {
   const searchInput = (
     <TextInput
       style={styles.searchInput}
-      placeholder="Search by word, meaning or language..."
+      placeholder="Search by word, meaning, note or language..."
       placeholderTextColor={Colors.textMuted}
       value={searchQuery}
       onChangeText={setSearchQuery}

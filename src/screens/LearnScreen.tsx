@@ -392,20 +392,21 @@ export default function LearnScreen() {
 
           if (elisionParts && elisionParts.length > 1) {
             // Compute display parts by splitting the original text to match the cleaned parts
-            let cleanStart = 0;
-            while (cleanStart < word.length && /[^\p{L}\p{N}'-]/u.test(word[cleanStart])) {
-              cleanStart++;
-            }
+            // The punctuation around the word stays uncolored, e.g. the comma in l'amour,
+            const leading = word.match(/^[^\p{L}\p{N}'-]*/u)?.[0] ?? '';
+            const trailing = word.slice(leading.length).match(/[^\p{L}\p{N}'-]*$/u)?.[0] ?? '';
+            const cleanStart = leading.length;
+            const cleanEnd = word.length - trailing.length;
 
             const displayParts: string[] = [];
             let pos = cleanStart;
             for (let p = 0; p < elisionParts.length; p++) {
               const partLength = elisionParts[p].length;
               if (p === 0) {
-                displayParts.push(word.slice(0, cleanStart + partLength));
+                displayParts.push(word.slice(cleanStart, cleanStart + partLength));
                 pos = cleanStart + partLength;
               } else if (p === elisionParts.length - 1) {
-                displayParts.push(word.slice(pos));
+                displayParts.push(word.slice(pos, cleanEnd));
               } else {
                 displayParts.push(word.slice(pos, pos + partLength));
                 pos += partLength;
@@ -448,10 +449,11 @@ export default function LearnScreen() {
                     </Text>
                   )}
                 </View>
-                <Text style={{ fontSize, lineHeight: fontSize * 1.6 }}>
+                <Text style={{ fontSize, lineHeight: fontSize * 1.6, color: Colors.text }}>
+                  {leading}
                   {elisionParts.map((part, pi) => {
                     const partEntry = partEntries[pi];
-                    const isPartSelected = selectedWord && word.toLowerCase() === selectedWord.toLowerCase();
+                    const isPartSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();
                     const isPartActiveOccurrence = isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
                     const partColor = isPartSelected
                       ? Colors.primary
@@ -474,6 +476,7 @@ export default function LearnScreen() {
                       </Text>
                     );
                   })}
+                  {trailing}
                 </Text>
               </View>
             );

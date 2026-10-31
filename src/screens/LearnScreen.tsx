@@ -333,6 +333,24 @@ export default function LearnScreen() {
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
   const nextLine = useNextLineToLearn(song, originalLines);
   const [followSpotify, setFollowSpotify] = useState(true);
+  // A long press on a line's word copies the line with its translations, to share it
+  const [copiedLine, setCopiedLine] = useState(false);
+  useEffect(() => {
+    if (!copiedLine) return;
+    const timer = setTimeout(() => setCopiedLine(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copiedLine]);
+  const copyLineRef = useRef<(lineIndex: number) => void>(() => {});
+  copyLineRef.current = (lineIndex) => {
+    const line = lines[lineIndex];
+    if (!line?.original.trim()) return;
+    const translations = line.translations
+      .filter((t) => localSelectedLanguages.includes(t.language) && t.text.trim())
+      .map((t) => t.text.trim());
+    void Clipboard.setStringAsync([line.original.trim(), ...translations].join('\n'));
+    setCopiedLine(true);
+  };
+
   // Dictation: a line hidden until it's written down from listening
   const [dictation, setDictation] = useState<{ lineIndex: number; checked: boolean } | null>(null);
   useEffect(() => setDictation(null), [song?.id]);
@@ -613,6 +631,7 @@ export default function LearnScreen() {
                       <Text
                         key={pi}
                         onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
+                        onLongPress={() => copyLineRef.current(lineIndex)}
                         style={{
                           color: partColor,
                           fontWeight: isPartActiveOccurrence ? '700' : '400',
@@ -749,6 +768,7 @@ export default function LearnScreen() {
                     ? growSelection(`${selectedWord}${isCjkWord(cleanedWord) ? '' : ' '}${cleanedWord}`, text, lineIndex, tokenEnds[i])
                     : handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)
                 }
+                onLongPress={() => copyLineRef.current(lineIndex)}
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
@@ -1213,6 +1233,11 @@ export default function LearnScreen() {
         foundLineIndex={foundLine}
         scrollKey={song.id}
       />
+      {copiedLine && (
+        <View style={styles.toastStack} pointerEvents="box-none">
+          <Toast message="Copied the line" />
+        </View>
+      )}
     </>
   );
 

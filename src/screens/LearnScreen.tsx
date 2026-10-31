@@ -932,6 +932,13 @@ export default function LearnScreen() {
   const selectedWordIgnored = !!selectedWord && !!songLanguage && isIgnoredWord(selectedWord, songLanguage);
   // The tapped word whose meaning and IPA are still being fetched, so its card shows them loading
   const [fetchingWord, setFetchingWord] = useState<string | null>(null);
+  // The word a tap just saved, whose card shows Saved for a moment
+  const [justSavedWord, setJustSavedWord] = useState<string | null>(null);
+  useEffect(() => {
+    if (!justSavedWord) return;
+    const timer = setTimeout(() => setJustSavedWord(null), 1800);
+    return () => clearTimeout(timer);
+  }, [justSavedWord]);
   useEffect(() => {
     if (!selectedWord || selectedWordSaved || selectedWordIgnored || !songLanguage || !song) return;
     let cancelled = false;
@@ -965,7 +972,8 @@ export default function LearnScreen() {
       };
       // Without Wiktionary's answer the saved word's card fetches the IPA and recordings itself
       autoSavedWordRef.current = savedWord;
-      void addOrUpdateWord(savedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio);
+      void addOrUpdateWord(savedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio)
+        .then(() => setJustSavedWord(savedWord));
     });
     return () => {
       cancelled = true;
@@ -1202,6 +1210,7 @@ export default function LearnScreen() {
           originalLanguages={song.originalLanguages}
           occurrence={selectedOccurrence}
           quiz={meaningQuiz(selectedWordEntry)}
+          justSaved={justSavedWord?.toLowerCase() === selectedWordEntry.word.toLowerCase()}
         />
       </View>
     ) : selectedWord ? (

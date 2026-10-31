@@ -13,6 +13,7 @@ import QuickNote from './QuickNote';
 import DueLabel from './DueLabel';
 import MasteryLevelBadge from './MasteryLevelBadge';
 import MasteryLevelSelector from './MasteryLevelSelector';
+import SavedPill from './SavedPill';
 import HighlightedText from './HighlightedText';
 import PronunciationAudio from './PronunciationAudio';
 import { Text } from './Text';
@@ -39,6 +40,8 @@ interface WordCardProps {
   onRemove?: (item: WordEntry) => void;
   /** Learn: unsaves the word and ignores it, as the new word card's Ignore button does */
   onIgnore?: (item: WordEntry) => void;
+  /** Learn: the word was just saved from a tap, so its card shows Saved for a moment */
+  justSaved?: boolean;
 }
 
 export default function WordCard({
@@ -60,6 +63,7 @@ export default function WordCard({
   quiz,
   onRemove,
   onIgnore,
+  justSaved = false,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -142,6 +146,7 @@ export default function WordCard({
                 <View style={styles.badgeRow}>
                   <MasteryLevelBadge level={item.masteryLevel} open={choosingLevel} onPress={() => setChoosingLevel((v) => !v)} />
                   <Text style={styles.badgeEmoji}>{flag}</Text>
+                  {justSaved && <SavedPill />}
                 </View>
                 <Text style={styles.titleWordText}>{item.word}</Text>
               </View>

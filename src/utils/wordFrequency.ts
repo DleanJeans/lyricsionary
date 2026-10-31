@@ -2,6 +2,7 @@ import { getLanguageNameFromCode } from '../constants/languages';
 import { cjkCharacterCount, groupCjkTokens, groupSpacedWords, isCjkWord, isVietnameseSong } from './cjkWords';
 import { cleanLyricWord, isLyricWord, removeSpecialChars, splitLyricTokens } from './cleanLyrics';
 import { isGermanLanguage } from './compoundWords';
+import { getKoreanStem, isKoreanLanguage } from './koreanWords';
 import { getGermanExpandedForm, splitElisionParts } from './wordTransform';
 
 export interface WordFrequency {
@@ -34,6 +35,8 @@ function withoutTrailingApostrophes(word: string): string {
  */
 function getFullWord(word: string, languages: string[] | undefined): string | null {
   if (isGermanLanguage(languages)) return getGermanExpandedForm(word, 'German');
+  // A Korean word without its particles, e.g. 너 for 너를
+  if (isKoreanLanguage(languages)) return getKoreanStem(word);
   if (!languages?.some((language) => ELISION_LANGUAGES.has(language.toLowerCase()))) return null;
   const parts = splitElisionParts(word);
   return parts ? parts[parts.length - 1] : null;

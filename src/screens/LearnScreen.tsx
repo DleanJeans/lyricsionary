@@ -29,6 +29,7 @@ import { formatIpa } from '../utils/ipaDisplay';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 import { groupCjkTokens, groupSpacedWords, isCjkWord, isVietnameseSong } from '../utils/cjkWords';
+import { getKoreanStem, isKoreanLanguage } from '../utils/koreanWords';
 import { buildLyricQuiz, buildMeaningQuiz } from '../utils/wordQuiz';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
@@ -83,6 +84,7 @@ export default function LearnScreen() {
   const hasFrenchLanguage = songLanguages.some((language) => language === 'french' || language === 'fr');
   const hasItalianLanguage = songLanguages.some((language) => language === 'italian' || language === 'it');
   const isVietnamese = isVietnameseSong(song?.originalLanguages);
+  const isKoreanSong = isKoreanLanguage(song?.originalLanguages);
   // Arabic or Hebrew lyrics lay their words out from the right (I18nManager.isRTL is undefined on web)
   const isRtlSong = !!song?.originalLanguages?.[0] && isRtlLanguage(song.originalLanguages[0]);
   // The saved word a lyric word stands for: itself, or else what its shortened form is about, e.g.
@@ -106,10 +108,13 @@ export default function LearnScreen() {
         const part = [...parts].reverse().map(findWordEntry).find(Boolean);
         if (part) return part;
       }
+      // A Korean word without its particles, e.g. 너 for 너를
+      const koreanStem = isKoreanSong ? getKoreanStem(cleanedWord, { loose: true }) : null;
+      if (koreanStem) return findWordEntry(koreanStem);
       const expanded = isGermanSong ? getGermanExpandedForm(cleanedWord, 'German') : null;
       return expanded ? findWordEntry(expanded) : undefined;
     },
-    [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong]
+    [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong]
   );
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
@@ -735,10 +740,18 @@ export default function LearnScreen() {
   useEffect(() => {
     if (!selectedWord || selectedWordSaved || selectedWordIgnored || !songLanguage || !song) return;
     let cancelled = false;
-    Promise.all([
-      getWiktionaryDefinitions(selectedWord, songLanguage),
-      getWiktionaryPronunciation(selectedWord, songLanguage),
-    ]).then(([definitions, pronunciation]) => {
+    // A Korean word Wiktionary doesn't have is saved without its particles, e.g. 너 for 너를
+    const koreanStem = isKoreanSong ? getKoreanStem(selectedWord, { loose: true }) : null;
+    const lookUp = (word: string) =>
+      Promise.all([getWiktionaryDefinitions(word, songLanguage), getWiktionaryPronunciation(word, songLanguage)])
+        .then(([definitions, pronunciation]) => ({ word, definitions, pronunciation }));
+    lookUp(selectedWord).then(async (found) => {
+      if (koreanStem && !found.definitions?.length) {
+        const stemFound = await lookUp(koreanStem);
+        if (stemFound.definitions?.length) found = stemFound;
+      }
+      return found;
+    }).then(({ word: savedWord, definitions, pronunciation }) => {
       if (cancelled) return;
       const answer = definitions?.length ? pickDefinition(definitions, selectedTranslationLine) ?? definitions[0].text : undefined;
       const context: WordContext = {
@@ -752,8 +765,8 @@ export default function LearnScreen() {
         occurrence: selectedOccurrence,
       };
       // Without Wiktionary's answer the saved word's card fetches the IPA and recordings itself
-      autoSavedWordRef.current = selectedWord;
-      void addOrUpdateWord(selectedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio);
+      autoSavedWordRef.current = savedWord;
+      void addOrUpdateWord(savedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio);
     });
     return () => {
       cancelled = true;

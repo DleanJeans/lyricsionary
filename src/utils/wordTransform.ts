@@ -1,4 +1,5 @@
 import { isGermanLanguage } from './compoundWords';
+import { getKoreanStem, isKoreanLanguage } from './koreanWords';
 import {
   contractedPrefixRegex,
   germanCliticEsRegex,
@@ -51,6 +52,10 @@ export function getWordTransforms(word: string, language?: string): string[] {
   if (hasHyphenatedPrefix(word)) {
     transforms.push(getWithoutHyphenatedPrefix(word));
   }
+
+  // A Korean word without its particles (e.g., "너를" -> "너")
+  const koreanStem = language && isKoreanLanguage([language]) ? getKoreanStem(word, { loose: true }) : null;
+  if (koreanStem) transforms.push(koreanStem);
 
   return transforms;
 }

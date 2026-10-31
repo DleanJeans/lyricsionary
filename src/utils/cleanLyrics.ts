@@ -59,14 +59,14 @@ export const removeSpecialChars = (word: string) => {
   return word.replace(/[^\p{L}\p{N}\u0E31\u0E34-\u0E3A\u0E47-\u0E4E'-]/gu, '');
 }
 /**
- * A lyric line's words, spaces and punctuation, as Learn lays them out to tap: Chinese, Japanese,
- * Korean and Thai don't separate words with spaces, so each of their characters is its own token, with a
+ * A lyric line's words, spaces and punctuation, as Learn lays them out to tap: Chinese, Japanese
+ * and Thai don't separate words with spaces, so each of their characters is its own token, with a
  * Japanese long vowel mark kept on the kana before it, e.g. "「ラーメン」" -> "「", "ラー", "メ", "ン", "」",
  * and a Thai consonant kept with its vowels and tone marks, e.g. "ไม่เป็นไร" -> "ไม่", "เป็", "น", "ไร"
  */
 export const splitLyricTokens = (text: string): string[] =>
   text.match(
-    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]ー*|\p{Script=Hangul}|[เแโใไ]?[\u0E01-\u0E2E][\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]*[ะาำๅ]?|\p{Script=Thai}|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]+|\s+/gu
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]ー*|[เแโใไ]?[\u0E01-\u0E2E][\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]*[ะาำๅ]?|\p{Script=Thai}|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}]+|\s+/gu
   ) ?? [];
 
 // A lyric token's punctuation before and after the word, e.g. "(mich?)" -> "(", "mich", "?)"

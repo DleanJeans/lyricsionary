@@ -1,4 +1,4 @@
-import { addActivity, answersToday, dayStreak, nextDailyGoal, weekTotals } from '../src/utils/activity';
+import { addActivity, answersToday, dayStreak, nextDailyGoal, weekDays, weekTotals } from '../src/utils/activity';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date(2026, 9, 31, 9).getTime();
@@ -44,5 +44,15 @@ describe('daily goal', () => {
     const log = addActivity(addActivity({}, { answers: 3 }, now - 86400000), { answers: 4 }, now);
     expect(answersToday(log, now)).toBe(4);
     expect(answersToday({}, now)).toBe(0);
+  });
+});
+
+describe('weekDays', () => {
+  it('lists the last 7 days, oldest first, with their answers', () => {
+    const now = new Date(2026, 9, 31, 15).getTime(); // a Saturday
+    const log = addActivity(addActivity({}, { answers: 2 }, now - 2 * 86400000), { answers: 5 }, now);
+    const days = weekDays(log, now);
+    expect(days.map((d) => d.label).join('')).toBe('SMTWTFS');
+    expect(days.map((d) => d.answers)).toEqual([0, 0, 0, 0, 2, 0, 5]);
   });
 });

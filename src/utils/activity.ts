@@ -74,3 +74,14 @@ export const nextDailyGoal = (goal: number) => DAILY_GOALS[(DAILY_GOALS.indexOf(
 
 /** Today's quiz answers */
 export const answersToday = (log: ActivityLog, now: number) => log[localDay(now)]?.answers ?? 0;
+
+/** Each of the last 7 days, oldest first, with its quiz answers and its weekday's first letter */
+export function weekDays(log: ActivityLog, now: number): { day: string; label: string; answers: number }[] {
+  const noon = new Date(now);
+  noon.setHours(12, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const time = noon.getTime() - (6 - i) * DAY_MS;
+    const day = localDay(time);
+    return { day, label: 'SMTWTFS'[new Date(time).getDay()], answers: log[day]?.answers ?? 0 };
+  });
+}

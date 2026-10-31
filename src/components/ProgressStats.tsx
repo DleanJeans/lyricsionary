@@ -4,7 +4,7 @@ import { Platform, StyleSheet, Switch, TouchableOpacity, View } from 'react-nati
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { allowReviewReminders } from '../services/reviewReminder';
-import { answersToday, DAILY_GOALS, dayStreak, nextDailyGoal, weekTotals } from '../utils/activity';
+import { answersToday, DAILY_GOALS, dayStreak, nextDailyGoal, weekDays, weekTotals } from '../utils/activity';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { REMINDER_HOUR } from '../utils/reviewReminder';
 import { Text } from './Text';
@@ -48,6 +48,32 @@ function DailyGoal({ answers }: { answers: number }) {
   );
 }
 
+const CHART_HEIGHT = 36;
+
+/** Quiz answers on each of the last 7 days, as bars, today last */
+function WeekChart({ days }: { days: { day: string; label: string; answers: number }[] }) {
+  const most = Math.max(...days.map((d) => d.answers), 1);
+  return (
+    <View style={styles.chart} accessible accessibilityLabel={`Answers in the last 7 days: ${days.map((d) => d.answers).join(', ')}`}>
+      {days.map((d, i) => (
+        <View key={d.day} style={styles.chartColumn}>
+          <View style={styles.chartBarArea}>
+            <View
+              style={[
+                styles.chartBar,
+                { height: d.answers ? Math.max(3, (d.answers / most) * CHART_HEIGHT) : 2 },
+                !d.answers && styles.chartBarEmpty,
+                i === days.length - 1 && styles.chartBarToday,
+              ]}
+            />
+          </View>
+          <Text style={styles.chartLabel}>{d.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 /** The day streak and this week's saved words and level ups, from the activity log */
 export default function ProgressStats() {
   const activity = useStore((s) => s.activity);
@@ -72,6 +98,7 @@ export default function ProgressStats() {
         <Stat icon="trending-up" color={Colors.success} value={week.levelUps} label="level ups this week" />
       </View>
       <DailyGoal answers={answersToday(activity, now)} />
+      {week.answers > 0 && <WeekChart days={weekDays(activity, now)} />}
       {week.answers > 0 && (
         <Text style={styles.caption}>
           {week.answers} quiz {week.answers === 1 ? 'answer' : 'answers'} in the last 7 days
@@ -169,6 +196,34 @@ const styles = StyleSheet.create({
   },
   goalFillDone: {
     backgroundColor: Colors.success,
+  },
+  chart: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  chartColumn: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+  },
+  chartBarArea: {
+    height: CHART_HEIGHT,
+    justifyContent: 'flex-end',
+    alignSelf: 'stretch',
+  },
+  chartBar: {
+    borderRadius: 3,
+    backgroundColor: Colors.primaryLight,
+  },
+  chartBarEmpty: {
+    backgroundColor: Colors.border,
+  },
+  chartBarToday: {
+    backgroundColor: Colors.primary,
+  },
+  chartLabel: {
+    fontSize: 10,
+    color: Colors.textMuted,
   },
   caption: {
     fontSize: 12,

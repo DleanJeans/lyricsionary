@@ -59,8 +59,11 @@ export default function LearnActionBar({
           </TouchableOpacity>
         )}
       </View>
-      <Text style={styles.lineCounter} numberOfLines={1}>
-        {wordProgress ? `${wordProgress.label} · ${lineCount} lines` : `${lineCount} lines`}
+      {/* Beside the Show all button there's no room for one line, so the line count goes under the words */}
+      <Text style={[styles.lineCounter, onShowAllLyrics && styles.lineCounterStacked]} numberOfLines={onShowAllLyrics ? 2 : 1}>
+        {wordProgress
+          ? `${wordProgress.label}${onShowAllLyrics ? '\n' : ' · '}${lineCount} lines`
+          : `${lineCount} lines`}
       </Text>
       {wordProgress && (
         <View
@@ -153,5 +156,9 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 13,
     fontVariant: ['tabular-nums'],
+  },
+  lineCounterStacked: {
+    textAlign: 'right',
+    fontSize: 12,
   },
 });

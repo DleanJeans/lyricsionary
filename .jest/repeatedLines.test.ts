@@ -6,6 +6,8 @@ import {
   findMergeTargets,
   applyMergeToLines,
   shiftIndexAfterResize,
+  findSimilarLines,
+  applyDeleteToLines,
 } from '../src/utils/repeatedLines';
 
 describe('findRepeatedLines', () => {
@@ -57,5 +59,21 @@ describe('merge', () => {
     const lines = ['a', 'b', 'x', 'ab', 'a', 'b'];
     expect(applyMergeToLines(lines, [0, 4], 'ab')).toEqual(['ab', 'x', 'ab', 'ab']);
     expect(shiftIndexAfterResize(3, [0, 4], -1)).toBe(2);
+  });
+});
+
+describe('findSimilarLines', () => {
+  const lines = ['Ba-da ba-da ba-da!', 'I love you', 'ba-da, ba-da', '', 'Ba da ba', 'ba-da-dum', 'Oh ba-da ba-da baby'];
+
+  it('finds lines with the same words, however many times and in any order', () => {
+    expect(findSimilarLines(lines, 'ba-da ba-da')).toEqual([0, 2, 4]);
+  });
+
+  it('never matches a blank line', () => {
+    expect(findSimilarLines(lines, '  ')).toEqual([]);
+  });
+
+  it('deletes the lines found', () => {
+    expect(applyDeleteToLines(lines, [0, 2, 4])).toEqual(['I love you', '', 'ba-da-dum', 'Oh ba-da ba-da baby']);
   });
 });

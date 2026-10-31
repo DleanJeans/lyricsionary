@@ -62,3 +62,25 @@ export function applyMergeToLines(lines: string[], targets: number[], joined: st
 export function shiftIndexAfterResize(index: number, targets: number[], delta: number): number {
   return index + targets.filter((j) => j < index).length * delta;
 }
+
+/** A line's words, lowercased without punctuation, split at spaces and hyphens: "Ba-da, ba-da!" -> ba, da */
+const lineWords = (line: string): Set<string> =>
+  new Set(line.toLowerCase().split(/[\s\-‐–—]+/).map((word) => word.replace(/[^\p{L}\p{N}']/gu, '')).filter(Boolean));
+
+/**
+ * Lines like a deleted one: the same words, however many times and in any order, e.g. "ba-da ba-da" for
+ * "Ba-da ba-da ba-da!", so filler lines can be deleted together. Blank lines never match.
+ */
+export function findSimilarLines(lines: string[], deleted: string): number[] {
+  const words = lineWords(deleted);
+  if (words.size === 0) return [];
+  return lines.flatMap((line, j) => {
+    const other = lineWords(line);
+    return other.size === words.size && [...other].every((word) => words.has(word)) ? [j] : [];
+  });
+}
+
+export function applyDeleteToLines(lines: string[], targets: number[]): string[] {
+  const remove = new Set(targets);
+  return lines.filter((_, j) => !remove.has(j));
+}

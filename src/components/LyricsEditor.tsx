@@ -17,6 +17,8 @@ import {
   findMergeTargets,
   applyMergeToLines,
   shiftIndexAfterResize,
+  findSimilarLines,
+  applyDeleteToLines,
 } from '../utils/repeatedLines';
 
 // The line being edited and its text when editing began, to spot its repeats.
@@ -25,10 +27,12 @@ interface Anchor {
   from: string;
 }
 
-// A split or merge that can be repeated on the matching lines.
+// A split, merge or delete that can be repeated on the matching lines.
 type StructuralSync =
   | { kind: 'split'; index: number; original: string; parts: string[] }
-  | { kind: 'merge'; index: number; first: string; second: string };
+  | { kind: 'merge'; index: number; first: string; second: string }
+  // index: where the deleted line was, now the line after it
+  | { kind: 'delete'; index: number; deleted: string };
 
 interface LyricsEditorProps {
   lyrics: string;
@@ -63,7 +67,9 @@ export default function LyricsEditor({
     : structural.kind === 'split'
       ? findSplitTargets(lines, structural.original, structural.parts,
         structural.parts.map((_, k) => structural.index - structural.parts.length + 1 + k))
-      : findMergeTargets(lines, structural.first, structural.second, structural.index);
+      : structural.kind === 'delete'
+        ? findSimilarLines(lines, structural.deleted)
+        : findMergeTargets(lines, structural.first, structural.second, structural.index);
   const syncTargets = structural ? structuralTargets : editTargets;
   const syncIndex = structural ? structural.index : anchor?.index;
   const syncTargetSet = new Set(syncTargets.flatMap((j) =>
@@ -105,6 +111,10 @@ export default function LyricsEditor({
     } else if (structural.kind === 'split') {
       newLines = applySplitToLines(lines, syncTargets, structural.parts);
       index = shiftIndexAfterResize(syncIndex, syncTargets, structural.parts.length - 1);
+    } else if (structural.kind === 'delete') {
+      newLines = applyDeleteToLines(lines, syncTargets);
+      if (newLines.length === 0) newLines = [''];
+      index = Math.min(shiftIndexAfterResize(syncIndex, syncTargets, -1), newLines.length - 1);
     } else {
       newLines = applyMergeToLines(lines, syncTargets, structural.first + structural.second);
       index = shiftIndexAfterResize(syncIndex, syncTargets, -1);
@@ -160,6 +170,32 @@ export default function LyricsEditor({
       }
     }
   };
+
+  // Deletes the whole line, then offers to delete the lines like it, e.g. every "ba-da ba-da"
+  const deleteLine = (i: number) => {
+    const deleted = lines[i] ?? '';
+    const newLines = lines.length > 1 ? lines.filter((_, j) => j !== i) : [''];
+    const index = Math.min(i, newLines.length - 1);
+    emitLines(newLines);
+    setAnchor({ index, from: newLines[index] });
+    setStructural({ kind: 'delete', index, deleted });
+    setLineGenerations((prev) => ({ ...prev, [i]: (prev[i] || 0) + 1 }));
+    setFocusTarget({ lineIndex: index });
+  };
+
+  // Shown on the line being edited
+  const renderDeleteButton = (i: number) =>
+    anchor?.index === i && i < lines.length && (
+      <Pressable
+        style={styles.deleteLineButton}
+        onPress={() => deleteLine(i)}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`Delete line ${i + 1}`}
+      >
+        <Ionicons name="trash-outline" size={16} color={Colors.textMuted} />
+      </Pressable>
+    );
 
   const handleSelectionChange = (e: any, i: number) => {
     cursorRef.current[i] = e.nativeEvent.selection.start;
@@ -230,6 +266,7 @@ export default function LyricsEditor({
     const lineWord = n === 1 ? 'line' : 'lines';
     if (structural?.kind === 'split') return `Split ${n} matching ${lineWord} too`;
     if (structural?.kind === 'merge') return `Merge ${n} matching ${n === 1 ? 'pair' : 'pairs'} too`;
+    if (structural?.kind === 'delete') return `Delete ${n} similar ${lineWord} too`;
     return `Apply to ${n} matching ${lineWord}`;
   };
 
@@ -237,8 +274,8 @@ export default function LyricsEditor({
     i === syncIndex && syncTargets.length > 0 && (
       <View style={styles.syncBar}>
         {showLineNumbers && <View style={styles.lineNumberSpacer} />}
-        <Pressable style={styles.syncButton} onPress={applySync}>
-          <Ionicons name="copy-outline" size={14} color={Colors.white} />
+        <Pressable style={[styles.syncButton, structural?.kind === 'delete' && styles.syncButtonDelete]} onPress={applySync}>
+          <Ionicons name={structural?.kind === 'delete' ? 'trash-outline' : 'copy-outline'} size={14} color={Colors.white} />
           <Text style={styles.syncButtonText}>{syncLabel()}</Text>
         </Pressable>
         <Pressable style={styles.syncDismiss} onPress={dismissSync} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss sync">
@@ -256,6 +293,7 @@ export default function LyricsEditor({
           <View style={styles.lineSolo}>
             {renderLineNumber(i)}
             {renderLineInput(line, i)}
+            {renderDeleteButton(i)}
           </View>
           {renderSyncBar(i)}
         </View>
@@ -274,6 +312,7 @@ export default function LyricsEditor({
           <View style={styles.line}>
             {showLineNumbers && <View style={styles.lineNumberSpacer} />}
             {renderLineInput(line, i)}
+            {renderDeleteButton(i)}
           </View>
         ) : (
           <View style={styles.line}>
@@ -303,7 +342,7 @@ export default function LyricsEditor({
 
   return (
     <View style={styles.column}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {Array.from({ length: totalLines }, (_, i) => renderLine(i))}
       </ScrollView>
     </View>
@@ -364,6 +403,13 @@ const styles = StyleSheet.create({
   syncButtonText: {
     color: Colors.white,
     fontSize: 13,
+  },
+  syncButtonDelete: {
+    backgroundColor: Colors.danger,
+  },
+  deleteLineButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   syncDismiss: {
     padding: 2,

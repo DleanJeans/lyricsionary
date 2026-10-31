@@ -57,6 +57,7 @@ interface AppState {
   currentSongId: string | null;
   webUrl: string;
   scrapeTargetTab: number;
+  scrapeTargetLanguage: string | null;  // The target translation tab's language, null for the original
   deeplLineMap: number[] | null;  // Stores line mapping for DeepL translation
   deeplChunks: string[] | null;  // Stores chunks for multi-chunk DeepL translation
   deeplCurrentChunk: number;  // Current chunk index being translated
@@ -87,7 +88,7 @@ interface AppState {
 
   // Web actions
   setWebUrl: (url: string) => void;
-  setScrapeTargetTab: (tab: number) => void;
+  setScrapeTargetTab: (tab: number, language?: string | null) => void;
   setDeeplLineMap: (lineMap: number[] | null) => void;
   setDeeplChunks: (chunks: string[] | null) => void;
   setDeeplCurrentChunk: (index: number) => void;
@@ -154,6 +155,7 @@ export const useStore = create<AppState>((set, get) => ({
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
   scrapeTargetTab: 0,
+  scrapeTargetLanguage: null,
   deeplLineMap: null,
   deeplChunks: null,
   deeplCurrentChunk: 0,
@@ -246,7 +248,7 @@ export const useStore = create<AppState>((set, get) => ({
   setIsLoadingSong: (isLoading) => set({ isLoadingSong: isLoading }),
 
   setWebUrl: (url) => set({ webUrl: url }),
-  setScrapeTargetTab: (tab) => set({ scrapeTargetTab: tab }),
+  setScrapeTargetTab: (tab, language = null) => set({ scrapeTargetTab: tab, scrapeTargetLanguage: language }),
   setDeeplLineMap: (lineMap) => set({ deeplLineMap: lineMap }),
   setDeeplChunks: (chunks) => set({ deeplChunks: chunks }),
   setDeeplCurrentChunk: (index) => set({ deeplCurrentChunk: index }),

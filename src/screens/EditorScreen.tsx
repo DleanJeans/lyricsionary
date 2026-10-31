@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store/useStore';
 import { Colors } from '../constants/theme';
-import { LANGUAGES, findLanguageName, getLanguageNameFromCode } from '../constants/languages';
+import { LANGUAGES, findTranslationLanguageName, getLanguageNameFromCode, isRomanized, translationLanguagesFor } from '../constants/languages';
 import { matchesSearch } from '../utils/search';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -130,7 +130,7 @@ export default function EditorScreen() {
     }
   }, [editSong?.id]);
 
-  useEffect(() => { setScrapeTargetTab(activeTab); }, [activeTab]);
+  useEffect(() => { setScrapeTargetTab(activeTab, translations[activeTab - 1]?.language); }, [activeTab, translations.length]);
 
   // Search for matching songs when song name or artist name changes
   useEffect(() => {
@@ -205,7 +205,7 @@ export default function EditorScreen() {
 
     // A translation that came with the original (LyricsTranslate, Musixmatch, Letras) fills in its language's tab, adding it if needed
     const scrapedTranslation = route.params?.scrapedTranslation as string | undefined;
-    const translationLanguage = findLanguageName((route.params?.scrapedTranslationLanguage as string | undefined) ?? '');
+    const translationLanguage = findTranslationLanguageName((route.params?.scrapedTranslationLanguage as string | undefined) ?? '');
     if (targetTab === 0 && scrapedTranslation && translationLanguage) {
       const existing = translations.findIndex((t) => t.language === translationLanguage);
       const translationTab = (existing >= 0 ? existing : translations.length) + 1;
@@ -418,7 +418,8 @@ export default function EditorScreen() {
   };
 
   const handleGoogleSearch = () => {
-    const query = encodeURIComponent(`${songName} ${artistName} lyrics`);
+    const romanizedTab = isRomanized(translations[activeTab - 1]?.language ?? '');
+    const query = encodeURIComponent(`${songName} ${artistName} ${romanizedTab ? 'romanized ' : ''}lyrics`);
     setWebUrl(`${GOOGLE_SEARCH_URL}&q=${query}`);
     navigation.navigate('Web');
   };
@@ -627,7 +628,7 @@ export default function EditorScreen() {
             <Ionicons name="search" size={18} color={Colors.white} />
             <Text style={styles.searchButtonText}>Google Search</Text>
           </TouchableOpacity>
-          {activeTab > 0 && originalLyrics && (
+          {activeTab > 0 && originalLyrics && !isRomanized(translations[activeTab - 1]?.language ?? '') && (
             <TouchableOpacity
               style={[styles.searchButton, styles.deeplButton]}
               onPress={handleGetTranslation}
@@ -823,7 +824,7 @@ export default function EditorScreen() {
 
       <AddTranslationModal
         visible={showAddDialog}
-        languages={LANGUAGES}
+        languages={translationLanguagesFor(originalLanguages)}
         selectedLanguage={selectedLanguage}
         onSelectLanguage={setSelectedLanguage}
         onCancel={() => setShowAddDialog(false)}

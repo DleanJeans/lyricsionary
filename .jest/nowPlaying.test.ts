@@ -18,6 +18,10 @@ describe('pickTranslationLanguage', () => {
     expect(pickTranslationLanguage([], ['French'])).toBe('English');
   });
 
+  it('never picks Romanized', () => {
+    expect(pickTranslationLanguage([{ translations: [{ language: 'Romanized' }] }], ['Japanese'])).toBe('English');
+  });
+
   it('returns null when no language is left', () => {
     expect(pickTranslationLanguage([], ['English'])).toBeNull();
   });

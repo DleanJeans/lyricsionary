@@ -69,7 +69,43 @@ export const LANGUAGES = [
   { code: 'zu', name: 'Zulu', flag: '🇿🇦' },
 ];
 
+// A song's lyrics written in the Latin alphabet, e.g. Japanese romaji, kept as one of its translations
+export const ROMANIZED = { code: 'romanized', name: 'Romanized', flag: '🔤' };
+
+export function isRomanized(language: string): boolean {
+  return language === ROMANIZED.name;
+}
+
+// Lyrics languages not written in the Latin alphabet, which a romanized version helps to read
+const NON_LATIN_LANGUAGES = new Set([
+  'Japanese', 'Korean', 'Chinese', 'Cantonese', 'Russian', 'Arabic', 'Hindi', 'Thai', 'Armenian', 'Bengali',
+  'Bulgarian', 'Georgian', 'Greek', 'Hebrew', 'Kazakh', 'Macedonian', 'Mongolian', 'Nepali', 'Persian',
+  'Punjabi', 'Serbian', 'Tamil', 'Telugu', 'Ukrainian', 'Urdu',
+]);
+
+// The languages a song's translation can be in: Romanized first for a song not in the Latin alphabet
+export function translationLanguagesFor(originalLanguages: string[] = []) {
+  const nonLatin = originalLanguages.some((language) => NON_LATIN_LANGUAGES.has(getLanguageNameFromCode(language) ?? ''));
+  return nonLatin ? [ROMANIZED, ...LANGUAGES] : LANGUAGES;
+}
+
+// What lyrics sites call a romanized version, e.g. LyricsTranslate's "Transliteration"
+const ROMANIZED_LABEL = /\b(?:romani[sz]ations?|romani[sz]ed|transliterations?|romaji|rōmaji|romaja|pinyin|jyutping)\b/i;
+
+// The translation language a label names, Romanized included
+export function findTranslationLanguageName(label: string): string | null {
+  return ROMANIZED_LABEL.test(label) ? ROMANIZED.name : findLanguageName(label);
+}
+
+// Whether most of a text's letters are Latin ones, e.g. romaji rather than kana and kanji
+export function isMostlyLatin(text: string): boolean {
+  const letters = text.match(/\p{L}/gu)?.length ?? 0;
+  const latin = text.match(/[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]/g)?.length ?? 0;
+  return letters > 0 && latin / letters >= 0.8;
+}
+
 export function getFlagForLanguage(langName: string): string {
+  if (isRomanized(langName)) return ROMANIZED.flag;
   const lang = LANGUAGES.find(
     (l) => l.name.toLowerCase() === langName.toLowerCase() || l.code.toLowerCase() === langName.toLowerCase()
   );

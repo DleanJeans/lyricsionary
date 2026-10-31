@@ -1,4 +1,4 @@
-import { LANGUAGES, getFlagForLanguage, getLanguageNameFromCode, findLanguageName, isRtlLanguage, isSameLanguage, languageKey, searchLanguages } from '../src/constants/languages';
+import { LANGUAGES, ROMANIZED, findTranslationLanguageName, getFlagForLanguage, getLanguageNameFromCode, findLanguageName, isMostlyLatin, isRtlLanguage, isSameLanguage, languageKey, searchLanguages, translationLanguagesFor } from '../src/constants/languages';
 
 describe('languages', () => {
   it('has unique codes and names', () => {
@@ -72,5 +72,29 @@ describe('languageKey', () => {
     expect(languageKey('fr')).toBe('french');
     expect(languageKey('French')).toBe('french');
     expect(languageKey('Klingon')).toBe('klingon');
+  });
+});
+
+describe('Romanized', () => {
+  it('is offered first for a song not in the Latin alphabet', () => {
+    expect(translationLanguagesFor(['Japanese'])[0]).toBe(ROMANIZED);
+    expect(translationLanguagesFor(['ko'])[0]).toBe(ROMANIZED);
+    expect(translationLanguagesFor(['French'])).not.toContain(ROMANIZED);
+    expect(translationLanguagesFor()).toBe(LANGUAGES);
+  });
+
+  it('is what lyrics sites call a transliteration', () => {
+    expect(findTranslationLanguageName('Transliteration')).toBe('Romanized');
+    expect(findTranslationLanguageName('Genius Romanizations')).toBe('Romanized');
+    expect(findTranslationLanguageName('Rōmaji')).toBe('Romanized');
+    expect(findTranslationLanguageName('English translation')).toBe('English');
+    expect(getFlagForLanguage('Romanized')).toBe('🔤');
+  });
+
+  it('tells romaji from kana and kanji', () => {
+    expect(isMostlyLatin('Yoru ni kakeru')).toBe(true);
+    expect(isMostlyLatin('夜に駆ける')).toBe(false);
+    expect(isMostlyLatin('沈むように溶けてゆくように (Shizumu you ni)')).toBe(false);
+    expect(isMostlyLatin('')).toBe(false);
   });
 });

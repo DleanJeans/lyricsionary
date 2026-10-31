@@ -16,7 +16,7 @@ import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
 import WordCard from '../components/WordCard';
 import WordQuiz from '../components/WordQuiz';
-import { getFlagForLanguage, isRtlLanguage } from '../constants/languages';
+import { getFlagForLanguage, isRomanized, isRtlLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
@@ -251,7 +251,16 @@ export default function LearnScreen() {
     return () => clearTimeout(timer);
   }, [song]);
 
-  const lines = computedLines;
+  // Fill in the lyrics hides the romanized lines, which would give the gaps away
+  const lines = useMemo(
+    () => lyricQuiz
+      ? computedLines.map((line) => ({
+          ...line,
+          translations: line.translations.map((tl) => (isRomanized(tl.language) ? { ...tl, show: false } : tl)),
+        }))
+      : computedLines,
+    [computedLines, lyricQuiz]
+  );
 
   // Blank lines between verses aren't lyrics
   const lineCount = lines.filter((line) => line.original.trim()).length;
@@ -647,7 +656,7 @@ export default function LearnScreen() {
   const translationLineOf = (languages?: string[]) =>
     selectedLineIndex !== null && lines[selectedLineIndex]
       ? lines[selectedLineIndex].translations
-          .filter((tl) => tl.show && (!languages || languages.includes(tl.language)))
+          .filter((tl) => tl.show && !isRomanized(tl.language) && (!languages || languages.includes(tl.language)))
           .map((tl) => tl.text)
           .join(' / ')
       : undefined;
@@ -735,7 +744,7 @@ export default function LearnScreen() {
   // The selected line's translations, as LearnLyricsView keys them
   const selectedLineTranslationCount =
     selectedLineIndex !== null && lines[selectedLineIndex]
-      ? lines[selectedLineIndex].translations.filter((tl) => tl.show && localSelectedLanguages.includes(tl.language)).length
+      ? lines[selectedLineIndex].translations.filter((tl) => tl.show && !isRomanized(tl.language) && localSelectedLanguages.includes(tl.language)).length
       : 0;
   // The quiz would give itself away when the line's translation is, or was, readable
   const selectedTranslationSeen =

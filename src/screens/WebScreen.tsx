@@ -18,6 +18,7 @@ import { Text, TextInput } from '../components/Text';
 import Toast from '../components/Toast';
 import { WebView } from '../components/WebView';
 import { Colors } from '../constants/theme';
+import { isMostlyLatin, isRomanized } from '../constants/languages';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { useStore } from '../store/useStore';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
@@ -37,6 +38,7 @@ export default function WebScreen() {
   const webUrl = useStore((s) => s.webUrl);
   const setWebUrl = useStore((s) => s.setWebUrl);
   const scrapeTargetTab = useStore((s) => s.scrapeTargetTab);
+  const scrapeTargetLanguage = useStore((s) => s.scrapeTargetLanguage);
   const deeplLineMap = useStore((s) => s.deeplLineMap);
   const deeplChunks = useStore((s) => s.deeplChunks);
   const deeplCurrentChunk = useStore((s) => s.deeplCurrentChunk);
@@ -159,7 +161,11 @@ export default function WebScreen() {
       // tab when getting the original, or is what a translation tab gets
       const pageTranslation = typeof data.translation === 'string' ? data.translation.trim() : '';
       if (data.type === 'lyrics' && (data.text || (scrapeTargetTab > 0 && pageTranslation))) {
-        let lyrics = scrapeTargetTab > 0 && pageTranslation ? pageTranslation : data.text.trim();
+        // A Romanized tab takes whichever of the page's lyrics and translation is in the Latin alphabet,
+        // e.g. LyricsTranslate's transliteration or Genius Romanizations' lyrics
+        const takeTranslation = scrapeTargetTab > 0 && !!pageTranslation &&
+          (!isRomanized(scrapeTargetLanguage ?? '') || !data.text || !isMostlyLatin(data.text));
+        let lyrics = takeTranslation ? pageTranslation : data.text.trim();
         if (currentUrl.includes('genius.com')) {
           lyrics = cleanGeniusLyrics(lyrics);
         }

@@ -1,3 +1,5 @@
+import { isRomanized } from '../constants/languages';
+
 // Supported lyrics sites to follow from Google results when Google has no lyrics panel
 export const LYRICS_SITE_DOMAINS = ['genius.com', 'musixmatch.com', 'songlyrics.com', 'lyricsify.com', 'paroles-musique.com'];
 
@@ -12,6 +14,7 @@ export function pickTranslationLanguage(
 ): string | null {
   const counts: Record<string, number> = {};
   songs.forEach((s) => s.translations.forEach((t) => {
+    if (isRomanized(t.language)) return;
     counts[t.language] = (counts[t.language] ?? 0) + 1;
   }));
   const candidates = [...Object.keys(counts).sort((a, b) => counts[b] - counts[a]), 'English'];

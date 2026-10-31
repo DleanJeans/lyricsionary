@@ -1,5 +1,6 @@
 import React, { useMemo, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { isRomanized } from '../constants/languages';
 import { Colors } from '../constants/theme';
 import { Text } from './Text';
 import { findDefinitionHighlights } from '../utils/definitionHighlight';
@@ -98,25 +99,32 @@ export function LearnLyricsLine({
   line: LearnLine;
   lineIndex: number;
 }) {
+  const shown = showTranslations
+    ? line.translations.filter((translation) => translation.show && selectedLanguages.includes(translation.language))
+    : [];
+  // The romanized line reads the original out, so it sits right under it and is never blurred
+  const romanized = shown.find((translation) => isRomanized(translation.language));
   return (
     <View style={styles.lineBlock}>
       {renderPressableText(line.original, lineIndex)}
-      {showTranslations &&
-        line.translations
-          .filter((translation) => translation.show && selectedLanguages.includes(translation.language))
-          .map((translation, translationIndex) => {
-            const translationKey = `${lineIndex}-${translationIndex}`;
-            return (
-              <TranslationLine
-                key={translationIndex}
-                text={translation.text}
-                fontSize={fontSize}
-                isBlurred={blurTranslations && !unblurredTranslations.has(translationKey)}
-                onPress={() => onTranslationPress(lineIndex, translationIndex)}
-                highlightDefinitions={lineIndex === highlightLineIndex ? highlightDefinitions : undefined}
-              />
-            );
-          })}
+      {!!romanized?.text && (
+        <Text style={[styles.romanizedLine, { fontSize: fontSize - 2 }]}>{romanized.text}</Text>
+      )}
+      {shown
+        .filter((translation) => !isRomanized(translation.language))
+        .map((translation, translationIndex) => {
+          const translationKey = `${lineIndex}-${translationIndex}`;
+          return (
+            <TranslationLine
+              key={translationIndex}
+              text={translation.text}
+              fontSize={fontSize}
+              isBlurred={blurTranslations && !unblurredTranslations.has(translationKey)}
+              onPress={() => onTranslationPress(lineIndex, translationIndex)}
+              highlightDefinitions={lineIndex === highlightLineIndex ? highlightDefinitions : undefined}
+            />
+          );
+        })}
     </View>
   );
 }
@@ -221,6 +229,10 @@ const styles = StyleSheet.create({
   sectionLabelText: {
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  romanizedLine: {
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
   },
   translationLine: {
     color: Colors.primaryLight,

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, type ReactNode } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { LANGUAGES } from '../constants/languages';
+import { LANGUAGES, ROMANIZED } from '../constants/languages';
 import { Colors } from '../constants/theme';
 import { formatIpa } from '../utils/ipaDisplay';
 import { LearnLyricsLine, type LearnLine } from './LearnLyricsView';
@@ -139,7 +139,7 @@ export default function LearnSettingsMenu({
   showTranslations,
   renderPressableText,
 }: LearnSettingsMenuProps) {
-  const languagesToShow = LANGUAGES.filter((lang) =>
+  const languagesToShow = [ROMANIZED, ...LANGUAGES].filter((lang) =>
     availableLanguages.includes(lang.name)
   );
 

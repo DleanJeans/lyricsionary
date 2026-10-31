@@ -28,6 +28,8 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { useWordProgress } from '../hooks/useWordProgress';
 import SongLevelBar from '../components/SongLevelBar';
 import SpotifyNowPlaying from '../components/SpotifyNowPlaying';
+import ReviewSession from '../components/ReviewSession';
+import { buildReviewItems, dueWords, type ReviewItem } from '../utils/reviewQuiz';
 import { countKnownWords } from '../utils/wordFrequency';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 
@@ -156,9 +158,9 @@ export default function SongsScreen() {
     return gaps;
   }, [songs, words]);
 
-  // Each song's saved words by level: the ones in its lyrics and the ones saved from it
-  const songLevels = useMemo(() => {
-    const levels = new Map<string, Partial<Record<MasteryLevel, number>>>();
+  // Each song's saved words: the ones in its lyrics and the ones saved from it
+  const songWords = useMemo(() => {
+    const bySong = new Map<string, WordEntry[]>();
     for (const song of songs) {
       const index = songWordIndex(words, song.originalLanguages);
       const entries = new Set<WordEntry>();
@@ -169,15 +171,31 @@ export default function SongsScreen() {
         return !!entry;
       }, song.originalLanguages);
       for (const word of words) if (word.contexts?.some((c) => c.songId === song.id)) entries.add(word);
+      bySong.set(song.id, [...entries]);
+    }
+    return bySong;
+  }, [songs, words]);
+
+  // Each song's saved words by level
+  const songLevels = useMemo(() => {
+    const levels = new Map<string, Partial<Record<MasteryLevel, number>>>();
+    for (const [songId, entries] of songWords) {
       const counts: Partial<Record<MasteryLevel, number>> = {};
       for (const entry of entries) {
         const level = entry.masteryLevel ?? 'Seen';
         counts[level] = (counts[level] ?? 0) + 1;
       }
-      levels.set(song.id, counts);
+      levels.set(songId, counts);
     }
     return levels;
-  }, [songs, words]);
+  }, [songWords]);
+
+  // Each song's quizzes for the words a quiz now would move toward their next level, to review from its card
+  const songDue = useMemo(() => {
+    const now = Date.now();
+    return new Map([...songWords].map(([songId, entries]) => [songId, buildReviewItems(dueWords(entries, now), words)]));
+  }, [songWords, words]);
+  const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
 
   const sortedSongs = [...songs].sort((a, b) => {
     switch (sortMode) {
@@ -329,6 +347,19 @@ export default function SongsScreen() {
             </View>
           )}
         </View>
+        {!!songDue.get(item.id)?.length && !isLoadingThisSong && (
+          <TouchableOpacity
+            style={styles.fillInButton}
+            onPress={() => setReviewing(songDue.get(item.id)!)}
+            disabled={isAnySongLoading}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={`Review ${songDue.get(item.id)!.length} due words from this song`}
+          >
+            <Ionicons name="flash-outline" size={16} color={Colors.primary} />
+            <Text style={styles.fillInText}>{songDue.get(item.id)!.length}</Text>
+          </TouchableOpacity>
+        )}
         {!!songGaps.get(item.id) && !isLoadingThisSong && (
           <TouchableOpacity
             style={styles.fillInButton}
@@ -471,6 +502,7 @@ export default function SongsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      {reviewing && <ReviewSession dueItems={reviewing} onClose={() => setReviewing(null)} isWide={isWide} />}
       <ConfirmDialog
         visible={songToDelete !== null}
         title={`Delete Song: ${songToDelete?.songName}`}

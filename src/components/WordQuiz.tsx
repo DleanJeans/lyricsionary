@@ -5,8 +5,8 @@ import Animated from 'react-native-reanimated';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
-import { isCoolingDown, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor } from '../utils/wordQuiz';
-import { Text } from './Text';
+import { checkTypedAnswer, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor } from '../utils/wordQuiz';
+import { Text, TextInput } from './Text';
 
 interface WordQuizProps {
   entry: WordEntry;
@@ -37,12 +37,16 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const [chosen, setChosen] = useState<number | null>(null);
   const [before, setBefore] = useState<WordEntry | null>(null);
   const [undone, setUndone] = useState(false);
+  // A Recalled word is typed instead of picked
+  const [typed] = useState(() => isTypedQuiz(entry.masteryLevel, kind));
+  const [typedText, setTypedText] = useState('');
+  const [typedResult, setTypedResult] = useState<'right' | 'accents' | 'wrong' | null>(null);
   const current = useStore((s) => s.words.find((w) => w.id === entry.id)) ?? entry;
 
-  if (!quiz || (hidden && chosen === null)) return null;
+  if (!quiz || (hidden && chosen === null && typedResult === null)) return null;
 
-  const answered = chosen !== null;
-  const correct = chosen === quiz.answerIndex;
+  const answered = chosen !== null || typedResult !== null;
+  const correct = typed ? typedResult === 'right' || typedResult === 'accents' : chosen === quiz.answerIndex;
   const levelUp: MasteryLevel | null =
     before && !undone && current.masteryLevel !== before.masteryLevel ? current.masteryLevel ?? null : null;
 
@@ -51,6 +55,15 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     setChosen(index);
     onAnswered?.(index === quiz.answerIndex);
     setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex)) ?? null);
+  };
+
+  const submitTyped = async (giveUp = false) => {
+    if (answered || (!giveUp && !typedText.trim())) return;
+    const result = giveUp ? 'wrong' : checkTypedAnswer(typedText, entry.word);
+    setTypedResult(result);
+    const right = result !== 'wrong';
+    onAnswered?.(right);
+    setBefore((await recordQuizAnswer(entry.id, kind, right)) ?? null);
   };
 
   const undo = () => {
@@ -63,36 +76,69 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   return (
     <View style={styles.container}>
       <Text style={styles.prompt}>{prompt}</Text>
-      <View style={[styles.options, isWide && styles.optionsWide]}>
-        {quiz.options.map((option, index) => {
-          const isAnswer = index === quiz.answerIndex;
-          const state = !answered ? null : isAnswer ? 'right' : index === chosen ? 'wrong' : 'other';
-          // Once answered, only the answer and a wrong pick stay
-          if (state === 'other') return null;
-          return (
+      {typed ? (
+        <View style={styles.typedRow}>
+          <TextInput
+            style={[
+              styles.typedInput,
+              typedResult && (correct ? styles.optionRight : styles.optionWrong),
+            ]}
+            value={typedText}
+            onChangeText={setTypedText}
+            onSubmitEditing={() => void submitTyped()}
+            editable={!answered}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus
+            returnKeyType="done"
+            placeholder="Type the word"
+            placeholderTextColor={Colors.textMuted}
+            accessibilityLabel="Your answer"
+          />
+          {!answered && (
             <TouchableOpacity
-              key={`${index}-${option}`}
-              style={[
-                styles.option,
-                isWide && styles.optionWide,
-                state === 'right' && styles.optionRight,
-                state === 'wrong' && styles.optionWrong,
-              ]}
-              onPress={() => void choose(index)}
-              disabled={answered}
+              style={[styles.checkButton, !typedText.trim() && styles.checkButtonDisabled]}
+              onPress={() => void submitTyped()}
+              disabled={!typedText.trim()}
               accessibilityRole="button"
-              accessibilityLabel={option}
-              accessibilityState={{ disabled: answered, selected: index === chosen }}
+              accessibilityLabel="Check answer"
             >
-              <Text style={[styles.optionText, state === 'right' && styles.optionTextRight]} numberOfLines={3}>
-                {option}
-              </Text>
-              {state === 'right' && <Ionicons name="checkmark-circle" size={16} color={Colors.success} />}
-              {state === 'wrong' && <Ionicons name="close-circle" size={16} color={Colors.danger} />}
+              <Text style={styles.checkButtonText}>Check</Text>
             </TouchableOpacity>
-          );
-        })}
-      </View>
+          )}
+        </View>
+      ) : (
+        <View style={[styles.options, isWide && styles.optionsWide]}>
+          {quiz.options.map((option, index) => {
+            const isAnswer = index === quiz.answerIndex;
+            const state = !answered ? null : isAnswer ? 'right' : index === chosen ? 'wrong' : 'other';
+            // Once answered, only the answer and a wrong pick stay
+            if (state === 'other') return null;
+            return (
+              <TouchableOpacity
+                key={`${index}-${option}`}
+                style={[
+                  styles.option,
+                  isWide && styles.optionWide,
+                  state === 'right' && styles.optionRight,
+                  state === 'wrong' && styles.optionWrong,
+                ]}
+                onPress={() => void choose(index)}
+                disabled={answered}
+                accessibilityRole="button"
+                accessibilityLabel={option}
+                accessibilityState={{ disabled: answered, selected: index === chosen }}
+              >
+                <Text style={[styles.optionText, state === 'right' && styles.optionTextRight]} numberOfLines={3}>
+                  {option}
+                </Text>
+                {state === 'right' && <Ionicons name="checkmark-circle" size={16} color={Colors.success} />}
+                {state === 'wrong' && <Ionicons name="close-circle" size={16} color={Colors.danger} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
       {answered && (
         <View style={styles.resultRow}>
           {levelUp ? (
@@ -106,9 +152,28 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.resultText}>{correct ? 'Right!' : 'Not quite.'}</Text>
+            <Text style={styles.resultText}>
+              {typedResult === 'accents' ? (
+                <>
+                  Right! Mind the accents: <Text style={[styles.resultText, styles.levelText]}>{entry.word}</Text>
+                </>
+              ) : typedResult === 'wrong' ? (
+                <>
+                  It's <Text style={[styles.resultText, styles.levelText]}>{entry.word}</Text>
+                </>
+              ) : correct ? (
+                'Right!'
+              ) : (
+                'Not quite.'
+              )}
+            </Text>
           )}
         </View>
+      )}
+      {typed && !answered && (
+        <TouchableOpacity onPress={() => void submitTyped(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show the answer">
+          <Text style={styles.giveUpText}>I don't remember</Text>
+        </TouchableOpacity>
       )}
       {answered && <LevelTrack from={unanswered} entry={current} />}
     </View>
@@ -313,6 +378,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  typedRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  typedInput: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 16,
+    color: Colors.text,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  checkButton: {
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+  },
+  checkButtonDisabled: {
+    opacity: 0.5,
+  },
+  checkButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  giveUpText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textDecorationLine: 'underline',
   },
   undoText: {
     fontSize: 13,

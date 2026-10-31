@@ -1,6 +1,6 @@
 import type { WordEntry } from '../src/types';
 import type { PartOfSpeech } from '../src/utils/partOfSpeech';
-import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
+import { buildLyricQuiz, checkTypedAnswer, buildMeaningQuiz, isCoolingDown, levelProgress, lookAlikeScore, meaningsOverlap, progressHint, QUIZ_RULES, quizKindFor, recordAnswer } from '../src/utils/wordQuiz';
 
 const DAY = 24 * 60 * 60 * 1000;
 const start = new Date(2026, 9, 25, 12).getTime();
@@ -190,5 +190,29 @@ describe('buildLyricQuiz', () => {
     const amour = word('amour', 'love', 'noun', 'song', 'French');
     const words = [amour, word('Paris', 'Paris', 'noun', 'song', 'French'), word('nuit', 'night', 'noun', 'song', 'French'), word('Marie', 'Mary', 'noun', 'song', 'French')];
     expect([...buildLyricQuiz({ entry: amour, answer: 'love', songId: 'song' }, words, noShuffle)!.options].sort()).toEqual(['Marie', 'Paris', 'amour', 'nuit']);
+  });
+});
+
+describe('checkTypedAnswer', () => {
+  it('ignores case, spaces and edge punctuation', () => {
+    expect(checkTypedAnswer('  Corazón! ', 'corazón')).toBe('right');
+    expect(checkTypedAnswer('hôm  qua', 'hôm qua')).toBe('right');
+    expect(checkTypedAnswer('l’amour', "l'amour")).toBe('right');
+  });
+
+  it('counts a word with the wrong accents, and says so', () => {
+    expect(checkTypedAnswer('corazon', 'corazón')).toBe('accents');
+    expect(checkTypedAnswer('coeur', 'cœur')).toBe('accents');
+    expect(checkTypedAnswer('хорошо', 'хорошо́')).toBe('right');
+  });
+
+  it("doesn't fold kana or Hangul", () => {
+    expect(checkTypedAnswer('か', 'が')).toBe('wrong');
+    expect(checkTypedAnswer('너', '너')).toBe('right');
+  });
+
+  it('is wrong for another word or nothing', () => {
+    expect(checkTypedAnswer('amor', 'amour')).toBe('wrong');
+    expect(checkTypedAnswer(' ', 'amour')).toBe('wrong');
   });
 });

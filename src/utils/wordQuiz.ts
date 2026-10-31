@@ -285,3 +285,35 @@ export function buildLyricQuiz(target: QuizTarget, words: WordEntry[], random = 
   }
   return finish(answer, pickBest(candidates, QUIZ_RULES.options - 1, random), random);
 }
+
+const ACCENTED_SCRIPTS = /^[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{M}\s'-]+$/u;
+
+const typedForm = (text: string) =>
+  text
+    .normalize('NFC')
+    .trim()
+    .toLowerCase()
+    .replace(/[’‘`´]/g, "'")
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
+    .replace(/\s+/g, ' ')
+    // Russian stress marks are a reading aid, not spelling
+    .replace(/([Ѐ-ӿ])́/g, '$1');
+
+const withoutAccents = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').replace(/œ/g, 'oe').replace(/æ/g, 'ae').replace(/ß/g, 'ss');
+
+/**
+ * How a typed answer compares to the word: right, right but for its accents (still counted, e.g.
+ * "corazon" for corazón), or wrong. Case and edge punctuation don't matter. Accents only fold in
+ * Latin, Cyrillic and Greek words, since a kana's dakuten or a Hangul syllable isn't an accent.
+ */
+export function checkTypedAnswer(typed: string, answer: string): 'right' | 'accents' | 'wrong' {
+  const a = typedForm(typed);
+  const b = typedForm(answer);
+  if (!a) return 'wrong';
+  if (a === b) return 'right';
+  if (ACCENTED_SCRIPTS.test(b) && withoutAccents(a) === withoutAccents(b)) return 'accents';
+  return 'wrong';
+}
+
+/** A Recalled word's lyric quiz is typed, since picking it out of a few is what Recognized proved */
+export const isTypedQuiz = (level: MasteryLevel | undefined, kind: QuizKind) => kind === 'lyric' && level === 'Recalled';

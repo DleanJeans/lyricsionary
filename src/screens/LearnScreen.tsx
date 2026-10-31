@@ -334,11 +334,18 @@ export default function LearnScreen() {
     if (followSpotify && spotify.currentLine !== null) setScrollToLine({ index: spotify.currentLine, key: Date.now() });
   }, [followSpotify, spotify.currentLine]);
   const focus = route.params?.focus;
+  // A line found by searching the lyrics stays marked until a word is tapped
+  const [foundLine, setFoundLine] = useState<number | null>(null);
+  useEffect(() => {
+    if (selectedWord) setFoundLine(null);
+  }, [selectedWord]);
+  useEffect(() => setFoundLine(null), [song?.id]);
   useEffect(() => {
     if (!focus || isRendering) return;
     const lineIndex = lines.findIndex((line) => line.original === focus.line);
     if (lineIndex === -1) return;
-    setSelectedWord(focus.word);
+    setSelectedWord(focus.word ?? null);
+    setFoundLine(focus.word ? null : lineIndex);
     setSelectedLine(focus.line);
     setSelectedLineIndex(lineIndex);
     setSelectedOccurrence(focus.occurrence ?? 1);
@@ -1164,6 +1171,7 @@ export default function LearnScreen() {
         scrollToLine={scrollToLine}
         playingLineIndex={spotify.currentLine}
         dictationLineIndex={dictation && !dictation.checked ? dictation.lineIndex : null}
+        foundLineIndex={foundLine}
         scrollKey={song.id}
       />
     </>

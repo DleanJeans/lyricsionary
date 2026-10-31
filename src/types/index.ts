@@ -100,7 +100,8 @@ export type RootTabParamList = {
   Web: { url?: string } | undefined;
   /** fillIn: open the song with its saved words to recall as gaps */
   /** focus: select a word on a line, e.g. one opened from another song's word card */
-  Learn: { songId?: string; fillIn?: boolean; focus?: { word: string; line: string; occurrence?: number } } | undefined;
+  /** focus without a word just goes to the line, e.g. one found by searching the lyrics */
+  Learn: { songId?: string; fillIn?: boolean; focus?: { word?: string; line: string; occurrence?: number } } | undefined;
   Songs: { searchQuery?: string } | undefined;
   Words: undefined;
   WordLookup: {

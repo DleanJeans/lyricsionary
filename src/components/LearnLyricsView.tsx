@@ -40,6 +40,8 @@ interface LearnLyricsViewProps {
   scrollToLine?: { index: number; key: number } | null;
   /** A line hidden for dictation, to write it from listening */
   dictationLineIndex?: number | null;
+  /** A line to point out, e.g. one found by searching the lyrics */
+  foundLineIndex?: number | null;
   /** The line Spotify is playing */
   playingLineIndex?: number | null;
   /** Remembers the scroll position under this key, e.g. the song's id, and goes back to it */
@@ -225,7 +227,7 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     <View
       key={lineIndex}
       collapsable={false}
-      style={lineIndex === props.playingLineIndex ? styles.playingLine : undefined}
+      style={lineIndex === props.playingLineIndex ? styles.playingLine : lineIndex === props.foundLineIndex ? styles.foundLine : undefined}
       ref={(view) => {
         if (view) lineRefs.current.set(lineIndex, view);
         else lineRefs.current.delete(lineIndex);
@@ -279,6 +281,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     paddingBottom: 40,
+  },
+  foundLine: {
+    marginHorizontal: -6,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(108, 92, 231, 0.18)',
   },
   playingLine: {
     marginHorizontal: -6,

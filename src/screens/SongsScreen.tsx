@@ -96,18 +96,20 @@ export default function SongsScreen() {
   }, [songs]);
 
   // Helper function to find matched line in lyrics
-  const findMatchedLine = (song: Song, query: string): string | null => {
+  // The first line with the search, and the song's own line there, as a translation's lines follow the song's
+  const findMatch = (song: Song, query: string): { line: string; original: string } | null => {
     if (!query.trim()) return null;
+    const originalLines = song.originalLyrics.split('\n');
     const lyricSources = [song.originalLyrics, ...song.translations.map((translation) => translation.lyrics)];
     for (const lyrics of lyricSources) {
-      for (const line of lyrics.split('\n')) {
-        if (matchesSearch(line, query)) {
-          return line.trim();
-        }
+      const lines = lyrics.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (matchesSearch(lines[i], query)) return { line: lines[i].trim(), original: originalLines[i] ?? '' };
       }
     }
     return null;
   };
+  const findMatchedLine = (song: Song, query: string): string | null => findMatch(song, query)?.line ?? null;
 
   // fillIn opens the song with its saved words to recall as gaps
   const handlePressSong = (song: Song, fillIn = false) => {
@@ -118,7 +120,10 @@ export default function SongsScreen() {
       setCurrentSongId(song.id);
       void trackSongOpen(song.id);
       navigation.navigate('Editor', { songId: song.id });
-      navigation.navigate('Learn', { songId: song.id, fillIn });
+      // Found by searching the lyrics: opens at the line
+      const match = searchInLyrics && !fillIn ? findMatch(song, searchQuery) : null;
+      const focus = match?.original.trim() ? { line: match.original } : undefined;
+      navigation.navigate('Learn', { songId: song.id, fillIn, focus });
     }, 0);
   };
 

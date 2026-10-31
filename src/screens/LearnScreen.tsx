@@ -41,6 +41,8 @@ import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
+import { findWordSpots, stepWordSpot } from '../utils/wordLines';
+import WordSpotStepper from '../components/WordSpotStepper';
 
 const PREVIEW_MAX_WORDS = 8;
 
@@ -300,6 +302,21 @@ export default function LearnScreen() {
 
   // Opened at a word, e.g. from another song's word card: select it on its line and scroll there
   const [scrollToLine, setScrollToLine] = useState<{ index: number; key: number } | null>(null);
+
+  // Every line in this song: where the selected word comes up, stepped through from its card
+  const wordSpots = useMemo(
+    () => (selectedWord ? findWordSpots(lines.map((line) => line.original), selectedWord, (candidate) => !!findSavedEntry(candidate)) : []),
+    [selectedWord, lines, findSavedEntry]
+  );
+  const wordSpotIndex = wordSpots.findIndex((s) => s.lineIndex === selectedLineIndex && s.occurrence === selectedOccurrence);
+  const goToWordSpot = (step: 1 | -1) => {
+    const spot = stepWordSpot(wordSpots, wordSpotIndex === -1 ? null : wordSpots[wordSpotIndex], step);
+    if (!spot) return;
+    setSelectedLine(lines[spot.lineIndex].original);
+    setSelectedLineIndex(spot.lineIndex);
+    setSelectedOccurrence(spot.occurrence);
+    setScrollToLine({ index: spot.lineIndex, key: Date.now() });
+  };
 
   // Spotify: follows the song while it plays, highlighting and scrolling to its line, and seeks by line
   const spotifyConnected = useStore((s) => s.spotifyConnected);
@@ -1035,7 +1052,7 @@ export default function LearnScreen() {
     );
   })() : null;
 
-  const wordPanel = gapPanel ?? (
+  const wordCardPanel = (
     selectedWord && selectedWordEntry ? (
       <View style={[styles.wordCardContainer]}>
         <WordCard
@@ -1074,6 +1091,16 @@ export default function LearnScreen() {
         occurrence={selectedOccurrence}
       />
     ) : null);
+  const wordPanel = gapPanel ?? (wordCardPanel && wordSpots.length > 1 ? (
+    <View>
+      <WordSpotStepper
+        count={wordSpots.length}
+        index={wordSpotIndex}
+        onStep={goToWordSpot}
+      />
+      {wordCardPanel}
+    </View>
+  ) : wordCardPanel);
 
   const actionBar = (
     <LearnActionBar

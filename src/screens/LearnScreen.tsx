@@ -748,12 +748,20 @@ export default function LearnScreen() {
                   <>
                     {edgePunctuation.leading}
                     <Text
-                      style={{
-                        color: wordColor,
-                        fontWeight: isActiveOccurrence ? '700' : '400',
-                        fontSize,
-                        lineHeight: fontSize * 1.6,
-                      }}
+                      style={[
+                        {
+                          color: wordColor,
+                          fontWeight: isActiveOccurrence ? '700' : '400',
+                          fontSize,
+                          lineHeight: fontSize * 1.6,
+                        },
+                        // A saved phrase, from this song or another, reads as one: tout à fait
+                        isPhrase && !!wordEntry && {
+                          textDecorationLine: 'underline',
+                          textDecorationStyle: 'dotted',
+                          textDecorationColor: wordColor,
+                        },
+                      ]}
                     >
                       {stressedWord}
                     </Text>

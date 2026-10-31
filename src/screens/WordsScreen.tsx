@@ -42,6 +42,9 @@ export default function WordsScreen() {
   const deleteWord = useStore((s) => s.deleteWord);
   const songs = useStore((s) => s.songs);
   const ignoredWords = useStore((s) => s.ignoredWords);
+  const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
+  // Top words just ignored with a long press, each with an Undo for a few seconds
+  const [justIgnored, setJustIgnored] = useState<WordFrequency[]>([]);
   // Saved or Top view, kept across restarts
   const [showFrequency, setShowFrequency] = usePersistedState('@lyricsionary_words_top_view', false, isBoolean);
   // Top view: only words not saved yet, the ones left to learn
@@ -99,12 +102,26 @@ export default function WordsScreen() {
   );
 
 
+  const ignoreFrequencyWord = (item: WordFrequency) => {
+    void toggleIgnoredWord(item.word, item.language);
+    setJustIgnored((prev) => [...prev, item]);
+    setTimeout(() => setJustIgnored((prev) => prev.filter((w) => w !== item)), 5000);
+  };
+
+  const undoIgnore = (item: WordFrequency) => {
+    void toggleIgnoredWord(item.word, item.language);
+    setJustIgnored((prev) => prev.filter((w) => w !== item));
+  };
+
   const renderFrequencyItem = ({ item, index }: { item: WordFrequency; index: number }) => {
     const savedWord = savedWordIndex.get(`${languageKey(item.language)}\u0000${item.word.toLowerCase()}`);
     return (
       <TouchableOpacity
         style={styles.frequencyRow}
         onPress={() => navigation.navigate('WordLookup', { word: item.word, originalLanguages: [item.language], source: 'Words' })}
+        // A long press ignores the word, e.g. a name or a filler like "oh"
+        onLongPress={() => ignoreFrequencyWord(item)}
+        accessibilityHint="Long press to ignore"
       >
         <Text style={styles.frequencyRank}>{index + 1}</Text>
         <Text
@@ -288,6 +305,7 @@ export default function WordsScreen() {
                 onPress={() => setHideSavedInTop(!hideSavedInTop)}
                 accessibilityLabel="Only words not saved yet"
               />
+              <Text style={styles.topHint}>Long press a word to ignore it</Text>
             </View>
           ) : (
             <MasteryLevelTabs
@@ -388,6 +406,18 @@ export default function WordsScreen() {
         />
       )}
       <View style={styles.toastStack} pointerEvents="box-none">
+        {justIgnored.map((item) => (
+          <Toast
+            key={`ignored-${item.language}-${item.word}`}
+            message={
+              <>
+                Ignored
+                <Text style={{ fontWeight: 'bold' }}> {item.word}</Text>
+              </>
+            }
+            onUndo={() => undoIgnore(item)}
+          />
+        ))}
         {pendingDeletions.map((d) => (
           <Toast
             key={d.id}
@@ -486,8 +516,15 @@ const styles = StyleSheet.create({
   languageTabsContainer: {
     marginBottom: 12,
   },
+  topHint: {
+    flexShrink: 1,
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
   topFilters: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     paddingHorizontal: 4,
     paddingBottom: 8,
   },

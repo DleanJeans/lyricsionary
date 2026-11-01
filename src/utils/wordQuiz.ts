@@ -1,4 +1,4 @@
-import { isSameLanguage } from '../constants/languages';
+import { languageKey } from '../constants/languages';
 import type { MasteryLevel, WordEntry } from '../types';
 import { isGermanLanguage } from './compoundWords';
 import type { PartOfSpeech } from './partOfSpeech';
@@ -197,11 +197,26 @@ const FILLER_WORDS = new Set([
   'our', 'their', 'be', 'is', 'it', 'one', 'oneself', 'someone', 'something', 'with', 'by', 'from', 'up',
 ]);
 
-const contentWords = (text: string) =>
+// A quiz compares its answer with every other saved word's meanings, and a review builds a quiz for
+// every due word, so what's worked out from a meaning is kept, until there are too many to keep
+function cached<T>(compute: (text: string) => T): (text: string) => T {
+  const cache = new Map<string, T>();
+  return (text) => {
+    let value = cache.get(text);
+    if (value === undefined) {
+      if (cache.size > 20000) cache.clear();
+      cache.set(text, (value = compute(text)));
+    }
+    return value;
+  };
+}
+
+const contentWords = cached((text: string) =>
   text
     .toLowerCase()
     .split(/[^\p{L}\p{N}']+/u)
-    .filter((word) => word && !FILLER_WORDS.has(word));
+    .filter((word) => word && !FILLER_WORDS.has(word))
+);
 
 /** Whether two meanings share a content word, e.g. "heart" and "my heart", so both would be right */
 export function meaningsOverlap(a: string, b: string): boolean {
@@ -220,14 +235,23 @@ const letters = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,
  * rhyme ("Herz" / "Schmerz") and a similar length
  */
 export function lookAlikeScore(option: string, answer: string): number {
-  const words = (text: string) => text.trim().split(/\s+/);
-  const sameCount = words(option).length === words(answer).length;
-  const first = (text: string) => (contentWords(text)[0] ?? letters(text)).charAt(0);
-  const sameStart = !!first(answer) && first(option) === first(answer);
-  const ending = (text: string) => letters(words(text).pop() ?? '').slice(-2);
-  const rhymes = ending(answer).length === 2 && ending(option) === ending(answer);
+  const a = lookAlike(option);
+  const b = lookAlike(answer);
+  const sameCount = a.wordCount === b.wordCount;
+  const sameStart = !!b.first && a.first === b.first;
+  const rhymes = b.ending.length === 2 && a.ending === b.ending;
   return (sameCount ? 2 : 0) + (sameStart ? 1 : 0) + (rhymes ? 1 : 0) + (similarLength(option, answer) ? 1 : 0);
 }
+
+// What lookAlikeScore compares: the number of words, the first letter and the last two letters
+const lookAlike = cached((text: string) => {
+  const words = text.trim().split(/\s+/);
+  return {
+    wordCount: words.length,
+    first: (contentWords(text)[0] ?? letters(text)).charAt(0),
+    ending: letters(words[words.length - 1] ?? '').slice(-2),
+  };
+});
 
 const shuffle = <T>(items: T[], random: () => number): T[] => {
   const shuffled = [...items];
@@ -266,12 +290,14 @@ const fromSong = (entry: WordEntry, songId?: string) =>
 
 const otherWords = (target: QuizTarget, words: WordEntry[]) => {
   const excluded = new Set((target.excludeWords ?? []).map((w) => w.toLowerCase()));
+  const word = target.entry.word.toLowerCase();
+  const language = languageKey(target.entry.language);
   return words.filter(
     (w) =>
       w.id !== target.entry.id &&
-      w.word.toLowerCase() !== target.entry.word.toLowerCase() &&
+      w.word.toLowerCase() !== word &&
       !excluded.has(w.word.toLowerCase()) &&
-      isSameLanguage(w.language, target.entry.language)
+      languageKey(w.language) === language
   );
 };
 
@@ -292,6 +318,8 @@ export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random 
     ...(target.entry.contexts ?? []).map((c) => c.definition),
     ...(target.entry.definitions ?? []).map((d) => d.text),
   ].filter((d): d is string => !!d?.trim());
+  // A meaning sharing a content word with one of the word's own would be right too (meaningsOverlap)
+  const ownWords = new Set(ownMeanings.flatMap(contentWords));
   const seen = new Set<string>([target.answer.toLowerCase()]);
   const candidates: { item: string; score: number }[] = [];
   for (const word of otherWords(target, words)) {
@@ -302,7 +330,7 @@ export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random 
     for (const sense of senses) {
       const text = sense.text?.trim();
       if (!text || seen.has(text.toLowerCase())) continue;
-      if (ownMeanings.some((meaning) => meaningsOverlap(meaning, text))) continue;
+      if (contentWords(text).some((w) => ownWords.has(w))) continue;
       seen.add(text.toLowerCase());
       const sameType = !!target.partOfSpeech && sense.partOfSpeech === target.partOfSpeech;
       candidates.push({

@@ -122,8 +122,17 @@ export function isRtlLanguage(language: string): boolean {
 
 // Also accepts an English language name, which some lyrics sites give instead of a code, and a
 // code with a region, e.g. "pt-BR" or "es_419"
+// Looked up for every saved word on many screens, so each code's name is kept once found
+const languageNames = new Map<string, string | null>();
+
 export function getLanguageNameFromCode(code: string): string | null {
   if (!code) return null;
+  let name = languageNames.get(code);
+  if (name === undefined) languageNames.set(code, (name = findLanguageNameFromCode(code)));
+  return name;
+}
+
+function findLanguageNameFromCode(code: string): string | null {
   const lower = code.toLowerCase();
   const base = lower.split(/[-_]/)[0];
   const lang =

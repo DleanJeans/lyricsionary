@@ -122,13 +122,15 @@ export function countKnownWords(
   lyrics: string,
   isKnown: (word: string) => boolean,
   languages?: string[],
-  onUnknown?: (word: string) => void
+  onUnknown?: (word: string) => void,
+  /** The first words of every known phrase (phraseStartsOf), so phrases are only looked for from them */
+  phraseStarts?: Set<string>
 ): number {
   let count = 0;
   // Chinese and Japanese characters in a saved word like 二人 are each known
   const tokens = groupCjkTokens(splitLyricTokens(lyrics), isKnown);
   // Each word of a saved phrase like "tout à fait" or Vietnamese yêu thương is known
-  for (const token of groupSpacedWords(tokens, isKnown)) {
+  for (const token of groupSpacedWords(tokens, isKnown, phraseStarts)) {
     if (/\s/.test(token.trim())) {
       if (isKnown(cleanLyricWord(token))) {
         count += lyricWords(token).length;

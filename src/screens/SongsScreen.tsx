@@ -10,6 +10,7 @@ import {
 import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
+import { phraseStartsOf } from '../utils/cjkWords';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -165,12 +166,23 @@ export default function SongsScreen() {
   // The saved words index for a song's languages, built once per set of languages instead of per song
   const wordIndexFor = useMemo(() => {
     const indexes = new Map<string, Map<string, WordEntry>>();
-    return (languages: string[] | undefined) => {
-      const key = (languages ?? []).join('\u0000');
-      let index = indexes.get(key);
-      if (!index) indexes.set(key, (index = songWordIndex(words, languages)));
-      return index;
-    };
+    const starts = new Map<Map<string, WordEntry>, Set<string>>();
+    return Object.assign(
+      (languages: string[] | undefined) => {
+        const key = (languages ?? []).join('\u0000');
+        let index = indexes.get(key);
+        if (!index) indexes.set(key, (index = songWordIndex(words, languages)));
+        return index;
+      },
+      {
+        // The first words of the index's phrases, to look for phrases only from them
+        phraseStarts: (index: Map<string, WordEntry>) => {
+          let set = starts.get(index);
+          if (!set) starts.set(index, (set = phraseStartsOf(index.keys())));
+          return set;
+        },
+      }
+    );
   }, [words]);
   // Saved words each song has to fill in, the same gaps Learn blanks out
   const songGapsCache = useMemo(() => new WeakMap<Song, number>(), [wordIndexFor]);
@@ -207,7 +219,7 @@ export default function SongsScreen() {
         const entry = index.get(word.toLowerCase());
         if (entry) entries.add(entry);
         return !!entry;
-      }, song.originalLanguages);
+      }, song.originalLanguages, undefined, wordIndexFor.phraseStarts(index));
       for (const word of words) if (word.contexts?.some((c) => c.songId === song.id)) entries.add(word);
       songWordsCache.set(song, [...entries]);
       bySong.set(song.id, songWordsCache.get(song)!);

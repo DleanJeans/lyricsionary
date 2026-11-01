@@ -43,6 +43,19 @@ export function groupCjkTokens(tokens: string[], isWord: (word: string) => boole
  */
 export const cjkCharacterCount = (word: string): number => splitLyricTokens(word).length;
 
+/**
+ * The first words of the phrases among `words` (lowercased, as written), for groupSpacedWords to look
+ * for a phrase only from a word one starts with, e.g. "tout" for "tout à fait"
+ */
+export function phraseStartsOf(words: Iterable<string>): Set<string> {
+  const starts = new Set<string>();
+  for (const word of words) {
+    const parts = word.trim().split(/\s+/);
+    if (parts.length > 1) starts.add(cleanLyricWord(parts[0]).toLowerCase());
+  }
+  return starts;
+}
+
 /** The most words a phrase is looked for with, e.g. 3 for "tout à fait", 2 for Vietnamese yêu thương */
 const MAX_SPACED_WORDS = 4;
 
@@ -53,10 +66,19 @@ const isSpace = (token: string) => /^[^\S\n]+$/.test(token);
  * ["give", " ", "up,", " ", "baby"] -> ["give up,", " ", "baby"] or Vietnamese syllables into a word like
  * yêu thương
  */
-export function groupSpacedWords(tokens: string[], isWord: (word: string) => boolean): string[] {
+export function groupSpacedWords(
+  tokens: string[],
+  isWord: (word: string) => boolean,
+  phraseStarts?: Set<string>
+): string[] {
   const grouped: string[] = [];
   for (let i = 0; i < tokens.length; ) {
     if (!tokens[i].trim()) {
+      grouped.push(tokens[i++]);
+      continue;
+    }
+    // No phrase starts with this word, so no longer phrase is looked for
+    if (phraseStarts && !phraseStarts.has(cleanLyricWord(tokens[i]).toLowerCase())) {
       grouped.push(tokens[i++]);
       continue;
     }

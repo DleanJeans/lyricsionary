@@ -4,6 +4,7 @@ import { getLanguageNameFromCode } from '../constants/languages';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Song } from '../types';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
+import { phraseStartsOf } from '../utils/cjkWords';
 import { spellingsOf } from '../utils/wordForms';
 import { countKnownWords, countWords } from '../utils/wordFrequency';
 
@@ -17,8 +18,11 @@ export interface WordProgress {
   label: string;
 }
 
-/** Makes a checker for whether a song's word is known (saved, ignored or a compound of saved words) */
-function useKnownWordChecker(): (song: Song) => (word: string) => boolean {
+/**
+ * Makes a checker for whether a song's word is known (saved, ignored or a compound of saved words),
+ * with the first words of the known phrases (phraseStartsOf) to look for phrases from
+ */
+function useKnownWordChecker(): ((song: Song) => (word: string) => boolean) & { phraseStarts: Set<string> } {
   const words = useStore((s) => s.words);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const compoundSplits = useStore((s) => s.compoundSplits);
@@ -59,7 +63,8 @@ function useKnownWordChecker(): (song: Song) => (word: string) => boolean {
 
   return useMemo(() => {
     const isIgnored = makeIgnoredWordChecker(ignoredWords);
-    return (song: Song) => {
+    const phraseStarts = phraseStartsOf([...savedWordsAnyLanguage, ...ignoredWords.map((w) => w.word)]);
+    const checker = (song: Song) => {
       const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
       const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
       const isGermanSong = isGermanLanguage(song.originalLanguages);
@@ -74,6 +79,7 @@ function useKnownWordChecker(): (song: Song) => (word: string) => boolean {
         );
       };
     };
+    return Object.assign(checker, { phraseStarts });
   }, [savedWordKeys, savedWordsAnyLanguage, ignoredWords, isKnownCompound]);
 }
 
@@ -98,7 +104,13 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
       }
       const total = countWords(song.originalLyrics);
       const unknown = new Set<string>();
-      const known = countKnownWords(song.originalLyrics, knownChecker(song), song.originalLanguages, (word) => unknown.add(word.toLowerCase()));
+      const known = countKnownWords(
+        song.originalLyrics,
+        knownChecker(song),
+        song.originalLanguages,
+        (word) => unknown.add(word.toLowerCase()),
+        knownChecker.phraseStarts
+      );
       const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
       const songProgress = { known, total, percent, newWords: unknown.size, label: `${known}/${total} words (${percent}%)` };
       bySong.set(song, songProgress);
@@ -119,7 +131,7 @@ export function useNextLineToLearn(song: Song | undefined, lines: string[]): num
     const isKnown = knownChecker(song);
     return pickNextLine(lines.map((line) => {
       let unknown = 0;
-      countKnownWords(line, isKnown, song.originalLanguages, () => unknown++);
+      countKnownWords(line, isKnown, song.originalLanguages, () => unknown++, knownChecker.phraseStarts);
       return unknown;
     }));
   }, [song, lines, knownChecker]);

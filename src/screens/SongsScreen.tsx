@@ -36,6 +36,7 @@ import { buildReviewItems, canReview, dueWords, type ReviewItem } from '../utils
 import { countKnownWords } from '../utils/wordFrequency';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 
+const NO_SONGS: Song[] = [];
 const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'nextToLearn', 'aZ', 'zA'] as const;
 type SortMode = (typeof SORT_MODES)[number];
 const newWordsLabel = (count: number) => (count === 0 ? 'Every word known' : `${count} new ${count === 1 ? 'word' : 'words'} to go`);
@@ -161,7 +162,17 @@ export default function SongsScreen() {
     setSongToDelete(null);
   };
 
-  const wordProgress = useWordProgress(songs);
+  // Each song's progress, saved words, gaps and due words are counted from every song's lyrics, which
+  // takes a moment with many songs, so the list shows first and they fill in right after. Sorting by
+  // progress waits for them, so the list doesn't jump.
+  const [showStats, setShowStats] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setShowStats(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
+  const needsStats = sortMode === 'progress' || sortMode === 'nextToLearn';
+  const statsSongs = showStats || needsStats ? songs : NO_SONGS;
+  const wordProgress = useWordProgress(statsSongs);
   const words = useStore((s) => s.words);
   // The saved words index for a song's languages, built once per set of languages instead of per song
   const wordIndexFor = useMemo(() => {
@@ -189,7 +200,7 @@ export default function SongsScreen() {
   const songGaps = useMemo(() => {
     const now = Date.now();
     const gaps = new Map<string, number>();
-    for (const song of songs) {
+    for (const song of statsSongs) {
       let count = songGapsCache.get(song);
       if (count === undefined) {
         const index = wordIndexFor(song.originalLanguages);
@@ -199,14 +210,14 @@ export default function SongsScreen() {
       if (count) gaps.set(song.id, count);
     }
     return gaps;
-  }, [songs, wordIndexFor, songGapsCache]);
+  }, [statsSongs, wordIndexFor, songGapsCache]);
 
   // Each song's saved words: the ones in its lyrics and the ones saved from it. Kept per song until the
   // saved words change, so opening a song, which updates just its open count, doesn't read every song again.
   const songWordsCache = useMemo(() => new WeakMap<Song, WordEntry[]>(), [wordIndexFor]);
   const songWords = useMemo(() => {
     const bySong = new Map<string, WordEntry[]>();
-    for (const song of songs) {
+    for (const song of statsSongs) {
       const cached = songWordsCache.get(song);
       if (cached) {
         bySong.set(song.id, cached);
@@ -225,7 +236,7 @@ export default function SongsScreen() {
       bySong.set(song.id, songWordsCache.get(song)!);
     }
     return bySong;
-  }, [songs, words, wordIndexFor, songWordsCache]);
+  }, [statsSongs, words, wordIndexFor, songWordsCache]);
 
   // Each song's saved words by level
   const songLevels = useMemo(() => {
@@ -363,6 +374,9 @@ export default function SongsScreen() {
             </View>
           ) : wordProgress.get(item.id) && wordProgress.get(item.id)!.total > 0 ? (
             <ProgressRing percent={wordProgress.get(item.id)!.percent} />
+          ) : statsSongs === NO_SONGS ? (
+            // Keeps the ring's place while the progress is counted
+            <View style={styles.ringSlot} />
           ) : null}
           <View style={styles.cardInfo}>
             <View style={styles.songNameRow}>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated from 'react-native-reanimated';
@@ -24,6 +24,56 @@ interface LearnActionBarProps {
   /** One line at a time, in bigger text */
   lineByLine?: boolean;
   onToggleLineByLine?: () => void;
+}
+
+/** An icon button that says what it does in a bubble under it when held */
+function HoldTipButton({
+  tip,
+  onPress,
+  style,
+  children,
+}: {
+  tip: string;
+  onPress: () => void;
+  style?: React.ComponentProps<typeof TouchableOpacity>['style'];
+  children: React.ReactNode;
+}) {
+  const [shown, setShown] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+  const show = () => {
+    setShown(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setShown(false), 2000);
+  };
+  return (
+    <View>
+      <TouchableOpacity
+        onPress={onPress}
+        onLongPress={show}
+        delayLongPress={350}
+        hitSlop={8}
+        style={style}
+        accessibilityRole="button"
+        accessibilityLabel={tip}
+      >
+        {children}
+      </TouchableOpacity>
+      {shown && (
+        // A wide box so the tip isn't squeezed to the icon's width
+        <View style={styles.tipBox} pointerEvents="none">
+          <View style={styles.tip}>
+            <View style={styles.tipArrow} />
+            <Text style={styles.tipText} numberOfLines={1}>
+              {tip}
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
 }
 
 export default function LearnActionBar({
@@ -66,20 +116,18 @@ export default function LearnActionBar({
           style={styles.fontButton}
         />
         {onNextLine && (
-          <TouchableOpacity onPress={onNextLine} hitSlop={8} style={styles.nextLine} accessibilityRole="button" accessibilityLabel="Go to the next line to learn">
+          <HoldTipButton tip="Jump to the next line to learn" onPress={onNextLine} style={styles.nextLine}>
             <Ionicons name="flag-outline" size={18} color={Colors.primaryLight} />
-          </TouchableOpacity>
+          </HoldTipButton>
         )}
         {onToggleLineByLine && (
-          <TouchableOpacity
+          <HoldTipButton
+            tip={lineByLine ? 'Show every line' : 'One line at a time, bigger'}
             onPress={onToggleLineByLine}
-            hitSlop={8}
             style={[styles.nextLine, lineByLine && styles.lineByLineOn]}
-            accessibilityRole="button"
-            accessibilityLabel={lineByLine ? 'Show every line' : 'Line by line'}
           >
             <Ionicons name="reader-outline" size={18} color={lineByLine ? Colors.white : Colors.primaryLight} />
-          </TouchableOpacity>
+          </HoldTipButton>
         )}
         {onToggleTrickyLines && (
           <TouchableOpacity
@@ -153,6 +201,37 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    // Lets a held button's tip show over the lyrics below
+    zIndex: 10,
+  },
+  tipBox: {
+    position: 'absolute',
+    top: '100%',
+    left: -8,
+    width: 260,
+    marginTop: 8,
+    alignItems: 'flex-start',
+  },
+  tip: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 7,
+    backgroundColor: Colors.text,
+    elevation: 6,
+  },
+  tipArrow: {
+    position: 'absolute',
+    top: -5,
+    left: 14,
+    width: 10,
+    height: 10,
+    backgroundColor: Colors.text,
+    transform: [{ rotate: '45deg' }],
+  },
+  tipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.background,
   },
   fontSizeControl: {
     flexDirection: 'row',

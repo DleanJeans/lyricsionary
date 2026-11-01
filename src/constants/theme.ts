@@ -25,7 +25,7 @@ export const Colors = {
   // Mastery level colors
   masterySeen: '#FF6B6B',          // Red-orange
   masteryRecognized: '#FDCB6E',    // Yellow
-  masteryRecalled: '#55EFC4',      // Light green
+  masteryRecalled: '#A3E635',      // Lime
   masteryKnown: '#00B894',         // Green
 };
 

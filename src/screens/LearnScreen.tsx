@@ -159,6 +159,8 @@ export default function LearnScreen() {
   // Words (lowercased) whose meaning quiz was answered since the song opened, so tapping one again
   // doesn't ask it again
   const [answeredMeanings, setAnsweredMeanings] = useState<Set<string>>(new Set());
+  // The selected word's meaning quiz is showing and not answered, so its card hides Also in translations
+  const [meaningQuizPending, setMeaningQuizPending] = useState(false);
   // A word just removed from its card's level picker, or ignored, offered back with Undo for a few seconds
   const [removedWord, setRemovedWord] = useState<{ entry: WordEntry; ignored?: boolean } | null>(null);
   useEffect(() => {
@@ -1074,6 +1076,7 @@ export default function LearnScreen() {
           setAnsweredMeanings((prev) => new Set(prev).add(entry.word.toLowerCase()));
           if (!correct) revealSelectedTranslation();
         }}
+        onPendingChange={setMeaningQuizPending}
         isWide={isWide}
       />
     );
@@ -1210,6 +1213,7 @@ export default function LearnScreen() {
           originalLanguages={song.originalLanguages}
           occurrence={selectedOccurrence}
           quiz={meaningQuiz(selectedWordEntry)}
+          quizPending={meaningQuizPending}
           justSaved={justSavedWord?.toLowerCase() === selectedWordEntry.word.toLowerCase()}
         />
       </View>

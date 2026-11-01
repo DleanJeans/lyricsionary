@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useLayoutEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
@@ -22,10 +22,12 @@ interface WordQuizProps {
   isWide?: boolean;
   /** Asked again for practice, e.g. a review's missed word: always shown, and the answer isn't saved */
   practice?: boolean;
+  /** Told whether the quiz is showing and not answered yet, e.g. to hide what would give the answer away */
+  onPendingChange?: (pending: boolean) => void;
 }
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -46,6 +48,12 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const [typedText, setTypedText] = useState('');
   const [typedResult, setTypedResult] = useState<'right' | 'accents' | 'wrong' | null>(null);
   const current = useStore((s) => s.words.find((w) => w.id === entry.id)) ?? entry;
+  // Before paint, so nothing the quiz would give away shows for a frame
+  const pending = !!quiz && !hidden && chosen === null && typedResult === null;
+  useLayoutEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+  useLayoutEffect(() => () => onPendingChange?.(false), [onPendingChange]);
 
   if (!quiz || (hidden && chosen === null && typedResult === null)) return null;
 

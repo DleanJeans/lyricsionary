@@ -42,6 +42,8 @@ interface WordCardProps {
   onIgnore?: (item: WordEntry) => void;
   /** Learn: the word was just saved from a tap, so its card shows Saved for a moment */
   justSaved?: boolean;
+  /** Learn: the word's quiz is waiting for an answer, so Also in hides its lines' translations */
+  quizPending?: boolean;
 }
 
 export default function WordCard({
@@ -64,6 +66,7 @@ export default function WordCard({
   onRemove,
   onIgnore,
   justSaved = false,
+  quizPending = false,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -194,7 +197,7 @@ export default function WordCard({
             <DueLabel entry={item} />
             <QuickNote entry={item} />
             {quiz}
-            <AlsoInSongs item={item} songId={songId} />
+            <AlsoInSongs item={item} songId={songId} hideTranslations={quizPending} />
           </>
         ) : (
           <View style={styles.cardRow}>

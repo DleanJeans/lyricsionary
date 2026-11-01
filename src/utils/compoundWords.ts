@@ -134,6 +134,9 @@ export function getCompoundParts(
   if (manual && manual.join('').toLowerCase() === word.toLowerCase()) {
     return toCompoundParts(word, manual, knownWords);
   }
+  // Words written apart are a phrase, not a compound. Phrases are tried for every few words of every
+  // song's lyrics, so they're not split letter by letter.
+  if (/\s/.test(word)) return null;
   return splitCompound(word, knownWords);
 }
 

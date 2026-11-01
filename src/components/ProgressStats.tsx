@@ -12,8 +12,10 @@ import { Text } from './Text';
 function Stat({ icon, color, value, label }: { icon: keyof typeof Ionicons.glyphMap; color: string; value: number; label: string }) {
   return (
     <View style={styles.stat} accessible accessibilityLabel={`${value} ${label}`}>
-      <Ionicons name={icon} size={18} color={color} />
-      <Text style={styles.value}>{value}</Text>
+      <View style={styles.statRow}>
+        <Ionicons name={icon} size={18} color={color} />
+        <Text style={styles.value}>{value}</Text>
+      </View>
       <Text style={styles.label}>{label}</Text>
     </View>
   );
@@ -143,6 +145,11 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 12,
     backgroundColor: Colors.surfaceLight,
+  },
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   value: {
     fontSize: 22,

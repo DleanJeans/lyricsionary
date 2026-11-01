@@ -27,7 +27,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import BulkEditBar from '../components/BulkEditBar';
 import ReviewSession from '../components/ReviewSession';
 import SongFilter from '../components/SongFilter';
-import { buildReviewItems, dueWords, ReviewItem } from '../utils/reviewQuiz';
+import { buildReviewItems, canReview, dueWords, ReviewItem } from '../utils/reviewQuiz';
 import { compareMostMissed, isTricky } from '../utils/wordQuiz';
 
 interface PendingDeletion {
@@ -192,9 +192,10 @@ export default function WordsScreen() {
     const level = w.masteryLevel || 'Seen';
     levelCounts[level] = (levelCounts[level] ?? 0) + 1;
   }
-  // A quiz for each word in the chosen languages that a quiz now would move toward its next level
+  // The words in the chosen languages that a quiz now would move toward their next level. Their quizzes
+  // are built when Review is tapped: building them here took seconds with many saved words.
   const due = React.useMemo(
-    () => buildReviewItems(dueWords(languageFilteredWords, Date.now()), words),
+    () => dueWords(languageFilteredWords, Date.now()).filter(canReview),
     // languageFilteredWords comes from these
     [words, selectedLanguages, pendingDeletions, songFilterId],
   );
@@ -407,7 +408,10 @@ export default function WordsScreen() {
       {!showFrequency && !selecting && due.length > 0 && (
         <TouchableOpacity
           style={styles.reviewButton}
-          onPress={() => setReviewing(due)}
+          onPress={() => {
+            const items = buildReviewItems(due, words);
+            if (items.length) setReviewing(items);
+          }}
           accessibilityRole="button"
           accessibilityLabel={`Review ${due.length} due ${due.length === 1 ? 'word' : 'words'}`}
         >

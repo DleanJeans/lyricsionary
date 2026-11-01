@@ -44,3 +44,7 @@ yarn-error.*
 # Maestro test artifacts
 .maestro/tests/
 test-results.xml
+
+# Claude scratch (patch scripts, sync bundles)
+.claude-improve/
+*.bundle

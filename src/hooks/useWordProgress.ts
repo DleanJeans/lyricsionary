@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { removeStressMarks } from '../utils/russianStress';
 import { getLanguageNameFromCode } from '../constants/languages';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
@@ -83,17 +83,29 @@ function useKnownWordChecker(): (song: Song) => (word: string) => boolean {
  */
 export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
   const knownChecker = useKnownWordChecker();
+  // Each song's progress until the known words change, so opening a song, which updates just its
+  // open count, doesn't count every song's words again
+  const cache = useRef<{ checker: typeof knownChecker; bySong: WeakMap<Song, WordProgress> } | null>(null);
+  if (cache.current?.checker !== knownChecker) cache.current = { checker: knownChecker, bySong: new WeakMap() };
+  const bySong = cache.current.bySong;
   return useMemo(() => {
     const progress = new Map<string, WordProgress>();
     for (const song of songs) {
+      const cached = bySong.get(song);
+      if (cached) {
+        progress.set(song.id, cached);
+        continue;
+      }
       const total = countWords(song.originalLyrics);
       const unknown = new Set<string>();
       const known = countKnownWords(song.originalLyrics, knownChecker(song), song.originalLanguages, (word) => unknown.add(word.toLowerCase()));
       const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
-      progress.set(song.id, { known, total, percent, newWords: unknown.size, label: `${known}/${total} words (${percent}%)` });
+      const songProgress = { known, total, percent, newWords: unknown.size, label: `${known}/${total} words (${percent}%)` };
+      bySong.set(song, songProgress);
+      progress.set(song.id, songProgress);
     }
     return progress;
-  }, [songs, knownChecker]);
+  }, [songs, knownChecker, bySong]);
 }
 
 /**

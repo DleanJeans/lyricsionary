@@ -154,17 +154,19 @@ export default function LearnActionBar({
           )}
         </View>
         {!fontOpen && onNextLine && (
-          <HoldTipButton tip="Jump to the next line to learn" onPress={onNextLine} style={styles.nextLine}>
-            <Ionicons name="flag-outline" size={18} color={Colors.primaryLight} />
+          <HoldTipButton tip="Jump to the next line to learn" onPress={onNextLine} style={styles.chip}>
+            <Ionicons name="flag-outline" size={14} color={Colors.primaryLight} />
+            <Text style={styles.chipText}>Next</Text>
           </HoldTipButton>
         )}
         {!fontOpen && onToggleLineByLine && (
           <HoldTipButton
             tip={lineByLine ? 'Show every line' : 'One line at a time, bigger'}
             onPress={onToggleLineByLine}
-            style={[styles.nextLine, lineByLine && styles.lineByLineOn]}
+            style={[styles.chip, lineByLine && styles.chipOn]}
           >
-            <Ionicons name="reader-outline" size={18} color={lineByLine ? Colors.white : Colors.primaryLight} />
+            <Ionicons name="reader-outline" size={14} color={lineByLine ? Colors.white : Colors.primaryLight} />
+            <Text style={[styles.chipText, lineByLine && styles.chipTextOn]}>1 by 1</Text>
           </HoldTipButton>
         )}
         {!fontOpen && onToggleTrickyLines && (
@@ -189,7 +191,9 @@ export default function LearnActionBar({
         {/* With the line by line button there's no room for the line count beside the words; line by line counts the lines */}
         {wordProgress
           ? onToggleLineByLine && !onShowAllLyrics
-            ? wordProgress.label
+            ? onNextLine && !fontOpen
+              ? `${wordProgress.known}/${wordProgress.total} words`
+              : wordProgress.label
             : `${wordProgress.label}${onShowAllLyrics ? '\n' : ' · '}${lineCount} lines`
           : `${lineCount} lines`}
       </Text>
@@ -223,13 +227,27 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning,
     borderColor: Colors.warning,
   },
-  nextLine: {
-    marginLeft: 4,
-    padding: 4,
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  lineByLineOn: {
+  chipOn: {
     backgroundColor: Colors.primary,
-    borderRadius: 8,
+    borderColor: Colors.primary,
+  },
+  chipText: {
+    color: Colors.primaryLight,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  chipTextOn: {
+    color: Colors.white,
   },
   actionBar: {
     flexDirection: 'row',

@@ -35,6 +35,12 @@ interface WordSenseCardProps {
   artistName?: string;
   isNew?: boolean;
   isRemoved?: boolean;
+  /** The song the line is from, shown at the top of the card */
+  songTitle?: string;
+  songArtist?: string;
+  /** Folded, the card shows only its line, translation and meaning; tap it to open it */
+  expanded?: boolean;
+  onExpand?: () => void;
 }
 
 export default function WordSenseCard({
@@ -62,6 +68,10 @@ export default function WordSenseCard({
   artistName,
   isNew = false,
   isRemoved = false,
+  songTitle,
+  songArtist,
+  expanded = true,
+  onExpand,
 }: WordSenseCardProps) {
   const canLowercase = !isRemoved && definition !== definition.toLowerCase();
   const [choosingType, setChoosingType] = useState(false);
@@ -74,22 +84,81 @@ export default function WordSenseCard({
   // The chosen type, otherwise the one saving would find from the definition
   const shownType = partOfSpeech ?? findPartOfSpeech(definition, definitionSuggestions ?? []);
 
+  const open = expanded || isRemoved;
   const containerStyle = [
     styles.container,
-    isRemoved && styles.containerRemoved,
     isNew && !isRemoved && styles.containerNew,
+    open && !isRemoved && onExpand && styles.containerOpen,
+    isRemoved && styles.containerRemoved,
   ];
+
+  const header = (
+    <View style={styles.header}>
+      <Ionicons name="musical-notes" size={14} color={songTitle ? Colors.primaryLight : Colors.textMuted} />
+      <View style={styles.headerSong}>
+        {songTitle ? (
+          <>
+            <Text style={styles.headerTitle} numberOfLines={1}>{songTitle}</Text>
+            {songArtist ? <Text style={styles.headerArtist} numberOfLines={1}>· {songArtist}</Text> : null}
+          </>
+        ) : (
+          <Text style={styles.headerArtist} numberOfLines={1}>Not from a song</Text>
+        )}
+      </View>
+      {isNew && !isRemoved && (
+        <View style={styles.newTag}>
+          <Text style={styles.newTagText}>new</Text>
+        </View>
+      )}
+      {onRemove && (
+        <TouchableOpacity
+          onPress={onRemove}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Remove context"
+        >
+          <Ionicons name="close" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
+  if (!open) {
+    return (
+      <View style={containerStyle}>
+        {header}
+        <TouchableOpacity
+          style={styles.body}
+          onPress={onExpand}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit context: ${definition || context}`}
+        >
+          {fromSong && context ? (
+            <SongContextBlock context={context} word={word} occurrence={occurrence} translation={translation} showSongName={false} />
+          ) : (
+            <>
+              {context ? <Text style={styles.foldedContext}>{context}</Text> : null}
+              {translation ? <Text style={styles.translationText}>{translation}</Text> : null}
+            </>
+          )}
+          <View style={styles.foldedSummary}>
+            {emoji ? <Text style={styles.foldedEmoji}>{emoji}</Text> : null}
+            <Text style={[styles.foldedDefinition, !definition && styles.foldedDefinitionEmpty]} numberOfLines={1}>
+              {definition || 'No definition yet'}
+            </Text>
+            {shownType ? <Text style={styles.foldedType}>{shownType}</Text> : null}
+            <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={containerStyle}>
+      {header}
+      <View style={styles.body}>
       <View style={styles.field}>
-        <View style={styles.contextLabelRow}>
-          {onRemove && (
-            <TouchableOpacity onPress={onRemove} style={styles.removeButton} accessibilityRole="button" accessibilityLabel="Remove context">
-              <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
         {fromSong && context ? (
           <View style={styles.contextDisplay}>
             <SongContextBlock
@@ -228,6 +297,9 @@ export default function WordSenseCard({
           </View>
         </View>
       ) : null}
+      {!isRemoved && definitionSuggestions && definitionSuggestions.some((s) => s.text !== definition) && (
+        <Text style={styles.suggestionsLabel}>Wiktionary</Text>
+      )}
       {!isRemoved && definitionSuggestions && definitionSuggestions.length > 0 && (
         <View style={styles.suggestionsRow}>
           {definitionSuggestions
@@ -256,6 +328,7 @@ export default function WordSenseCard({
           <Text style={styles.undoButtonText}>Undo remove</Text>
         </TouchableOpacity>
       )}
+      </View>
     </View>
   );
 }
@@ -277,7 +350,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
   },
   typeChipUnset: {
     borderStyle: 'dashed',
@@ -290,44 +363,102 @@ const styles = StyleSheet.create({
   typeChipTextUnset: {
     color: Colors.primary,
   },
+  // Each context is its own card, headed by its song
   container: {
-    gap: 6,
-    position: 'relative',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
   },
   containerNew: {
-    backgroundColor: 'rgba(0, 184, 148, 0.08)',
-    borderRadius: 10,
-    padding: 8,
-    borderWidth: 1,
     borderColor: Colors.success,
+  },
+  containerOpen: {
+    borderColor: Colors.primary,
   },
   containerRemoved: {
     backgroundColor: 'rgba(255, 107, 107, 0.08)',
-    borderRadius: 10,
-    padding: 8,
-    borderWidth: 1,
     borderColor: Colors.danger,
   },
-  removeButton: {
-    position: 'absolute',
-    zIndex: 1,
-    top: 1,
-    right: 1,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.surfaceLight,
+  },
+  headerSong: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerTitle: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  headerArtist: {
+    flexShrink: 1,
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  newTag: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    backgroundColor: 'rgba(0, 184, 148, 0.15)',
+  },
+  newTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.success,
+  },
+  body: {
+    padding: 12,
+    gap: 8,
+  },
+  foldedContext: {
+    fontSize: 15,
+    color: Colors.text,
+    fontStyle: 'italic',
+  },
+  foldedSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  foldedEmoji: {
+    fontSize: 18,
+  },
+  foldedDefinition: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  foldedDefinitionEmpty: {
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+  },
+  foldedType: {
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  suggestionsLabel: {
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    marginTop: 2,
+    marginBottom: -2,
   },
   field: {
   },
-  contextLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
   contextDisplay: {
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   translationText: {
     fontSize: 13,
@@ -338,7 +469,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -2,
   },
   fieldInput: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderRadius: 10,
     paddingVertical: 12,
     fontSize: 15,
@@ -350,7 +481,7 @@ const styles = StyleSheet.create({
   contextRow: {
     flexDirection: 'row',
     height: ROW_HEIGHT,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -414,7 +545,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   suggestionButton: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,

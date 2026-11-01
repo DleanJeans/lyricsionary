@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Colors } from '../constants/theme';
 import WordSenseCard from './WordSenseCard';
+import { useStore } from '../store/useStore';
 import type { WiktionaryDefinition } from '../utils/wiktionary';
 import type { PartOfSpeech } from '../utils/partOfSpeech';
 
@@ -64,6 +64,29 @@ export default function WordSenseList({
   onRemoveWordSense,
   onUndoRemove,
 }: WordSenseListProps) {
+  const songs = useStore((s) => s.songs);
+  const songsById = useMemo(() => new Map(songs.map((song) => [song.id, song])), [songs]);
+  const songOf = (block: WordSenseData) => {
+    const song = block.songId ? songsById.get(block.songId) : undefined;
+    return {
+      songTitle: song?.songName ?? block.songName ?? (block.songId ? songName : undefined),
+      songArtist: song ? song.artistName : block.songId ? artistName : undefined,
+    };
+  };
+
+  // One context is open at a time, so its Wiktionary suggestions show once; the others fold
+  const [openUid, setOpenUid] = useState<number | null>(null);
+  const shownOpenUid = wordSenses.some((b) => b.uid === openUid)
+    ? openUid
+    : (wordSenses.find((b) => b.isNew) ?? wordSenses[0])?.uid;
+  // Open a context as soon as it's added
+  const previousCount = useRef(wordSenses.length);
+  useEffect(() => {
+    const last = wordSenses[wordSenses.length - 1];
+    if (wordSenses.length > previousCount.current && last?.isNew) setOpenUid(last.uid);
+    previousCount.current = wordSenses.length;
+  }, [wordSenses]);
+
   const items: SenseListItem[] = [];
   let senseIndex = 0;
   const totalSlots = wordSenses.length + (undoData ? 1 : 0);
@@ -87,8 +110,7 @@ export default function WordSenseList({
 
   return (
     <>
-      {items.map((item, position) => {
-        const showDivider = totalSlots > 1 && position > 0;
+      {items.map((item) => {
 
         if (item.type === 'removed') {
           return (
@@ -96,7 +118,6 @@ export default function WordSenseList({
               key="removed"
               style={styles.wordSenseWrapper}
             >
-              {showDivider && <View style={styles.contextDivider} />}
               <WordSenseCard
                 context={item.block.context}
                 onContextChange={() => {}}
@@ -114,6 +135,7 @@ export default function WordSenseList({
                 fromSong={item.block.fromSong}
                 songName={songName}
                 artistName={artistName}
+                {...songOf(item.block)}
                 isRemoved
               />
             </View>
@@ -126,7 +148,6 @@ export default function WordSenseList({
             key={block.uid}
             style={styles.wordSenseWrapper}
           >
-            {showDivider && <View style={styles.contextDivider} />}
             <WordSenseCard
               context={block.context}
               onContextChange={(value) => onUpdateWordSense(currentSenseIndex, 'context', value)}
@@ -154,6 +175,9 @@ export default function WordSenseList({
               songName={songName}
               artistName={artistName}
               isNew={!!block.isNew}
+              {...songOf(block)}
+              expanded={wordSenses.length === 1 || block.uid === shownOpenUid}
+              onExpand={wordSenses.length > 1 ? () => setOpenUid(block.uid) : undefined}
             />
           </View>
         );
@@ -164,12 +188,6 @@ export default function WordSenseList({
 
 const styles = StyleSheet.create({
   wordSenseWrapper: {
-    gap: 0,
-  },
-  contextDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginBottom: 8,
-    marginTop: -8,
+    marginBottom: 4,
   },
 });

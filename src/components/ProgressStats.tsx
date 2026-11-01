@@ -11,12 +11,15 @@ import { Text } from './Text';
 
 function Stat({ icon, color, value, label }: { icon: keyof typeof Ionicons.glyphMap; color: string; value: number; label: string }) {
   return (
-    <View style={styles.stat} accessible accessibilityLabel={`${value} ${label}`}>
+    <View style={styles.stat} accessible accessibilityLabel={`${value} ${label.replace('\n', ' ')}`}>
       <View style={styles.statRow}>
         <Ionicons name={icon} size={18} color={color} />
         <Text style={styles.value}>{value}</Text>
       </View>
-      <Text style={styles.label}>{label}</Text>
+      {/* Each label fits on 2 lines, shrinking a little on a narrow screen */}
+      <Text style={styles.label} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -96,7 +99,7 @@ export default function ProgressStats() {
       <Text style={styles.title}>Your progress</Text>
       <View style={styles.stats}>
         <Stat icon="flame" color={Colors.warning} value={streak} label="day streak" />
-        <Stat icon="bookmark" color={Colors.primaryLight} value={week.saved} label="words saved this week" />
+        <Stat icon="bookmark" color={Colors.primaryLight} value={week.saved} label={'words saved\nthis week'} />
         <Stat icon="trending-up" color={Colors.success} value={week.levelUps} label="level ups this week" />
       </View>
       <DailyGoal answers={answersToday(activity, now)} />

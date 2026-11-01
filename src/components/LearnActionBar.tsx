@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
 import type { WordProgress } from '../hooks/useWordProgress';
-import IconButton from './IconButton';
 import { Text } from './Text';
 
 interface LearnActionBarProps {
@@ -24,6 +23,22 @@ interface LearnActionBarProps {
   /** One line at a time, in bigger text */
   lineByLine?: boolean;
   onToggleLineByLine?: () => void;
+}
+
+function SmallStepButton({ icon, label, onPress, disabled }: { icon: 'add' | 'remove'; label: string; onPress: () => void; disabled: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={6}
+      style={({ pressed }) => [styles.stepButton, pressed && styles.stepButtonPressed, disabled && styles.stepButtonDisabled]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+    >
+      <Ionicons name={icon} size={16} color={Colors.textSecondary} />
+    </Pressable>
+  );
 }
 
 /** An icon button that says what it does in a bubble under it when held */
@@ -91,36 +106,59 @@ export default function LearnActionBar({
 }: LearnActionBarProps) {
   const canDecrease = fontSize > 12;
   const canIncrease = fontSize < 32;
+  const [fontOpen, setFontOpen] = useState(false);
+  const fontTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (fontTimer.current) clearTimeout(fontTimer.current);
+  }, []);
+  // Folds the −/+ away 3 seconds after the last tap
+  const keepFontOpen = () => {
+    if (fontTimer.current) clearTimeout(fontTimer.current);
+    fontTimer.current = setTimeout(() => setFontOpen(false), 3000);
+  };
+  const toggleFont = () => {
+    if (fontOpen) {
+      if (fontTimer.current) clearTimeout(fontTimer.current);
+      setFontOpen(false);
+    } else {
+      setFontOpen(true);
+      keepFontOpen();
+    }
+  };
+  const stepFont = (step: () => void) => {
+    step();
+    keepFontOpen();
+  };
 
   return (
     <View style={styles.actionBar}>
       <View style={styles.fontSizeControl}>
-        <Ionicons
-          name="text-outline"
-          size={18}
-          color={Colors.textSecondary}
-        />
-        <IconButton
-          icon="remove"
-          label="Decrease text size"
-          onPress={onDecreaseFontSize}
-          disabled={!canDecrease}
-          style={styles.fontButton}
-        />
-        <Text style={styles.fontSizeText}>{fontSize}</Text>
-        <IconButton
-          icon="add"
-          label="Increase text size"
-          onPress={onIncreaseFontSize}
-          disabled={!canIncrease}
-          style={styles.fontButton}
-        />
-        {onNextLine && (
+        {/* Font size rests as a small Aa pill; tapping it shows −/+ for a few seconds */}
+        <View style={[styles.fontPill, fontOpen && styles.fontPillOpen]}>
+          <TouchableOpacity
+            onPress={toggleFont}
+            hitSlop={6}
+            style={styles.fontPillToggle}
+            accessibilityRole="button"
+            accessibilityLabel={fontOpen ? 'Hide text size buttons' : `Text size ${fontSize}`}
+          >
+            <Text style={styles.fontPillAa}>Aa</Text>
+            {!fontOpen && <Text style={styles.fontSizeText}>{fontSize}</Text>}
+          </TouchableOpacity>
+          {fontOpen && (
+            <>
+              <SmallStepButton icon="remove" label="Decrease text size" onPress={() => stepFont(onDecreaseFontSize)} disabled={!canDecrease} />
+              <Text style={styles.fontSizeText}>{fontSize}</Text>
+              <SmallStepButton icon="add" label="Increase text size" onPress={() => stepFont(onIncreaseFontSize)} disabled={!canIncrease} />
+            </>
+          )}
+        </View>
+        {!fontOpen && onNextLine && (
           <HoldTipButton tip="Jump to the next line to learn" onPress={onNextLine} style={styles.nextLine}>
             <Ionicons name="flag-outline" size={18} color={Colors.primaryLight} />
           </HoldTipButton>
         )}
-        {onToggleLineByLine && (
+        {!fontOpen && onToggleLineByLine && (
           <HoldTipButton
             tip={lineByLine ? 'Show every line' : 'One line at a time, bigger'}
             onPress={onToggleLineByLine}
@@ -129,7 +167,7 @@ export default function LearnActionBar({
             <Ionicons name="reader-outline" size={18} color={lineByLine ? Colors.white : Colors.primaryLight} />
           </HoldTipButton>
         )}
-        {onToggleTrickyLines && (
+        {!fontOpen && onToggleTrickyLines && (
           <TouchableOpacity
             style={[styles.quizButton, trickyLinesOnly && styles.trickyOn]}
             onPress={onToggleTrickyLines}
@@ -139,7 +177,7 @@ export default function LearnActionBar({
             <Ionicons name="alert-circle-outline" size={16} color={trickyLinesOnly ? Colors.white : Colors.warning} />
           </TouchableOpacity>
         )}
-        {onShowAllLyrics && (
+        {!fontOpen && onShowAllLyrics && (
           <TouchableOpacity style={styles.quizButton} onPress={onShowAllLyrics} accessibilityRole="button">
             <Ionicons name="eye-outline" size={16} color={Colors.primary} />
             <Text style={styles.quizButtonText}>Show all</Text>
@@ -238,11 +276,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  fontButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
+  fontPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  fontPillOpen: {
+    paddingHorizontal: 4,
+    paddingLeft: 10,
+    borderColor: Colors.primary,
+  },
+  fontPillToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: '100%',
+  },
+  fontPillAa: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  stepButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  stepButtonPressed: {
+    opacity: 0.6,
+  },
+  stepButtonDisabled: {
+    opacity: 0.35,
   },
   quizButton: {
     flexDirection: 'row',
@@ -266,7 +340,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 14,
     fontWeight: '600',
-    minWidth: 24,
+    minWidth: 18,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },

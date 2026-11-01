@@ -173,20 +173,33 @@ export default function SongsScreen() {
     };
   }, [words]);
   // Saved words each song has to fill in, the same gaps Learn blanks out
+  const songGapsCache = useMemo(() => new WeakMap<Song, number>(), [wordIndexFor]);
   const songGaps = useMemo(() => {
     const now = Date.now();
     const gaps = new Map<string, number>();
     for (const song of songs) {
-      const index = wordIndexFor(song.originalLanguages);
-      if (canFillGaps(index)) gaps.set(song.id, countGaps(song.originalLyrics, (word) => gapWord(index, word, now)));
+      let count = songGapsCache.get(song);
+      if (count === undefined) {
+        const index = wordIndexFor(song.originalLanguages);
+        count = canFillGaps(index) ? countGaps(song.originalLyrics, (word) => gapWord(index, word, now)) : 0;
+        songGapsCache.set(song, count);
+      }
+      if (count) gaps.set(song.id, count);
     }
     return gaps;
-  }, [songs, wordIndexFor]);
+  }, [songs, wordIndexFor, songGapsCache]);
 
-  // Each song's saved words: the ones in its lyrics and the ones saved from it
+  // Each song's saved words: the ones in its lyrics and the ones saved from it. Kept per song until the
+  // saved words change, so opening a song, which updates just its open count, doesn't read every song again.
+  const songWordsCache = useMemo(() => new WeakMap<Song, WordEntry[]>(), [wordIndexFor]);
   const songWords = useMemo(() => {
     const bySong = new Map<string, WordEntry[]>();
     for (const song of songs) {
+      const cached = songWordsCache.get(song);
+      if (cached) {
+        bySong.set(song.id, cached);
+        continue;
+      }
       const index = wordIndexFor(song.originalLanguages);
       const entries = new Set<WordEntry>();
       // Read like the song's word count, so phrases, Chinese words and Korean stems are found too
@@ -196,10 +209,11 @@ export default function SongsScreen() {
         return !!entry;
       }, song.originalLanguages);
       for (const word of words) if (word.contexts?.some((c) => c.songId === song.id)) entries.add(word);
-      bySong.set(song.id, [...entries]);
+      songWordsCache.set(song, [...entries]);
+      bySong.set(song.id, songWordsCache.get(song)!);
     }
     return bySong;
-  }, [songs, words]);
+  }, [songs, words, wordIndexFor, songWordsCache]);
 
   // Each song's saved words by level
   const songLevels = useMemo(() => {

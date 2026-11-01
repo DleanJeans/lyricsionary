@@ -27,6 +27,7 @@ import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useWordProgress } from '../hooks/useWordProgress';
 import SongLevelBar from '../components/SongLevelBar';
+import ProgressRing from '../components/ProgressRing';
 import SpotifyNowPlaying from '../components/SpotifyNowPlaying';
 import SpotifyPlaylists from '../components/SpotifyPlaylists';
 import ReviewSession from '../components/ReviewSession';
@@ -318,94 +319,111 @@ export default function SongsScreen() {
         activeOpacity={0.7}
         disabled={isAnySongLoading}
       >
-        <View style={styles.cardLeft}>
-          <View style={styles.songNameRow}>
-            <HighlightedText
-              text={item.songName}
-              query={searchInLyrics ? '' : searchQuery}
-              style={styles.songName}
-              numberOfLines={1}
-            />
-            {(() => {
-              // Every word saved (or ignored): complete; and every saved word at Known: mastered
-              const progress = wordProgress.get(item.id);
-              if (!progress || progress.total === 0 || progress.newWords > 0) return null;
-              const levels = songLevels.get(item.id) ?? {};
-              const mastered = Object.entries(levels).every(([level, count]) => level === 'Known' || !count);
-              return (
-                <View style={[styles.completeBadge, mastered && styles.masteredBadge]} accessibilityLabel={mastered ? 'Mastered' : 'Complete'}>
-                  <Ionicons name={mastered ? 'trophy' : 'checkmark-circle'} size={12} color={mastered ? Colors.warning : Colors.success} />
-                  <Text style={[styles.completeText, mastered && styles.masteredText]}>{mastered ? 'Mastered' : 'Complete'}</Text>
-                </View>
-              );
-            })()}
-          </View>
-          <HighlightedText
-            text={item.artistName || 'Unknown Artist'}
-            query={searchInLyrics ? '' : searchQuery}
-            style={styles.artistName}
-            numberOfLines={1}
-          />
-          <View style={styles.meta}>
-            {getFaviconUrl(item.sourceUrl ?? '') && (
-              <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
-            )}
-            <Text style={styles.metaText}>
-              {sortMode === 'nextToLearn' && wordProgress.get(item.id)
-                ? newWordsLabel(wordProgress.get(item.id)!.newWords)
-                : wordProgress.get(item.id)?.label}
-            </Text>
-            <View style={styles.languages}>
-              {(item.originalLanguages ?? []).map((lang) => (
-                <Text key={`orig-${lang}`} style={styles.flag}>
-                  {getFlagForLanguage(lang)}
-                </Text>
-              ))}
-              {item.translations.length > 0 && <Text style={styles.flagArrow}>→</Text>}
-              {item.translations.map((t) => (
-                <Text key={t.language} style={styles.flag}>
-                  {getFlagForLanguage(t.language)}
-                </Text>
-              ))}
+        <View style={styles.cardTop}>
+          {isLoadingThisSong ? (
+            <View style={styles.ringSlot}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+            </View>
+          ) : wordProgress.get(item.id) && wordProgress.get(item.id)!.total > 0 ? (
+            <ProgressRing percent={wordProgress.get(item.id)!.percent} />
+          ) : null}
+          <View style={styles.cardInfo}>
+            <View style={styles.songNameRow}>
+              <HighlightedText
+                text={item.songName}
+                query={searchInLyrics ? '' : searchQuery}
+                style={styles.songName}
+                numberOfLines={1}
+              />
+              {(() => {
+                // Every word saved (or ignored): complete; and every saved word at Known: mastered
+                const progress = wordProgress.get(item.id);
+                if (!progress || progress.total === 0 || progress.newWords > 0) return null;
+                const levels = songLevels.get(item.id) ?? {};
+                const mastered = Object.entries(levels).every(([level, count]) => level === 'Known' || !count);
+                return (
+                  <View style={[styles.completeBadge, mastered && styles.masteredBadge]} accessibilityLabel={mastered ? 'Mastered' : 'Complete'}>
+                    <Ionicons name={mastered ? 'trophy' : 'checkmark-circle'} size={12} color={mastered ? Colors.warning : Colors.success} />
+                    <Text style={[styles.completeText, mastered && styles.masteredText]}>{mastered ? 'Mastered' : 'Complete'}</Text>
+                  </View>
+                );
+              })()}
+            </View>
+            <View style={styles.artistRow}>
+              <HighlightedText
+                text={item.artistName || 'Unknown Artist'}
+                query={searchInLyrics ? '' : searchQuery}
+                style={styles.artistName}
+                numberOfLines={1}
+              />
+              <View style={styles.languages}>
+                {(item.originalLanguages ?? []).map((lang) => (
+                  <Text key={`orig-${lang}`} style={styles.flag}>
+                    {getFlagForLanguage(lang)}
+                  </Text>
+                ))}
+                {item.translations.length > 0 && <Text style={styles.flagArrow}>→</Text>}
+                {item.translations.map((t) => (
+                  <Text key={t.language} style={styles.flag}>
+                    {getFlagForLanguage(t.language)}
+                  </Text>
+                ))}
+              </View>
+            </View>
+            <View style={styles.meta}>
+              {getFaviconUrl(item.sourceUrl ?? '') && (
+                <Image source={{ uri: getFaviconUrl(item.sourceUrl ?? '')! }} style={styles.sourceFavicon} />
+              )}
+              <Text style={styles.metaText} numberOfLines={1}>
+                {(() => {
+                  const progress = wordProgress.get(item.id);
+                  const levels = songLevels.get(item.id);
+                  const saved = levels ? Object.values(levels).reduce((sum, n) => sum + (n ?? 0), 0) : 0;
+                  const recalled = levels ? (levels.Recalled ?? 0) + (levels.Known ?? 0) : 0;
+                  const words = !progress
+                    ? ''
+                    : sortMode === 'nextToLearn'
+                      ? newWordsLabel(progress.newWords)
+                      : `${progress.known}/${progress.total} words`;
+                  return [words, saved > 0 ? `${recalled}/${saved} recalled` : ''].filter(Boolean).join(' · ');
+                })()}
+              </Text>
             </View>
           </View>
-          {songLevels.get(item.id) && <SongLevelBar counts={songLevels.get(item.id)!} />}
-          {matchedLine && (
-            <View style={styles.matchedLineContainer}>
-              <HighlightedText text={matchedLine} query={searchQuery} style={styles.matchedLine} numberOfLines={1} />
-            </View>
-          )}
         </View>
-        {!!songDue.get(item.id)?.length && !isLoadingThisSong && (
-          <TouchableOpacity
-            style={styles.fillInButton}
-            onPress={() => setReviewing(songDue.get(item.id)!)}
-            disabled={isAnySongLoading}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel={`Review ${songDue.get(item.id)!.length} due words from this song`}
-          >
-            <Ionicons name="flash-outline" size={16} color={Colors.primary} />
-            <Text style={styles.fillInText}>{songDue.get(item.id)!.length}</Text>
-          </TouchableOpacity>
+        {songLevels.get(item.id) && <SongLevelBar counts={songLevels.get(item.id)!} full />}
+        {matchedLine && (
+          <View style={styles.matchedLineContainer}>
+            <HighlightedText text={matchedLine} query={searchQuery} style={styles.matchedLine} numberOfLines={1} />
+          </View>
         )}
-        {!!songGaps.get(item.id) && !isLoadingThisSong && (
-          <TouchableOpacity
-            style={styles.fillInButton}
-            onPress={() => handlePressSong(item, true)}
-            disabled={isAnySongLoading}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel={`Fill in the lyrics, ${songGaps.get(item.id)} words`}
-          >
-            <Ionicons name="create-outline" size={16} color={Colors.primary} />
-            <Text style={styles.fillInText}>{songGaps.get(item.id)}</Text>
-          </TouchableOpacity>
-        )}
-        {isLoadingThisSong ? (
-          <ActivityIndicator size="small" color={Colors.primary} />
-        ) : (
-          <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+        {(!!songDue.get(item.id)?.length || !!songGaps.get(item.id)) && (
+          <View style={styles.actions}>
+            {!!songDue.get(item.id)?.length && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setReviewing(songDue.get(item.id)!)}
+                disabled={isAnySongLoading}
+                accessibilityRole="button"
+                accessibilityLabel={`Review ${songDue.get(item.id)!.length} due words from this song`}
+              >
+                <Ionicons name="flash-outline" size={16} color={Colors.primary} />
+                <Text style={styles.actionText}>Review {songDue.get(item.id)!.length}</Text>
+              </TouchableOpacity>
+            )}
+            {!!songGaps.get(item.id) && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handlePressSong(item, true)}
+                disabled={isAnySongLoading}
+                accessibilityRole="button"
+                accessibilityLabel={`Fill in the lyrics, ${songGaps.get(item.id)} words`}
+              >
+                <Ionicons name="create-outline" size={16} color={Colors.primary} />
+                <Text style={styles.actionText}>Fill in {songGaps.get(item.id)}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </TouchableOpacity>
     );
@@ -657,8 +675,6 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 16,
@@ -669,25 +685,51 @@ const styles = StyleSheet.create({
   cardWide: {
     flex: 1,
   },
-  cardLeft: {
-    flex: 1,
-    minWidth: 0,
-    marginRight: 8,
-  },
-  fillInButton: {
+  cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    height: 32,
-    paddingHorizontal: 10,
-    marginRight: 8,
+    gap: 14,
+  },
+  ringSlot: {
+    width: 54,
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  artistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 36,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  fillInText: {
-    color: Colors.primary,
-    fontSize: 13,
+  actionText: {
+    color: Colors.primaryLight,
+    fontSize: 14,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
@@ -729,21 +771,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   artistName: {
+    flexShrink: 1,
     fontSize: 14,
     color: Colors.textSecondary,
-    marginTop: 2,
   },
   meta: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    marginTop: 8,
-    columnGap: 6,
-    rowGap: 4,
+    marginTop: 4,
+    gap: 6,
   },
   metaText: {
     flexShrink: 1,
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textMuted,
   },
   languages: {
@@ -751,7 +791,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   flag: {
-    fontSize: 16,
+    fontSize: 14,
   },
   flagArrow: {
     fontSize: 13,

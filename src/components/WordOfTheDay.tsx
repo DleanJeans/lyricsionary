@@ -4,7 +4,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { localDay } from '../utils/wordQuiz';
-import { wordOfTheDay } from '../utils/wordOfTheDay';
+import { highlightWord, lineTranslation, wordOfTheDay } from '../utils/wordOfTheDay';
 import { Text } from './Text';
 
 /** One saved word a day in the sidebar, with its meaning and line; tapping opens its song at that line */
@@ -17,6 +17,9 @@ export default function WordOfTheDay({ onOpen }: { onOpen: (songId: string, focu
   const { entry, context, definition } = pick;
   const song = context.songId ? songs.find((s) => s.id === context.songId) : undefined;
   const line = song && context.context?.trim() ? context.context : null;
+  const highlight = line ? highlightWord(line, [entry.word, ...(entry.forms ?? [])], context.occurrence) : null;
+  // The translation saved with the word, or else the song's translation of the line, if it has one
+  const translation = line ? context.translation?.trim() || lineTranslation(song!, line) : null;
 
   return (
     <TouchableOpacity
@@ -37,7 +40,18 @@ export default function WordOfTheDay({ onOpen }: { onOpen: (songId: string, focu
       <Text style={styles.definition} numberOfLines={2}>{definition}</Text>
       {line && (
         <>
-          <Text style={styles.line} numberOfLines={2}>{line}</Text>
+          <Text style={styles.line} numberOfLines={2}>
+            {highlight ? (
+              <>
+                <Text style={styles.line}>{highlight.before}</Text>
+                <Text style={[styles.line, styles.lineWord]}>{highlight.word}</Text>
+                <Text style={styles.line}>{highlight.after}</Text>
+              </>
+            ) : (
+              line
+            )}
+          </Text>
+          {translation ? <Text style={styles.translation} numberOfLines={2}>{translation}</Text> : null}
           <Text style={styles.song} numberOfLines={1}>{song!.songName}</Text>
         </>
       )}
@@ -60,5 +74,8 @@ const styles = StyleSheet.create({
   word: { fontSize: 18, fontWeight: '700', color: Colors.text },
   definition: { fontSize: 13, color: Colors.textSecondary },
   line: { fontSize: 13, color: Colors.text, fontStyle: 'italic', marginTop: 4 },
+  // Nested Text resets its font size, so each piece of the line repeats it in styles.line
+  lineWord: { fontWeight: '700', color: Colors.primaryLight },
+  translation: { fontSize: 12, color: Colors.textSecondary },
   song: { fontSize: 11, color: Colors.textMuted },
 });

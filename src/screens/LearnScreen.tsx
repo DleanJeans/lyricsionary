@@ -37,6 +37,7 @@ import { buildLyricQuiz, buildMeaningQuiz, isTricky, quizKindFor } from '../util
 import { lineWords } from '../utils/reviewQuiz';
 import LineDrill from '../components/LineDrill';
 import SpotifyBar from '../components/SpotifyBar';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
@@ -356,6 +357,13 @@ export default function LearnScreen() {
   const toggleWideWordSpacing = useStore((s) => s.toggleWideWordSpacing);
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
+  // Songs whose "No synced lyrics" bar was closed, so it stays hidden for them
+  const [noSyncHiddenSongs, setNoSyncHiddenSongs] = usePersistedState<string[]>(
+    '@lyricsionary_no_sync_hidden_songs',
+    [],
+    (v): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string')
+  );
+  const noSyncHidden = !!song && noSyncHiddenSongs.includes(song.id);
   const nextLine = useNextLineToLearn(song, originalLines);
   const [followSpotify, setFollowSpotify] = useState(true);
   // A long press on a line's word copies the line with its translations, to share it
@@ -1312,7 +1320,7 @@ export default function LearnScreen() {
   const lyricsView = (
     <>
       {lineByLineBar}
-      {spotifyConnected && (
+      {spotifyConnected && !(noSyncHidden && spotify.timings === 'none') && (
         <SpotifyBar
           sync={spotify}
           selectedLineIndex={selectedLineIndex}
@@ -1323,6 +1331,7 @@ export default function LearnScreen() {
             setDictation({ lineIndex, checked: false });
             void spotify.playLine(lineIndex);
           }}
+          onDismiss={song ? () => setNoSyncHiddenSongs([...noSyncHiddenSongs, song.id]) : undefined}
         />
       )}
       <LearnLyricsView

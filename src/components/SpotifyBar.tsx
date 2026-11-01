@@ -29,6 +29,7 @@ export default function SpotifyBar({
   follow,
   onToggleFollow,
   onDictation,
+  onDismiss,
 }: {
   sync: SpotifyLyricsSync;
   /** The line of the tapped word, to play from */
@@ -37,6 +38,8 @@ export default function SpotifyBar({
   onToggleFollow: () => void;
   /** Hides the line and plays it, to write it down */
   onDictation?: (lineIndex: number) => void;
+  /** Hides the bar for this song, offered when the song has no synced lyrics */
+  onDismiss?: () => void;
 }) {
   const canPlaySelected = selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
   // Loops the tapped word's line, or else the one playing
@@ -60,6 +63,11 @@ export default function SpotifyBar({
         </Text>
       ) : (
         <View style={styles.spacer} />
+      )}
+      {sync.timings === 'none' && onDismiss && (
+        <TouchableOpacity onPress={onDismiss} hitSlop={8} accessibilityRole="button" accessibilityLabel="Hide this">
+          <Ionicons name="close" size={16} color={Colors.textMuted} />
+        </TouchableOpacity>
       )}
       {sync.timings === 'ready' && (
         <View style={styles.controls}>
@@ -112,6 +120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginHorizontal: 16,
+    marginTop: 8,
     marginBottom: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,

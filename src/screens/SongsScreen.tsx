@@ -162,22 +162,32 @@ export default function SongsScreen() {
 
   const wordProgress = useWordProgress(songs);
   const words = useStore((s) => s.words);
+  // The saved words index for a song's languages, built once per set of languages instead of per song
+  const wordIndexFor = useMemo(() => {
+    const indexes = new Map<string, Map<string, WordEntry>>();
+    return (languages: string[] | undefined) => {
+      const key = (languages ?? []).join('\u0000');
+      let index = indexes.get(key);
+      if (!index) indexes.set(key, (index = songWordIndex(words, languages)));
+      return index;
+    };
+  }, [words]);
   // Saved words each song has to fill in, the same gaps Learn blanks out
   const songGaps = useMemo(() => {
     const now = Date.now();
     const gaps = new Map<string, number>();
     for (const song of songs) {
-      const index = songWordIndex(words, song.originalLanguages);
+      const index = wordIndexFor(song.originalLanguages);
       if (canFillGaps(index)) gaps.set(song.id, countGaps(song.originalLyrics, (word) => gapWord(index, word, now)));
     }
     return gaps;
-  }, [songs, words]);
+  }, [songs, wordIndexFor]);
 
   // Each song's saved words: the ones in its lyrics and the ones saved from it
   const songWords = useMemo(() => {
     const bySong = new Map<string, WordEntry[]>();
     for (const song of songs) {
-      const index = songWordIndex(words, song.originalLanguages);
+      const index = wordIndexFor(song.originalLanguages);
       const entries = new Set<WordEntry>();
       // Read like the song's word count, so phrases, Chinese words and Korean stems are found too
       countKnownWords(song.originalLyrics, (word) => {

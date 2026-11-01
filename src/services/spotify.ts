@@ -5,11 +5,14 @@ import { asciiBytes, base64Url, sha256 } from '../utils/sha256';
 
 /**
  * Spotify's Web API, signed in with PKCE (no client secret): what's playing, and seeking within
- * it. The client ID comes from the user's own app at developer.spotify.com, pasted in the sidebar.
+ * it. Uses Lyricsionary's own Spotify app unless the user pastes their own app's client ID in the
+ * sidebar.
  * Seeking and playing need Spotify Premium.
  */
 
 const CLIENT_ID_KEY = '@lyricsionary_spotify_client_id';
+/** Lyricsionary's app at developer.spotify.com; PKCE needs no secret, so this is safe to ship */
+export const DEFAULT_SPOTIFY_CLIENT_ID = '6636d3a1fd7c4a32a287f2afe619ad88';
 const AUTH_KEY = '@lyricsionary_spotify_auth';
 const PENDING_KEY = '@lyricsionary_spotify_pending';
 const SCOPE = 'user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
@@ -51,10 +54,19 @@ export function spotifyRedirectUri(): string {
 export const isSpotifyCallback = (url: string) => url.includes('spotify-callback');
 
 export async function getSpotifyClientId(): Promise<string> {
-  return ((await AsyncStorage.getItem(CLIENT_ID_KEY)) ?? process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID ?? '').trim();
+  return (
+    (await AsyncStorage.getItem(CLIENT_ID_KEY))?.trim() ||
+    process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID?.trim() ||
+    DEFAULT_SPOTIFY_CLIENT_ID
+  );
 }
 
-export const setSpotifyClientId = (clientId: string) => AsyncStorage.setItem(CLIENT_ID_KEY, clientId.trim());
+/** Saves the user's own app's client ID; blank goes back to Lyricsionary's app */
+export const setSpotifyClientId = (clientId: string) =>
+  clientId.trim() ? AsyncStorage.setItem(CLIENT_ID_KEY, clientId.trim()) : AsyncStorage.removeItem(CLIENT_ID_KEY);
+
+/** The client ID the user pasted, or '' when using Lyricsionary's app */
+export const getCustomSpotifyClientId = async () => ((await AsyncStorage.getItem(CLIENT_ID_KEY)) ?? '').trim();
 
 export async function isSpotifyConnected(): Promise<boolean> {
   return !!(await AsyncStorage.getItem(AUTH_KEY));

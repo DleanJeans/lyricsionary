@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import {
-  getSpotifyClientId,
+  getCustomSpotifyClientId,
   setSpotifyClientId,
   signOutOfSpotify,
   spotifyErrorMessage,
@@ -13,20 +13,24 @@ import {
 import { useStore } from '../store/useStore';
 import { Text, TextInput } from './Text';
 
-/** Signs in to Spotify with the user's own app's client ID, for seeking by lyric line in Learn */
+/** Signs in to Spotify (Lyricsionary's app, or the user's own), for seeking by lyric line in Learn */
 export default function SpotifyConnect() {
   const connected = useStore((s) => s.spotifyConnected);
   const setConnected = useStore((s) => s.setSpotifyConnected);
   const [clientId, setClientId] = useState('');
+  const [ownApp, setOwnApp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    void getSpotifyClientId().then(setClientId);
+    void getCustomSpotifyClientId().then((id) => {
+      setClientId(id);
+      setOwnApp(!!id);
+    });
   }, []);
 
   const connect = async () => {
     setError(null);
     try {
-      await setSpotifyClientId(clientId);
+      await setSpotifyClientId(ownApp ? clientId : '');
       await startSpotifySignIn();
     } catch (e) {
       setError(spotifyErrorMessage(e));
@@ -51,31 +55,43 @@ export default function SpotifyConnect() {
         </View>
       ) : (
         <>
-          <Text style={styles.text}>
-            Seek Spotify by lyric line in Learn (needs Premium). Make an app at developer.spotify.com with this redirect URI, then paste its client ID:
-          </Text>
-          <Text style={styles.code} selectable>
-            {spotifyRedirectUri()}
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={clientId}
-            onChangeText={setClientId}
-            placeholder="Client ID"
-            placeholderTextColor={Colors.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            accessibilityLabel="Spotify client ID"
-          />
+          <Text style={styles.text}>Follow along and jump to any lyric line in Learn (seeking needs Premium).</Text>
           <TouchableOpacity
-            style={[styles.button, !clientId.trim() && styles.buttonDisabled]}
+            style={[styles.button, ownApp && !clientId.trim() && styles.buttonDisabled]}
             onPress={() => void connect()}
-            disabled={!clientId.trim()}
+            disabled={ownApp && !clientId.trim()}
             accessibilityRole="button"
             accessibilityLabel="Connect Spotify"
           >
             <Text style={styles.buttonText}>Connect Spotify</Text>
           </TouchableOpacity>
+          {ownApp ? (
+            <>
+              <Text style={styles.hint}>
+                Use your own app from developer.spotify.com with this redirect URI, and paste its client ID:
+              </Text>
+              <Text style={styles.code} selectable>
+                {spotifyRedirectUri()}
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={clientId}
+                onChangeText={setClientId}
+                placeholder="Client ID"
+                placeholderTextColor={Colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Spotify client ID"
+              />
+              <TouchableOpacity onPress={() => setOwnApp(false)} accessibilityRole="button">
+                <Text style={styles.subtleLink}>Use Lyricsionary's app</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity onPress={() => setOwnApp(true)} accessibilityRole="button">
+              <Text style={styles.subtleLink}>Use your own Spotify app</Text>
+            </TouchableOpacity>
+          )}
           {error && <Text style={styles.error}>{error}</Text>}
         </>
       )}
@@ -103,6 +119,15 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 13,
     color: Colors.text,
+  },
+  hint: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  subtleLink: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    textDecorationLine: 'underline',
   },
   code: {
     fontSize: 12,

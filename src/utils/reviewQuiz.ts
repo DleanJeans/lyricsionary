@@ -44,6 +44,16 @@ const pickContext = (entry: WordEntry): WordContext | undefined => {
   );
 };
 
+// The meaning a word's quiz asks for, from the context it's asked about
+const answerFor = (entry: WordEntry, context: WordContext | undefined) =>
+  context?.definition?.trim() || entry.definitions?.find((d) => d.text.trim())?.text.trim();
+
+/**
+ * Whether a due word can be reviewed: its level has a quiz and it has a meaning to ask for. Cheap,
+ * for counting a song's due words without building their quizzes, which compare every saved word.
+ */
+export const canReview = (entry: WordEntry) => !!quizKindFor(entry.masteryLevel) && !!answerFor(entry, pickContext(entry));
+
 /**
  * A quiz for each word that's due (isDue), tricky ones (isTricky) first, then the ones not quizzed
  * for longest. A word whose quiz
@@ -62,7 +72,7 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
     const kind = quizKindFor(entry.masteryLevel);
     if (!kind) continue;
     const context = pickContext(entry);
-    const answer = context?.definition?.trim() || entry.definitions?.find((d) => d.text.trim())?.text.trim();
+    const answer = answerFor(entry, context);
     if (!answer) continue;
     const line = context?.context?.trim() || undefined;
     const wordAt = line ? findWordInLine(line, entry.word) ?? undefined : undefined;

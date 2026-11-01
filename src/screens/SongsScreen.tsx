@@ -31,7 +31,7 @@ import ProgressRing from '../components/ProgressRing';
 import SpotifyNowPlaying from '../components/SpotifyNowPlaying';
 import SpotifyPlaylists from '../components/SpotifyPlaylists';
 import ReviewSession from '../components/ReviewSession';
-import { buildReviewItems, dueWords, type ReviewItem } from '../utils/reviewQuiz';
+import { buildReviewItems, canReview, dueWords, type ReviewItem } from '../utils/reviewQuiz';
 import { countKnownWords } from '../utils/wordFrequency';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 
@@ -205,11 +205,12 @@ export default function SongsScreen() {
     return levels;
   }, [songWords]);
 
-  // Each song's quizzes for the words a quiz now would move toward their next level, to review from its card
+  // Each song's words a quiz now would move toward their next level, to review from its card. Their
+  // quizzes are built when Review is tapped: building them all here took seconds with many saved words.
   const songDue = useMemo(() => {
     const now = Date.now();
-    return new Map([...songWords].map(([songId, entries]) => [songId, buildReviewItems(dueWords(entries, now), words)]));
-  }, [songWords, words]);
+    return new Map([...songWords].map(([songId, entries]) => [songId, dueWords(entries, now).filter(canReview)]));
+  }, [songWords]);
   const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
 
   const archivedCount = songs.filter((s) => s.archivedAt).length;
@@ -402,7 +403,10 @@ export default function SongsScreen() {
             {!!songDue.get(item.id)?.length && (
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={() => setReviewing(songDue.get(item.id)!)}
+                onPress={() => {
+                  const items = buildReviewItems(songDue.get(item.id)!, useStore.getState().words);
+                  if (items.length) setReviewing(items);
+                }}
                 disabled={isAnySongLoading}
                 accessibilityRole="button"
                 accessibilityLabel={`Review ${songDue.get(item.id)!.length} due words from this song`}

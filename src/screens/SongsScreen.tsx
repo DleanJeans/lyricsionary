@@ -671,6 +671,8 @@ const styles = StyleSheet.create({
   },
   cardLeft: {
     flex: 1,
+    minWidth: 0,
+    marginRight: 8,
   },
   fillInButton: {
     flexDirection: 'row',
@@ -733,11 +735,14 @@ const styles = StyleSheet.create({
   },
   meta: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     marginTop: 8,
-    gap: 6,
+    columnGap: 6,
+    rowGap: 4,
   },
   metaText: {
+    flexShrink: 1,
     fontSize: 13,
     color: Colors.textMuted,
   },

@@ -137,6 +137,9 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   }
 
   /* ─── Narrow: bottom bar ─────────────────────────────────────── */
+  // Word detail has its own back and Save, and the bar would cover its bottom sections
+  if (state.routes[state.index].name === 'WordLookup') return null;
+
   return (
     <View
       style={[

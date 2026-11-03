@@ -572,6 +572,7 @@ export default function WordLookupScreen() {
       <ScrollView
         ref={scrollViewRef}
         style={styles.content}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
         keyboardShouldPersistTaps="handled"
         onScroll={handleOuterScroll}
         scrollEventThrottle={20}

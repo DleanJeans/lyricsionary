@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Linking, Platform } from 'react-native';
-import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Updates from 'expo-updates';
@@ -33,6 +33,9 @@ const linking = {
     },
   },
 };
+
+// Anything a screen doesn't cover shows the app background instead of the default light grey
+const navigationTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: Colors.background } };
 
 export default function App() {
   const navigationRef = useNavigationContainerRef();
@@ -168,7 +171,7 @@ export default function App() {
     >
       <StatusBar style="light" />
       <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef} linking={linking} onReady={() => setNavigationReady(true)}>
+        <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme} onReady={() => setNavigationReady(true)}>
           <AppNavigator />
         </NavigationContainer>
       </SafeAreaProvider>

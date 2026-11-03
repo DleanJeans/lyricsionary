@@ -557,7 +557,8 @@ export default function WordLookupScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      // Android pans the window for the keyboard already, and 'height' left a gap above the system nav once the tab bar was hidden
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
       <View style={styles.container}>

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { ActivityIndicator, I18nManager, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, I18nManager, LayoutChangeEvent, StyleSheet, TouchableOpacity, View } from 'react-native';
 import AnimatedHeight from '../components/AnimatedHeight';
 import Toast from '../components/Toast';
 import LearnActionBar from '../components/LearnActionBar';
@@ -18,6 +18,8 @@ import WordCard from '../components/WordCard';
 import WordQuiz from '../components/WordQuiz';
 import { getFlagForLanguage, isRomanized, isRtlLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { findWordIndex, type WordRect } from '../components/SelectableTranslation';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
@@ -28,7 +30,7 @@ import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
-import { groupCjkTokens, groupSpacedWords, isCjkWord } from '../utils/cjkWords';
+import { draggedPhrase, groupCjkTokens, groupSpacedWords, isCjkWord } from '../utils/cjkWords';
 import { getKoreanStem, isKoreanLanguage } from '../utils/koreanWords';
 import { getRomanceBaseWord } from '../utils/romanceClitics';
 import { addStressMark, isStressLanguage, removeStressMarks } from '../utils/russianStress';
@@ -512,11 +514,12 @@ export default function LearnScreen() {
     }
   };
 
-  // Selects the Chinese or Japanese word grown by one more character, e.g. 二 -> 二人, ending at `end` in the line
-  const growSelection = (word: string, line: string, lineIndex: number, end: number) => {
+  // Selects a word or phrase dragged across, e.g. 二人 or "give up", ending at `end` in the line. The word
+  // a tap just saved inside it, e.g. 二, is replaced by it
+  const selectPhrase = (word: string, line: string, lineIndex: number, end: number) => {
     const autoSaved = autoSavedWordRef.current;
     autoSavedWordRef.current = null;
-    if (autoSaved && autoSaved === selectedWord) {
+    if (autoSaved && autoSaved === selectedWord && lineIndex === selectedLineIndex && word.includes(autoSaved)) {
       const entry = findSavedEntry(autoSaved);
       if (entry && entry.contexts.length <= 1) void deleteWord(entry.id);
     }
@@ -525,6 +528,12 @@ export default function LearnScreen() {
     setSelectedLineIndex(lineIndex);
     setSelectedOccurrence(Math.max(1, line.slice(0, end).split(word).length - 1));
   };
+
+  // Where each word of each line is laid out, to find the words a drag goes across
+  const wordRectsRef = useRef<Record<number, (WordRect | undefined)[]>>({});
+  // The words being dragged across, shown selected until the finger lifts
+  const [dragRange, setDragRange] = useState<{ lineIndex: number; from: number; to: number } | null>(null);
+  const dragStartRef = useRef(-1);
 
   const handleTranslationPress = (lineIndex: number, translationIndex: number) => {
     const key = `${lineIndex}-${translationIndex}`;
@@ -565,18 +574,47 @@ export default function LearnScreen() {
         occurrenceMap[i] = wordCountMap[cleaned.toLowerCase()];
       }
     });
-    // Tapping the Chinese, Japanese or Thai character right after the selected word adds it to the word,
-    // as does tapping the next word after a space, to select a phrase
-    const selectedIndex = isSelectedLine && selectedWord
-      ? textWords.findIndex((w, i) => cleanLyricWord(w) === selectedWord && occurrenceMap[i] === selectedOccurrence)
-      : -1;
-    const growsSelection = (i: number, cleanedWord: string) =>
-      selectedIndex >= 0 && (
-        isCjkWord(selectedWord!)
-          ? i === selectedIndex + 1 && isCjkWord(cleanedWord)
-          : i === selectedIndex + 2 && /^[^\S\n]+$/.test(textWords[selectedIndex + 1]) && !isCjkWord(cleanedWord)
-      );
+    // Dragging across words selects them as one, Chinese, Japanese or Thai characters as a word, e.g. 二人,
+    // others as a phrase, e.g. "give up". Vertical drags fall through to scrolling
+    const rects = (wordRectsRef.current[lineIndex] ??= []);
+    const onWordLayout = (i: number) => (event: LayoutChangeEvent) => {
+      rects[i] = event.nativeEvent.layout;
+    };
+    const wordAt = (x: number, y: number) =>
+      findWordIndex(textWords.map((w, i) => (w.trim() && cleanLyricWord(w) ? rects[i] : undefined)), x, y);
+    const dragTo = (x: number, y: number) => {
+      const end = wordAt(x, y);
+      return end < 0 ? null : draggedPhrase(textWords, dragStartRef.current, end);
+    };
+    const isDragged = (i: number) => dragRange?.lineIndex === lineIndex && i >= dragRange.from && i <= dragRange.to;
+    const drag = Gesture.Pan()
+      .runOnJS(true)
+      .activeOffsetX([-8, 8])
+      .failOffsetY([-12, 12])
+      .onStart((event) => {
+        dragStartRef.current = wordAt(event.x - event.translationX, event.y - event.translationY);
+        if (dragStartRef.current < 0) return;
+        const range = dragTo(event.x, event.y);
+        if (range) setDragRange({ lineIndex, from: range.from, to: range.to });
+      })
+      .onUpdate((event) => {
+        if (dragStartRef.current < 0) return;
+        const range = dragTo(event.x, event.y);
+        if (range) setDragRange((prev) =>
+          prev?.from === range.from && prev.to === range.to ? prev : { lineIndex, from: range.from, to: range.to });
+      })
+      .onEnd((event) => {
+        if (dragStartRef.current < 0) return;
+        const range = dragTo(event.x, event.y) ?? draggedPhrase(textWords, dragStartRef.current, dragStartRef.current);
+        if (range.from === range.to) handleWordPress(textWords[range.from], text, lineIndex, occurrenceMap[range.from] || 1);
+        else if (isLyricWord(range.word)) selectPhrase(range.word, text, lineIndex, tokenEnds[range.to]);
+      })
+      .onFinalize(() => {
+        dragStartRef.current = -1;
+        setDragRange(null);
+      });
     return (
+      <GestureDetector gesture={drag}>
       <View
         style={{
           flexDirection: isRtlSong !== !!I18nManager.isRTL ? 'row-reverse' : 'row',
@@ -654,7 +692,7 @@ export default function LearnScreen() {
               effectiveEmoji !== getFlagForLanguage(mainEntry.language);
 
             return (
-              <View key={i} style={{ alignItems: 'center' }}>
+              <View key={i} onLayout={onWordLayout(i)} style={{ alignItems: 'center' }}>
                 <View style={styles.annotationSpace}>
                   {shouldShowEmoji && (
                     <Text style={styles.wordAnnotation}>
@@ -673,7 +711,7 @@ export default function LearnScreen() {
                     const partEntry = partEntries[pi];
                     const isPartSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();
                     const isPartActiveOccurrence = isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
-                    const partColor = isPartSelected
+                    const partColor = isPartSelected || isDragged(i)
                       ? Colors.primary
                       : highlightNewWords
                       ? (partEntry ? Colors.textMuted : Colors.text)
@@ -786,7 +824,7 @@ export default function LearnScreen() {
             removeStressMarks(cleanedWord.toLowerCase()) === removeStressMarks(wordEntry.word.toLowerCase())
             ? addStressMark(edgePunctuation.core, stressIpa)
             : edgePunctuation.core;
-          const wordColor = isSelected
+          const wordColor = isSelected || isDragged(i)
             ? Colors.primary
             : isIgnored
               ? Colors.textMuted
@@ -803,7 +841,7 @@ export default function LearnScreen() {
           const keepAnnotationSpace = hasAnnotation || !isCjkWord(word);
 
           return (
-            <View key={i} style={{ alignItems: 'center' }}>
+            <View key={i} onLayout={onWordLayout(i)} style={{ alignItems: 'center' }}>
               {keepAnnotationSpace && (
                 <View style={styles.annotationSpace}>
                   {shouldShowEmoji && (
@@ -819,11 +857,7 @@ export default function LearnScreen() {
                 </View>
               )}
               <Text
-                onPress={() =>
-                  growsSelection(i, cleanedWord)
-                    ? growSelection(`${selectedWord}${isCjkWord(cleanedWord) ? '' : ' '}${cleanedWord}`, text, lineIndex, tokenEnds[i])
-                    : handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)
-                }
+                onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
                 onLongPress={() => copyLineRef.current(lineIndex)}
                 style={{
                   fontSize,
@@ -837,7 +871,7 @@ export default function LearnScreen() {
                     {word.slice(0, compoundStart)}
                     {compoundParts.map((part, pi) => {
                       const partEntry = compoundEntries?.[pi];
-                      const partColor = isSelected
+                      const partColor = isSelected || isDragged(i)
                         ? Colors.primary
                         : highlightNewWords
                         ? (partEntry ? Colors.textMuted : Colors.text)
@@ -891,8 +925,9 @@ export default function LearnScreen() {
           );
         })}
       </View>
+      </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA

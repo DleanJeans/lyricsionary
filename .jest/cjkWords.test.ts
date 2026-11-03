@@ -1,4 +1,4 @@
-import { cjkCharacterCount, groupCjkTokens, groupSpacedWords, isCjkWord } from '../src/utils/cjkWords';
+import { cjkCharacterCount, draggedPhrase, groupCjkTokens, groupSpacedWords, isCjkWord } from '../src/utils/cjkWords';
 import { removeSpecialChars, splitLyricTokens } from '../src/utils/cleanLyrics';
 import { countKnownWords, countWords } from '../src/utils/wordFrequency';
 
@@ -80,5 +80,24 @@ describe('Vietnamese', () => {
 describe('phrases', () => {
   it('counts each word of a saved phrase as known in any language', () => {
     expect(countKnownWords('I never give up, baby', (word: string) => word === 'give up', ['English'])).toBe(2);
+  });
+});
+
+describe('draggedPhrase', () => {
+  it('joins Chinese or Japanese characters dragged across, either way', () => {
+    const tokens = splitLyricTokens('二人だけの空');
+    expect(draggedPhrase(tokens, 0, 1)).toEqual({ word: '二人', from: 0, to: 1 });
+    expect(draggedPhrase(tokens, 3, 0)).toEqual({ word: '二人だけ', from: 0, to: 3 });
+  });
+
+  it('joins words with single spaces between them, without their punctuation', () => {
+    const tokens = splitLyricTokens('never give up, baby');
+    expect(draggedPhrase(tokens, 2, 4).word).toBe('give up');
+    expect(draggedPhrase(tokens, 6, 2)).toEqual({ word: 'give up baby', from: 2, to: 6 });
+  });
+
+  it('stops at a change of script or past the longest phrase', () => {
+    expect(draggedPhrase(splitLyricTokens('好き love'), 0, 3).word).toBe('好き');
+    expect(draggedPhrase(splitLyricTokens('a b c d e'), 0, 8).word).toBe('a b c d');
   });
 });

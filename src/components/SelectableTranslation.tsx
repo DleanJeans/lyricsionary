@@ -13,7 +13,7 @@ interface SelectableTranslationProps {
   style?: StyleProp<TextStyle>;
 }
 
-interface WordRect {
+export interface WordRect {
   x: number;
   y: number;
   width: number;
@@ -22,7 +22,7 @@ interface WordRect {
 
 const EDGE_PUNCTUATION = /^[\s"'“”‘’«»„.,;:!?¡¿()[\]{}…\-–—]+|[\s"'“”‘’«»„.,;:!?¡¿()[\]{}…\-–—]+$/g;
 
-function findWordIndex(rects: (WordRect | undefined)[], x: number, y: number): number {
+export function findWordIndex(rects: (WordRect | undefined)[], x: number, y: number): number {
   let best = -1;
   let bestDistance = Infinity;
   rects.forEach((rect, index) => {

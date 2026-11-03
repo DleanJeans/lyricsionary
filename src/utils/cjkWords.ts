@@ -62,6 +62,25 @@ const MAX_SPACED_WORDS = 4;
 const isSpace = (token: string) => /^[^\S\n]+$/.test(token);
 
 /**
+ * The word or phrase dragged across from token `from` to `to` of a line, with its first and last token:
+ * Chinese, Japanese or Thai characters next to each other, e.g. 二人, or words with single spaces between
+ * them, e.g. "give up". The drag stops where Learn couldn't show it whole, such as at a change of script
+ */
+export function draggedPhrase(tokens: string[], from: number, to: number): { word: string; from: number; to: number } {
+  const step = to < from ? -1 : 1;
+  const cjk = isCjkWord(tokens[from]);
+  const span = (end: number) => tokens.slice(Math.min(from, end), Math.max(from, end) + 1).join('');
+  const fits = (end: number) => cjk
+    ? isCjkWord(tokens[end]) && cjkCharacterCount(span(end)) <= MAX_WORD_LENGTH
+    : isSpace(tokens[end - step]) && !!tokens[end]?.trim() && !isCjkWord(tokens[end]) &&
+      cleanLyricWord(span(end)).split(' ').length <= MAX_SPACED_WORDS;
+  const gap = cjk ? 1 : 2;
+  let end = from;
+  while (step * (to - end) >= gap && fits(end + gap * step)) end += gap * step;
+  return { word: cleanLyricWord(span(end)), from: Math.min(from, end), to: Math.max(from, end) };
+}
+
+/**
  * Joins words written apart into the longest phrase `isWord` accepts (asked without punctuation), e.g.
  * ["give", " ", "up,", " ", "baby"] -> ["give up,", " ", "baby"] or Vietnamese syllables into a word like
  * yêu thương

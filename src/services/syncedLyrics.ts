@@ -15,7 +15,10 @@ async function readCache(): Promise<Record<string, string>> {
 
 async function fetchLrclib(path: string): Promise<unknown> {
   const response = await fetch(`https://lrclib.net/api${path}`, { headers: { 'Lrclib-Client': 'Lyricsionary' } });
-  return response.ok ? response.json() : null;
+  if (response.status === 404) return null;
+  // A busy or failing LRCLIB isn't an answer, so it's tried again next time instead of remembered as none
+  if (!response.ok) throw new Error(`LRCLIB ${response.status}`);
+  return response.json();
 }
 
 /** The song's synced lyrics, from the cache or LRCLIB; null when LRCLIB has none */
@@ -35,7 +38,7 @@ export async function getSyncedLyrics(song: Song, durationMs?: number): Promise<
       lrc = results?.find((r) => r.syncedLyrics)?.syncedLyrics ?? null;
     }
   } catch {
-    // Offline: try again next time instead of remembering none
+    // Offline or LRCLIB busy: try again next time instead of remembering none
     return null;
   }
   await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ ...(await readCache()), [song.id]: lrc ?? '' }));

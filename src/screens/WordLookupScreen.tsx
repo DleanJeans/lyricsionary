@@ -169,6 +169,7 @@ export default function WordLookupScreen() {
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [undoData, setUndoData] = useState<{ block: WordSenseData; index: number } | null>(null);
 
   const [displayWord, setDisplayWord] = useState(word);
@@ -474,13 +475,18 @@ export default function WordLookupScreen() {
           : undefined,
       }));
 
-    await addOrUpdateWord(
-      displayWord, language, pronunciation, contexts, masteryLevel,
-      wiktionaryPronunciation.loaded ? pronunciationAudio : undefined
-    );
-    // The note is kept apart from what addOrUpdateWord merges
-    const saved = findSavedWord(useStore.getState().words, displayWord, language);
-    if (saved && (saved.note ?? '') !== note.trim()) await updateWordEntry(saved.id, { note: note.trim() || undefined });
+    setIsSaving(true);
+    try {
+      await addOrUpdateWord(
+        displayWord, language, pronunciation, contexts, masteryLevel,
+        wiktionaryPronunciation.loaded ? pronunciationAudio : undefined
+      );
+      // The note is kept apart from what addOrUpdateWord merges
+      const saved = findSavedWord(useStore.getState().words, displayWord, language);
+      if (saved && (saved.note ?? '') !== note.trim()) await updateWordEntry(saved.id, { note: note.trim() || undefined });
+    } finally {
+      setIsSaving(false);
+    }
 
     if (source === 'Words') {
       navigation.navigate('Words');
@@ -563,9 +569,12 @@ export default function WordLookupScreen() {
         <TouchableOpacity
           onPress={handleSave}
           style={[styles.saveButton, isNewWord && { backgroundColor: Colors.success }, !hasChanges && !isNewWord && styles.saveButtonDisabled]}
-          disabled={!hasChanges && !isNewWord}
+          disabled={isSaving || (!hasChanges && !isNewWord)}
+          accessibilityState={{ busy: isSaving }}
         >
-          <Text style={[styles.saveButtonText, !hasChanges && !isNewWord && styles.saveButtonTextDisabled]}>{isNewWord ? 'Add' : 'Save'}</Text>
+          {/* The label stays but goes invisible under the spinner, so the button keeps its width */}
+          <Text style={[styles.saveButtonText, !hasChanges && !isNewWord && styles.saveButtonTextDisabled, isSaving && { opacity: 0 }]}>{isNewWord ? 'Add' : 'Save'}</Text>
+          {isSaving && <ActivityIndicator size="small" color={Colors.white} style={StyleSheet.absoluteFill} />}
         </TouchableOpacity>
       </View>
 

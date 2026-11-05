@@ -16,6 +16,8 @@ export interface WordSenseData {
   translation?: string;
   fromSong?: boolean;
   occurrence?: number;
+  // Where the definition was picked in the translation
+  definitionAt?: number;
   // The saved or chosen word type; left out, it's found from the definition when saving
   partOfSpeech?: PartOfSpeech;
   isNew?: boolean;
@@ -33,7 +35,7 @@ interface WordSenseListProps {
   ipaPlaceholder: string;
   isNewWord: boolean;
   definitionSuggestions?: WiktionaryDefinition[];
-  onUpdateWordSense: (index: number, field: keyof WordSenseData, value: string | number) => void;
+  onUpdateWordSense: (index: number, field: keyof WordSenseData, value: string | number, at?: number) => void;
   onEmojiPress: (index: number) => void;
   onRemoveWordSense: (index: number) => void;
   onUndoRemove: () => void;
@@ -158,7 +160,8 @@ export default function WordSenseList({
               onIpaChange={(value) => onUpdateWordSense(currentSenseIndex, 'ipa', value)}
               ipaPlaceholder={ipaPlaceholder}
               definition={block.definition}
-              onDefinitionChange={(value) => onUpdateWordSense(currentSenseIndex, 'definition', value)}
+              onDefinitionChange={(value, at) => onUpdateWordSense(currentSenseIndex, 'definition', value, at)}
+              definitionAt={block.definitionAt}
               definitionSuggestions={definitionSuggestions}
               partOfSpeech={block.partOfSpeech}
               onPartOfSpeechChange={(value) => onUpdateWordSense(currentSenseIndex, 'partOfSpeech', value)}

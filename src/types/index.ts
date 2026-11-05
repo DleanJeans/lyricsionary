@@ -38,6 +38,8 @@ export interface WordContext {
   fromSong?: boolean;
   occurrence?: number;
   translation?: string;
+  /** Where the definition was picked in the translation, so a word that's there twice keeps the one picked */
+  definitionAt?: number;
   /** The type of word this sense is, e.g. "noun" for Leben "life" and "verb" for Leben "to live" */
   partOfSpeech?: PartOfSpeech;
 }

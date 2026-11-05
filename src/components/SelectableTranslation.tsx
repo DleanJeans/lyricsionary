@@ -3,13 +3,16 @@ import { View, StyleSheet, StyleProp, TextStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
-import { findDefinitionHighlight, withWordForms } from '../utils/definitionHighlight';
+import { findDefinitionHighlight, findDefinitionHighlightAt, withWordForms } from '../utils/definitionHighlight';
 
 interface SelectableTranslationProps {
   translation: string;
-  onSelect: (text: string) => void;
+  // The picked words and where they start in the translation
+  onSelect: (text: string, at: number) => void;
   // The current definition, highlighted where it appears in the translation.
   value?: string;
+  // Where the definition was picked, so a word that's there twice highlights the one tapped
+  valueAt?: number;
   style?: StyleProp<TextStyle>;
 }
 
@@ -40,7 +43,7 @@ export function findWordIndex(rects: (WordRect | undefined)[], x: number, y: num
 }
 
 // Tap a word, or drag across several, to pick it as the definition.
-export default function SelectableTranslation({ translation, onSelect, value, style }: SelectableTranslationProps) {
+export default function SelectableTranslation({ translation, onSelect, value, valueAt, style }: SelectableTranslationProps) {
   // Each word with its start offset in the translation, to map a highlight onto words.
   const tokens = useMemo(
     () => Array.from(translation.matchAll(/\S+/g), (match) => ({ text: match[0], start: match.index ?? 0 })),
@@ -52,14 +55,13 @@ export default function SelectableTranslation({ translation, onSelect, value, st
   const [selection, setSelection] = useState<[number, number] | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const textOf = (start: number, end: number) => {
-    const [from, to] = start <= end ? [start, end] : [end, start];
-    return words.slice(from, to + 1).join(' ').replace(EDGE_PUNCTUATION, '');
-  };
-
   const commit = (start: number, end: number) => {
-    const text = textOf(start, end);
-    if (text) onSelect(text);
+    const [from, to] = start <= end ? [start, end] : [end, start];
+    const joined = words.slice(from, to + 1).join(' ');
+    const text = joined.replace(EDGE_PUNCTUATION, '');
+    // Skip the punctuation cut off the front, like the quote in "“the"
+    const leading = joined.length - joined.replace(/^[\s"'“”‘’«»„.,;:!?¡¿()[\]{}…\-–—]+/, '').length;
+    if (text) onSelect(text, tokens[from].start + leading);
   };
 
   const tap = Gesture.Tap()
@@ -104,7 +106,8 @@ export default function SelectableTranslation({ translation, onSelect, value, st
         tokens[Math.max(selection[0], selection[1])].start + tokens[Math.max(selection[0], selection[1])].text.length,
       ]]
     : value
-      ? findDefinitionHighlight(translation, withWordForms([value]))
+      ? (valueAt !== undefined ? findDefinitionHighlightAt(translation, value, valueAt) : null) ??
+        findDefinitionHighlight(translation, withWordForms([value]))
       : null;
   const flatStyle = StyleSheet.flatten([styles.text, style]);
 

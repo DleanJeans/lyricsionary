@@ -20,7 +20,9 @@ interface WordSenseCardProps {
   onIpaChange: (value: string) => void;
   ipaPlaceholder: string;
   definition: string;
-  onDefinitionChange: (value: string) => void;
+  // `at` is where the definition was picked in the translation, when it was picked there
+  onDefinitionChange: (value: string, at?: number) => void;
+  definitionAt?: number;
   definitionSuggestions?: WiktionaryDefinition[];
   partOfSpeech?: PartOfSpeech;
   onPartOfSpeechChange?: (value: PartOfSpeech) => void;
@@ -54,6 +56,7 @@ export default function WordSenseCard({
   ipaPlaceholder,
   definition,
   onDefinitionChange,
+  definitionAt,
   definitionSuggestions,
   partOfSpeech,
   onPartOfSpeechChange,
@@ -172,6 +175,7 @@ export default function WordSenseCard({
               showSongName={false}
               onTranslationSelect={isRemoved ? undefined : onDefinitionChange}
               selectedTranslation={definition}
+              selectedTranslationAt={definitionAt}
             />
           </View>
         ) : (
@@ -192,6 +196,7 @@ export default function WordSenseCard({
                 translation={translation}
                 onSelect={onDefinitionChange}
                 value={definition}
+                valueAt={definitionAt}
                 style={styles.translationText}
               />
             </View>

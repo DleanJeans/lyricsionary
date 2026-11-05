@@ -97,6 +97,14 @@ export function findDefinitionHighlight(text: string, definitions: string[]): Ar
   return null;
 }
 
+// The definition picked at position `at` of the translation, e.g. the second "the" of
+// "The sun ... in the moment"; null when the translation no longer has it there.
+export function findDefinitionHighlightAt(text: string, definition: string, at: number): Array<[number, number]> | null {
+  const needle = normalize(definition.trim());
+  if (!needle || at < 0) return null;
+  return indexOfWhole(normalize(text), needle, at) === at ? [[at, at + needle.length]] : null;
+}
+
 // Highlights for several words at once, like the parts of a split compound: each word's first
 // matching definition, with overlaps merged and ranges only spaces apart joined into one,
 // e.g. Liebe "love" + Brief "letter" -> one highlight over "love letter".

@@ -230,6 +230,7 @@ export default function WordLookupScreen() {
             fromSong: c.fromSong ?? false,
             translation: c.translation,
             partOfSpeech: c.partOfSpeech,
+            definitionAt: c.definitionAt,
           });
 
           if (exactMatchIndex >= 0) {
@@ -284,7 +285,7 @@ export default function WordLookupScreen() {
     if (pronunciation !== existing.pronunciation) return true;
     if (masteryLevel !== (existing.masteryLevel || 'Seen')) return true;
     if (note.trim() !== (existing.note ?? '')) return true;
-    const normalizeSense = (s: any) => `${s.context || ''}|${s.emoji || ''}|${s.ipa || ''}|${s.definition || ''}|${s.songId || ''}|${s.occurrence || 1}|${s.partOfSpeech || ''}`;
+    const normalizeSense = (s: any) => `${s.context || ''}|${s.emoji || ''}|${s.ipa || ''}|${s.definition || ''}|${s.songId || ''}|${s.occurrence || 1}|${s.partOfSpeech || ''}|${s.definitionAt ?? ''}`;
     const currentNormalized = wordSenses
       .filter(b => b.context || b.emoji || b.ipa || b.definition)
       .map(normalizeSense)
@@ -426,12 +427,20 @@ export default function WordLookupScreen() {
     };
   }, [canGoBackInWebView, isFocused, navigation, source, songId]);
 
-  const updateWordSense = (index: number, field: keyof WordSenseData, value: string | number) => {
+  // `at` is where a definition was picked in the line's translation
+  const updateWordSense = (index: number, field: keyof WordSenseData, value: string | number, at?: number) => {
     setUndoData(null);
-    // Another definition can be another type of word, found again when saving
-    setWordSenses(prev => prev.map((b, i) => i !== index ? b
-      : field === 'definition' && value !== b.definition ? { ...b, definition: String(value), partOfSpeech: undefined }
-      : { ...b, [field]: value }));
+    setWordSenses(prev => prev.map((b, i) => {
+      if (i !== index) return b;
+      if (field !== 'definition') return { ...b, [field]: value };
+      const definition = String(value);
+      // Picked again elsewhere in the translation, or typed: keep the place only when just the case changed
+      const definitionAt = at ?? (definition.toLowerCase() === b.definition.toLowerCase() ? b.definitionAt : undefined);
+      // Another definition can be another type of word, found again when saving
+      return definition !== b.definition
+        ? { ...b, definition, definitionAt, partOfSpeech: undefined }
+        : { ...b, definitionAt };
+    }));
   };
 
   const addWordSense = () => {
@@ -470,6 +479,7 @@ export default function WordLookupScreen() {
         fromSong: b.fromSong ?? false,
         occurrence: b.occurrence || 1,
         translation: b.translation || undefined,
+        definitionAt: b.definition ? b.definitionAt : undefined,
         partOfSpeech: b.definition
           ? b.partOfSpeech ?? findPartOfSpeech(b.definition, definitionSuggestions)
           : undefined,

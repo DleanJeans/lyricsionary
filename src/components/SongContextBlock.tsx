@@ -15,8 +15,9 @@ interface SongContextBlockProps {
   artistName?: string;
   translation?: string;
   showSongName?: boolean;
-  onTranslationSelect?: (text: string) => void;
+  onTranslationSelect?: (text: string, at: number) => void;
   selectedTranslation?: string;
+  selectedTranslationAt?: number;
 }
 
 export default function SongContextBlock({
@@ -31,6 +32,7 @@ export default function SongContextBlock({
   showSongName = true,
   onTranslationSelect,
   selectedTranslation,
+  selectedTranslationAt,
 }: SongContextBlockProps) {
   const ranges = useMemo(() => findWordOccurrences(context, word || ''), [context, word]);
   const computedOccurrenceCount = occurrenceCount ?? ranges.length;
@@ -96,6 +98,7 @@ export default function SongContextBlock({
             translation={translation}
             onSelect={onTranslationSelect}
             value={selectedTranslation}
+            valueAt={selectedTranslationAt}
             style={styles.translationText}
           />
         </View>

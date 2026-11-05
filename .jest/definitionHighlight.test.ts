@@ -1,4 +1,4 @@
-import { findDefinitionHighlight, findDefinitionHighlights, pickDefinition, withWordForms } from '../src/utils/definitionHighlight';
+import { findDefinitionHighlight, findDefinitionHighlightAt, findDefinitionHighlights, pickDefinition, withWordForms } from '../src/utils/definitionHighlight';
 
 const highlighted = (text: string, definition: string) =>
   findDefinitionHighlight(text, [definition])?.map(([start, end]) => text.slice(start, end)) ?? null;
@@ -77,5 +77,27 @@ describe('withWordForms', () => {
     expect(find('I want to love you', ['to love'])).toEqual(['to love']);
     expect(find('All my worries', ['worry; care'])).toEqual(['worries']);
     expect(withWordForms(['love'])).toEqual(['love', 'loves']);
+  });
+});
+
+describe('findDefinitionHighlightAt', () => {
+  const line = "The sun is shining, I'm living in the moment";
+
+  it('highlights the occurrence picked, not the first one', () => {
+    const at = line.indexOf('the moment');
+    expect(findDefinitionHighlightAt(line, 'the', at)).toEqual([[at, at + 3]]);
+  });
+
+  it('ignores case, so "The" picked at the start stays there', () => {
+    expect(findDefinitionHighlightAt(line, 'the', 0)).toEqual([[0, 3]]);
+  });
+
+  it('is null when the word is no longer there, e.g. the translation changed', () => {
+    expect(findDefinitionHighlightAt(line, 'the', 5)).toBeNull();
+    expect(findDefinitionHighlightAt(line, 'sun', line.indexOf('the moment'))).toBeNull();
+  });
+
+  it('needs whole words', () => {
+    expect(findDefinitionHighlightAt('then the', 'the', 0)).toBeNull();
   });
 });

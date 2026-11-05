@@ -47,7 +47,6 @@ import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitE
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
-import LineNote from '../components/LineNote';
 import Dictation from '../components/Dictation';
 
 const PREVIEW_MAX_WORDS = 8;
@@ -1310,7 +1309,6 @@ export default function LearnScreen() {
         />
       )}
       {selectedWordEntry && <LemmaMergeHint entry={selectedWordEntry} />}
-      {!!selectedLine?.trim() && <LineNote key={selectedLine} song={song} line={selectedLine} />}
       {wordCardPanel}
     </View>
   ) : wordCardPanel);

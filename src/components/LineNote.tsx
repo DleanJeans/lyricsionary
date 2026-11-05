@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
@@ -7,8 +7,8 @@ import type { Song } from '../types';
 import { useStore } from '../store/useStore';
 import { getLineNote, setLineNote } from '../utils/lineNotes';
 
-/** The selected line's note above the word card: tap it, or "Note on this line", to write it */
-export default function LineNote({ song, line }: { song: Song; line: string }) {
+/** A song line's note on its context card in Look Up: tap it, or "Note on this line", to write it */
+export default function LineNote({ song, line, style }: { song: Song; line: string; style?: StyleProp<ViewStyle> }) {
   const updateSong = useStore((s) => s.updateSong);
   const note = getLineNote(song.lineNotes, line);
   const [editing, setEditing] = useState(false);
@@ -24,7 +24,7 @@ export default function LineNote({ song, line }: { song: Song; line: string }) {
   };
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, style]}>
       <Ionicons
         name={note || editing ? 'chatbox-ellipses-outline' : 'add'}
         size={16}

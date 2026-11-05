@@ -71,6 +71,7 @@ export default function WordSenseList({
   const songOf = (block: WordSenseData) => {
     const song = block.songId ? songsById.get(block.songId) : undefined;
     return {
+      song,
       songTitle: song?.songName ?? block.songName ?? (block.songId ? songName : undefined),
       songArtist: song ? song.artistName : block.songId ? artistName : undefined,
     };

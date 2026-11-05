@@ -5,6 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { emojisByCategory } from 'rn-emoji-keyboard';
 import { Colors } from '../constants/theme';
 import SongContextBlock from './SongContextBlock';
+import LineNote from './LineNote';
+import type { Song } from '../types';
+import { getLineNote } from '../utils/lineNotes';
 import SelectableTranslation from './SelectableTranslation';
 import type { WiktionaryDefinition } from '../utils/wiktionary';
 import { suggestEmoji } from '../utils/emojiSuggestion';
@@ -40,6 +43,8 @@ interface WordSenseCardProps {
   /** The song the line is from, shown at the top of the card */
   songTitle?: string;
   songArtist?: string;
+  /** The song the line is from, to keep a note on the line there */
+  song?: Song;
   /** Folded, the card shows only its line, translation and meaning; tap it to open it */
   expanded?: boolean;
   onExpand?: () => void;
@@ -73,6 +78,7 @@ export default function WordSenseCard({
   isRemoved = false,
   songTitle,
   songArtist,
+  song,
   expanded = true,
   onExpand,
 }: WordSenseCardProps) {
@@ -88,6 +94,9 @@ export default function WordSenseCard({
   const shownType = partOfSpeech ?? findPartOfSpeech(definition, definitionSuggestions ?? []);
 
   const open = expanded || isRemoved;
+  // The line's note lives on the song, so it shows on every word's card for this line and under it in Learn
+  const noteSong = fromSong && context.trim() && !isRemoved ? song : undefined;
+  const lineNote = noteSong ? getLineNote(noteSong.lineNotes, context) : undefined;
   const containerStyle = [
     styles.container,
     isNew && !isRemoved && styles.containerNew,
@@ -152,6 +161,12 @@ export default function WordSenseCard({
             {shownType ? <Text style={styles.foldedType}>{shownType}</Text> : null}
             <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
           </View>
+          {lineNote ? (
+            <View style={styles.foldedNote}>
+              <Ionicons name="chatbox-ellipses-outline" size={13} color={Colors.primaryLight} />
+              <Text style={styles.foldedNoteText} numberOfLines={2}>{lineNote}</Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
       </View>
     );
@@ -203,6 +218,7 @@ export default function WordSenseCard({
           )
         ) : null}
       </View>
+      {noteSong ? <LineNote key={context} song={noteSong} line={context} style={styles.lineNote} /> : null}
       <View style={styles.contextRow}>
         {suggestedEmoji ? (
           <TouchableOpacity
@@ -436,6 +452,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 2,
+  },
+  foldedNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  foldedNoteText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  lineNote: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    paddingVertical: 6,
+    backgroundColor: Colors.surfaceLight,
   },
   foldedEmoji: {
     fontSize: 18,

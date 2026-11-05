@@ -529,11 +529,12 @@ export default function LearnScreen() {
   };
 
   // Selects a word or phrase dragged across, e.g. 二人 or "give up", ending at `end` in the line. The word
-  // a tap just saved inside it, e.g. 二, is replaced by it
+  // a tap just saved inside it, e.g. 二, is replaced by it. A phrase of words written apart keeps it, since
+  // the phrase is saved only when Wiktionary has it
   const selectPhrase = (word: string, line: string, lineIndex: number, end: number) => {
     const autoSaved = autoSavedWordRef.current;
     autoSavedWordRef.current = null;
-    if (autoSaved && autoSaved === selectedWord && lineIndex === selectedLineIndex && word.includes(autoSaved)) {
+    if (autoSaved && !/\s/.test(word.trim()) && autoSaved === selectedWord && lineIndex === selectedLineIndex && word.includes(autoSaved)) {
       const entry = findSavedEntry(autoSaved);
       if (entry && entry.contexts.length <= 1) void deleteWord(entry.id);
     }
@@ -984,7 +985,7 @@ export default function LearnScreen() {
   // A tapped new word is saved as Seen, as Look up and Save would: with Wiktionary's first IPA, its
   // recordings, and the meaning found in the line's translation (or else the first) for this line.
   // The saved word's card then quizzes that meaning. A word tapped away from before Wiktionary
-  // answers isn't saved.
+  // answers isn't saved, and neither is a phrase Wiktionary doesn't have.
   const songLanguage = song?.originalLanguages?.[0];
   // Words are ignored per song language, like on the new word card
   const ignoreLanguage = songLanguage || 'unknown';
@@ -1019,6 +1020,9 @@ export default function LearnScreen() {
     }).then(({ word: savedWord, definitions, pronunciation }) => {
       if (cancelled) return;
       setFetchingWord(null);
+      // A phrase of two or more words, e.g. "give up", is saved only when Wiktionary has it; otherwise
+      // its card stays unsaved for the NEW badge to save it
+      if (/\s/.test(savedWord.trim()) && !definitions?.length) return;
       const answer = definitions?.length ? pickDefinition(definitions, selectedTranslationLine) ?? definitions[0].text : undefined;
       const context: WordContext = {
         context: selectedLine ?? '',

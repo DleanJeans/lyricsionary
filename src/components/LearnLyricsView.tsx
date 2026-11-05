@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { isRomanized } from '../constants/languages';
 import { Colors } from '../constants/theme';
@@ -185,6 +185,47 @@ export function LearnLyricsLine({
   );
 }
 
+type LineProps = LearnLyricsViewProps & { line: LearnLine; lineIndex: number };
+
+/**
+ * Whether a line would look the same: only what concerns this line is compared, e.g. whether it's the
+ * highlighted one, so answering a quiz or tapping a word redraws the lines it changes, not all of them
+ */
+function sameLine(prev: LineProps, next: LineProps): boolean {
+  const i = next.lineIndex;
+  for (const key of Object.keys(next) as (keyof LineProps)[]) {
+    if (prev[key] === next[key]) continue;
+    switch (key) {
+      case 'highlightLineIndex':
+        if ((prev.highlightLineIndex === i) !== (next.highlightLineIndex === i)) return false;
+        break;
+      case 'highlightDefinitions':
+        if (next.highlightLineIndex === i && JSON.stringify(prev.highlightDefinitions) !== JSON.stringify(next.highlightDefinitions)) return false;
+        break;
+      case 'dictationLineIndex':
+        if ((prev.dictationLineIndex === i) !== (next.dictationLineIndex === i)) return false;
+        break;
+      case 'revealedOriginals':
+        if (!!prev.revealedOriginals?.has(i) !== !!next.revealedOriginals?.has(i)) return false;
+        break;
+      // What the view draws around the line, not the line
+      case 'lines':
+      case 'scrollToLine':
+      case 'playingLineIndex':
+      case 'foundLineIndex':
+      case 'onlyLines':
+      case 'scrollKey':
+      case 'showSections':
+        break;
+      default:
+        return false;
+    }
+  }
+  return true;
+}
+
+const MemoLyricsLine = memo(LearnLyricsLine, sameLine);
+
 const SECTION_COLORS: Record<SectionKind, string> = {
   intro: Colors.blue,
   verse: Colors.textMuted,
@@ -268,6 +309,12 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     });
   };
 
+  // The latest handlers behind stable ones, so a line isn't redrawn just because they're made anew
+  const latest = useRef(props);
+  latest.current = props;
+  const onTranslationPress = useCallback((lineIndex: number, translationIndex: number) => latest.current.onTranslationPress(lineIndex, translationIndex), []);
+  const onRevealOriginal = useCallback((lineIndex: number) => latest.current.onRevealOriginal?.(lineIndex), []);
+
   const renderLine = (lineIndex: number) => props.onlyLines && !props.onlyLines.has(lineIndex) ? null : (
     <View
       key={lineIndex}
@@ -278,7 +325,13 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
         else lineRefs.current.delete(lineIndex);
       }}
     >
-      <LearnLyricsLine {...props} line={lines[lineIndex]} lineIndex={lineIndex} />
+      <MemoLyricsLine
+        {...props}
+        onTranslationPress={onTranslationPress}
+        onRevealOriginal={onRevealOriginal}
+        line={lines[lineIndex]}
+        lineIndex={lineIndex}
+      />
     </View>
   );
 

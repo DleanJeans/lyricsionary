@@ -26,6 +26,12 @@ interface WordQuizProps {
   onPendingChange?: (pending: boolean) => void;
 }
 
+/**
+ * Resolves once the answer has been drawn. Saving it updates every screen showing saved words, which
+ * takes a while with a big library, so the pick shows first instead of after that.
+ */
+const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
 export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
@@ -67,6 +73,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     setChosen(index);
     onAnswered?.(index === quiz.answerIndex);
     if (practice) return;
+    await afterPaint();
     setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex)) ?? null);
   };
 
@@ -77,6 +84,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     const right = result !== 'wrong';
     onAnswered?.(right);
     if (practice) return;
+    await afterPaint();
     setBefore((await recordQuizAnswer(entry.id, kind, right)) ?? null);
   };
 

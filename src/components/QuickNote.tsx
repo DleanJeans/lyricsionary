@@ -6,7 +6,7 @@ import { Colors } from '../constants/theme';
 import type { WordEntry } from '../types';
 import { useStore } from '../store/useStore';
 
-/** A saved word's note on its card: tap it, or "Add a note", to write it there without opening the word's page */
+/** A saved word's note on its card, tap it to change it there; nothing when it has none, to keep the card short */
 export default function QuickNote({ entry }: { entry: WordEntry }) {
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const [editing, setEditing] = useState(false);
@@ -46,20 +46,17 @@ export default function QuickNote({ entry }: { entry: WordEntry }) {
     );
   }
 
+  if (!entry.note) return null;
+
   return (
     <TouchableOpacity
       style={styles.row}
       onPress={start}
       accessibilityRole="button"
-      accessibilityLabel={entry.note ? 'Edit note' : 'Add a note'}
+      accessibilityLabel="Edit note"
     >
-      <Ionicons
-        name={entry.note ? 'document-text-outline' : 'add'}
-        size={14}
-        color={entry.note ? Colors.textSecondary : Colors.textMuted}
-        style={styles.icon}
-      />
-      <Text style={entry.note ? styles.text : styles.add}>{entry.note || 'Add a note'}</Text>
+      <Ionicons name="document-text-outline" size={14} color={Colors.textSecondary} style={styles.icon} />
+      <Text style={styles.text}>{entry.note}</Text>
     </TouchableOpacity>
   );
 }
@@ -73,6 +70,5 @@ const styles = StyleSheet.create({
   },
   icon: { marginTop: 2 },
   text: { flex: 1, fontSize: 13, color: Colors.textSecondary },
-  add: { fontSize: 12, color: Colors.textMuted },
   input: { flex: 1, fontSize: 13, color: Colors.text, padding: 0 },
 });

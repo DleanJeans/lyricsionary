@@ -44,6 +44,8 @@ interface WordCardProps {
   justSaved?: boolean;
   /** Learn: the word's quiz is waiting for an answer, so Also in hides its lines' translations */
   quizPending?: boolean;
+  /** Learn: the quiz shows its result, with the next quiz time on its row instead of above it */
+  quizAnswered?: boolean;
 }
 
 export default function WordCard({
@@ -67,6 +69,7 @@ export default function WordCard({
   onIgnore,
   justSaved = false,
   quizPending = false,
+  quizAnswered = false,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -194,7 +197,7 @@ export default function WordCard({
                 />
               </View>
             )}
-            <DueLabel entry={item} />
+            {!quizAnswered && <DueLabel entry={item} />}
             <QuickNote entry={item} />
             {quiz}
             <AlsoInSongs item={item} songId={songId} hideTranslations={quizPending} />

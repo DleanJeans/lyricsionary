@@ -7,6 +7,7 @@ import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import { checkTypedAnswer, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
+import DueLabel from './DueLabel';
 
 interface WordQuizProps {
   entry: WordEntry;
@@ -24,6 +25,10 @@ interface WordQuizProps {
   practice?: boolean;
   /** Told whether the quiz is showing and not answered yet, e.g. to hide what would give the answer away */
   onPendingChange?: (pending: boolean) => void;
+  /** Shows when the word's next quiz counts at the end of the result row, e.g. "Next quiz in 4 hours" */
+  showDue?: boolean;
+  /** Told whether the quiz shows its result, e.g. so the word card doesn't show the next quiz time twice */
+  onAnsweredChange?: (answered: boolean) => void;
 }
 
 /**
@@ -33,7 +38,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -60,10 +65,16 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     onPendingChange?.(pending);
   }, [pending, onPendingChange]);
   useLayoutEffect(() => () => onPendingChange?.(false), [onPendingChange]);
+  const shownAnswered = !!quiz && (chosen !== null || typedResult !== null);
+  useLayoutEffect(() => {
+    onAnsweredChange?.(shownAnswered);
+  }, [shownAnswered, onAnsweredChange]);
+  useLayoutEffect(() => () => onAnsweredChange?.(false), [onAnsweredChange]);
 
   if (!quiz || (hidden && chosen === null && typedResult === null)) return null;
 
   const answered = chosen !== null || typedResult !== null;
+  const due = showDue && !practice ? <DueLabel entry={current} inline /> : null;
   const correct = typed ? typedResult === 'right' || typedResult === 'accents' : chosen === quiz.answerIndex;
   const levelUp: MasteryLevel | null =
     before && !undone && current.masteryLevel !== before.masteryLevel ? current.masteryLevel ?? null : null;
@@ -171,6 +182,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
                 {entry.word} is now{' '}
                 <Text style={[styles.resultText, styles.levelText, { color: getMasteryLevelColor(levelUp) }]}>{levelUp}</Text>
               </Text>
+              {due}
               <TouchableOpacity onPress={undo} hitSlop={8} accessibilityRole="button" accessibilityLabel="Undo level change">
                 <Text style={styles.undoText}>Undo</Text>
               </TouchableOpacity>
@@ -192,6 +204,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
               )}
             </Text>
           )}
+          {!levelUp && due}
         </View>
       )}
       {typed && !answered && (

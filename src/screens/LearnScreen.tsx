@@ -175,6 +175,7 @@ export default function LearnScreen() {
   }, [selectedWord]);
   // The selected word's meaning quiz is showing and not answered, so its card hides Also in translations
   const [meaningQuizPending, setMeaningQuizPending] = useState(false);
+  const [meaningQuizAnswered, setMeaningQuizAnswered] = useState(false);
   // A word just removed from its card's level picker, or ignored, offered back with Undo for a few seconds
   const [removedWord, setRemovedWord] = useState<{ entry: WordEntry; ignored?: boolean } | null>(null);
   useEffect(() => {
@@ -1134,6 +1135,8 @@ export default function LearnScreen() {
           if (!correct) revealSelectedTranslation();
         }}
         onPendingChange={setMeaningQuizPending}
+        onAnsweredChange={setMeaningQuizAnswered}
+        showDue
         isWide={isWide}
       />
     );
@@ -1231,6 +1234,7 @@ export default function LearnScreen() {
                   excludeWords: [...quizLine.split(/\s+/).map(removeSpecialChars), ...lineWords(quizLine)].filter(Boolean),
                 }, useStore.getState().words)}
                 onAnswered={() => setAnsweredGaps((prev) => new Set(prev).add(gapWordEntry.id))}
+                showDue
                 isWide={isWide}
               />
             </>
@@ -1271,6 +1275,7 @@ export default function LearnScreen() {
           occurrence={selectedOccurrence}
           quiz={meaningQuiz(selectedWordEntry)}
           quizPending={meaningQuizPending}
+          quizAnswered={meaningQuizAnswered}
           justSaved={justSavedWord?.toLowerCase() === selectedWordEntry.word.toLowerCase()}
         />
       </View>

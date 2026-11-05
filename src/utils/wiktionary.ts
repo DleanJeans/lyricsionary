@@ -407,15 +407,19 @@ export function parseAudio(html: string, language: string): WiktionaryAudio[] {
  * rhymes ("-iːbə") or partial ones ("/-ˈmoɹ/"). Narrow transcriptions ("[ko.ɾaˈθõn]") are used only
  * when there's no phonemic one, e.g. "[ˈʃtɔɪ̯ɐbəˌʁaːtɐ]" for Steuerberater.
  */
-export function parseIpa(html: string, language: string): string[] {
+export function parseIpa(html: string, language: string, { affix = false } = {}): string[] {
   const section = getLanguageSection(html, language);
   if (!section) return [];
   const phonemic: string[] = [];
   const narrow: string[] = [];
+  // An affix's own page writes its IPA with the hyphen, e.g. "/-ɪçkaɪ̯t/" on -igkeit
+  const start = affix ? '' : '-';
+  const phonemicPattern = new RegExp(`^/[^${start}/][^/]*/$`);
+  const narrowPattern = new RegExp(`^\\[[^${start}\\]][^\\]]*\\]$`);
   for (const [, span] of section.matchAll(/<span\b[^>]*class="IPA\b[^"]*"[^>]*>([\s\S]*?)<\/span>/gi)) {
     const text = stripDefinitionHtml(span);
-    if (/^\/[^-/][^/]*\/$/.test(text) && !phonemic.includes(text)) phonemic.push(text);
-    else if (/^\[[^-\]][^\]]*\]$/.test(text) && !narrow.includes(text)) narrow.push(text);
+    if (phonemicPattern.test(text) && !phonemic.includes(text)) phonemic.push(text);
+    else if (narrowPattern.test(text) && !narrow.includes(text)) narrow.push(text);
   }
   return (phonemic.length > 0 ? phonemic : narrow).slice(0, MAX_IPA);
 }
@@ -423,6 +427,98 @@ export function parseIpa(html: string, language: string): string[] {
 export interface WiktionaryPronunciation {
   ipa: string[];
   audio: WiktionaryAudio[];
+  /**
+   * The words the IPA was put together from when the entry has none of its own, e.g. ["leicht", "-igkeit"]
+   * for Leichtigkeit, so it can be shown as a guess
+   */
+  derivedFrom?: string[];
+}
+
+const MAX_PARTS = 4;
+
+/**
+ * The pages a word is made of, from its etymology in the language's section, e.g. ["leicht", "-igkeit"] for
+ * Leichtigkeit's "leicht +‎ -igkeit" or ["Steuer", "Berater"] for Steuerberater. Only a run of links to the
+ * same language joined by "+" counts, so "From Middle High German līhtecheit" gives none.
+ */
+export function parseEtymologyParts(html: string, language: string): string[] {
+  const section = getLanguageSection(html, language);
+  if (!section) return [];
+  const anchor = getWiktionaryLanguage(language).trim().replace(/ /g, '_').toLowerCase();
+  // Every Etymology (or "Etymology 1") heading up to the next heading
+  const etymologies = section.split(/<div\b[^>]*class="[^"]*\bmw-heading\b[^"]*"[^>]*>/i)
+    .filter((part) => /^\s*<h[3-6]\b[^>]*\bid="Etymology(?:_\d+)?"/i.test(part));
+  for (const etymology of etymologies) {
+    for (const [, paragraph] of etymology.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)) {
+      // e.g. '<i class="Latn mention" lang="de"><a href="/wiki/leicht#German" title="leicht">leicht</a></i>'
+      const mentions = [...paragraph.matchAll(/<i\b[^>]*class="[^"]*\bmention\b[^"]*"[^>]*>([\s\S]*?)<\/i>/gi)];
+      let run: string[] = [];
+      let end = -1;
+      for (const mention of mentions) {
+        const href = mention[1].match(/<a\b[^>]*\bhref="\/wiki\/([^"#]+)#([^"]+)"/i);
+        const title = href && decodeURIComponent(href[1]).replace(/_/g, ' ');
+        const sameLanguage = !!href && href[2].toLowerCase() === anchor;
+        // Only glosses, like '(“tax”)', and the "+" between this mention and the one before
+        const between = stripDefinitionHtml(paragraph.slice(end, mention.index))
+          .replace(/\([^)]*\)/g, '')
+          .replace(/[\s\u200e\u200f]/g, '');
+        const joined = end >= 0 && between === '+';
+        if (run.length > 1 && !joined) break;
+        run = title && sameLanguage ? (joined ? [...run, title] : [title]) : [];
+        end = mention.index + mention[0].length;
+      }
+      if (run.length > 1 && run.length <= MAX_PARTS) return run;
+    }
+  }
+  return [];
+}
+
+// Languages whose Wiktionary IPA doesn't mark stress, so none is added to a one-syllable first part
+const UNMARKED_STRESS = new Set(['french', 'japanese', 'korean', 'chinese', 'mandarin', 'cantonese', 'vietnamese', 'thai', 'indonesian', 'malay']);
+
+/**
+ * One IPA from its parts', e.g. /laɪ̯çt/ + /-ɪçkaɪ̯t/ -> /ˈlaɪ̯çtɪçkaɪ̯t/ or /ˈʃtɔɪ̯ɐ/ + /bəˈʁaːtɐ/ ->
+ * /ˈʃtɔɪ̯ɐbəˌʁaːtɐ/. The first stressed word keeps the main stress and later ones get a secondary
+ * stress, as in compounds, unless a stressed suffix takes it, e.g. -ei in Bäckerei.
+ */
+export function joinIpa(parts: { title: string; ipa: string }[], language: string): string {
+  const cleaned = parts.map(({ title, ipa }) => ({
+    suffix: title.startsWith('-'),
+    affix: title.startsWith('-') || title.endsWith('-'),
+    ipa: ipa.trim().replace(/^[/[]|[/\]]$/g, '').replace(/^[-‿]+|[-‿]+$/g, '').trim(),
+  }));
+  const narrow = parts.some(({ ipa }) => ipa.trim().startsWith('['));
+  const stressedSuffix = cleaned.some((part) => part.suffix && part.ipa.includes('ˈ'));
+  const marksStress = !UNMARKED_STRESS.has(getWiktionaryLanguage(language).trim().toLowerCase());
+  let stressed = false;
+  const joined = cleaned.map((part) => {
+    let ipa = part.ipa;
+    if (stressedSuffix && !part.suffix) ipa = ipa.replace(/ˈ/g, '');
+    else if (stressed) ipa = ipa.replace(/ˈ/g, 'ˌ');
+    else if (!ipa.includes('ˈ') && !part.affix && marksStress && !stressedSuffix) ipa = `ˈ${ipa.replace(/^ˌ/, '')}`;
+    if (ipa.includes('ˈ')) stressed = true;
+    return ipa;
+  }).join('');
+  return narrow ? `[${joined}]` : `/${joined}/`;
+}
+
+/** A part's first IPA, from its page or, failing that, from its own parts, e.g. -igkeit's -ig + -keit */
+async function getPartIpa(title: string, language: string, depth: number): Promise<string | undefined> {
+  const html = await fetchPageHtml(title);
+  if (!html) return undefined;
+  const affix = title.startsWith('-') || title.endsWith('-');
+  const ipa = parseIpa(html, language, { affix })[0];
+  if (ipa || depth <= 0) return ipa;
+  return (await getDerivedIpa(html, language, depth - 1))?.ipa;
+}
+
+/** The IPA put together from the word's etymology parts, when every part has one */
+async function getDerivedIpa(html: string, language: string, depth: number): Promise<{ ipa: string; parts: string[] } | undefined> {
+  const parts = parseEtymologyParts(html, language);
+  if (parts.length < 2) return undefined;
+  const ipas = await Promise.all(parts.map((title) => getPartIpa(title, language, depth)));
+  if (ipas.some((ipa) => !ipa)) return undefined;
+  return { ipa: joinIpa(parts.map((title, i) => ({ title, ipa: ipas[i]! })), language), parts };
 }
 
 const pageRequests = new Map<string, Promise<string | null>>();
@@ -492,18 +588,27 @@ export async function getWiktionaryPronunciation(word: string, language: string)
     return null;
   }
   const pronunciation = found?.pronunciation ?? { ipa: [], audio: [] };
-  // Only an inflection's ending is silent, e.g. not moment's
   const section = found && getLanguageSection(found.html, language);
-  if (pronunciation.ipa.length > 0 || !section || !isFormOf(section)) return pronunciation;
-  for (const form of soundAlikeForms(lower, language)) {
-    try {
-      const html = await fetchPageHtml(form);
-      const ipa = html ? parseIpa(html, language) : [];
-      // Only the first, since the page lists others too, e.g. rire's /ʁjɑ̃/ besides /ʁiʁ/
-      if (ipa.length > 0) return { ...pronunciation, ipa: ipa.slice(0, 1) };
-    } catch {
-      // The word's own recordings are still worth showing
+  if (pronunciation.ipa.length > 0 || !found || !section) return pronunciation;
+  // Only an inflection's ending is silent, e.g. not moment's
+  if (isFormOf(section)) {
+    for (const form of soundAlikeForms(lower, language)) {
+      try {
+        const html = await fetchPageHtml(form);
+        const ipa = html ? parseIpa(html, language) : [];
+        // Only the first, since the page lists others too, e.g. rire's /ʁjɑ̃/ besides /ʁiʁ/
+        if (ipa.length > 0) return { ...pronunciation, ipa: ipa.slice(0, 1) };
+      } catch {
+        // The word's own recordings are still worth showing
+      }
     }
+  }
+  try {
+    // e.g. Leichtigkeit from leicht +‎ -igkeit
+    const derived = await getDerivedIpa(found.html, language, 1);
+    if (derived) return { ...pronunciation, ipa: [derived.ipa], derivedFrom: derived.parts };
+  } catch {
+    // The word's own recordings are still worth showing
   }
   return pronunciation;
 }

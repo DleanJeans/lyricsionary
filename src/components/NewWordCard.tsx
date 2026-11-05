@@ -130,6 +130,11 @@ export default function NewWordCard({
           )}
           <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
           {wiktionary.ipa.length > 0 && <Text style={styles.ipaText}>{wiktionary.ipa.join(', ')}</Text>}
+          {wiktionary.derivedFrom && (
+            <Text style={styles.derivedText} accessibilityLabel={`IPA guessed from ${wiktionary.derivedFrom.join(' and ')}`}>
+              ≈ {wiktionary.derivedFrom.join(' + ')}
+            </Text>
+          )}
         </View>
         <View style={styles.headerTools}>
           {showSplit && !isEditingSplit && (
@@ -321,6 +326,11 @@ const styles = StyleSheet.create({
   ipaText: {
     color: Colors.textSecondary,
     fontSize: 15,
+  },
+  derivedText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   loadingRow: {
     flexDirection: 'row',

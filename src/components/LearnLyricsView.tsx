@@ -38,8 +38,11 @@ interface LearnLyricsViewProps {
   reverse?: boolean;
   revealedOriginals?: Set<number>;
   onRevealOriginal?: (lineIndex: number) => void;
-  /** Scrolls the line into view each time key changes */
-  scrollToLine?: { index: number; key: number } | null;
+  /**
+   * Scrolls the line into view each time key changes. With center, the line is kept in the middle while the
+   * lyrics area resizes for a short while after, e.g. as a tapped word's card opens above it
+   */
+  scrollToLine?: { index: number; key: number; center?: boolean } | null;
   /** A line hidden for dictation, to write it from listening */
   dictationLineIndex?: number | null;
   /** Shows only these lines, e.g. the ones with words answered wrong lately */
@@ -210,8 +213,36 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
   const contentRef = useRef<View>(null);
   const lineRefs = useRef(new Map<number, View>());
 
+  // The line to keep in the middle until when, and how tall the lyrics area is
+  const centeringRef = useRef<{ index: number; until: number } | null>(null);
+  const viewportHeightRef = useRef(0);
+  const centerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Centers once the lyrics area stops resizing, e.g. after the word card has slid open
+  const centerSoon = () => {
+    if (centerTimerRef.current) clearTimeout(centerTimerRef.current);
+    centerTimerRef.current = setTimeout(() => {
+      const target = centeringRef.current;
+      if (!target || Date.now() > target.until) return;
+      const line = lineRefs.current.get(target.index);
+      if (!line || !contentRef.current) return;
+      line.measureLayout(contentRef.current, (_x, y, _w, h) =>
+        scrollRef.current?.scrollTo({ y: Math.max(0, y + h / 2 - viewportHeightRef.current / 2), animated: true })
+      );
+    }, 80);
+  };
+  useEffect(() => () => {
+    if (centerTimerRef.current) clearTimeout(centerTimerRef.current);
+  }, []);
+
   useEffect(() => {
     if (!scrollToLine) return;
+    if (scrollToLine.center) {
+      // Long enough for a looked-up word's quiz to show up
+      centeringRef.current = { index: scrollToLine.index, until: Date.now() + 3000 };
+      centerSoon();
+      return;
+    }
+    centeringRef.current = null;
     // After the lines have laid out
     const timer = setTimeout(() => {
       const line = lineRefs.current.get(scrollToLine.index);
@@ -278,6 +309,14 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
       ref={scrollRef}
       style={styles.lyricsScroll}
       contentContainerStyle={styles.lyricsContent}
+      onLayout={(event) => {
+        viewportHeightRef.current = event.nativeEvent.layout.height;
+        if (centeringRef.current) centerSoon();
+      }}
+      // Scrolling by hand stops the line being brought back to the middle
+      onScrollBeginDrag={() => {
+        centeringRef.current = null;
+      }}
       onContentSizeChange={(_w, h) => {
         if (h > 0 && lines.length > 0) restoreScroll();
       }}

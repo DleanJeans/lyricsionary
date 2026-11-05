@@ -332,7 +332,7 @@ export default function LearnScreen() {
   useEffect(() => setGapElsewhere(Math.random() < 1 / 3), [gapTarget]);
 
   // Opened at a word, e.g. from another song's word card: select it on its line and scroll there
-  const [scrollToLine, setScrollToLine] = useState<{ index: number; key: number } | null>(null);
+  const [scrollToLine, setScrollToLine] = useState<{ index: number; key: number; center?: boolean } | null>(null);
 
   // Every line in this song: where the selected word comes up, stepped through from its card
   const wordSpots = useMemo(
@@ -511,6 +511,8 @@ export default function LearnScreen() {
       setSelectedLine(line);
       setSelectedLineIndex(lineIndex);
       setSelectedOccurrence(occurrence);
+      // The word card opening above the lyrics pushes the line down, so it's brought back to the middle
+      setScrollToLine({ index: lineIndex, key: Date.now(), center: true });
     }
   };
 
@@ -527,6 +529,7 @@ export default function LearnScreen() {
     setSelectedLine(line);
     setSelectedLineIndex(lineIndex);
     setSelectedOccurrence(Math.max(1, line.slice(0, end).split(word).length - 1));
+    setScrollToLine({ index: lineIndex, key: Date.now(), center: true });
   };
 
   // Where each word of each line is laid out, to find the words a drag goes across

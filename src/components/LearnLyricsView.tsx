@@ -39,8 +39,8 @@ interface LearnLyricsViewProps {
   revealedOriginals?: Set<number>;
   onRevealOriginal?: (lineIndex: number) => void;
   /**
-   * Scrolls the line into view each time key changes. With center, the line is kept in the middle while the
-   * lyrics area resizes for a short while after, e.g. as a tapped word's card opens above it
+   * Scrolls the line into view each time key changes. With center, the line is kept in the middle whenever the
+   * lyrics area resizes after, e.g. as a tapped word's card opens above it or its quiz shows up, until scrolled by hand
    */
   scrollToLine?: { index: number; key: number; center?: boolean } | null;
   /** A line hidden for dictation, to write it from listening */
@@ -254,8 +254,8 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
   const contentRef = useRef<View>(null);
   const lineRefs = useRef(new Map<number, View>());
 
-  // The line to keep in the middle until when, and how tall the lyrics area is
-  const centeringRef = useRef<{ index: number; until: number } | null>(null);
+  // The line to keep in the middle, and how tall the lyrics area is
+  const centeringRef = useRef<number | null>(null);
   const viewportHeightRef = useRef(0);
   const centerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Centers once the lyrics area stops resizing, e.g. after the word card has slid open
@@ -263,8 +263,8 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     if (centerTimerRef.current) clearTimeout(centerTimerRef.current);
     centerTimerRef.current = setTimeout(() => {
       const target = centeringRef.current;
-      if (!target || Date.now() > target.until) return;
-      const line = lineRefs.current.get(target.index);
+      if (target === null) return;
+      const line = lineRefs.current.get(target);
       if (!line || !contentRef.current) return;
       line.measureLayout(contentRef.current, (_x, y, _w, h) =>
         scrollRef.current?.scrollTo({ y: Math.max(0, y + h / 2 - viewportHeightRef.current / 2), animated: true })
@@ -278,8 +278,7 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
   useEffect(() => {
     if (!scrollToLine) return;
     if (scrollToLine.center) {
-      // Long enough for a looked-up word's quiz to show up
-      centeringRef.current = { index: scrollToLine.index, until: Date.now() + 3000 };
+      centeringRef.current = scrollToLine.index;
       centerSoon();
       return;
     }
@@ -364,7 +363,7 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
       contentContainerStyle={styles.lyricsContent}
       onLayout={(event) => {
         viewportHeightRef.current = event.nativeEvent.layout.height;
-        if (centeringRef.current) centerSoon();
+        if (centeringRef.current !== null) centerSoon();
       }}
       // Scrolling by hand stops the line being brought back to the middle
       onScrollBeginDrag={() => {

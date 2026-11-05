@@ -162,6 +162,18 @@ export default function LearnScreen() {
   // Words (lowercased) whose meaning quiz was answered since the song opened, so tapping one again
   // doesn't ask it again
   const [answeredMeanings, setAnsweredMeanings] = useState<Set<string>>(new Set());
+  // The tap whose word was opened in Look Up (word|line|occurrence): its meaning quiz stays hidden on
+  // return, since Look Up showed the answer. Another tap, or the same one later, asks it again.
+  const [lookedUpTap, setLookedUpTap] = useState<string | null>(null);
+  const selectedTap = selectedWord ? `${selectedWord.toLowerCase()}|${selectedLineIndex}|${selectedOccurrence}` : null;
+  const selectedTapRef = useRef(selectedTap);
+  selectedTapRef.current = selectedTap;
+  useEffect(() => navigation.addListener('blur', () => {
+    if (selectedTapRef.current) setLookedUpTap(selectedTapRef.current);
+  }), [navigation]);
+  useEffect(() => {
+    if (!selectedWord) setLookedUpTap(null);
+  }, [selectedWord]);
   // The selected word's meaning quiz is showing and not answered, so its card hides Also in translations
   const [meaningQuizPending, setMeaningQuizPending] = useState(false);
   // A word just removed from its card's level picker, or ignored, offered back with Undo for a few seconds
@@ -1116,7 +1128,7 @@ export default function LearnScreen() {
         kind="meaning"
         prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> mean here?</>}
         build={() => buildMeaningQuiz({ entry, ...sense, songId: song.id, excludeWords: parts }, useStore.getState().words)}
-        hidden={selectedTranslationSeen}
+        hidden={selectedTranslationSeen || lookedUpTap === selectedTap}
         alreadyAnswered={answeredMeanings.has(entry.word.toLowerCase())}
         onAnswered={(correct) => {
           setAnsweredMeanings((prev) => new Set(prev).add(entry.word.toLowerCase()));

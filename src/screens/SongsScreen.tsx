@@ -26,7 +26,7 @@ import HighlightedText from '../components/HighlightedText';
 import LanguageTabButtons from '../components/LanguageTabButtons';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
-import { useWordProgress } from '../hooks/useWordProgress';
+import { useKnownWords, useWordProgress } from '../hooks/useWordProgress';
 import SongLevelBar from '../components/SongLevelBar';
 import ProgressRing from '../components/ProgressRing';
 import SpotifyNowPlaying from '../components/SpotifyNowPlaying';
@@ -41,6 +41,28 @@ const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'nextToLearn', 'aZ', 
 type SortMode = (typeof SORT_MODES)[number];
 const newWordsLabel = (count: number) => (count === 0 ? 'Every word known' : `${count} new ${count === 1 ? 'word' : 'words'} to go`);
 const isSortMode = (value: unknown): value is SortMode => SORT_MODES.includes(value as SortMode);
+
+/** The saved words index for a song's languages, built once per set of languages instead of per song */
+function makeWordIndexFor(words: WordEntry[]) {
+  const indexes = new Map<string, Map<string, WordEntry>>();
+  const starts = new Map<Map<string, WordEntry>, Set<string>>();
+  return Object.assign(
+    (languages: string[] | undefined) => {
+      const key = (languages ?? []).join('\u0000');
+      let index = indexes.get(key);
+      if (!index) indexes.set(key, (index = songWordIndex(words, languages)));
+      return index;
+    },
+    {
+      // The first words of the index's phrases, to look for phrases only from them
+      phraseStarts: (index: Map<string, WordEntry>) => {
+        let set = starts.get(index);
+        if (!set) starts.set(index, (set = phraseStartsOf(index.keys())));
+        return set;
+      },
+    }
+  );
+}
 
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
@@ -174,27 +196,10 @@ export default function SongsScreen() {
   const statsSongs = showStats || needsStats ? songs : NO_SONGS;
   const wordProgress = useWordProgress(statsSongs);
   const words = useStore((s) => s.words);
-  // The saved words index for a song's languages, built once per set of languages instead of per song
-  const wordIndexFor = useMemo(() => {
-    const indexes = new Map<string, Map<string, WordEntry>>();
-    const starts = new Map<Map<string, WordEntry>, Set<string>>();
-    return Object.assign(
-      (languages: string[] | undefined) => {
-        const key = (languages ?? []).join('\u0000');
-        let index = indexes.get(key);
-        if (!index) indexes.set(key, (index = songWordIndex(words, languages)));
-        return index;
-      },
-      {
-        // The first words of the index's phrases, to look for phrases only from them
-        phraseStarts: (index: Map<string, WordEntry>) => {
-          let set = starts.get(index);
-          if (!set) starts.set(index, (set = phraseStartsOf(index.keys())));
-          return set;
-        },
-      }
-    );
-  }, [words]);
+  const wordIndexFor = useMemo(() => makeWordIndexFor(words), [words]);
+  // The same from the words as they're known, which a quiz answer doesn't change, to find each song's words
+  const knownWords = useKnownWords();
+  const knownIndexFor = useMemo(() => makeWordIndexFor(knownWords), [knownWords]);
   // Saved words each song has to fill in, the same gaps Learn blanks out
   const songGapsCache = useMemo(() => new WeakMap<Song, number>(), [wordIndexFor]);
   const songGaps = useMemo(() => {
@@ -212,31 +217,32 @@ export default function SongsScreen() {
     return gaps;
   }, [statsSongs, wordIndexFor, songGapsCache]);
 
-  // Each song's saved words: the ones in its lyrics and the ones saved from it. Kept per song until the
-  // saved words change, so opening a song, which updates just its open count, doesn't read every song again.
-  const songWordsCache = useMemo(() => new WeakMap<Song, WordEntry[]>(), [wordIndexFor]);
+  // Each song's saved words: the ones in its lyrics and the ones saved from it. Kept per song until a
+  // word is saved or removed, so opening a song, which updates just its open count, or answering a quiz,
+  // which updates just a word's level, doesn't read every song again.
+  const songWordIdsCache = useMemo(() => new WeakMap<Song, string[]>(), [knownIndexFor]);
   const songWords = useMemo(() => {
+    const byId = new Map(words.map((word) => [word.id, word]));
     const bySong = new Map<string, WordEntry[]>();
     for (const song of statsSongs) {
-      const cached = songWordsCache.get(song);
-      if (cached) {
-        bySong.set(song.id, cached);
-        continue;
+      let ids = songWordIdsCache.get(song);
+      if (!ids) {
+        const index = knownIndexFor(song.originalLanguages);
+        const found = new Set<string>();
+        // Read like the song's word count, so phrases, Chinese words and Korean stems are found too
+        countKnownWords(song.originalLyrics, (word) => {
+          const entry = index.get(word.toLowerCase());
+          if (entry) found.add(entry.id);
+          return !!entry;
+        }, song.originalLanguages, undefined, knownIndexFor.phraseStarts(index));
+        for (const word of knownWords) if (word.contexts?.some((c) => c.songId === song.id)) found.add(word.id);
+        ids = [...found];
+        songWordIdsCache.set(song, ids);
       }
-      const index = wordIndexFor(song.originalLanguages);
-      const entries = new Set<WordEntry>();
-      // Read like the song's word count, so phrases, Chinese words and Korean stems are found too
-      countKnownWords(song.originalLyrics, (word) => {
-        const entry = index.get(word.toLowerCase());
-        if (entry) entries.add(entry);
-        return !!entry;
-      }, song.originalLanguages, undefined, wordIndexFor.phraseStarts(index));
-      for (const word of words) if (word.contexts?.some((c) => c.songId === song.id)) entries.add(word);
-      songWordsCache.set(song, [...entries]);
-      bySong.set(song.id, songWordsCache.get(song)!);
+      bySong.set(song.id, ids.map((id) => byId.get(id)).filter((entry): entry is WordEntry => !!entry));
     }
     return bySong;
-  }, [statsSongs, words, wordIndexFor, songWordsCache]);
+  }, [statsSongs, words, knownWords, knownIndexFor, songWordIdsCache]);
 
   // Each song's saved words by level
   const songLevels = useMemo(() => {

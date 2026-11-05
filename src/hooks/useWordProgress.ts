@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { removeStressMarks } from '../utils/russianStress';
 import { getLanguageNameFromCode } from '../constants/languages';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
-import { Song } from '../types';
+import { Song, WordEntry } from '../types';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
 import { phraseStartsOf } from '../utils/cjkWords';
 import { spellingsOf } from '../utils/wordForms';
@@ -19,11 +19,29 @@ export interface WordProgress {
 }
 
 /**
+ * The saved words, kept the same until a word is saved, removed, respelled or saved from another
+ * song. Which words are known is all progress needs, so answering a quiz, which changes just a word's
+ * level, doesn't count every song's words again. Read levels from the store's words, not these.
+ */
+export function useKnownWords(): WordEntry[] {
+  const words = useStore((s) => s.words);
+  const key = useMemo(
+    () => words.map((entry) =>
+      [entry.id, entry.language, ...spellingsOf(entry), ...(entry.contexts ?? []).map((c) => c.songId ?? '')].join('\u0001')
+    ).join('\u0000'),
+    [words]
+  );
+  const kept = useRef<{ key: string; words: WordEntry[] } | null>(null);
+  if (kept.current?.key !== key) kept.current = { key, words };
+  return kept.current.words;
+}
+
+/**
  * Makes a checker for whether a song's word is known (saved, ignored or a compound of saved words),
  * with the first words of the known phrases (phraseStartsOf) to look for phrases from
  */
 function useKnownWordChecker(): ((song: Song) => (word: string) => boolean) & { phraseStarts: Set<string> } {
-  const words = useStore((s) => s.words);
+  const words = useKnownWords();
   const ignoredWords = useStore((s) => s.ignoredWords);
   const compoundSplits = useStore((s) => s.compoundSplits);
 

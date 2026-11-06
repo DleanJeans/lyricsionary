@@ -143,6 +143,11 @@ export default function LearnScreen() {
     [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong, song?.originalLanguages]
   );
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  // The X on the word card folds it away first on narrow screens, then clears the word
+  const [closingWordCard, setClosingWordCard] = useState(false);
+  // A new word (or none) stops the folding, so tapping another word mid-close opens the card back up
+  useEffect(() => setClosingWordCard(false), [selectedWord]);
+  const closeWordCard = useCallback(() => (isWide ? setSelectedWord(null) : setClosingWordCard(true)), [isWide]);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
   const [selectedOccurrence, setSelectedOccurrence] = useState<number>(1);
@@ -1253,7 +1258,7 @@ export default function LearnScreen() {
           item={selectedWordEntry}
           showDelete={false}
           showClose={true}
-          onClose={() => setSelectedWord(null)}
+          onClose={closeWordCard}
           onRemove={(item) => {
             // Closed first, so the word isn't saved again as a new word being tapped
             setSelectedWord(null);
@@ -1290,7 +1295,7 @@ export default function LearnScreen() {
         lyricsLine={selectedLine ?? undefined}
         translationLine={selectedTranslationLine}
         originalLanguages={song.originalLanguages}
-        onClose={() => setSelectedWord(null)}
+        onClose={closeWordCard}
         isWide={isWide}
         occurrence={selectedOccurrence}
         loading={fetchingWord === selectedWord}
@@ -1515,7 +1520,11 @@ export default function LearnScreen() {
       ) : (
         /* ── Narrow: stacked ── */
         <View style={styles.narrowMain}>
-          {wordPanel && <AnimatedHeight appear>{wordPanel}</AnimatedHeight>}
+          {wordPanel && (
+            <AnimatedHeight appear closing={closingWordCard} onClosed={() => setSelectedWord(null)}>
+              {wordPanel}
+            </AnimatedHeight>
+          )}
           {actionBar}
           {lyricsView}
         </View>

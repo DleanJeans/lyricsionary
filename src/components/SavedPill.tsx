@@ -9,7 +9,7 @@ import { Text } from './Text';
 export default function SavedPill() {
   return (
     <Animated.View
-      entering={FadeIn.duration(300)}
+      entering={FadeIn.duration(1000)}
       exiting={FadeOut.duration(200)}
       style={styles.pill}
       accessibilityLabel="Saved"

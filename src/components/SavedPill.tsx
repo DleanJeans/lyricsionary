@@ -1,16 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
 import { Text } from './Text';
 
-/** A "Saved" check that pops in beside a word just saved, then fades when it's taken away */
+/** A "Saved" check that fades in gently beside a word just saved and stays while its card is open */
 export default function SavedPill() {
   return (
     <Animated.View
-      entering={ZoomIn.springify().damping(12)}
-      exiting={FadeOut.duration(400)}
+      entering={FadeIn.duration(300)}
+      exiting={FadeOut.duration(200)}
       style={styles.pill}
       accessibilityLabel="Saved"
     >

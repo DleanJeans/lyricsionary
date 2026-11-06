@@ -993,13 +993,11 @@ export default function LearnScreen() {
   const selectedWordIgnored = !!selectedWord && !!songLanguage && isIgnoredWord(selectedWord, songLanguage);
   // The tapped word whose meaning and IPA are still being fetched, so its card shows them loading
   const [fetchingWord, setFetchingWord] = useState<string | null>(null);
-  // The word a tap just saved, whose card shows Saved for a moment
+  // The word a tap just saved, whose card keeps showing Saved until another word is tapped or the card closes
   const [justSavedWord, setJustSavedWord] = useState<string | null>(null);
   useEffect(() => {
-    if (!justSavedWord) return;
-    const timer = setTimeout(() => setJustSavedWord(null), 1800);
-    return () => clearTimeout(timer);
-  }, [justSavedWord]);
+    setJustSavedWord(null);
+  }, [selectedWord]);
   useEffect(() => {
     if (!selectedWord || selectedWordSaved || selectedWordIgnored || !songLanguage || !song) return;
     let cancelled = false;

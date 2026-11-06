@@ -2,8 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
+import { useStore } from '../store/useStore';
 import { pickReviewItems, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
+import { lineTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
 import PronunciationAudio from './PronunciationAudio';
 import WordQuiz from './WordQuiz';
@@ -147,11 +149,18 @@ function ReviewQuestion({
 }) {
   const { entry, kind, line, wordAt, hint, listen } = item;
   const lineWord = line && wordAt ? line.slice(wordAt.start, wordAt.end) : null;
-  const songName = entry.contexts?.find((c) => c.context?.trim() === line)?.songName;
+  const context = entry.contexts?.find((c) => c.context?.trim() === line);
+  const songName = context?.songName;
+  const song = useStore((s) => (context?.songId ? s.songs.find((x) => x.id === context.songId) : undefined));
+  // The translation saved with the word, or else the song's translation of the line
+  const translation = line ? context?.translation?.trim() || (song ? lineTranslation(song, line) : null) : null;
   // A lyric quiz blanks the word out of the line, and shows no line it couldn't find the word in. A
   // listening quiz shows the line and meaning once answered.
   const showLine = !!line && (kind === 'meaning' || !!lineWord) && (!listen || answered);
-  const showHint = !!hint && (!listen || answered);
+  // A lyric quiz fills the gap from the line's translation when there is one, else from the meaning.
+  // A meaning quiz shows the translation once answered, since it would give the meaning away.
+  const shownHint = kind === 'lyric' ? (lineWord && translation) || hint : answered ? translation : null;
+  const showHint = !!shownHint && (!listen || answered);
   return (
     <View style={styles.question}>
       {showLine && (
@@ -173,7 +182,7 @@ function ReviewQuestion({
       )}
       {showLine && songName ? <Text style={styles.songName}>{songName}</Text> : null}
       {listen && !answered && <PronunciationAudio audio={entry.audio ?? []} autoPlay />}
-      {showHint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {showHint ? <Text style={styles.hint}>{shownHint}</Text> : null}
       <WordQuiz
         entry={entry}
         kind={kind}

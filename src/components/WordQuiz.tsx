@@ -5,7 +5,7 @@ import Animated from 'react-native-reanimated';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
-import { checkTypedAnswer, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor } from '../utils/wordQuiz';
+import { checkTypedAnswer, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
 import DueLabel from './DueLabel';
 
@@ -53,12 +53,16 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const [unanswered] = useState(entry);
   const [chosen, setChosen] = useState<number | null>(null);
   const [before, setBefore] = useState<WordEntry | null>(null);
+  // The word as the answer will leave it, shown right away since saving can take a few seconds
+  const [predicted, setPredicted] = useState<WordEntry | null>(null);
   const [undone, setUndone] = useState(false);
   // A Recalled word is typed instead of picked
   const [typed] = useState(() => isTypedQuiz(entry.masteryLevel, kind));
   const [typedText, setTypedText] = useState('');
   const [typedResult, setTypedResult] = useState<'right' | 'accents' | 'wrong' | null>(null);
-  const current = useStore((s) => s.words.find((w) => w.id === entry.id)) ?? entry;
+  const stored = useStore((s) => s.words.find((w) => w.id === entry.id)) ?? entry;
+  // Until the answer is saved, what it will save; after that (and on Undo) the saved word
+  const current = predicted && !before && !undone ? predicted : stored;
   // Before paint, so nothing the quiz would give away shows for a frame
   const pending = !!quiz && !hidden && chosen === null && typedResult === null;
   useLayoutEffect(() => {
@@ -77,13 +81,18 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const due = showDue && !practice ? <DueLabel entry={current} inline /> : null;
   const correct = typed ? typedResult === 'right' || typedResult === 'accents' : chosen === quiz.answerIndex;
   const levelUp: MasteryLevel | null =
-    before && !undone && current.masteryLevel !== before.masteryLevel ? current.masteryLevel ?? null : null;
+    answered && !undone && (current.masteryLevel ?? 'Seen') !== (unanswered.masteryLevel ?? 'Seen') ? current.masteryLevel ?? null : null;
+
+  /** Shows the answer's level change before it's saved */
+  const predict = (right: boolean) =>
+    setPredicted({ ...stored, ...recordAnswer(stored.masteryLevel, stored.quiz, kind, right, Date.now()) });
 
   const choose = async (index: number) => {
     if (answered) return;
     setChosen(index);
     onAnswered?.(index === quiz.answerIndex);
     if (practice) return;
+    predict(index === quiz.answerIndex);
     await afterPaint();
     setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex)) ?? null);
   };
@@ -95,6 +104,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     const right = result !== 'wrong';
     onAnswered?.(right);
     if (practice) return;
+    predict(right);
     await afterPaint();
     setBefore((await recordQuizAnswer(entry.id, kind, right)) ?? null);
   };
@@ -183,9 +193,12 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
                 <Text style={[styles.resultText, styles.levelText, { color: getMasteryLevelColor(levelUp) }]}>{levelUp}</Text>
               </Text>
               {due}
-              <TouchableOpacity onPress={undo} hitSlop={8} accessibilityRole="button" accessibilityLabel="Undo level change">
-                <Text style={styles.undoText}>Undo</Text>
-              </TouchableOpacity>
+              {/* Offered once the answer is saved, so Undo has the level to go back to */}
+              {before && (
+                <TouchableOpacity onPress={undo} hitSlop={8} accessibilityRole="button" accessibilityLabel="Undo level change">
+                  <Text style={styles.undoText}>Undo</Text>
+                </TouchableOpacity>
+              )}
             </>
           ) : (
             <Text style={styles.resultText}>

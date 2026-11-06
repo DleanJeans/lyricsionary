@@ -29,8 +29,8 @@ interface WordQuizProps {
   showDue?: boolean;
   /** Told whether the quiz shows its result, e.g. so the word card doesn't show the next quiz time twice */
   onAnsweredChange?: (answered: boolean) => void;
-  /** Shown in place of a quiz that's hidden before it was answered, e.g. a Look up button */
-  hiddenContent?: ReactNode;
+  /** A Look up button, shown in place of a quiz that's hidden before it was answered and under its result */
+  lookUp?: ReactNode;
 }
 
 /**
@@ -40,7 +40,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, hiddenContent }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, lookUp }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -78,7 +78,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   useLayoutEffect(() => () => onAnsweredChange?.(false), [onAnsweredChange]);
 
   if (!quiz) return null;
-  if (hidden && chosen === null && typedResult === null) return <>{hiddenContent ?? null}</>;
+  if (hidden && chosen === null && typedResult === null) return <>{lookUp ?? null}</>;
 
   const answered = chosen !== null || typedResult !== null;
   const due = showDue && !practice ? <DueLabel entry={current} inline /> : null;
@@ -229,6 +229,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
         </TouchableOpacity>
       )}
       {answered && !practice && <LevelTrack from={unanswered} entry={current} />}
+      {answered && lookUp}
     </View>
   );
 }

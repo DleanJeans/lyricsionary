@@ -1141,8 +1141,8 @@ export default function LearnScreen() {
         onPendingChange={setMeaningQuizPending}
         onAnsweredChange={setMeaningQuizAnswered}
         showDue
-        hiddenContent={
-          // Hidden because the answer was just seen, so Look Up is one tap away instead of a quiz
+        lookUp={
+          // Look Up one tap away once the quiz is answered, or instead of it when it's hidden
           <TouchableOpacity
             style={styles.quizLookUpButton}
             onPress={() => navigation.navigate('WordLookup', {

@@ -11,7 +11,7 @@ import { getLineNote } from '../utils/lineNotes';
 import SelectableTranslation from './SelectableTranslation';
 import type { WiktionaryDefinition } from '../utils/wiktionary';
 import { suggestEmoji } from '../utils/emojiSuggestion';
-import { findPartOfSpeech, PARTS_OF_SPEECH, type PartOfSpeech } from '../utils/partOfSpeech';
+import { findPartOfSpeech, PARTS_OF_SPEECH, shownDefinition, typedDefinition, type PartOfSpeech } from '../utils/partOfSpeech';
 
 interface WordSenseCardProps {
   context: string;
@@ -92,6 +92,7 @@ export default function WordSenseCard({
   );
   // The chosen type, otherwise the one saving would find from the definition
   const shownType = partOfSpeech ?? findPartOfSpeech(definition, definitionSuggestions ?? []);
+  const shown = shownDefinition(definition, shownType);
 
   const open = expanded || isRemoved;
   // The line's note lives on the song, so it shows on every word's card for this line and under it in Learn
@@ -143,7 +144,7 @@ export default function WordSenseCard({
           style={styles.body}
           onPress={onExpand}
           accessibilityRole="button"
-          accessibilityLabel={`Edit context: ${definition || context}`}
+          accessibilityLabel={`Edit context: ${shown || context}`}
         >
           {fromSong && context ? (
             <SongContextBlock context={context} word={word} occurrence={occurrence} translation={translation} showSongName={false} />
@@ -156,7 +157,7 @@ export default function WordSenseCard({
           <View style={styles.foldedSummary}>
             {emoji ? <Text style={styles.foldedEmoji}>{emoji}</Text> : null}
             <Text style={[styles.foldedDefinition, !definition && styles.foldedDefinitionEmpty]} numberOfLines={1}>
-              {definition || 'No definition yet'}
+              {shown || 'No definition yet'}
             </Text>
             {shownType ? <Text style={styles.foldedType}>{shownType}</Text> : null}
             <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
@@ -243,8 +244,8 @@ export default function WordSenseCard({
         <View style={styles.contextDefinitionField}>
           <TextInput
             style={[styles.rowInput, canLowercase && styles.fieldInputWithButton]}
-            value={definition}
-            onChangeText={onDefinitionChange}
+            value={shown}
+            onChangeText={(typed) => onDefinitionChange(typedDefinition(typed, definition, shownType))}
             placeholder="Definition"
             numberOfLines={1}
             placeholderTextColor={Colors.textMuted}
@@ -330,13 +331,13 @@ export default function WordSenseCard({
                 key={`${suggestion.partOfSpeech}-${suggestion.text}`}
                 style={styles.suggestionButton}
                 onPress={() => onDefinitionChange(suggestion.text)}
-                accessibilityLabel={`Use definition: ${suggestion.text}`}
+                accessibilityLabel={`Use definition: ${shownDefinition(suggestion.text, suggestion.partOfSpeech)}`}
               >
                 <Text style={styles.suggestionText} numberOfLines={2}>
                   {suggestion.partOfSpeech ? (
                     <Text style={styles.suggestionPartOfSpeech}>{suggestion.partOfSpeech.toLowerCase()} </Text>
                   ) : null}
-                  {suggestion.text}
+                  {shownDefinition(suggestion.text, suggestion.partOfSpeech)}
                 </Text>
               </TouchableOpacity>
             ))}

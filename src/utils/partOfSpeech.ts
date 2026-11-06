@@ -92,3 +92,26 @@ export function fillPartsOfSpeech<T extends { definition?: string; partOfSpeech?
   });
   return changed ? filled : null;
 }
+
+// A verb's "to" at the start of each meaning, e.g. "to take from; to hold"
+const INFINITIVE_TO = /(^|[;,]\s*)to\s+(?=\S)/gi;
+
+/**
+ * A definition as shown, without a verb's "to", e.g. "to take from; to hold" -> "take from; hold".
+ * Saved definitions keep their "to", which tells verbs apart when highlighting the translation.
+ * Definitions with no type yet lose it too, since one starting with "to" is almost always a verb.
+ */
+export function shownDefinition(text: string, partOfSpeech?: string): string {
+  const type = normalizePartOfSpeech(partOfSpeech);
+  if (type && type !== 'verb') return text;
+  return text.replace(INFINITIVE_TO, '$1');
+}
+
+/**
+ * The definition to save from one typed over its shown form: the "to" it had is put back, so
+ * editing "take" of "to take" into "take off" saves "to take off"
+ */
+export function typedDefinition(typed: string, saved: string, partOfSpeech?: string): string {
+  const hidden = shownDefinition(saved, partOfSpeech) !== saved && /^to\s/i.test(saved.trimStart());
+  return hidden && typed.trim() ? `to ${typed.trimStart()}` : typed;
+}

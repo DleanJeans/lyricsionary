@@ -1,7 +1,7 @@
 import { languageKey } from '../constants/languages';
 import type { MasteryLevel, WordEntry } from '../types';
 import { isGermanLanguage } from './compoundWords';
-import type { PartOfSpeech } from './partOfSpeech';
+import { shownDefinition, type PartOfSpeech } from './partOfSpeech';
 
 /** Which quiz a level takes: the meaning quiz proves Recognized, the lyric quiz Recalled and Known */
 export type QuizKind = 'meaning' | 'lyric';
@@ -320,7 +320,9 @@ export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random 
   ].filter((d): d is string => !!d?.trim());
   // A meaning sharing a content word with one of the word's own would be right too (meaningsOverlap)
   const ownWords = new Set(ownMeanings.flatMap(contentWords));
-  const seen = new Set<string>([target.answer.toLowerCase()]);
+  // Options show verbs without their "to", e.g. "take" for "to take"
+  const answer = shownDefinition(target.answer, target.partOfSpeech);
+  const seen = new Set<string>([answer.toLowerCase()]);
   const candidates: { item: string; score: number }[] = [];
   for (const word of otherWords(target, words)) {
     const senses = [
@@ -328,18 +330,18 @@ export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random 
       ...(word.definitions ?? []).map((d) => ({ text: d.text, partOfSpeech: undefined })),
     ];
     for (const sense of senses) {
-      const text = sense.text?.trim();
+      const text = sense.text?.trim() && shownDefinition(sense.text.trim(), sense.partOfSpeech);
       if (!text || seen.has(text.toLowerCase())) continue;
       if (contentWords(text).some((w) => ownWords.has(w))) continue;
       seen.add(text.toLowerCase());
       const sameType = !!target.partOfSpeech && sense.partOfSpeech === target.partOfSpeech;
       candidates.push({
         item: text,
-        score: (sameType ? 8 : 0) + lookAlikeScore(text, target.answer) + (fromSong(word, target.songId) ? 1 : 0),
+        score: (sameType ? 8 : 0) + lookAlikeScore(text, answer) + (fromSong(word, target.songId) ? 1 : 0),
       });
     }
   }
-  return finish(target.answer, pickBest(candidates, QUIZ_RULES.options - 1, random), random);
+  return finish(answer, pickBest(candidates, QUIZ_RULES.options - 1, random), random);
 }
 
 const isCapitalized = (word: string) => word.charAt(0) !== word.charAt(0).toLowerCase();

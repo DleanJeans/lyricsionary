@@ -5,6 +5,12 @@ import { Text } from './Text';
 import { Colors } from '../constants/theme';
 import type { WordEntry } from '../types';
 import { mergeCandidates } from '../utils/wordForms';
+import { shownDefinition } from '../utils/partOfSpeech';
+
+const firstDefinition = (word: WordEntry) => {
+  const context = word.contexts.find((c) => c.definition);
+  return context?.definition ? shownDefinition(context.definition, context.partOfSpeech) : '';
+};
 
 interface MergeFormsProps {
   entry: WordEntry;
@@ -102,7 +108,7 @@ export default function MergeForms({ entry, words, onMerge, onUnmerge }: MergeFo
               >
                 <Text style={styles.candidateWord}>{w.word}</Text>
                 <Text style={styles.candidateMeta} numberOfLines={1}>
-                  {w.contexts.find((c) => c.definition)?.definition ?? ''}
+                  {firstDefinition(w)}
                 </Text>
               </TouchableOpacity>
             ))

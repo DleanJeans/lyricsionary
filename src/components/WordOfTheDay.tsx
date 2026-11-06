@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
+import { shownDefinition } from '../utils/partOfSpeech';
 import { localDay } from '../utils/wordQuiz';
 import { highlightWord, lineTranslation, wordOfTheDay } from '../utils/wordOfTheDay';
 import { Text } from './Text';
@@ -14,7 +15,8 @@ export default function WordOfTheDay({ onOpen }: { onOpen: (songId: string, focu
   const day = localDay(Date.now());
   const pick = useMemo(() => wordOfTheDay(words, day), [words, day]);
   if (!pick) return null;
-  const { entry, context, definition } = pick;
+  const { entry, context } = pick;
+  const definition = shownDefinition(pick.definition, context.partOfSpeech);
   const song = context.songId ? songs.find((s) => s.id === context.songId) : undefined;
   const line = song && context.context?.trim() ? context.context : null;
   const highlight = line ? highlightWord(line, [entry.word, ...(entry.forms ?? [])], context.occurrence) : null;

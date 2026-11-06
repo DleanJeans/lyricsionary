@@ -1,4 +1,4 @@
-import { fillPartsOfSpeech, findPartOfSpeech, normalizePartOfSpeech } from '../src/utils/partOfSpeech';
+import { fillPartsOfSpeech, findPartOfSpeech, normalizePartOfSpeech, shownDefinition, typedDefinition } from '../src/utils/partOfSpeech';
 
 const verb = (text: string) => ({ partOfSpeech: 'Verb', text });
 const noun = (text: string) => ({ partOfSpeech: 'Noun', text });
@@ -59,5 +59,28 @@ describe('fillPartsOfSpeech', () => {
   it('is null when nothing was found', () => {
     expect(fillPartsOfSpeech([{ definition: 'living' }], leben)).toBeNull();
     expect(fillPartsOfSpeech([{ definition: 'life', partOfSpeech: 'noun' as const }], leben)).toBeNull();
+  });
+});
+
+describe('shownDefinition', () => {
+  it('drops the "to" of each of a verb\'s meanings', () => {
+    expect(shownDefinition('to take from', 'Verb')).toBe('take from');
+    expect(shownDefinition('to liberate; to free, To release', 'verb')).toBe('liberate; free, release');
+    expect(shownDefinition('to go to sleep', 'verb')).toBe('go to sleep');
+  });
+
+  it('drops it from definitions with no type yet, but not from other types', () => {
+    expect(shownDefinition('to take')).toBe('take');
+    expect(shownDefinition('to and fro', 'adverb')).toBe('to and fro');
+    expect(shownDefinition('to', 'verb')).toBe('to');
+  });
+});
+
+describe('typedDefinition', () => {
+  it('puts back the "to" the shown definition left out', () => {
+    expect(typedDefinition('takes', 'to take', 'verb')).toBe('to takes');
+    expect(typedDefinition('', 'to take', 'verb')).toBe('');
+    expect(typedDefinition('heartbeat', 'heart', 'noun')).toBe('heartbeat');
+    expect(typedDefinition('r', '', 'verb')).toBe('r');
   });
 });

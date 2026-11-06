@@ -118,6 +118,14 @@ describe('buildMeaningQuiz', () => {
   it('is null with fewer than 2 wrong options', () => {
     expect(buildMeaningQuiz({ entry: herz, answer: 'heart' }, [herz, word('Liebe', 'love')])).toBeNull();
   });
+
+  it('shows verbs without their "to"', () => {
+    const nehmen = word('nehmen', 'to take', 'verb', 'song');
+    const words = [nehmen, word('laufen', 'to run; to flow', 'verb'), word('gehen', 'to go', 'verb'), word('geben', 'to give'), word('Herz', 'heart', 'noun')];
+    const quiz = buildMeaningQuiz({ entry: nehmen, answer: 'to take', partOfSpeech: 'verb' }, words, noShuffle)!;
+    expect(quiz.options[quiz.answerIndex]).toBe('take');
+    expect(quiz.options).toEqual(expect.arrayContaining(['run; flow', 'go', 'give']));
+  });
 });
 
 describe('isCoolingDown', () => {
@@ -163,7 +171,7 @@ describe('option priority', () => {
       word('gehen', 'to go', 'verb'),
     ];
     const quiz = buildMeaningQuiz({ entry: lieben, answer: 'to love', partOfSpeech: 'verb' }, words, noShuffle)!;
-    expect([...quiz.options].sort()).toEqual(['to go', 'to laugh', 'to love', 'to run']);
+    expect([...quiz.options].sort()).toEqual(['go', 'laugh', 'love', 'run']);
   });
 });
 

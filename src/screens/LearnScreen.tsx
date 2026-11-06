@@ -1515,7 +1515,7 @@ export default function LearnScreen() {
       ) : (
         /* ── Narrow: stacked ── */
         <View style={styles.narrowMain}>
-          {wordPanel && <AnimatedHeight>{wordPanel}</AnimatedHeight>}
+          {wordPanel && <AnimatedHeight appear>{wordPanel}</AnimatedHeight>}
           {actionBar}
           {lyricsView}
         </View>

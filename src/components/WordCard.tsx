@@ -139,10 +139,11 @@ export default function WordCard({
     >
       <TouchableOpacity
         style={[styles.card, isWide && styles.cardWide]}
-        onPress={handleCardPress}
+        // Learn's card opens Look Up only from its Look up button, so a stray tap doesn't leave the song
+        onPress={showClose ? undefined : handleCardPress}
         activeOpacity={1}
-        accessibilityRole="button"
-        accessibilityLabel={`Open ${item.word}`}
+        accessibilityRole={showClose ? undefined : 'button'}
+        accessibilityLabel={showClose ? undefined : `Open ${item.word}`}
       >
         {showClose ? (
           // Learn screen: same layout as the new word card
@@ -200,6 +201,18 @@ export default function WordCard({
             {!quizAnswered && <DueLabel entry={item} />}
             <QuickNote entry={item} />
             {quiz}
+            {/* Not while the quiz waits for an answer, since Look Up would give it away */}
+            {!quizPending && (
+              <TouchableOpacity
+                style={styles.lookUpButton}
+                onPress={handleCardPress}
+                accessibilityRole="button"
+                accessibilityLabel={`Look up ${item.word}`}
+              >
+                <Ionicons name="search" size={16} color={Colors.white} />
+                <Text style={styles.lookUpText}>Look up</Text>
+              </TouchableOpacity>
+            )}
             <AlsoInSongs item={item} songId={songId} hideTranslations={quizPending} />
           </>
         ) : (
@@ -234,6 +247,22 @@ export default function WordCard({
 }
 
 const styles = StyleSheet.create({
+  lookUpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 12,
+    backgroundColor: Colors.primary,
+  },
+  lookUpText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   card: {
     alignSelf: 'stretch',
     backgroundColor: Colors.surface,

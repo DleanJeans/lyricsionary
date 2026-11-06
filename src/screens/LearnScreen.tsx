@@ -1141,29 +1141,6 @@ export default function LearnScreen() {
         onPendingChange={setMeaningQuizPending}
         onAnsweredChange={setMeaningQuizAnswered}
         showDue
-        lookUp={
-          // Look Up one tap away once the quiz is answered, or instead of it when it's hidden
-          <TouchableOpacity
-            style={styles.quizLookUpButton}
-            onPress={() => navigation.navigate('WordLookup', {
-              word: entry.word,
-              wordId: entry.id,
-              songId: song.id,
-              songName: song.songName,
-              artistName: song.artistName,
-              lyricsLine: selectedLine ?? undefined,
-              translationLine: selectedTranslationLine,
-              originalLanguages: song.originalLanguages,
-              source: 'Learn',
-              occurrence: selectedOccurrence,
-            })}
-            accessibilityRole="button"
-            accessibilityLabel={`Look up ${entry.word}`}
-          >
-            <Ionicons name="search" size={16} color={Colors.white} />
-            <Text style={styles.quizLookUpText}>Look up</Text>
-          </TouchableOpacity>
-        }
         isWide={isWide}
       />
     );
@@ -1639,22 +1616,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     fontStyle: 'italic',
-  },
-  quizLookUpButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: 12,
-    backgroundColor: Colors.primary,
-  },
-  quizLookUpText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600',
   },
   quizWord: {
     fontSize: 14,

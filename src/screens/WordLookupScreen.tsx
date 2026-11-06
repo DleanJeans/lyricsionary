@@ -634,7 +634,6 @@ export default function WordLookupScreen() {
               placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
               placeholderTextColor={Colors.textMuted}
             />
-            <PronunciationAudio audio={pronunciationAudio} />
             {wiktionaryHasNoIpa && !pronunciation.trim() && !(ipaSearch && lookupSource === 'google') && (
               <TouchableOpacity
                 style={styles.ipaSearchButton}
@@ -659,6 +658,7 @@ export default function WordLookupScreen() {
                 ))}
               </View>
             )}
+            <PronunciationAudio audio={pronunciationAudio} />
           </View>
 
           <View style={styles.field}>

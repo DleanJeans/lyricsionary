@@ -126,7 +126,6 @@ export default function NewWordCard({
               isNew={!saved}
               open={choosingLevel}
               onPress={() => setChoosingLevel((v) => !v)}
-              style={styles.levelBadge}
             />
           )}
           <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
@@ -296,14 +295,10 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   badge: {
-    alignSelf: 'flex-start',
     backgroundColor: Colors.success,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
-  },
-  levelBadge: {
-    alignSelf: 'flex-start',
   },
   levelPicker: {
     marginTop: 10,

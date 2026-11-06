@@ -130,6 +130,7 @@ export default function NewWordCard({
             />
           )}
           <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
+          {wiktionary.ipa.length > 0 && <Text style={styles.ipaText}>{wiktionary.ipa.join(', ')}</Text>}
         </View>
         <View style={styles.headerTools}>
           {showSplit && !isEditingSplit && (
@@ -155,10 +156,9 @@ export default function NewWordCard({
           </TouchableOpacity>
         </View>
       </View>
-      {(wiktionary.ipa.length > 0 || wiktionary.audio.length > 0 || isFetching) && (
+      {(wiktionary.audio.length > 0 || isFetching) && (
         <View style={styles.ipaRow}>
-          {wiktionary.ipa.length > 0 && <Text style={styles.ipaText}>{wiktionary.ipa.join(', ')}</Text>}
-          <PronunciationAudio audio={wiktionary.audio} compact />
+          <PronunciationAudio audio={wiktionary.audio} compact short />
           {isFetching && (
             <View style={styles.loadingRow} accessibilityLabel="Loading from Wiktionary">
               <ActivityIndicator size="small" color={Colors.textSecondary} />
@@ -276,14 +276,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
   },
+  // Level, word and IPA share a row; a long word pushes the IPA under it
   wordTitle: {
     flex: 1,
-    alignItems: 'flex-start',
-    gap: 4,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 8,
+    rowGap: 2,
   },
   wordText: {
     ...webWordBreak,
-    fontSize: 24,
+    flexShrink: 1,
+    fontSize: 22,
     fontWeight: '700',
     color: Colors.text,
   },
@@ -316,7 +321,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 6,
-    marginTop: 4,
+    marginTop: 6,
   },
   ipaText: {
     color: Colors.textSecondary,

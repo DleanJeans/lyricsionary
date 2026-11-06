@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getFlagForLanguage } from '../constants/languages';
 import { Colors } from '../constants/theme';
@@ -149,13 +149,12 @@ export default function WordCard({
           // Learn screen: same layout as the new word card
           <>
             <View style={styles.header}>
+              {/* Level, word and IPA share a row; a long word pushes the IPA under it */}
               <View style={styles.title}>
-                <View style={styles.badgeRow}>
-                  <MasteryLevelBadge level={item.masteryLevel} open={choosingLevel} onPress={() => setChoosingLevel((v) => !v)} />
-                  <Text style={styles.badgeEmoji}>{flag}</Text>
-                  {justSaved && <SavedPill />}
-                </View>
+                <MasteryLevelBadge level={item.masteryLevel} open={choosingLevel} onPress={() => setChoosingLevel((v) => !v)} />
                 <Text style={styles.titleWordText}>{item.word}</Text>
+                {ipa ? <Text style={styles.ipaText}>{ipa}</Text> : null}
+                {justSaved && <SavedPill />}
               </View>
               <View style={styles.headerTools}>
                 {onIgnore && (
@@ -180,10 +179,9 @@ export default function WordCard({
                 </TouchableOpacity>
               </View>
             </View>
-            {(ipa || wiktionary.audio.length > 0) && (
+            {wiktionary.audio.length > 0 && (
               <View style={styles.ipaRow}>
-                {ipa ? <Text style={styles.ipaText}>{ipa}</Text> : null}
-                <PronunciationAudio audio={wiktionary.audio} compact />
+                <PronunciationAudio audio={wiktionary.audio} compact short />
               </View>
             )}
             {choosingLevel && (
@@ -246,6 +244,8 @@ export default function WordCard({
   );
 }
 
+const webWordBreak = Platform.OS === 'web' ? ({ wordBreak: 'break-word' } as object) : {};
+
 const styles = StyleSheet.create({
   lookUpButton: {
     flexDirection: 'row',
@@ -287,22 +287,19 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    alignItems: 'flex-start',
-    gap: 4,
-  },
-  badgeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 6,
+    columnGap: 8,
+    rowGap: 2,
   },
   levelPicker: {
     marginTop: 10,
   },
-  badgeEmoji: {
-    fontSize: 14,
-  },
   titleWordText: {
-    fontSize: 24,
+    ...webWordBreak,
+    flexShrink: 1,
+    fontSize: 22,
     fontWeight: '700',
     color: Colors.text,
   },
@@ -320,7 +317,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 6,
-    marginTop: 4,
+    marginTop: 6,
   },
   ipaText: {
     color: Colors.textSecondary,

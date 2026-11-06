@@ -13,7 +13,7 @@ interface Props {
   compact?: boolean;
   /** Plays the first recording when it shows, e.g. for a listening quiz */
   autoPlay?: boolean;
-  /** Short accent codes, e.g. "AT" for Austria, with the full name shown while held */
+  /** Short accent codes, e.g. "AT" for Austria, with the full name shown while it plays or for a moment when held */
   short?: boolean;
 }
 
@@ -64,7 +64,7 @@ export default function PronunciationAudio({ audio, compact = false, autoPlay = 
               size={compact ? 14 : 16}
               color={playing ? Colors.white : compact ? Colors.primaryLight : Colors.primary}
             />
-            {short && heldUrl !== item.url ? (
+            {short && heldUrl !== item.url && !playing ? (
               shortLabels[index] ? (
                 <Text style={[styles.buttonText, compact && styles.buttonTextCompact, playing && styles.buttonTextPlaying]}>
                   {shortLabels[index]}

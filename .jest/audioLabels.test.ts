@@ -20,8 +20,8 @@ describe('shortAudioLabels', () => {
     expect(shortAudioLabels(['Germany', 'Germany (Berlin)', 'Austria'])).toEqual(['DE', 'DE 2', 'AT']);
   });
 
-  it('numbers recordings with no label when there are several', () => {
-    expect(shortAudioLabels(['', ''])).toEqual(['1', '2']);
-    expect(shortAudioLabels([''])).toEqual(['']);
+  it('gives recordings with no accent no label', () => {
+    expect(shortAudioLabels(['', 'Germany'])).toEqual(['', 'DE']);
+    expect(shortAudioLabels(['', ''])).toEqual(['', '']);
   });
 });

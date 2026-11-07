@@ -64,7 +64,7 @@ export default function PronunciationAudio({ audio, compact = false, autoPlay = 
               size={compact ? 14 : 16}
               color={playing ? Colors.white : compact ? Colors.primaryLight : Colors.primary}
             />
-            {short && heldUrl !== item.url && !playing ? (
+            {short && ((heldUrl !== item.url && !playing) || !item.label) ? (
               shortLabels[index] ? (
                 <Text style={[styles.buttonText, compact && styles.buttonTextCompact, playing && styles.buttonTextPlaying]}>
                   {shortLabels[index]}

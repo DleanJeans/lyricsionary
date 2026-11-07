@@ -25,11 +25,15 @@ export function shortAudioLabel(label: string): string {
   return first.length <= MAX ? first : `${first.slice(0, MAX - 1)}…`;
 }
 
-/** Short labels for a word's recordings, numbered when two shorten the same, e.g. "DE", "DE 2" */
+/**
+ * Short labels for a word's recordings, numbered when two shorten the same, e.g. "DE", "DE 2".
+ * A recording with no accent gets none, so its chip is just the speaker icon.
+ */
 export function shortAudioLabels(labels: string[]): string[] {
   const seen = new Map<string, number>();
-  return labels.map((label, index) => {
-    const short = label.trim() ? shortAudioLabel(label) : labels.length > 1 ? `${index + 1}` : '';
+  return labels.map((label) => {
+    if (!label.trim()) return '';
+    const short = shortAudioLabel(label);
     const count = (seen.get(short) ?? 0) + 1;
     seen.set(short, count);
     return count > 1 ? `${short} ${count}` : short;

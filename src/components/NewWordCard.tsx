@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View, Text as RNText } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { isWordIgnored, useStore } from '../store/useStore';
@@ -128,8 +128,11 @@ export default function NewWordCard({
               onPress={() => setChoosingLevel((v) => !v)}
             />
           )}
-          <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>{word}</Text>
-          {wiktionary.ipa.length > 0 && <Text style={styles.ipaText}>{wiktionary.ipa.join(', ')}</Text>}
+          {/* The IPA sits inside the word's text so they share a baseline */}
+          <Text style={[styles.wordText, isIgnored && styles.ignoredWordText]}>
+            {word}
+            {wiktionary.ipa.length > 0 && <RNText style={styles.ipaInline}>{`  ${wiktionary.ipa.join(', ')}`}</RNText>}
+          </Text>
           {wiktionary.derivedFrom && (
             <Text style={styles.derivedText} accessibilityLabel={`IPA guessed from ${wiktionary.derivedFrom.join(' and ')}`}>
               ≈ {wiktionary.derivedFrom.join(' + ')}
@@ -323,9 +326,12 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 6,
   },
-  ipaText: {
+  // Plain RN Text inside the word's text, since the app's Text leaves the weight to inherit, which would make it bold
+  ipaInline: {
     color: Colors.textSecondary,
     fontSize: 15,
+    fontFamily: 'GoogleSans',
+    fontWeight: 'normal',
   },
   derivedText: {
     color: Colors.textSecondary,

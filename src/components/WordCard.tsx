@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, TouchableOpacity, View, Text as RNText } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getFlagForLanguage } from '../constants/languages';
 import { Colors } from '../constants/theme';
@@ -149,11 +149,14 @@ export default function WordCard({
           // Learn screen: same layout as the new word card
           <>
             <View style={styles.header}>
-              {/* Level, word and IPA share a row; a long word pushes the IPA under it */}
+              {/* Level, word and IPA share a row; a long word wraps and its IPA follows it */}
               <View style={styles.title}>
                 <MasteryLevelBadge level={item.masteryLevel} open={choosingLevel} onPress={() => setChoosingLevel((v) => !v)} />
-                <Text style={styles.titleWordText}>{item.word}</Text>
-                {ipa ? <Text style={styles.ipaText}>{ipa}</Text> : null}
+                {/* The IPA sits inside the word's text so they share a baseline */}
+                <Text style={styles.titleWordText}>
+                  {item.word}
+                  {ipa ? <RNText style={styles.ipaInline}>{`  ${ipa}`}</RNText> : null}
+                </Text>
                 {justSaved && <SavedPill />}
               </View>
               <View style={styles.headerTools}>
@@ -319,9 +322,12 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 6,
   },
-  ipaText: {
+  // Plain RN Text inside the word's text, since the app's Text leaves the weight to inherit, which would make it bold
+  ipaInline: {
     color: Colors.textSecondary,
     fontSize: 15,
+    fontFamily: 'GoogleSans',
+    fontWeight: 'normal',
   },
   flag: {
     fontSize: 24,

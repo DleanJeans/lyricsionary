@@ -15,6 +15,9 @@ import { findSavedSong } from './src/utils/nowPlaying';
 import { useReviewReminderResponse, useReviewReminderSchedule, useStreakSaverSchedule } from './src/services/reviewReminder';
 import { completeSpotifySignIn, isSpotifyCallback, isSpotifyConnected } from './src/services/spotify';
 import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
+import { useIsWide } from './src/hooks/useLayout';
+import ReviewSession from './src/components/ReviewSession';
+import { buildLaunchReview, type ReviewItem } from './src/utils/reviewQuiz';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -58,6 +61,9 @@ export default function App() {
   useStreakSaverSchedule(activity, reviewReminder, dataLoaded);
   const [reviewReminderTapped, setReviewReminderTapped] = useState(false);
   useReviewReminderResponse(() => setReviewReminderTapped(true));
+  // Opening the app starts a review of 10 due words from the songs opened last
+  const [launchReview, setLaunchReview] = useState<ReviewItem[] | null>(null);
+  const isWide = useIsWide();
 
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({
@@ -87,7 +93,11 @@ export default function App() {
     let mounted = true;
     async function initialize() {
       await Promise.all([loadSongs(), loadWords(), loadIgnoredWords(), loadCompoundSplits(), loadLearnSettings(), loadActivity()]);
-      if (mounted) setDataLoaded(true);
+      if (!mounted) return;
+      const { songs, words } = useStore.getState();
+      const review = buildLaunchReview(songs, words);
+      if (review.length) setLaunchReview(review);
+      setDataLoaded(true);
       await checkForUpdates();
     }
 
@@ -174,6 +184,7 @@ export default function App() {
         <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme} onReady={() => setNavigationReady(true)}>
           <AppNavigator />
         </NavigationContainer>
+        {launchReview && <ReviewSession dueItems={launchReview} onClose={() => setLaunchReview(null)} isWide={isWide} />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { buildReviewItems, dueWords, findWordInLine, lineWords, pickReviewItems } from '../src/utils/reviewQuiz';
+import { buildLaunchReview, buildReviewItems, dueWords, findWordInLine, lineWords, pickReviewItems } from '../src/utils/reviewQuiz';
 import { isDue } from '../src/utils/wordQuiz';
 
 const HOUR = 60 * 60 * 1000;
@@ -115,5 +115,45 @@ describe('listening quiz', () => {
     expect(buildReviewItems([lineless], [lineless, ...others], () => 0.9)[0].listen).toBe(true);
     const seen = word('cœur', 'heart', { audio });
     expect(buildReviewItems([seen], [seen, ...others], () => 0.1)[0].listen).toBe(false);
+  });
+});
+
+describe('buildLaunchReview', () => {
+  const inSong = (text: string, songId: string): WordEntry => {
+    const entry = word(text, `${text}ish`);
+    return { ...entry, contexts: entry.contexts!.map((c) => ({ ...c, songId })) };
+  };
+  const songs = [
+    { id: 'old', lastOpenedAt: 1 },
+    { id: 'last', lastOpenedAt: 3 },
+    { id: 'archived', lastOpenedAt: 4, archivedAt: 4 },
+    { id: 'middle', lastOpenedAt: 2 },
+  ];
+
+  it('takes the last song first, then tops up from the ones opened before it', () => {
+    const words = [
+      ...Array.from({ length: 4 }, (_, i) => inSong(`last${i}`, 'last')),
+      ...Array.from({ length: 3 }, (_, i) => inSong(`archived${i}`, 'archived')),
+      ...Array.from({ length: 4 }, (_, i) => inSong(`middle${i}`, 'middle')),
+      ...Array.from({ length: 4 }, (_, i) => inSong(`old${i}`, 'old')),
+    ];
+    const picked = buildLaunchReview(songs, words, now, 10).map((item) => item.entry.word);
+    expect(picked).toHaveLength(10);
+    expect(picked.filter((w) => w.startsWith('last'))).toHaveLength(4);
+    expect(picked.filter((w) => w.startsWith('middle'))).toHaveLength(4);
+    expect(picked.filter((w) => w.startsWith('old'))).toHaveLength(2);
+    expect(picked.some((w) => w.startsWith('archived'))).toBe(false);
+  });
+
+  it('skips to an older song when the last one has nothing due, and is empty when none has', () => {
+    const known = { ...inSong('known', 'last'), masteryLevel: 'Known' as const };
+    const words = [known, ...Array.from({ length: 4 }, (_, i) => inSong(`old${i}`, 'old'))];
+    expect(buildLaunchReview(songs, words, now, 10).map((item) => item.entry.word).sort()).toEqual([
+      'old0',
+      'old1',
+      'old2',
+      'old3',
+    ]);
+    expect(buildLaunchReview(songs, [known], now, 10)).toEqual([]);
   });
 });

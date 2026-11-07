@@ -122,3 +122,37 @@ export function pickReviewItems(items: ReviewItem[], size: number, random = Math
   }
   return picked;
 }
+
+/** How many words the review shown when the app opens asks */
+export const LAUNCH_REVIEW_SIZE = 10;
+
+/**
+ * The review to show when the app opens: due words from the song opened last, topped up from the
+ * one opened before it and so on until there are `size`. Archived songs are skipped. Each song's
+ * words keep buildReviewItems' order, tricky ones and the ones waiting longest first; the session
+ * shuffles them.
+ */
+export function buildLaunchReview(
+  songs: { id: string; lastOpenedAt?: number; archivedAt?: number }[],
+  words: WordEntry[],
+  now = Date.now(),
+  size = LAUNCH_REVIEW_SIZE,
+  random = Math.random
+): ReviewItem[] {
+  const due = dueWords(words, now).filter(canReview);
+  if (!due.length) return [];
+  const recent = songs.filter((s) => !s.archivedAt).sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0));
+  const picked: ReviewItem[] = [];
+  const taken = new Set<string>();
+  for (const song of recent) {
+    if (picked.length >= size) break;
+    const songDue = due.filter((w) => !taken.has(w.id) && w.contexts?.some((c) => c.songId === song.id));
+    if (!songDue.length) continue;
+    for (const item of buildReviewItems(songDue, words, random)) {
+      if (picked.length >= size) break;
+      picked.push(item);
+      taken.add(item.entry.id);
+    }
+  }
+  return picked;
+}

@@ -240,7 +240,7 @@ describe('inflected forms', () => {
     expect(getFormOfLemma(FRAGT[0])).toBe('fragen');
     expect(getFormOfLemma(BLEIB)).toBe('bleiben');
     expect(getFormOfLemma(FRAGT[1])).toBeUndefined();
-    expect(parseEntry({ de: [section('German', 'Verb', FRAGT)] }, 'German')).toEqual({ glosses: [], definitions: [], lemmas: ['fragen'] });
+    expect(parseEntry({ de: [section('German', 'Verb', FRAGT)] }, 'German')).toEqual({ glosses: [], definitions: [], lemmas: ['fragen'], lemmasWithoutGloss: ['fragen'] });
   });
 
   it('knows the base form of a form with its own meaning, e.g. Gefühle of Gefühl', () => {
@@ -307,6 +307,43 @@ describe('inflected forms', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+describe('a word with several etymologies', () => {
+  const inflectionOf = (lemma: string, forms: string) =>
+    `<span class="form-of-definition use-with-mention">inflection of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/${lemma}#German" title="${lemma}">${lemma}</a></i></span>:</span><ol><li><span class="form-of-definition use-with-mention">${forms}</span></li></ol>`;
+  const pages: Record<string, unknown> = {
+    // Etymology 1 is the adjective; 2 and 3 are forms of the verbs wissen and weißen
+    weiß: {
+      de: [
+        section('German', 'Adjective', ['<a rel="mw:WikiLink" href="/wiki/white" title="white">white</a>']),
+        section('German', 'Verb', [inflectionOf('wissen', 'first/third-person singular present')]),
+        section('German', 'Verb', [inflectionOf('weißen', 'first/third-person singular present')]),
+      ],
+    },
+    wissen: { de: [section('German', 'Verb', ['to <a href="/wiki/know" title="know">know</a> (a fact)', 'to be aware'])] },
+    weißen: { de: [section('German', 'Verb', ['to <a href="/wiki/whiten" title="whiten">whiten</a>', 'to whitewash'])] },
+  };
+  const originalFetch = globalThis.fetch;
+  beforeEach(() => {
+    globalThis.fetch = jest.fn(async (url: string) => {
+      const page = pages[decodeURIComponent(url.split('/').pop() ?? '')];
+      return { ok: !!page, status: page ? 200 : 404, json: async () => page };
+    }) as unknown as typeof fetch;
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('suggests every etymology, following the verb forms to their base forms', async () => {
+    expect(await getWiktionaryDefinitions('weiß', 'German')).toEqual([
+      { partOfSpeech: 'Adjective', text: 'white' },
+      { partOfSpeech: 'Verb', text: 'to know' },
+      { partOfSpeech: 'Verb', text: 'to be aware' },
+      { partOfSpeech: 'Verb', text: 'to whiten' },
+      { partOfSpeech: 'Verb', text: 'to whitewash' },
+    ]);
   });
 });
 

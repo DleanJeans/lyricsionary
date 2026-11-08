@@ -209,6 +209,11 @@ export interface WiktionaryEntry {
   definitions: WiktionaryDefinition[];
   /** Base forms of an inflected word, e.g. "fragen" for "fragt" */
   lemmas: string[];
+  /**
+   * Base forms whose form-of definition has no gloss of its own, so their meanings are the meanings,
+   * e.g. wissen and weißen for weiß, alongside its adjective "white"
+   */
+  lemmasWithoutGloss: string[];
 }
 
 /** The base form a form-of definition links to, e.g. fragen in 'inflection of <a>fragen</a>:' */
@@ -221,7 +226,7 @@ export function getFormOfLemma(html: string): string | undefined {
 
 /** The parts of the REST API response for one language, e.g. "German" */
 export function parseEntry(response: unknown, language: string): WiktionaryEntry {
-  const entry: WiktionaryEntry = { glosses: [], definitions: [], lemmas: [] };
+  const entry: WiktionaryEntry = { glosses: [], definitions: [], lemmas: [], lemmasWithoutGloss: [] };
   if (!response || typeof response !== 'object') return entry;
   const target = getWiktionaryLanguage(language).toLowerCase();
   const add = (list: WiktionaryDefinition[], partOfSpeech: string, text: string) => {
@@ -245,6 +250,7 @@ export function parseEntry(response: unknown, language: string): WiktionaryEntry
           // Without a gloss, "inflection of fragen" says nothing about the meaning by itself, so its base
           // form's meanings are used; with one, the base form still says what word this is a form of
           if (lemma && !entry.lemmas.includes(lemma)) entry.lemmas.push(lemma);
+          if (lemma && !formOfGloss && !entry.lemmasWithoutGloss.includes(lemma)) entry.lemmasWithoutGloss.push(lemma);
           continue;
         }
         for (const gloss of getShortGlosses(definition)) add(entry.glosses, partOfSpeech, gloss);
@@ -283,20 +289,44 @@ function fetchDefinitionResponse(title: string): Promise<unknown> {
 }
 
 /**
- * Suggestions for one page title: its short translations, else its base forms' (following chains like
- * vidée -> vidé -> vider, each a form of the next), else its full definitions
+ * Suggestions for one page title: its short translations plus its base forms' wherever a form-of
+ * definition has no meaning of its own (following chains like vidée -> vidé -> vider, each a form of the
+ * next), e.g. weiß's adjective "white" and the verbs wissen "to know" and weißen "to whiten". Without
+ * any of those, its full definitions.
  */
 async function getDefinitionsForTitle(title: string, language: string, depth: number): Promise<WiktionaryDefinition[]> {
   const entry = parseEntry(await fetchDefinitionResponse(title), language);
-  if (entry.glosses.length > 0) return entry.glosses.slice(0, MAX_DEFINITIONS);
-
+  const sources: WiktionaryDefinition[][] = [entry.glosses];
   if (depth < MAX_LEMMA_DEPTH) {
-    for (const lemma of entry.lemmas.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
-      const definitions = await getDefinitionsForTitle(lemma, language, depth + 1);
-      if (definitions.length > 0) return definitions;
+    for (const lemma of entry.lemmasWithoutGloss.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
+      sources.push(await getDefinitionsForTitle(lemma, language, depth + 1));
     }
   }
-  return entry.definitions.slice(0, MAX_DEFINITIONS);
+  const suggestions = mergeSuggestions(sources.filter((list) => list.length > 0));
+  return suggestions.length > 0 ? suggestions : entry.definitions.slice(0, MAX_DEFINITIONS);
+}
+
+/**
+ * Up to MAX_DEFINITIONS suggestions, in order, with each list (an etymology's meanings or a base form's)
+ * getting a fair share first so a long one can't push the others out; spare room goes to the longer ones
+ */
+function mergeSuggestions(lists: WiktionaryDefinition[][]): WiktionaryDefinition[] {
+  if (lists.length === 0) return [];
+  const share = Math.max(1, Math.floor(MAX_DEFINITIONS / lists.length));
+  const taken = lists.map((list) => Math.min(list.length, share));
+  let room = MAX_DEFINITIONS - taken.reduce((sum, n) => sum + n, 0);
+  for (let i = 0; i < lists.length && room > 0; i++) {
+    const extra = Math.min(lists[i].length - taken[i], room);
+    taken[i] += extra;
+    room -= extra;
+  }
+  const merged: WiktionaryDefinition[] = [];
+  lists.forEach((list, i) => {
+    for (const definition of list.slice(0, taken[i])) {
+      if (!merged.some((d) => d.text === definition.text)) merged.push(definition);
+    }
+  });
+  return merged.slice(0, MAX_DEFINITIONS);
 }
 
 /**

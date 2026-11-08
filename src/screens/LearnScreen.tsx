@@ -48,6 +48,11 @@ import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
 import Dictation from '../components/Dictation';
+import SplitPhraseHint from '../components/SplitPhraseHint';
+import { findSavedWord, spellingsOf } from '../utils/wordForms';
+import {
+  findSplitPhrases, germanSeparableVerb, isSplitPhrase, joinLineWords, phraseLookupWords, phraseOccurrenceAt,
+} from '../utils/splitPhrases';
 
 const PREVIEW_MAX_WORDS = 8;
 
@@ -98,6 +103,11 @@ export default function LearnScreen() {
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
   const isIgnoredWord = useMemo(() => makeIgnoredWordChecker(ignoredWords), [ignoredWords]);
   const wordEntryIndex = useMemo(() => songWordIndex(words, song?.originalLanguages), [song?.originalLanguages, words]);
+  // Saved phrases whose words sit apart in a line, e.g. hört … auf for aufhören
+  const savedSplitPhrases = useMemo(
+    () => [...new Set(wordEntryIndex.values())].flatMap((entry) => spellingsOf(entry).filter(isSplitPhrase)),
+    [wordEntryIndex]
+  );
   const findWordEntry = useCallback(
     (candidate: string) => wordEntryIndex.get(candidate.toLowerCase()),
     [wordEntryIndex]
@@ -527,8 +537,14 @@ export default function LearnScreen() {
   // The word the last tap saved as new, which a longer Chinese or Japanese word grown from it replaces
   const autoSavedWordRef = useRef<string | null>(null);
 
-  const handleWordPress = (word: string, line: string, lineIndex: number, occurrence: number) => {
-    const cleaned = cleanLyricWord(word);
+  // `single` is the word itself when it's tapped as part of a phrase whose words sit apart, e.g. hört in
+  // hört … auf: tapping it again once the phrase is selected selects just the word
+  const handleWordPress = (word: string, line: string, lineIndex: number, occurrence: number, single?: { word: string; occurrence: number }) => {
+    if (single && word.toLowerCase() === selectedWord?.toLowerCase() && lineIndex === selectedLineIndex && occurrence === selectedOccurrence) {
+      handleWordPress(single.word, line, lineIndex, single.occurrence);
+      return;
+    }
+    const cleaned = isSplitPhrase(word) ? word : cleanLyricWord(word);
     autoSavedWordRef.current = null;
     if (isLyricWord(cleaned)) {
       setSelectedWord(cleaned);
@@ -543,7 +559,11 @@ export default function LearnScreen() {
   // Selects a word or phrase dragged across, e.g. 二人 or "give up", ending at `end` in the line. The word
   // a tap just saved inside it, e.g. 二, is replaced by it. A phrase of words written apart keeps it, since
   // the phrase is saved only when Wiktionary has it
-  const selectPhrase = (word: string, line: string, lineIndex: number, end: number) => {
+  const selectPhrase = (word: string, line: string, lineIndex: number, end: number, dragged?: { words: string[]; start: number }) => {
+    // Three or more words dragged across can leave the ones between out, e.g. hört all dieser Schmerz auf -> hört … auf
+    setDragSelection(dragged && dragged.words.length >= 3
+      ? { phrase: word, line, lineIndex, start: dragged.start, words: dragged.words, dropped: [] }
+      : null);
     const autoSaved = autoSavedWordRef.current;
     autoSavedWordRef.current = null;
     if (autoSaved && !/\s/.test(word.trim()) && autoSaved === selectedWord && lineIndex === selectedLineIndex && word.includes(autoSaved)) {
@@ -555,6 +575,21 @@ export default function LearnScreen() {
     setSelectedLineIndex(lineIndex);
     setSelectedOccurrence(Math.max(1, line.slice(0, end).split(word).length - 1));
     setScrollToLine({ index: lineIndex, key: Date.now(), center: true });
+  };
+
+  // The words of a phrase dragged across, to leave some of them out, and which are left out
+  const [dragSelection, setDragSelection] = useState<{
+    phrase: string; line: string; lineIndex: number; start: number; words: string[]; dropped: number[];
+  } | null>(null);
+
+  // Selects some words of a line as one: next to each other as a phrase, apart as hört … auf, one as itself
+  const selectLineWords = (words: { word: string; index: number }[], line: string, lineIndex: number, start: number) => {
+    if (words.length === 0) return;
+    const phrase = joinLineWords(words);
+    setSelectedWord(phrase);
+    setSelectedLine(line);
+    setSelectedLineIndex(lineIndex);
+    setSelectedOccurrence(phraseOccurrenceAt(line, phrase, start));
   };
 
   // Where each word of each line is laid out, to find the words a drag goes across
@@ -602,6 +637,16 @@ export default function LearnScreen() {
         occurrenceMap[i] = wordCountMap[cleaned.toLowerCase()];
       }
     });
+    // Words of a phrase that sit apart, e.g. hört and auf of hört … auf, show and select as the phrase
+    const wordOccurrences = { ...occurrenceMap };
+    const splitParts = new Map<number, { phrase: string; part: number }>();
+    const splitCandidates = isSelectedLine && selectedWord && isSplitPhrase(selectedWord) ? [selectedWord, ...savedSplitPhrases] : savedSplitPhrases;
+    for (const hit of splitCandidates.length ? findSplitPhrases(textWords, splitCandidates) : []) {
+      hit.indices.forEach((index, part) => {
+        splitParts.set(index, { phrase: hit.phrase, part });
+        occurrenceMap[index] = hit.occurrence;
+      });
+    }
     // Dragging across words selects them as one, Chinese, Japanese or Thai characters as a word, e.g. 二人,
     // others as a phrase, e.g. "give up". Vertical drags fall through to scrolling
     const rects = (wordRectsRef.current[lineIndex] ??= []);
@@ -635,7 +680,11 @@ export default function LearnScreen() {
         if (dragStartRef.current < 0) return;
         const range = dragTo(event.x, event.y) ?? draggedPhrase(textWords, dragStartRef.current, dragStartRef.current);
         if (range.from === range.to) handleWordPress(textWords[range.from], text, lineIndex, occurrenceMap[range.from] || 1);
-        else if (isLyricWord(range.word)) selectPhrase(range.word, text, lineIndex, tokenEnds[range.to]);
+        else if (isLyricWord(range.word)) {
+          const words = textWords.slice(range.from, range.to + 1).map(cleanLyricWord).filter(Boolean);
+          const start = tokenEnds[range.from] - textWords[range.from].length;
+          selectPhrase(range.word, text, lineIndex, tokenEnds[range.to], { words, start });
+        }
       })
       .onFinalize(() => {
         dragStartRef.current = -1;
@@ -661,7 +710,10 @@ export default function LearnScreen() {
             );
           }
 
-          const cleanedWord = cleanLyricWord(word);
+          const split = splitParts.get(i);
+          const cleanedWord = split?.phrase ?? cleanLyricWord(word);
+          // Tapping a part of a selected phrase whose words sit apart selects the word on its own
+          const single = split ? { word, occurrence: wordOccurrences[i] || 1 } : undefined;
 
           // A phrase like "tout à fait" shows whole, as saved or being selected
           const isPhrase = cleanedWord.includes(' ');
@@ -777,8 +829,9 @@ export default function LearnScreen() {
 
           const wordCtx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
 
-          // Known words go without IPA and emoji, unless tapped
-          const quiet = quietKnownWords && wordEntry?.masteryLevel === 'Known' && !isActiveOccurrence;
+          // Known words go without IPA and emoji, unless tapped. A phrase whose words sit apart shows them
+          // over its first word only
+          const quiet = (quietKnownWords && wordEntry?.masteryLevel === 'Known' && !isActiveOccurrence) || !!split?.part;
           let displayContent = '';
           if (showIpa && wordEntry && !quiet) {
             const ipaValue = wordCtx?.ipa || wordEntry.pronunciation;
@@ -824,7 +877,7 @@ export default function LearnScreen() {
             }
           }
 
-          const gap = !compoundParts ? gapEntry(cleanedWord) : undefined;
+          const gap = !compoundParts && !split ? gapEntry(cleanedWord) : undefined;
           if (gap) {
             const isGapSelected = isActiveOccurrence;
             return (
@@ -885,7 +938,7 @@ export default function LearnScreen() {
                 </View>
               )}
               <Text
-                onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
+                onPress={() => handleWordPress(split ? split.phrase : word, text, lineIndex, occurrenceMap[i] || 1, single)}
                 onLongPress={() => copyLineRef.current(lineIndex)}
                 style={{
                   fontSize,
@@ -955,7 +1008,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1021,10 +1074,29 @@ export default function LearnScreen() {
     const lookUp = (word: string) =>
       Promise.all([getWiktionaryDefinitions(word, songLanguage), getWiktionaryPronunciation(word, songLanguage)])
         .then(([definitions, pronunciation]) => ({ word, definitions, pronunciation }));
-    lookUp(selectedWord).then(async (found) => {
+    // A phrase whose words sit apart isn't a page on Wiktionary, e.g. hört … auf
+    const firstLookUp = isSplitPhrase(selectedWord)
+      ? Promise.resolve({ word: selectedWord, definitions: null, pronunciation: null })
+      : lookUp(selectedWord);
+    // The phrase as Wiktionary has it, which it's saved as, with the phrase as written as a form
+    let phraseForm: string | undefined;
+    firstLookUp.then(async (found) => {
       if (baseWord && !found.definitions?.length) {
         const stemFound = await lookUp(baseWord);
         if (stemFound.definitions?.length) found = stemFound;
+      }
+      // A phrase whose words sit apart, or a German verb with its particle, as Wiktionary has it:
+      // aufhören for hört … auf or "hört auf", "turn off" for turn … off
+      if (!found.definitions?.length && /\s/.test(selectedWord)) {
+        for (const candidate of await phraseLookupWords(selectedWord, songLanguage, isGermanSong)) {
+          if (cancelled) break;
+          const phraseFound = await lookUp(candidate);
+          if (phraseFound.definitions?.length) {
+            found = phraseFound;
+            phraseForm = selectedWord;
+            break;
+          }
+        }
       }
       return found;
     }).then(({ word: savedWord, definitions, pronunciation }) => {
@@ -1046,7 +1118,20 @@ export default function LearnScreen() {
       };
       // Without Wiktionary's answer the saved word's card fetches the IPA and recordings itself
       autoSavedWordRef.current = savedWord;
+      const { updateWordEntry } = useStore.getState();
+      const addForm = async () => {
+        const entry = phraseForm && findSavedWord(useStore.getState().words, savedWord, songLanguage);
+        if (entry && phraseForm) await updateWordEntry(entry.id, { forms: [...(entry.forms ?? []), phraseForm] });
+      };
+      // A phrase's dictionary form saved before, e.g. aufhören, takes it as another form, keeping its level
+      const saved = phraseForm ? findSavedWord(useStore.getState().words, savedWord, songLanguage) : undefined;
+      if (saved) {
+        autoSavedWordRef.current = null;
+        void updateWordEntry(saved.id, { contexts: [...saved.contexts, context] }).then(addForm).then(() => setJustSavedWord(savedWord));
+        return;
+      }
       void addOrUpdateWord(savedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio)
+        .then(addForm)
         .then(() => setJustSavedWord(savedWord));
     });
     return () => {
@@ -1318,6 +1403,58 @@ export default function LearnScreen() {
     />
   ) : null;
 
+  // A German verb's particle at the end of its clause, to select the two as one, e.g. auf for hört in
+  // "Wann hört all dieser Schmerz auf?" -> hört … auf (aufhören)
+  const separableVerb = (() => {
+    if (!isGermanSong || !selectedWord || /\s/.test(selectedWord) || selectedLine === null || selectedLineIndex === null) return null;
+    const tokens = splitLyricTokens(selectedLine);
+    const lower = selectedWord.toLowerCase();
+    let seen = 0;
+    const at = tokens.findIndex((token) => cleanLyricWord(token).toLowerCase() === lower && ++seen === selectedOccurrence);
+    const verb = at < 0 ? null : germanSeparableVerb(tokens, at);
+    if (!verb) return null;
+    const line = selectedLine;
+    const lineIndex = selectedLineIndex;
+    const start = tokens.slice(0, at).join('').length;
+    return {
+      phrase: verb.phrase,
+      onSelect: () => {
+        // The word this tap just saved goes, as it means something else here, e.g. hört (hears)
+        const autoSaved = autoSavedWordRef.current;
+        autoSavedWordRef.current = null;
+        if (autoSaved && autoSaved.toLowerCase() === lower) {
+          const entry = findSavedEntry(autoSaved);
+          if (entry && entry.contexts.length <= 1) void deleteWord(entry.id);
+        }
+        setDragSelection(null);
+        setSelectedWord(verb.phrase);
+        setSelectedLine(line);
+        setSelectedLineIndex(lineIndex);
+        setSelectedOccurrence(phraseOccurrenceAt(line, verb.phrase, start));
+      },
+    };
+  })();
+
+  // The words of a phrase dragged across, while it's selected, to leave some out
+  const draggedKept = dragSelection?.words.map((word, index) => ({ word, index })).filter((w) => !dragSelection.dropped.includes(w.index));
+  const phraseTrim = dragSelection && draggedKept && dragSelection.lineIndex === selectedLineIndex &&
+    selectedWord && joinLineWords(draggedKept).toLowerCase() === selectedWord.toLowerCase() ? {
+    words: dragSelection.words,
+    dropped: dragSelection.dropped,
+    onToggle: (index: number) => {
+      const dropped = dragSelection.dropped.includes(index)
+        ? dragSelection.dropped.filter((i) => i !== index)
+        : [...dragSelection.dropped, index];
+      const kept = dragSelection.words.map((word, i) => ({ word, index: i })).filter((w) => !dropped.includes(w.index));
+      if (kept.length === 0) return;
+      setDragSelection({ ...dragSelection, dropped });
+      selectLineWords(kept, dragSelection.line, dragSelection.lineIndex, dragSelection.start);
+    },
+  } : undefined;
+  const splitPhraseHint = separableVerb || phraseTrim
+    ? <SplitPhraseHint suggestion={separableVerb ?? undefined} trim={phraseTrim} />
+    : null;
+
   const wordPanel = dictationPanel ?? gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry || selectedLine?.trim()) ? (
     <View>
       {wordSpots.length > 1 && (
@@ -1328,6 +1465,7 @@ export default function LearnScreen() {
         />
       )}
       {selectedWordEntry && <LemmaMergeHint entry={selectedWordEntry} />}
+      {splitPhraseHint}
       {wordCardPanel}
     </View>
   ) : wordCardPanel);

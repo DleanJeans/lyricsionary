@@ -51,7 +51,7 @@ import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
 import { findSavedWord, spellingsOf } from '../utils/wordForms';
 import {
-  findSplitPhrases, germanSeparableVerb, isSplitPhrase, joinLineWords, phraseLookupWords, phraseOccurrenceAt,
+  findSplitPhrases, germanSeparableVerb, isSplitPhrase, joinLineWords, phraseLookupWords, phraseOccurrenceAt, splitPhraseParts,
 } from '../utils/splitPhrases';
 
 const PREVIEW_MAX_WORDS = 8;
@@ -1140,6 +1140,14 @@ export default function LearnScreen() {
     };
     // Saved once per tap, with the line it was tapped in
   }, [selectedWord, selectedWordSaved, selectedWordIgnored, songLanguage, selectedLineIndex, selectedOccurrence]);
+
+  // A phrase whose words sit apart, saved from Look Up with them together, e.g. "hört auf" for hört … auf,
+  // takes it as a form, so the line shows it saved
+  useEffect(() => {
+    if (!selectedWord || !isSplitPhrase(selectedWord) || selectedWordSaved || !songLanguage) return;
+    const together = findSavedWord(words, splitPhraseParts(selectedWord).join(' '), songLanguage);
+    if (together) void useStore.getState().updateWordEntry(together.id, { forms: [...(together.forms ?? []), selectedWord] });
+  }, [words, selectedWord, selectedWordSaved, songLanguage]);
 
   if (!song) {
     return (

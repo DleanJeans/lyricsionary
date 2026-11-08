@@ -18,6 +18,7 @@ import MasteryLevelSelector from './MasteryLevelSelector';
 import PronunciationAudio from './PronunciationAudio';
 import { Text } from './Text';
 import WordTransformButtons from './WordTransformButtons';
+import { isSplitPhrase, splitPhraseParts } from '../utils/splitPhrases';
 import { findSavedWord } from '../utils/wordForms';
 
 interface NewWordCardProps {
@@ -95,7 +96,8 @@ export default function NewWordCard({
 
   const handleLookupOriginalWord = () => {
     navigation.navigate('WordLookup', {
-      word,
+      // A phrase whose words sit apart is looked up with them together, e.g. "hört auf" for hört … auf
+      word: isSplitPhrase(word) ? splitPhraseParts(word).join(' ') : word,
       songId,
       songName,
       artistName,

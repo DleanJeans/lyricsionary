@@ -41,7 +41,8 @@ export default function SpotifyBar({
   /** Hides the bar for this song, offered when the song has no synced lyrics */
   onDismiss?: () => void;
 }) {
-  const canPlaySelected = selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
+  // Line, dictation and loop only work once Spotify plays this song
+  const canPlaySelected = sync.isThisSong && selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
   // Loops the tapped word's line, or else the one playing
   const lineToLoop = canPlaySelected ? selectedLineIndex : sync.isThisSong ? sync.currentLine : null;
   const looping = sync.loopLine !== null;

@@ -383,6 +383,13 @@ export default function LearnScreen() {
     (v): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string')
   );
   const noSyncHidden = !!song && noSyncHiddenSongs.includes(song.id);
+  // Songs whose "Not playing on Spotify" bar was closed; it still shows while Spotify plays the song
+  const [notPlayingHiddenSongs, setNotPlayingHiddenSongs] = usePersistedState<string[]>(
+    '@lyricsionary_not_playing_hidden_songs',
+    [],
+    (v): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string')
+  );
+  const notPlayingHidden = !!song && notPlayingHiddenSongs.includes(song.id) && !spotify.isThisSong && spotify.timings !== 'none';
   const nextLine = useNextLineToLearn(song, originalLines);
   const [followSpotify, setFollowSpotify] = useState(true);
   // A long press on a line's word copies the line with its translations, to share it
@@ -1380,7 +1387,7 @@ export default function LearnScreen() {
   const lyricsView = (
     <>
       {lineByLineBar}
-      {spotifyConnected && !(noSyncHidden && spotify.timings === 'none') && (
+      {spotifyConnected && !(noSyncHidden && spotify.timings === 'none') && !notPlayingHidden && (
         <SpotifyBar
           sync={spotify}
           selectedLineIndex={selectedLineIndex}
@@ -1391,7 +1398,14 @@ export default function LearnScreen() {
             setDictation({ lineIndex, checked: false });
             void spotify.playLine(lineIndex);
           }}
-          onDismiss={song ? () => setNoSyncHiddenSongs([...noSyncHiddenSongs, song.id]) : undefined}
+          onDismiss={
+            song
+              ? () =>
+                  spotify.timings === 'none'
+                    ? setNoSyncHiddenSongs([...noSyncHiddenSongs, song.id])
+                    : setNotPlayingHiddenSongs([...notPlayingHiddenSongs, song.id])
+              : undefined
+          }
         />
       )}
       <LearnLyricsView

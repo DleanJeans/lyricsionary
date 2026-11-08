@@ -27,6 +27,7 @@ export interface SpotifyLyricsSync {
   times: (number | null)[];
   currentLine: number | null;
   error: string | null;
+  clearError: () => void;
   seekToLine: (lineIndex: number) => Promise<void>;
   replayLine: () => Promise<void>;
   stepLine: (step: 1 | -1) => Promise<void>;
@@ -163,6 +164,7 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
     times,
     currentLine,
     error,
+    clearError: () => setError(null),
     seekToLine,
     replayLine: async () => {
       if (currentLine !== null) await seekToLine(currentLine);

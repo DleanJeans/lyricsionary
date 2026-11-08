@@ -38,7 +38,7 @@ export default function SpotifyBar({
   onToggleFollow: () => void;
   /** Hides the line and plays it, to write it down */
   onDictation?: (lineIndex: number) => void;
-  /** Hides the bar for this song, offered when the song has no synced lyrics */
+  /** Hides the bar for this song: for good when it has no synced lyrics, else until Spotify plays it */
   onDismiss?: () => void;
 }) {
   // Line, dictation and loop only work once Spotify plays this song
@@ -63,8 +63,13 @@ export default function SpotifyBar({
           {status}
         </Text>
       ) : null}
-      {sync.timings === 'none' && onDismiss && (
-        <TouchableOpacity onPress={onDismiss} hitSlop={8} accessibilityRole="button" accessibilityLabel="Hide this">
+      {status && (sync.error || onDismiss) && (
+        <TouchableOpacity
+          onPress={sync.error ? sync.clearError : onDismiss}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Hide this"
+        >
           <Ionicons name="close" size={16} color={Colors.textMuted} />
         </TouchableOpacity>
       )}

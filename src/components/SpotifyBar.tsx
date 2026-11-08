@@ -62,16 +62,14 @@ export default function SpotifyBar({
         <Text style={styles.status} numberOfLines={1}>
           {status}
         </Text>
-      ) : (
-        <View style={styles.spacer} />
-      )}
+      ) : null}
       {sync.timings === 'none' && onDismiss && (
         <TouchableOpacity onPress={onDismiss} hitSlop={8} accessibilityRole="button" accessibilityLabel="Hide this">
           <Ionicons name="close" size={16} color={Colors.textMuted} />
         </TouchableOpacity>
       )}
       {sync.timings === 'ready' && (
-        <View style={styles.controls}>
+        <View style={[styles.controls, !status && styles.controlsFull]}>
           {canPlaySelected && (
             <TouchableOpacity
               style={styles.fromLine}
@@ -135,13 +133,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
   },
-  spacer: {
-    flex: 1,
-  },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  // With the whole song's controls there's no status, so they share the row instead of running past its end
+  controlsFull: {
+    flex: 1,
+    justifyContent: 'space-between',
+    gap: 2,
   },
   control: {
     padding: 2,

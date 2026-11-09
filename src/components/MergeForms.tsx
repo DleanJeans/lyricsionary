@@ -15,19 +15,23 @@ const firstDefinition = (word: WordEntry) => {
 interface MergeFormsProps {
   entry: WordEntry;
   words: WordEntry[];
-  /** Merges the picked word into this one */
-  onMerge: (from: WordEntry) => void;
+  /** Merges this word into the picked one (the default), or the picked one into this word when intoPicked is false */
+  onMerge: (picked: WordEntry, intoPicked: boolean) => void;
   /** Splits a merged form back out as its own word */
   onUnmerge: (form: string) => void;
 }
 
 const MAX_SHOWN = 8;
 
-/** On a saved word's page: its merged forms, and a search for a form saved apart to merge in, e.g. voulez into veux */
+/**
+ * On a saved word's page: its merged forms, and a search for another saved word to merge with. By default this word
+ * goes into the picked one (e.g. voulez into veux, from voulez's page); Swap merges the picked one into this word.
+ */
 export default function MergeForms({ entry, words, onMerge, onUnmerge }: MergeFormsProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<WordEntry | null>(null);
+  const [intoPicked, setIntoPicked] = useState(true);
   const candidates = mergeCandidates(words, entry);
   const lower = query.trim().toLowerCase();
   const shown = candidates.filter((w) => !lower || w.word.toLowerCase().includes(lower)).slice(0, MAX_SHOWN);
@@ -36,6 +40,7 @@ export default function MergeForms({ entry, words, onMerge, onUnmerge }: MergeFo
     setOpen(false);
     setQuery('');
     setPicked(null);
+    setIntoPicked(true);
   };
 
   return (
@@ -60,16 +65,28 @@ export default function MergeForms({ entry, words, onMerge, onUnmerge }: MergeFo
       {picked ? (
         <View style={styles.confirm}>
           <Text style={styles.confirmText}>
-            Merge “{picked.word}” into “{entry.word}”? Its {picked.contexts.length === 1 ? 'context' : 'contexts'} and quiz
-            answers move here, and it stops being a word of its own.
+            Merge “{(intoPicked ? entry : picked).word}” into “{(intoPicked ? picked : entry).word}”?{' '}
+            {intoPicked
+              ? `“${entry.word}” becomes a form of “${picked.word}”, and its ${entry.contexts.length === 1 ? 'context' : 'contexts'} and quiz answers move there.`
+              : `Its ${picked.contexts.length === 1 ? 'context' : 'contexts'} and quiz answers move here, and it stops being a word of its own.`}
           </Text>
           <View style={styles.confirmButtons}>
-            <TouchableOpacity onPress={() => setPicked(null)} style={styles.cancelButton} accessibilityRole="button">
+            <TouchableOpacity
+              onPress={() => setIntoPicked((v) => !v)}
+              style={styles.swapButton}
+              accessibilityRole="button"
+              accessibilityLabel="Swap merge direction"
+            >
+              <Ionicons name="swap-horizontal" size={16} color={Colors.primaryLight} />
+              <Text style={styles.swapText}>Swap</Text>
+            </TouchableOpacity>
+            <View style={styles.spacer} />
+            <TouchableOpacity onPress={() => { setPicked(null); setIntoPicked(true); }} style={styles.cancelButton} accessibilityRole="button">
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
-                onMerge(picked);
+                onMerge(picked, intoPicked);
                 close();
               }}
               style={styles.mergeButton}
@@ -87,11 +104,11 @@ export default function MergeForms({ entry, words, onMerge, onUnmerge }: MergeFo
               style={styles.search}
               value={query}
               onChangeText={setQuery}
-              placeholder="Find a form saved apart..."
+              placeholder="Find a word to merge with..."
               placeholderTextColor={Colors.textMuted}
               autoFocus
               autoCapitalize="none"
-              accessibilityLabel="Find a form to merge"
+              accessibilityLabel="Find a word to merge with"
             />
             <TouchableOpacity onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close merge">
               <Ionicons name="close" size={20} color={Colors.textSecondary} />
@@ -117,7 +134,7 @@ export default function MergeForms({ entry, words, onMerge, onUnmerge }: MergeFo
       ) : (
         <TouchableOpacity onPress={() => setOpen(true)} style={styles.openButton} accessibilityRole="button">
           <Ionicons name="git-merge-outline" size={16} color={Colors.primaryLight} />
-          <Text style={styles.openText}>Merge a form saved apart</Text>
+          <Text style={styles.openText}>Merge with another saved word</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -162,7 +179,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   confirmText: { fontSize: 14, color: Colors.text, lineHeight: 20 },
-  confirmButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  confirmButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  spacer: { flex: 1 },
+  swapButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 8 },
+  swapText: { fontSize: 14, color: Colors.primaryLight },
   cancelButton: { paddingHorizontal: 14, paddingVertical: 8 },
   cancelText: { fontSize: 14, color: Colors.textSecondary },
   mergeButton: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },

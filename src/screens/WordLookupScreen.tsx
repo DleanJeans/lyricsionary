@@ -685,10 +685,16 @@ export default function WordLookupScreen() {
               <MergeForms
                 entry={existingWord}
                 words={words}
-                onMerge={(from) => {
+                onMerge={(picked, intoPicked) => {
                   // The page fills in again from the merged word, with the form's contexts
                   filledLookupRef.current = undefined;
-                  void mergeWords(existingWord.id, from.id);
+                  if (intoPicked) {
+                    // This word stops being one of its own, so the page moves to the word it went into
+                    navigation.setParams({ wordId: picked.id, word: picked.word });
+                    void mergeWords(picked.id, existingWord.id);
+                  } else {
+                    void mergeWords(existingWord.id, picked.id);
+                  }
                 }}
                 onUnmerge={(form) => {
                   filledLookupRef.current = undefined;

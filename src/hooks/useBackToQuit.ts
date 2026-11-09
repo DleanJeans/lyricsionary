@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useIsFocused } from '@react-navigation/native';
+import { useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { BackHandler, ToastAndroid, Platform } from 'react-native';
 
 /**
@@ -9,41 +9,44 @@ import { BackHandler, ToastAndroid, Platform } from 'react-native';
  * @param enabled - Whether the hook should be active
  */
 export function useBackToQuit(enabled: boolean = true) {
-  const isFocused = useIsFocused();
+  // Only while the screen is focused; a focus effect, unlike useIsFocused, doesn't redraw the whole
+  // screen each time it's switched to or away from
   const backPressedOnce = useRef(false);
   const timeoutRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!enabled || !isFocused || Platform.OS !== 'android') {
-      return;
-    }
-
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (backPressedOnce.current) {
-        BackHandler.exitApp();
-        return true;
+  useFocusEffect(
+    useCallback(() => {
+      if (!enabled || Platform.OS !== 'android') {
+        return;
       }
 
-      // First press - show toast and prevent exit
-      backPressedOnce.current = true;
-      ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (backPressedOnce.current) {
+          BackHandler.exitApp();
+          return true;
+        }
 
-      // Reset after 2 seconds
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = setTimeout(() => {
-        backPressedOnce.current = false;
-      }, 2000) as unknown as number;
+        // First press - show toast and prevent exit
+        backPressedOnce.current = true;
+        ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
 
-      return true; // Prevent default behavior
-    });
+        // Reset after 2 seconds
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+        timeoutRef.current = setTimeout(() => {
+          backPressedOnce.current = false;
+        }, 2000) as unknown as number;
 
-    return () => {
-      backHandler.remove();
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [enabled, isFocused]);
+        return true; // Prevent default behavior
+      });
+
+      return () => {
+        backHandler.remove();
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }, [enabled])
+  );
 }

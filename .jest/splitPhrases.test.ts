@@ -58,7 +58,7 @@ describe('joinLineWords', () => {
 
 describe('phraseLookupWords', () => {
   it('looks a German verb up with its particle, and other phrases joined', async () => {
-    expect(await phraseLookupWords('hört … auf', 'German', true)).toEqual(['aufhören', 'aufhört', 'hört auf']);
+    expect(await phraseLookupWords('hört … auf', 'German', true)).toEqual(['hört auf', 'aufhören', 'aufhört']);
     expect(await phraseLookupWords('Steh auf', 'German', true)).toEqual(['aufstehen', 'aufsteh']);
     expect(await phraseLookupWords('turn … off', 'English', false)).toEqual(['turn off']);
   });

@@ -136,19 +136,19 @@ export function phraseOccurrenceAt(line: string, phrase: string, start: number):
 
 /**
  * What Wiktionary may call a phrase whose words sit apart, or a German verb with its particle, to look
- * it up by: "turn off" for turn … off, aufhören (and "hört auf") for hört … auf or "hört auf"
+ * it up by, best first: "hört auf" for hört … auf, then aufhören; "turn off" for turn … off
  */
 export async function phraseLookupWords(phrase: string, language: string, german: boolean): Promise<string[]> {
   const split = isSplitPhrase(phrase);
   const parts = split ? splitPhraseParts(phrase) : phrase.trim().split(/\s+/);
   if (parts.length < 2) return [];
-  const words: string[] = [];
+  // The words together first, e.g. "hört auf", which Wiktionary may have as its own entry
+  const words: string[] = split ? [parts.join(' ')] : [];
   if (german && parts.length === 2 && isGermanParticle(parts[1])) {
     const particle = parts[1].toLowerCase();
     const verb = parts[0].toLowerCase();
     const lemmas = await getWiktionaryLemmas(verb, language).catch(() => [] as string[]);
     for (const lemma of [...lemmas, verb]) words.push(particle + lemma.toLowerCase());
   }
-  if (split) words.push(parts.join(' '));
   return [...new Set(words)];
 }

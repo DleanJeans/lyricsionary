@@ -37,6 +37,8 @@ import { countKnownWords } from '../utils/wordFrequency';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 
 const NO_SONGS: Song[] = [];
+/** Songs counted at a time before the screen gets to draw */
+const STATS_CHUNK = 6;
 const SORT_MODES = ['lastOpened', 'openCount', 'progress', 'nextToLearn', 'aZ', 'zA'] as const;
 type SortMode = (typeof SORT_MODES)[number];
 const newWordsLabel = (count: number) => (count === 0 ? 'Every word known' : `${count} new ${count === 1 ? 'word' : 'words'} to go`);
@@ -185,15 +187,22 @@ export default function SongsScreen() {
   };
 
   // Each song's progress, saved words, gaps and due words are counted from every song's lyrics, which
-  // takes a moment with many songs, so the list shows first and they fill in right after. Sorting by
-  // progress waits for them, so the list doesn't jump.
-  const [showStats, setShowStats] = useState(false);
+  // takes a moment with many songs, so the list shows first and they fill in right after, a few songs
+  // at a time, the last opened first. The screen is drawn out of sight as the app opens (AppNavigator),
+  // so a few songs at a time keeps the launch review answering quickly meanwhile. Sorting by progress
+  // waits for them all, so the list doesn't jump.
+  const [statsCount, setStatsCount] = useState(0);
   useEffect(() => {
-    const timer = setTimeout(() => setShowStats(true), 0);
+    if (statsCount >= songs.length) return;
+    const timer = setTimeout(() => setStatsCount((count) => count + STATS_CHUNK), 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [statsCount, songs.length]);
   const needsStats = sortMode === 'progress' || sortMode === 'nextToLearn';
-  const statsSongs = showStats || needsStats ? songs : NO_SONGS;
+  const statsSongs = useMemo(() => {
+    if (needsStats || statsCount >= songs.length) return songs;
+    if (!statsCount) return NO_SONGS;
+    return [...songs].sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0)).slice(0, statsCount);
+  }, [songs, statsCount, needsStats]);
   const wordProgress = useWordProgress(statsSongs);
   // A render behind the store, so a change to a word, e.g. a merge, shows before every song is counted again
   const words = useDeferredValue(useStore((s) => s.words));

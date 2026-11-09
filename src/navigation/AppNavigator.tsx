@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -16,11 +16,26 @@ import { WIDE_BREAKPOINT } from '../hooks/useLayout';
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Drawer = createDrawerNavigator();
 
+// Songs counts every song's words, which takes a moment with many songs. It's drawn out of sight soon
+// after the app opens, while the review that starts it or the first screen is up, so it's ready when opened.
+const PRELOAD_DELAY_MS = 800;
+
+function PreloadSongs({ navigation, children }: { navigation: { preload: (screen: 'Songs') => void }; children: React.ReactNode }) {
+  const preload = useRef(navigation.preload);
+  preload.current = navigation.preload;
+  useEffect(() => {
+    const timer = setTimeout(() => preload.current('Songs'), PRELOAD_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return <>{children}</>;
+}
+
 function TabNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
+      layout={({ navigation, children }) => <PreloadSongs navigation={navigation}>{children}</PreloadSongs>}
     >
       <Tab.Screen name="Editor" component={EditorScreen} />
       <Tab.Screen name="Web" component={WebScreen} />

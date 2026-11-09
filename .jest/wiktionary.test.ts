@@ -1,6 +1,7 @@
 import {
   getFormOfGloss,
   getFormOfLemma,
+  getPlainFormOfLemma,
   getShortGlosses,
   getWiktionaryDefinitions,
   isMissingPage,
@@ -43,7 +44,7 @@ describe('parseDefinitions', () => {
   const response = {
     de: [
       { partOfSpeech: 'Noun', language: 'German', definitions: [{ definition: '<a>love</a>' }, { definition: '' }, { definition: 'love' }] },
-      { partOfSpeech: 'Verb', language: 'German', definitions: [{ definition: 'first-person singular of <i>lieben</i>' }] },
+      { partOfSpeech: 'Verb', language: 'German', definitions: [{ definition: 'to <i>love</i>' }] },
     ],
     en: [{ partOfSpeech: 'Noun', language: 'English', definitions: [{ definition: 'an English sense' }] }],
   };
@@ -51,7 +52,7 @@ describe('parseDefinitions', () => {
   it('keeps only the requested language, without empty or duplicate senses', () => {
     expect(parseDefinitions(response, 'german')).toEqual([
       { partOfSpeech: 'Noun', text: 'love' },
-      { partOfSpeech: 'Verb', text: 'first-person singular of lieben' },
+      { partOfSpeech: 'Verb', text: 'to love' },
     ]);
   });
 
@@ -357,5 +358,28 @@ describe('soundAlikeForms', () => {
   it('leaves other languages and short words alone', () => {
     expect(soundAlikeForms('Herzen', 'German')).toEqual([]);
     expect(soundAlikeForms('os', 'French')).toEqual([]);
+  });
+});
+
+describe('getPlainFormOfLemma', () => {
+  it('finds the base form of a form-of line without form-of markup', () => {
+    expect(getPlainFormOfLemma('zu-infinitive of <a rel="mw:WikiLink" href="/wiki/umdrehen#German" title="umdrehen">umdrehen</a>')).toBe('umdrehen');
+    expect(getPlainFormOfLemma('zu-infinitive of umdrehen')).toBe('umdrehen');
+    expect(getPlainFormOfLemma('past participle of <i><a title="aufhören">aufhören</a></i>.')).toBe('aufhören');
+  });
+
+  it('leaves ordinary definitions alone', () => {
+    expect(getPlainFormOfLemma('a form of government')).toBeUndefined();
+    expect(getPlainFormOfLemma('to turn around')).toBeUndefined();
+    expect(getPlainFormOfLemma('piece of cake')).toBeUndefined();
+  });
+
+  it('uses the base form of a zu-infinitive instead of the zu-infinitive line', () => {
+    const entry = parseEntry(
+      { de: [{ language: 'German', partOfSpeech: 'Verb', definitions: [{ definition: 'zu-infinitive of <a title="umdrehen">umdrehen</a>' }] }] },
+      'german',
+    );
+    expect(entry.definitions).toEqual([]);
+    expect(entry.lemmasWithoutGloss).toEqual(['umdrehen']);
   });
 });

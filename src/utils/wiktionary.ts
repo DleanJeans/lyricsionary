@@ -155,6 +155,21 @@ function isFormOf(html: string): boolean {
   return /class="[^"]*\bform-of-definition\b/i.test(html);
 }
 
+// Words a form-of definition's name ends with, e.g. "zu-infinitive" or "past participle"
+const FORM_OF_NAME =
+  /(?:infinitive|participle|gerund|supine|inflection|form|plural|singular|tense|imperative|subjunctive|indicative|nominative|accusative|dative|genitive|comparative|superlative|diminutive|spelling)$/i;
+
+/**
+ * The base form of a definition that is only a form-of line written without Wiktionary's form-of
+ * markup, e.g. umdrehen in "zu-infinitive of umdrehen" for umzudrehen. Not "a form of government".
+ */
+export function getPlainFormOfLemma(html: string): string | undefined {
+  const match = stripDefinitionHtml(html).match(/^([\p{L}-]+(?:\s+[\p{L}-]+){0,4})\s+of\s+([\p{L}'’-]+)\.?$/u);
+  if (!match || /^(?:a|an|the|any|some|one)\s/i.test(match[1]) || !FORM_OF_NAME.test(match[1])) return undefined;
+  const title = html.match(/<a\b[^>]*\btitle="([^"]+)"[^>]*>[\s\S]*?<\/a>\s*(?:<\/[^>]+>\s*)*\.?\s*$/i)?.[1];
+  return (title && stripDefinitionHtml(title)) || match[2];
+}
+
 const ANNOTATION_SPAN =
   /<span\b[^>]*class="(?:[^"]*\s)?(?:mention-gloss[\w-]*|gloss-[\w-]+|qualifier[\w-]*|ib-[\w-]+|ann-pos|usage-label-sense)(?:\s[^"]*)?"[^>]*>/i;
 
@@ -251,6 +266,13 @@ export function parseEntry(response: unknown, language: string): WiktionaryEntry
           // form's meanings are used; with one, the base form still says what word this is a form of
           if (lemma && !entry.lemmas.includes(lemma)) entry.lemmas.push(lemma);
           if (lemma && !formOfGloss && !entry.lemmasWithoutGloss.includes(lemma)) entry.lemmasWithoutGloss.push(lemma);
+          continue;
+        }
+        // "zu-infinitive of umdrehen" says nothing about the meaning, so umdrehen's meanings are used
+        const plainLemma = getPlainFormOfLemma(definition);
+        if (plainLemma) {
+          if (!entry.lemmas.includes(plainLemma)) entry.lemmas.push(plainLemma);
+          if (!entry.lemmasWithoutGloss.includes(plainLemma)) entry.lemmasWithoutGloss.push(plainLemma);
           continue;
         }
         for (const gloss of getShortGlosses(definition)) add(entry.glosses, partOfSpeech, gloss);

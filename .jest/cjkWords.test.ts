@@ -98,6 +98,6 @@ describe('draggedPhrase', () => {
 
   it('stops at a change of script or past the longest phrase', () => {
     expect(draggedPhrase(splitLyricTokens('好き love'), 0, 3).word).toBe('好き');
-    expect(draggedPhrase(splitLyricTokens('a b c d e'), 0, 8).word).toBe('a b c d');
+    expect(draggedPhrase(splitLyricTokens('a b c d e f g h i'), 0, 16).word).toBe('a b c d e f g h');
   });
 });

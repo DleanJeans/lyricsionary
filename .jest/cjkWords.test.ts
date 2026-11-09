@@ -96,8 +96,8 @@ describe('draggedPhrase', () => {
     expect(draggedPhrase(tokens, 6, 2)).toEqual({ word: 'give up baby', from: 2, to: 6 });
   });
 
-  it('stops at a change of script or past the longest phrase', () => {
+  it('stops at a change of script, not at a number of words', () => {
     expect(draggedPhrase(splitLyricTokens('好き love'), 0, 3).word).toBe('好き');
-    expect(draggedPhrase(splitLyricTokens('a b c d e f g h i'), 0, 16).word).toBe('a b c d e f g h');
+    expect(draggedPhrase(splitLyricTokens('a b c d e f g h i'), 0, 16).word).toBe('a b c d e f g h i');
   });
 });

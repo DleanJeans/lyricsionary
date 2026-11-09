@@ -58,8 +58,6 @@ export function phraseStartsOf(words: Iterable<string>): Set<string> {
 
 /** The most words a phrase is looked for with, e.g. 3 for "tout à fait", 2 for Vietnamese yêu thương */
 const MAX_SPACED_WORDS = 4;
-/** The most words a drag goes across, to leave some out afterwards, e.g. hört all dieser Schmerz auf -> hört … auf */
-const MAX_DRAGGED_WORDS = 8;
 
 const isSpace = (token: string) => /^[^\S\n]+$/.test(token);
 
@@ -74,8 +72,7 @@ export function draggedPhrase(tokens: string[], from: number, to: number): { wor
   const span = (end: number) => tokens.slice(Math.min(from, end), Math.max(from, end) + 1).join('');
   const fits = (end: number) => cjk
     ? isCjkWord(tokens[end]) && cjkCharacterCount(span(end)) <= MAX_WORD_LENGTH
-    : isSpace(tokens[end - step]) && !!tokens[end]?.trim() && !isCjkWord(tokens[end]) &&
-      cleanLyricWord(span(end)).split(' ').length <= MAX_DRAGGED_WORDS;
+    : isSpace(tokens[end - step]) && !!tokens[end]?.trim() && !isCjkWord(tokens[end]);
   const gap = cjk ? 1 : 2;
   let end = from;
   while (step * (to - end) >= gap && fits(end + gap * step)) end += gap * step;

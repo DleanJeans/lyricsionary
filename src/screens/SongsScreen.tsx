@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import {
   View,
   FlatList,
@@ -195,7 +195,8 @@ export default function SongsScreen() {
   const needsStats = sortMode === 'progress' || sortMode === 'nextToLearn';
   const statsSongs = showStats || needsStats ? songs : NO_SONGS;
   const wordProgress = useWordProgress(statsSongs);
-  const words = useStore((s) => s.words);
+  // A render behind the store, so a change to a word, e.g. a merge, shows before every song is counted again
+  const words = useDeferredValue(useStore((s) => s.words));
   const wordIndexFor = useMemo(() => makeWordIndexFor(words), [words]);
   // The same from the words as they're known, which a quiz answer doesn't change, to find each song's words
   const knownWords = useKnownWords();

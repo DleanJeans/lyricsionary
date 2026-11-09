@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useDeferredValue, useMemo, useRef } from 'react';
 import { removeStressMarks } from '../utils/russianStress';
 import { getLanguageNameFromCode } from '../constants/languages';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
@@ -22,9 +22,11 @@ export interface WordProgress {
  * The saved words, kept the same until a word is saved, removed, respelled or saved from another
  * song. Which words are known is all progress needs, so answering a quiz, which changes just a word's
  * level, doesn't count every song's words again. Read levels from the store's words, not these.
+ * They follow the store a render behind, so a save or merge shows first and every song's progress is
+ * counted again after it.
  */
 export function useKnownWords(): WordEntry[] {
-  const words = useStore((s) => s.words);
+  const words = useDeferredValue(useStore((s) => s.words));
   const key = useMemo(
     () => words.map((entry) =>
       [entry.id, entry.language, ...spellingsOf(entry), ...(entry.contexts ?? []).map((c) => c.songId ?? '')].join('\u0001')

@@ -665,14 +665,62 @@ export function stemIpa(word: string, lemma: string, lemmaIpa: string): string |
   return `${open}${ipa}${close}`;
 }
 
-/** A German verb form's IPA from its infinitive's, e.g. fang's from fangen's, with the infinitive it came from */
+// How an ending added to a German word sounds, e.g. the -e of Signale
+const ADDED_ENDINGS: Record<string, string> = { e: 'ə', en: 'ən', n: 'n', er: 'ɐ', ern: 'ɐn', es: 'əs', em: 'əm', s: 's', se: 'sə' };
+// Sounds a spelling keeps voiceless only at the end of a word, voiced again before an ending's vowel,
+// e.g. Tag /taːk/ -> Tage /ˈtaːɡə/
+const REVOICED: Record<string, [letters: RegExp, voiced: string]> = {
+  p: [/b$/, 'b'],
+  t: [/d$/, 'd'],
+  k: [/g$/, 'ɡ'],
+  f: [/[vw]$/, 'v'],
+  s: [/[^s]s$/, 'z'],
+  ç: [/ig$/, 'ɡ'],
+};
+
+/**
+ * The IPA of a German form that is its base word plus an ending, from the base word's IPA, e.g. Signale
+ * (plural of Signal) /zɪˈɡnaːl/ -> /zɪˈɡnaːlə/, Tage from Tag /taːk/ -> /ˈtaːɡə/ or schönen from schön.
+ * Undefined for any other form, e.g. Häuser.
+ */
+export function endingIpa(word: string, lemma: string, lemmaIpa: string): string | undefined {
+  const lowerWord = word.toLowerCase();
+  const lowerLemma = lemma.toLowerCase();
+  if (!lowerWord.startsWith(lowerLemma) || lowerWord === lowerLemma) return undefined;
+  let added = lowerWord.slice(lowerLemma.length);
+  // A doubled last letter says nothing new, e.g. Freundinnen's n or Busse's s
+  const doubled = added.length > 1 && added[0] === lowerLemma.slice(-1) && !!ADDED_ENDINGS[added.slice(1)];
+  if (doubled) added = added.slice(1);
+  const ending = ADDED_ENDINGS[added];
+  if (!ending) return undefined;
+  const open = lemmaIpa.trim()[0];
+  if (open !== '/' && open !== '[') return undefined;
+  const close = open === '/' ? '/' : ']';
+  let ipa = lemmaIpa.trim().slice(1, -1).trim();
+  if (!ipa) return undefined;
+  if (!doubled && /^[aeiouäöü]/.test(added)) {
+    const revoiced = REVOICED[ipa.slice(-1)];
+    if (revoiced && revoiced[0].test(lowerLemma)) ipa = ipa.slice(0, -1) + revoiced[1];
+  }
+  ipa += ending;
+  // A word that grew a syllable needs a stress mark, e.g. /taːk/ -> /ˈtaːɡə/
+  if (!/[ˈˌ]/.test(ipa) && (ipa.match(IPA_VOWEL) ?? []).length > 1) ipa = `ˈ${ipa}`;
+  return `${open}${ipa}${close}`;
+}
+
+/**
+ * A German form's IPA from its base word's, e.g. fang's from fangen's or Signale's from Signal's, with
+ * the base word it came from
+ */
 async function getStemIpa(word: string, section: string, language: string): Promise<{ ipa: string; lemma: string } | undefined> {
   if (getWiktionaryLanguage(language).trim().toLowerCase() !== 'german') return undefined;
   for (const lemma of getFormOfLemmas(section)) {
-    if (!lemma.toLowerCase().startsWith(word.toLowerCase())) continue;
+    const lower = word.toLowerCase();
+    const lowerLemma = lemma.toLowerCase();
+    if (!lowerLemma.startsWith(lower) && !lower.startsWith(lowerLemma)) continue;
     const html = await fetchPageHtml(lemma);
     const lemmaIpa = html ? parseIpa(html, language)[0] : undefined;
-    const ipa = lemmaIpa && stemIpa(word, lemma, lemmaIpa);
+    const ipa = lemmaIpa && (stemIpa(word, lemma, lemmaIpa) ?? endingIpa(word, lemma, lemmaIpa));
     if (ipa) return { ipa, lemma };
   }
   return undefined;

@@ -1,4 +1,4 @@
-import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, stemIpa, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
+import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, endingIpa, stemIpa, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
 import amour from './fixtures/wiktionary/parse-amour.json';
 import corazon from './fixtures/wiktionary/parse-corazón.json';
 import immer from './fixtures/wiktionary/parse-immer.json';
@@ -264,5 +264,32 @@ describe('getWiktionaryPronunciation of a verb form', () => {
       return { ok: true, status: 200, json: async () => (text ? { parse: { title, text } } : { error: { code: 'missingtitle' } }) };
     }) as unknown as typeof fetch;
     expect(await getWiktionaryPronunciation('fang', 'German')).toEqual({ ipa: ['/faŋ/'], audio: [], derivedFrom: ['fangen'] });
+  });
+});
+
+describe('endingIpa', () => {
+  it('adds the ending’s sound to the base word', () => {
+    expect(endingIpa('Signale', 'Signal', '/zɪˈɡnaːl/')).toBe('/zɪˈɡnaːlə/');
+    expect(endingIpa('Blumen', 'Blume', '/ˈbluːmə/')).toBe('/ˈbluːmən/');
+    expect(endingIpa('schöner', 'schön', '/ʃøːn/')).toBe('/ˈʃøːnɐ/');
+    expect(endingIpa('Autos', 'Auto', '/ˈaʊ̯to/')).toBe('/ˈaʊ̯tos/');
+  });
+
+  it('voices a last sound again before the ending', () => {
+    expect(endingIpa('Tage', 'Tag', '/taːk/')).toBe('/ˈtaːɡə/');
+    expect(endingIpa('Hunde', 'Hund', '/hʊnt/')).toBe('/ˈhʊndə/');
+    expect(endingIpa('Preise', 'Preis', '/pʁaɪ̯s/')).toBe('/ˈpʁaɪ̯zə/');
+    expect(endingIpa('richtige', 'richtig', '/ˈʁɪçtɪç/')).toBe('/ˈʁɪçtɪɡə/');
+    expect(endingIpa('Betten', 'Bett', '/bɛt/')).toBe('/ˈbɛtən/');
+  });
+
+  it('reads a doubled last letter once', () => {
+    expect(endingIpa('Freundinnen', 'Freundin', '/ˈfʁɔɪ̯ndɪn/')).toBe('/ˈfʁɔɪ̯ndɪnən/');
+    expect(endingIpa('Busse', 'Bus', '/bʊs/')).toBe('/ˈbʊsə/');
+  });
+
+  it('gives up on forms that change more than the ending', () => {
+    expect(endingIpa('Häuser', 'Haus', '/haʊ̯s/')).toBeUndefined();
+    expect(endingIpa('Signalxyz', 'Signal', '/zɪˈɡnaːl/')).toBeUndefined();
   });
 });

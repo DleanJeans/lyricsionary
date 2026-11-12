@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo, useRef } from 'react';
 import { removeStressMarks } from '../utils/russianStress';
 import { getLanguageNameFromCode } from '../constants/languages';
-import { makeIgnoredWordChecker } from '../store/useStore';
+import { makeIgnoredWordChecker, type IgnoredWord } from '../store/useStore';
 import { Song, WordEntry } from '../types';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
 import { phraseStartsOf } from '../utils/cjkWords';
@@ -28,16 +28,23 @@ export interface WordProgress {
  * counted again after it.
  */
 export function useKnownWords(): WordEntry[] {
-  const words = useDeferredValue(useStoreWhileShown((s) => s.words));
-  const key = useMemo(
-    () => words.map((entry) =>
+  return knownWordsOf(useDeferredValue(useStoreWhileShown((s) => s.words)));
+}
+
+// Shared by every screen and hook, so Learn's progress and next line don't each read every word again
+const knownKeys = new WeakMap<WordEntry[], string>();
+let keptKnownWords: { key: string; words: WordEntry[] } | null = null;
+
+function knownWordsOf(words: WordEntry[]): WordEntry[] {
+  let key = knownKeys.get(words);
+  if (key === undefined) {
+    key = words.map((entry) =>
       [entry.id, entry.language, ...spellingsOf(entry), ...(entry.contexts ?? []).map((c) => c.songId ?? '')].join('\u0001')
-    ).join('\u0000'),
-    [words]
-  );
-  const kept = useRef<{ key: string; words: WordEntry[] } | null>(null);
-  if (kept.current?.key !== key) kept.current = { key, words };
-  return kept.current.words;
+    ).join('\u0000');
+    knownKeys.set(words, key);
+  }
+  if (keptKnownWords?.key !== key) keptKnownWords = { key, words };
+  return keptKnownWords.words;
 }
 
 /**
@@ -54,64 +61,68 @@ function useKnownWordChecker(): KnownWordChecker {
   const words = useKnownWords();
   const ignoredWords = useStoreWhileShown((s) => s.ignoredWords);
   const compoundSplits = useStoreWhileShown((s) => s.compoundSplits);
+  return useMemo(() => knownWordChecker(words, ignoredWords, compoundSplits), [words, ignoredWords, compoundSplits]);
+}
+
+// The last few checkers made, so hooks reading the same words share one
+let checkers: { words: WordEntry[]; ignoredWords: IgnoredWord[]; compoundSplits: Record<string, string[]>; checker: KnownWordChecker }[] = [];
+
+function knownWordChecker(words: WordEntry[], ignoredWords: IgnoredWord[], compoundSplits: Record<string, string[]>): KnownWordChecker {
+  const made = checkers.find((c) => c.words === words && c.ignoredWords === ignoredWords && c.compoundSplits === compoundSplits);
+  if (made) return made.checker;
 
   // Saved words keyed by "language\u0000word", with language names normalized like LearnScreen, and
   // by word alone for songs with no language, which Learn matches against saved words in any language
-  const { savedWordKeys, savedWordsAnyLanguage } = useMemo(() => {
-    const keys = new Set<string>();
-    const anyLanguage = new Set<string>();
-    for (const entry of words) {
-      const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
-      // A Russian word saved with its stress mark, like любо́вь, is the lyrics' любовь; a merged form is known too
-      for (const spelling of spellingsOf(entry)) {
-        const word = removeStressMarks(spelling.toLowerCase());
-        keys.add(`${language}\u0000${word}`);
-        anyLanguage.add(word);
-      }
+  const savedWordKeys = new Set<string>();
+  const savedWordsAnyLanguage = new Set<string>();
+  for (const entry of words) {
+    const language = (getLanguageNameFromCode(entry.language) ?? entry.language).toLowerCase();
+    // A Russian word saved with its stress mark, like любо́вь, is the lyrics' любовь; a merged form is known too
+    for (const spelling of spellingsOf(entry)) {
+      const word = removeStressMarks(spelling.toLowerCase());
+      savedWordKeys.add(`${language}\u0000${word}`);
+      savedWordsAnyLanguage.add(word);
     }
-    return { savedWordKeys: keys, savedWordsAnyLanguage: anyLanguage };
-  }, [words]);
+  }
 
   // Whether a German compound splits into saved words, like Learn shows it, e.g. Liebesbrief once
   // Liebe and Brief are saved; cached per word since every song's lyrics are checked
-  const isKnownCompound = useMemo(() => {
-    const knownGermanWords = buildKnownGermanWords(words);
-    const cache = new Map<string, boolean>();
+  const knownGermanWords = buildKnownGermanWords(words);
+  const compoundCache = new Map<string, boolean>();
+  const isKnownCompound = (word: string) => {
+    const lower = word.toLowerCase();
+    let known = compoundCache.get(lower);
+    if (known === undefined) {
+      const parts = getCompoundParts(word, compoundSplits, knownGermanWords);
+      known = !!parts && parts.every((part) => knownGermanWords.has(part.lemma));
+      compoundCache.set(lower, known);
+    }
+    return known;
+  };
+
+  const isIgnored = makeIgnoredWordChecker(ignoredWords);
+  const phraseStarts = phraseStartsOf([...savedWordsAnyLanguage, ...ignoredWords.map((w) => w.word)]);
+  const check = (song: Song) => {
+    const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
+    const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
+    const isGermanSong = isGermanLanguage(song.originalLanguages);
     return (word: string) => {
       const lower = word.toLowerCase();
-      let known = cache.get(lower);
-      if (known === undefined) {
-        const parts = getCompoundParts(word, compoundSplits, knownGermanWords);
-        known = !!parts && parts.every((part) => knownGermanWords.has(part.lemma));
-        cache.set(lower, known);
-      }
-      return known;
+      return (
+        (languages.length === 0
+          ? savedWordsAnyLanguage.has(lower)
+          : languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`))) ||
+        isIgnored(word, ignoreLanguage) ||
+        (isGermanSong && isKnownCompound(word))
+      );
     };
-  }, [words, compoundSplits]);
-
-  return useMemo(() => {
-    const isIgnored = makeIgnoredWordChecker(ignoredWords);
-    const phraseStarts = phraseStartsOf([...savedWordsAnyLanguage, ...ignoredWords.map((w) => w.word)]);
-    const checker = (song: Song) => {
-      const languages = (song.originalLanguages ?? []).map((l) => (getLanguageNameFromCode(l) ?? l).toLowerCase());
-      const ignoreLanguage = song.originalLanguages?.[0] || 'unknown';
-      const isGermanSong = isGermanLanguage(song.originalLanguages);
-      return (word: string) => {
-        const lower = word.toLowerCase();
-        return (
-          (languages.length === 0
-            ? savedWordsAnyLanguage.has(lower)
-            : languages.some((language) => savedWordKeys.has(`${language}\u0000${lower}`))) ||
-          isIgnored(word, ignoreLanguage) ||
-          (isGermanSong && isKnownCompound(word))
-        );
-      };
-    };
-    // Every spelling known in any language, to tell which words a change made known or not
-    const knownSpellings = new Set(savedWordsAnyLanguage);
-    for (const ignored of ignoredWords) knownSpellings.add(ignored.word.toLowerCase());
-    return Object.assign(checker, { phraseStarts, knownSpellings, compoundSplits });
-  }, [savedWordKeys, savedWordsAnyLanguage, ignoredWords, isKnownCompound, compoundSplits]);
+  };
+  // Every spelling known in any language, to tell which words a change made known or not
+  const knownSpellings = new Set(savedWordsAnyLanguage);
+  for (const ignored of ignoredWords) knownSpellings.add(ignored.word.toLowerCase());
+  const checker = Object.assign(check, { phraseStarts, knownSpellings, compoundSplits });
+  checkers = [{ words, ignoredWords, compoundSplits, checker }, ...checkers].slice(0, 3);
+  return checker;
 }
 
 /**

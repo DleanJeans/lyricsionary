@@ -168,5 +168,13 @@ export function joinCompoundIpa(parts: CompoundPart[], ipas: (string | undefined
  * Map saved German words (lowercased) to their saved spelling, to split compounds with.
  */
 export function buildKnownGermanWords(words: { word: string; language: string }[]): Map<string, string> {
-  return new Map(words.filter((w) => isGermanLanguage([w.language])).map((w) => [w.word.toLowerCase(), w.word]));
+  // Learn, its word card and progress all ask for the same saved words at once, so it's made once for them
+  let known = knownGermanWordsOf.get(words);
+  if (!known) {
+    known = new Map(words.filter((w) => isGermanLanguage([w.language])).map((w) => [w.word.toLowerCase(), w.word]));
+    knownGermanWordsOf.set(words, known);
+  }
+  return known;
 }
+
+const knownGermanWordsOf = new WeakMap<object, Map<string, string>>();

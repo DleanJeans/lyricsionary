@@ -298,13 +298,37 @@ export default function WordLookupScreen() {
     return currentNormalized !== storedNormalized;
   }, [displayWord, isNewWord, language, pronunciation, masteryLevel, note, wordSenses, words]);
 
-  // Suggest the word's Wiktionary definitions in the selected language for each context's definition
+  // The word a language was picked by hand for, which stops the switch to the song's next language
+  const languagePickedForRef = useRef<string | undefined>(undefined);
+  const pickLanguage = (picked: string) => {
+    languagePickedForRef.current = displayWord;
+    setLanguage(picked);
+  };
+
+  // Suggest the word's Wiktionary definitions in the selected language for each context's definition.
+  // In a song with more than one language, a new word with no entry in this language switches to the
+  // song's next language that has one (e.g. Spanish "perdona" in a German and Spanish song)
   useEffect(() => {
     setDefinitionSuggestions([]);
     if (!wiktionaryWord || !language) return;
     let cancelled = false;
-    getWiktionaryDefinitions(wiktionaryWord, language).then((definitions) => {
-      if (!cancelled && definitions) setDefinitionSuggestions(definitions);
+    getWiktionaryDefinitions(wiktionaryWord, language).then(async (definitions) => {
+      if (cancelled || !definitions) return;
+      if (definitions.length > 0) {
+        setDefinitionSuggestions(definitions);
+        return;
+      }
+      const songLanguages = originalLanguages ?? [];
+      const at = songLanguages.findIndex((songLanguage) => isSameLanguage(songLanguage, language));
+      if (at < 0 || wordId || languagePickedForRef.current === displayWord || findExistingWord()) return;
+      for (const next of songLanguages.slice(at + 1)) {
+        const found = await getWiktionaryDefinitions(wiktionaryWord, next);
+        if (cancelled) return;
+        if (found && found.length > 0) {
+          setLanguage(next);
+          return;
+        }
+      }
     });
     return () => {
       cancelled = true;
@@ -631,7 +655,7 @@ export default function WordLookupScreen() {
             <Text style={styles.fieldLabel}>Language</Text>
             <LanguageSelect
               value={language}
-              onValueChange={setLanguage}
+              onValueChange={pickLanguage}
               placeholder="Select language"
             />
           </View>

@@ -59,15 +59,24 @@ export const removeSpecialChars = (word: string) => {
   return word.replace(/[^\p{L}\p{N}\u0E31\u0E34-\u0E3A\u0E47-\u0E4E'-]/gu, '');
 }
 /**
- * A lyric line's words, spaces and punctuation, as Learn lays them out to tap: Chinese, Japanese
+ * A lyric line's words, spaces and punctuation, as Learn lays them out to tap: a dash between words
+ * ends the word before it, e.g. "Ich—du" -> "Ich—", "du". Chinese, Japanese
  * and Thai don't separate words with spaces, so each of their characters is its own token, with a
  * Japanese long vowel mark kept on the kana before it, e.g. "「ラーメン」" -> "「", "ラー", "メ", "ン", "」",
  * and a Thai consonant kept with its vowels and tone marks, e.g. "ไม่เป็นไร" -> "ไม่", "เป็", "น", "ไร"
  */
 export const splitLyricTokens = (text: string): string[] =>
   text.match(
-    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]ー*|[เแโใไ]?[\u0E01-\u0E2E][\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]*[ะาำๅ]?|\p{Script=Thai}|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}]+|\s+/gu
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]ー*|[เแโใไ]?[\u0E01-\u0E2E][\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]*[ะาำๅ]?|\p{Script=Thai}|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}‒–—―⸺⸻]+[‒–—―⸺⸻]*|[‒–—―⸺⸻]+|\s+/gu
   ) ?? [];
+
+/**
+ * Text split into words at spaces and at dashes, which often join words with no space around them,
+ * e.g. "chair—even" -> "chair—", "even". The dash stays on the word before it; a hyphen doesn't
+ * split, so "well-known" stays one word. Each word comes with where it starts in the text.
+ */
+export const splitDashedWords = (text: string): { text: string; start: number }[] =>
+  Array.from(text.matchAll(/[^\s‒–—―⸺⸻]+[‒–—―⸺⸻]*|[‒–—―⸺⸻]+/g), (match) => ({ text: match[0], start: match.index ?? 0 }));
 
 // A lyric token's punctuation before and after the word, e.g. "(mich?)" -> "(", "mich", "?)"
 export const splitEdgePunctuation = (token: string) => {

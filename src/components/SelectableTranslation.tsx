@@ -4,6 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
 import { findDefinitionHighlight, findDefinitionHighlightAt, withWordForms } from '../utils/definitionHighlight';
+import { splitDashedWords } from '../utils/cleanLyrics';
 
 interface SelectableTranslationProps {
   translation: string;
@@ -45,11 +46,8 @@ export function findWordIndex(rects: (WordRect | undefined)[], x: number, y: num
 // Tap a word, or drag across several, to pick it as the definition.
 export default function SelectableTranslation({ translation, onSelect, value, valueAt, style }: SelectableTranslationProps) {
   // Each word with its start offset in the translation, to map a highlight onto words.
-  const tokens = useMemo(
-    () => Array.from(translation.matchAll(/\S+/g), (match) => ({ text: match[0], start: match.index ?? 0 })),
-    [translation]
-  );
-  const words = useMemo(() => tokens.map((token) => token.text), [tokens]);
+  // Words split at spaces and dashes, so "desk chair" can be picked from "desk chair—even"
+  const tokens = useMemo(() => splitDashedWords(translation), [translation]);
   const rects = useRef<(WordRect | undefined)[]>([]);
   const dragStart = useRef(-1);
   const [selection, setSelection] = useState<[number, number] | null>(null);
@@ -57,7 +55,8 @@ export default function SelectableTranslation({ translation, onSelect, value, va
 
   const commit = (start: number, end: number) => {
     const [from, to] = start <= end ? [start, end] : [end, start];
-    const joined = words.slice(from, to + 1).join(' ');
+    // As written between the words, so "chair—even" isn't picked as "chair— even"
+    const joined = translation.slice(tokens[from].start, tokens[to].start + tokens[to].text.length).replace(/\s+/g, ' ');
     const text = joined.replace(EDGE_PUNCTUATION, '');
     // Skip the punctuation cut off the front, like the quote in "“the"
     const leading = joined.length - joined.replace(/^[\s"'“”‘’«»„.,;:!?¡¿()[\]{}…\-–—]+/, '').length;

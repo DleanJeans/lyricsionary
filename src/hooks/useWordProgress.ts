@@ -1,12 +1,14 @@
 import { useDeferredValue, useMemo, useRef } from 'react';
 import { removeStressMarks } from '../utils/russianStress';
 import { getLanguageNameFromCode } from '../constants/languages';
-import { makeIgnoredWordChecker, useStore } from '../store/useStore';
+import { makeIgnoredWordChecker } from '../store/useStore';
 import { Song, WordEntry } from '../types';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
 import { phraseStartsOf } from '../utils/cjkWords';
 import { spellingsOf } from '../utils/wordForms';
 import { countKnownWords, countWords } from '../utils/wordFrequency';
+import { changedSpellings, SongWordCache } from '../utils/songWordCache';
+import { useStoreWhileShown } from './useStoreWhileShown';
 
 export interface WordProgress {
   known: number;
@@ -26,7 +28,7 @@ export interface WordProgress {
  * counted again after it.
  */
 export function useKnownWords(): WordEntry[] {
-  const words = useDeferredValue(useStore((s) => s.words));
+  const words = useDeferredValue(useStoreWhileShown((s) => s.words));
   const key = useMemo(
     () => words.map((entry) =>
       [entry.id, entry.language, ...spellingsOf(entry), ...(entry.contexts ?? []).map((c) => c.songId ?? '')].join('\u0001')
@@ -42,10 +44,16 @@ export function useKnownWords(): WordEntry[] {
  * Makes a checker for whether a song's word is known (saved, ignored or a compound of saved words),
  * with the first words of the known phrases (phraseStartsOf) to look for phrases from
  */
-function useKnownWordChecker(): ((song: Song) => (word: string) => boolean) & { phraseStarts: Set<string> } {
+type KnownWordChecker = ((song: Song) => (word: string) => boolean) & {
+  phraseStarts: Set<string>;
+  knownSpellings: Set<string>;
+  compoundSplits: Record<string, string[]>;
+};
+
+function useKnownWordChecker(): KnownWordChecker {
   const words = useKnownWords();
-  const ignoredWords = useStore((s) => s.ignoredWords);
-  const compoundSplits = useStore((s) => s.compoundSplits);
+  const ignoredWords = useStoreWhileShown((s) => s.ignoredWords);
+  const compoundSplits = useStoreWhileShown((s) => s.compoundSplits);
 
   // Saved words keyed by "language\u0000word", with language names normalized like LearnScreen, and
   // by word alone for songs with no language, which Learn matches against saved words in any language
@@ -99,8 +107,11 @@ function useKnownWordChecker(): ((song: Song) => (word: string) => boolean) & { 
         );
       };
     };
-    return Object.assign(checker, { phraseStarts });
-  }, [savedWordKeys, savedWordsAnyLanguage, ignoredWords, isKnownCompound]);
+    // Every spelling known in any language, to tell which words a change made known or not
+    const knownSpellings = new Set(savedWordsAnyLanguage);
+    for (const ignored of ignoredWords) knownSpellings.add(ignored.word.toLowerCase());
+    return Object.assign(checker, { phraseStarts, knownSpellings, compoundSplits });
+  }, [savedWordKeys, savedWordsAnyLanguage, ignoredWords, isKnownCompound, compoundSplits]);
 }
 
 /**
@@ -109,31 +120,40 @@ function useKnownWordChecker(): ((song: Song) => (word: string) => boolean) & { 
  */
 export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
   const knownChecker = useKnownWordChecker();
-  // Each song's progress until the known words change, so opening a song, which updates just its
-  // open count, doesn't count every song's words again
-  const cache = useRef<{ checker: typeof knownChecker; bySong: WeakMap<Song, WordProgress> } | null>(null);
-  if (cache.current?.checker !== knownChecker) cache.current = { checker: knownChecker, bySong: new WeakMap() };
-  const bySong = cache.current.bySong;
+  // Each song's progress, counted again only for the songs with a word that was saved, removed or
+  // ignored since, so opening a song, which updates just its open count, or ignoring a word doesn't
+  // count every song's words again
+  const cache = useRef<{ checker: KnownWordChecker; bySong: SongWordCache<WordProgress> } | null>(null);
+  if (cache.current?.checker !== knownChecker) {
+    const before = cache.current;
+    if (!before || before.checker.compoundSplits !== knownChecker.compoundSplits) {
+      cache.current = { checker: knownChecker, bySong: new SongWordCache() };
+    } else {
+      before.bySong.forget(changedSpellings(before.checker.knownSpellings, knownChecker.knownSpellings));
+      cache.current = { checker: knownChecker, bySong: before.bySong };
+    }
+  }
+  const bySong = cache.current!.bySong;
   return useMemo(() => {
     const progress = new Map<string, WordProgress>();
     for (const song of songs) {
-      const cached = bySong.get(song);
-      if (cached) {
-        progress.set(song.id, cached);
-        continue;
-      }
-      const total = countWords(song.originalLyrics);
-      const unknown = new Set<string>();
-      const known = countKnownWords(
-        song.originalLyrics,
-        knownChecker(song),
-        song.originalLanguages,
-        (word) => unknown.add(word.toLowerCase()),
-        knownChecker.phraseStarts
-      );
-      const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
-      const songProgress = { known, total, percent, newWords: unknown.size, label: `${known}/${total} words (${percent}%)` };
-      bySong.set(song, songProgress);
+      const songProgress = bySong.count(song, (asking) => {
+        const total = countWords(song.originalLyrics);
+        const unknown = new Set<string>();
+        const isKnown = knownChecker(song);
+        const known = countKnownWords(
+          song.originalLyrics,
+          (word) => {
+            asking(word);
+            return isKnown(word);
+          },
+          song.originalLanguages,
+          (word) => unknown.add(word.toLowerCase()),
+          knownChecker.phraseStarts
+        );
+        const percent = total > 0 ? Math.floor((known / total) * 100) : 0;
+        return { known, total, percent, newWords: unknown.size, label: `${known}/${total} words (${percent}%)` };
+      });
       progress.set(song.id, songProgress);
     }
     return progress;

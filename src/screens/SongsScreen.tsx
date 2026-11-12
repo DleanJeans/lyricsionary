@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -35,6 +35,8 @@ import ReviewSession from '../components/ReviewSession';
 import { buildReviewItems, canReview, dueWords, type ReviewItem } from '../utils/reviewQuiz';
 import { countKnownWords } from '../utils/wordFrequency';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
+import { useStoreWhileShown } from '../hooks/useStoreWhileShown';
+import { changedEntries, SongWordCache } from '../utils/songWordCache';
 
 const NO_SONGS: Song[] = [];
 /** Songs counted at a time before the screen gets to draw */
@@ -66,10 +68,47 @@ function makeWordIndexFor(words: WordEntry[]) {
   );
 }
 
+/**
+ * A SongWordCache that follows a list of saved words: when the list changes, it forgets just the songs
+ * with a changed word. A new object each time, so memos that read it count again. With languageOf, it
+ * starts over when a language with few saved words changes, since gaps need a few words to pick from.
+ */
+function useSongWordCache<V>(words: WordEntry[], languageOf?: (word: WordEntry) => string): SongWordCache<V> {
+  const kept = useRef<{ words: WordEntry[]; cache: SongWordCache<V> } | null>(null);
+  if (kept.current?.words !== words) {
+    const before = kept.current;
+    const cache = before ? before.cache.copy() : new SongWordCache<V>();
+    if (before) {
+      const changed = changedEntries(before.words, words);
+      if (languageOf && fewWordsChanged(before.words, words, languageOf)) cache.clear();
+      else cache.forget(changed);
+    }
+    kept.current = { words, cache };
+  }
+  return kept.current.cache;
+}
+
+/** Whether a language with only a few saved words (too few for gaps) gained or lost one */
+function fewWordsChanged(before: WordEntry[], after: WordEntry[], languageOf: (word: WordEntry) => string) {
+  const counts = (words: WordEntry[]) => {
+    const byLanguage = new Map<string, number>();
+    for (const word of words) byLanguage.set(languageOf(word), (byLanguage.get(languageOf(word)) ?? 0) + 1);
+    return byLanguage;
+  };
+  const was = counts(before);
+  const now = counts(after);
+  for (const language of new Set([...was.keys(), ...now.keys()])) {
+    const a = was.get(language) ?? 0;
+    const b = now.get(language) ?? 0;
+    if (a !== b && Math.min(a, b) < 5) return true;
+  }
+  return false;
+}
+
 export default function SongsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RootTabParamList, 'Songs'>>();
-  const songs = useStore((s) => s.songs);
+  const songs = useStoreWhileShown((s) => s.songs);
   const setCurrentSongId = useStore((s) => s.setCurrentSongId);
   const deleteSong = useStore((s) => s.deleteSong);
   const updateSong = useStore((s) => s.updateSong);
@@ -205,50 +244,53 @@ export default function SongsScreen() {
   }, [songs, statsCount, needsStats]);
   const wordProgress = useWordProgress(statsSongs);
   // A render behind the store, so a change to a word, e.g. a merge, shows before every song is counted again
-  const words = useDeferredValue(useStore((s) => s.words));
+  const words = useDeferredValue(useStoreWhileShown((s) => s.words));
   const wordIndexFor = useMemo(() => makeWordIndexFor(words), [words]);
   // The same from the words as they're known, which a quiz answer doesn't change, to find each song's words
   const knownWords = useKnownWords();
   const knownIndexFor = useMemo(() => makeWordIndexFor(knownWords), [knownWords]);
-  // Saved words each song has to fill in, the same gaps Learn blanks out
-  const songGapsCache = useMemo(() => new WeakMap<Song, number>(), [wordIndexFor]);
+  // Saved words each song has to fill in, the same gaps Learn blanks out. Counted again only for the
+  // songs a changed word is in (a level or quiz change makes a word a gap or not)
+  const songGapsCache = useSongWordCache<number>(words, (word) => word.language);
   const songGaps = useMemo(() => {
     const now = Date.now();
     const gaps = new Map<string, number>();
     for (const song of statsSongs) {
-      let count = songGapsCache.get(song);
-      if (count === undefined) {
+      const count = songGapsCache.count(song, (asking) => {
         const index = wordIndexFor(song.originalLanguages);
-        count = canFillGaps(index) ? countGaps(song.originalLyrics, (word) => gapWord(index, word, now)) : 0;
-        songGapsCache.set(song, count);
-      }
+        return canFillGaps(index)
+          ? countGaps(song.originalLyrics, (word) => {
+              asking(word);
+              return gapWord(index, word, now);
+            })
+          : 0;
+      });
       if (count) gaps.set(song.id, count);
     }
     return gaps;
   }, [statsSongs, wordIndexFor, songGapsCache]);
 
   // Each song's saved words: the ones in its lyrics and the ones saved from it. Kept per song until a
-  // word is saved or removed, so opening a song, which updates just its open count, or answering a quiz,
-  // which updates just a word's level, doesn't read every song again.
-  const songWordIdsCache = useMemo(() => new WeakMap<Song, string[]>(), [knownIndexFor]);
+  // word in it is saved or removed, so opening a song, which updates just its open count, or answering a
+  // quiz, which updates just a word's level, doesn't read every song again.
+  const songWordIdsCache = useSongWordCache<string[]>(knownWords);
   const songWords = useMemo(() => {
     const byId = new Map(words.map((word) => [word.id, word]));
     const bySong = new Map<string, WordEntry[]>();
     for (const song of statsSongs) {
-      let ids = songWordIdsCache.get(song);
-      if (!ids) {
+      const ids = songWordIdsCache.count(song, (asking) => {
         const index = knownIndexFor(song.originalLanguages);
         const found = new Set<string>();
         // Read like the song's word count, so phrases, Chinese words and Korean stems are found too
         countKnownWords(song.originalLyrics, (word) => {
+          asking(word);
           const entry = index.get(word.toLowerCase());
           if (entry) found.add(entry.id);
           return !!entry;
         }, song.originalLanguages, undefined, knownIndexFor.phraseStarts(index));
         for (const word of knownWords) if (word.contexts?.some((c) => c.songId === song.id)) found.add(word.id);
-        ids = [...found];
-        songWordIdsCache.set(song, ids);
-      }
+        return [...found];
+      });
       bySong.set(song.id, ids.map((id) => byId.get(id)).filter((entry): entry is WordEntry => !!entry));
     }
     return bySong;

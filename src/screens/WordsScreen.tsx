@@ -29,6 +29,7 @@ import ReviewSession from '../components/ReviewSession';
 import SongFilter from '../components/SongFilter';
 import { buildReviewItems, canReview, dueWords, ReviewItem } from '../utils/reviewQuiz';
 import { compareMostMissed, isTricky } from '../utils/wordQuiz';
+import { useStoreWhileShown } from '../hooks/useStoreWhileShown';
 
 interface PendingDeletion {
   id: string;
@@ -41,15 +42,15 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function WordsScreen() {
   const navigation = useNavigation<any>();
-  const words = useStore((s) => s.words);
+  const words = useStoreWhileShown((s) => s.words);
   const deleteWord = useStore((s) => s.deleteWord);
   const deleteWords = useStore((s) => s.deleteWords);
   const setWordsLevel = useStore((s) => s.setWordsLevel);
   // Select mode, for setting the level of or deleting many words at once
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const songs = useStore((s) => s.songs);
-  const ignoredWords = useStore((s) => s.ignoredWords);
+  const songs = useStoreWhileShown((s) => s.songs);
+  const ignoredWords = useStoreWhileShown((s) => s.ignoredWords);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   // Top words just ignored with a long press, each with an Undo for a few seconds
   const [justIgnored, setJustIgnored] = useState<WordFrequency[]>([]);

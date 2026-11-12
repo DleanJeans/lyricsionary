@@ -1,4 +1,5 @@
 jest.mock('../src/store/useStore', () => ({ useStore: jest.fn(), makeIgnoredWordChecker: jest.fn() }));
+jest.mock('../src/hooks/useStoreWhileShown', () => ({ useStoreWhileShown: jest.fn() }));
 import { pickNextLine } from '../src/hooks/useWordProgress';
 
 describe('pickNextLine', () => {

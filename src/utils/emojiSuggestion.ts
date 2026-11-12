@@ -66,6 +66,14 @@ function indexOf(categories: EmojiCategory[]): IndexedEmoji[] {
   return index;
 }
 
+/**
+ * Reads the emoji names in ahead of time, e.g. while a word's card is open in Learn, so Look Up, which
+ * suggests an emoji for each definition, opens without stopping to read them
+ */
+export function prepareEmojiSuggestions(categories: EmojiCategory[]) {
+  indexOf(categories);
+}
+
 export function suggestEmoji(definition: string, categories: EmojiCategory[]): string | null {
   const phrase = words(definition).join(' ');
   const definitionWords = phrase.split(' ').filter(Boolean);

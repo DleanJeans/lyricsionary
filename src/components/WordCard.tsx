@@ -8,6 +8,8 @@ import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { useStore } from '../store/useStore';
 import { WordEntry } from '../types';
+import { prepareEmojiSuggestions } from '../utils/emojiSuggestion';
+import { emojisByCategory } from 'rn-emoji-keyboard';
 import AlsoInSongs from './AlsoInSongs';
 import QuickNote from './QuickNote';
 import DueLabel from './DueLabel';
@@ -83,6 +85,12 @@ export default function WordCard({
     savedAudio: item.audio,
     needsIpa: !item.pronunciation,
   });
+  // Look up opens without first reading every emoji's name for its suggestions
+  useEffect(() => {
+    if (!showClose) return;
+    const timer = setTimeout(() => prepareEmojiSuggestions(emojisByCategory), 500);
+    return () => clearTimeout(timer);
+  }, [showClose]);
   // Words saved before recordings were kept get them the first time they're selected
   const setWordAudio = useStore((s) => s.setWordAudio);
   useEffect(() => {

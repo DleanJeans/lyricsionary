@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './Text';
@@ -32,7 +32,8 @@ export default function MergeForms({ entry, words, onMerge, onUnmerge }: MergeFo
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<WordEntry | null>(null);
   const [intoPicked, setIntoPicked] = useState(true);
-  const candidates = mergeCandidates(words, entry);
+  // Every saved word in the language, sorted, only once the search is open: Look Up draws this each time
+  const candidates = useMemo(() => (open ? mergeCandidates(words, entry) : []), [open, words, entry]);
   const lower = query.trim().toLowerCase();
   const shown = candidates.filter((w) => !lower || w.word.toLowerCase().includes(lower)).slice(0, MAX_SHOWN);
 

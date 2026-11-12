@@ -22,7 +22,7 @@ function ControlButton({ icon, label, onPress, disabled }: { icon: keyof typeof 
   );
 }
 
-/** Spotify controls above the lyrics in Learn: replay, step and play by line */
+/** Spotify controls above the lyrics in Learn: play the song, then replay, step and play by line */
 export default function SpotifyBar({
   sync,
   selectedLineIndex,
@@ -63,6 +63,18 @@ export default function SpotifyBar({
           {status}
         </Text>
       ) : null}
+      {!sync.isThisSong && (
+        <TouchableOpacity
+          style={[styles.fromLine, sync.startingSong && styles.controlDisabled]}
+          onPress={() => void sync.playSong()}
+          disabled={sync.startingSong}
+          accessibilityRole="button"
+          accessibilityLabel="Play this song on Spotify"
+        >
+          <Ionicons name="play" size={14} color={Colors.white} />
+          <Text style={styles.fromLineText}>{sync.startingSong ? 'Starting...' : 'Play'}</Text>
+        </TouchableOpacity>
+      )}
       {status && (sync.error || onDismiss) && (
         <TouchableOpacity
           onPress={sync.error ? sync.clearError : onDismiss}

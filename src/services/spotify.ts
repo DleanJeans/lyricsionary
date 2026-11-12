@@ -203,13 +203,65 @@ export async function resumeSpotify(): Promise<void> {
   await api('/me/player/play', { method: 'PUT' });
 }
 
+/** The song's Spotify track URI: by title and artist, then by a looser search */
+export async function findSpotifyTrackUri(songName: string, artistName: string): Promise<string> {
+  const queries = artistName ? [`track:${songName} artist:${artistName}`, `${songName} ${artistName}`] : [songName];
+  for (const q of queries) {
+    const search = await api(`/search?type=track&limit=1&q=${encodeURIComponent(q)}`);
+    const uri = (await search.json())?.tracks?.items?.[0]?.uri;
+    if (uri) return uri;
+  }
+  throw new SpotifyError('not-found', `Couldn't find ${songName} on Spotify.`);
+}
+
+interface SpotifyDevice {
+  id: string;
+  isActive: boolean;
+  type: string;
+}
+
+/** The devices Spotify is open on, even ones not playing yet */
+export async function getSpotifyDevices(): Promise<SpotifyDevice[]> {
+  const body: any = await (await api('/me/player/devices')).json();
+  return (body?.devices ?? [])
+    .filter((d: any) => d?.id && !d.is_restricted)
+    .map((d: any) => ({ id: d.id, isActive: !!d.is_active, type: d.type ?? '' }));
+}
+
+/** Plays a track; with no active device, on the device Spotify is open on (this phone first) */
+export async function playSpotifyTrack(uri: string, positionMs = 0): Promise<void> {
+  const body = JSON.stringify({ uris: [uri], position_ms: Math.round(positionMs) });
+  try {
+    await api('/me/player/play', { method: 'PUT', body });
+  } catch (e) {
+    if (!(e instanceof SpotifyError) || e.kind !== 'no-device') throw e;
+    const devices = await getSpotifyDevices();
+    const device =
+      devices.find((d) => d.isActive) ??
+      devices.find((d) => d.type.toLowerCase() === (Platform.OS === 'web' ? 'computer' : 'smartphone')) ??
+      devices[0];
+    if (!device) throw e;
+    await api(`/me/player/play?device_id=${encodeURIComponent(device.id)}`, { method: 'PUT', body });
+  }
+}
+
+/** Opens a track in the Spotify app, or on open.spotify.com without it */
+export async function openSpotifyTrack(uri: string): Promise<void> {
+  const web = `https://open.spotify.com/track/${uri.split(':').pop()}`;
+  if (Platform.OS === 'web') {
+    window.open(web, '_blank');
+    return;
+  }
+  try {
+    await Linking.openURL(uri);
+  } catch {
+    await Linking.openURL(web);
+  }
+}
+
 /** Finds the song on Spotify and plays it from a position */
 export async function playSongOnSpotify(songName: string, artistName: string, positionMs = 0): Promise<void> {
-  const q = artistName ? `track:${songName} artist:${artistName}` : songName;
-  const search = await api(`/search?type=track&limit=1&q=${encodeURIComponent(q)}`);
-  const uri = (await search.json())?.tracks?.items?.[0]?.uri;
-  if (!uri) throw new SpotifyError('not-found', `Couldn't find ${songName} on Spotify.`);
-  await api('/me/player/play', { method: 'PUT', body: JSON.stringify({ uris: [uri], position_ms: Math.round(positionMs) }) });
+  await playSpotifyTrack(await findSpotifyTrackUri(songName, artistName), positionMs);
 }
 
 export interface SpotifyPlaylist {

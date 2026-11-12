@@ -1,10 +1,14 @@
 import { useIsFocused } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  findSpotifyTrackUri,
+  getSpotifyDevices,
   getSpotifyPlayback,
+  openSpotifyTrack,
   pauseSpotify,
   playSongOnSpotify,
   resumeSpotify,
+  playSpotifyTrack,
   seekSpotify,
   SpotifyError,
   spotifyErrorMessage,
@@ -40,6 +44,10 @@ export interface SpotifyLyricsSync {
   toggleLoop: (lineIndex: number | null) => void;
   /** Plays one line and pauses at its end, e.g. for dictation */
   playLine: (lineIndex: number) => Promise<void>;
+  /** Plays the song from the start, opening the Spotify app first when it isn't running */
+  playSong: () => Promise<void>;
+  /** playSong is finding the song or waiting for Spotify to open */
+  startingSong: boolean;
 }
 
 /** Follows Spotify while it plays the song open in Learn, and seeks it by lyric line */
@@ -142,6 +150,42 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
     setTimeout(() => void refresh(), 300);
   };
 
+  const [startingSong, setStartingSong] = useState(false);
+  const playSong = async () => {
+    if (!song || startingSong) return;
+    setStartingSong(true);
+    let uri: string | null = null;
+    try {
+      uri = await findSpotifyTrackUri(song.songName, song.artistName ?? '');
+      await playSpotifyTrack(uri);
+      setError(null);
+    } catch (e) {
+      if (uri && e instanceof SpotifyError && e.kind === 'no-device') {
+        // Spotify isn't open anywhere: open it on the track, then play there once it shows up
+        await openSpotifyTrack(uri);
+        try {
+          for (let i = 0; i < 15; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            if (!(await getSpotifyDevices()).length) continue;
+            await playSpotifyTrack(uri);
+            setError(null);
+            break;
+          }
+        } catch (retry) {
+          setError(spotifyErrorMessage(retry));
+        }
+      } else if (uri && e instanceof SpotifyError && e.kind === 'premium') {
+        // Without Premium the app can't start it, but the Spotify app can
+        await openSpotifyTrack(uri);
+      } else {
+        setError(spotifyErrorMessage(e));
+      }
+    } finally {
+      setStartingSong(false);
+    }
+    setTimeout(() => void refresh(), 300);
+  };
+
   const seekToLine = async (lineIndex: number) => {
     const time = times[lineIndex];
     if (time === null || time === undefined || !song) return;
@@ -194,5 +238,7 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
       await seekToLine(lineIndex);
       setStopAfterLine(lineIndex);
     },
+    playSong,
+    startingSong,
   };
 }

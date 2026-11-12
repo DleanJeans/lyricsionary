@@ -153,6 +153,16 @@ export default function LearnScreen() {
     [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong, song?.originalLanguages]
   );
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  // The selected word as of the last render, for a word's Wiktionary fetch to tell it's been tapped away from
+  const selectedWordRef = useRef(selectedWord);
+  selectedWordRef.current = selectedWord;
+  // Tapped words whose IPA and meanings are still loading from Wiktionary, as line:occurrence:word,
+  // which keep loading after another word is tapped and show a spinner where their IPA goes
+  const [loadingWords, setLoadingWords] = useState<ReadonlySet<string>>(() => new Set());
+  const loadingWordKey = (word: string, lineIndex: number | null, occurrence: number) =>
+    `${lineIndex}:${occurrence}:${word.toLowerCase()}`;
+  // The selected word's fetch, which growing a Chinese or Japanese word from it stops
+  const wordFetchRef = useRef<{ word: string; cancelled: boolean } | null>(null);
   // The X on the word card folds it away first on narrow screens, then clears the word
   const [closingWordCard, setClosingWordCard] = useState(false);
   // A new word (or none) stops the folding, so tapping another word mid-close opens the card back up
@@ -586,6 +596,11 @@ export default function LearnScreen() {
     setDragSelection(dragged && dragged.words.length >= 3
       ? { phrase: word, line, lineIndex, start: dragged.start, words: dragged.words, dropped: [] }
       : null);
+    // A word grown from the one just tapped, e.g. 二人 from 二, is saved instead of it
+    const fetching = wordFetchRef.current;
+    if (fetching && fetching.word === selectedWord && lineIndex === selectedLineIndex && !/\s/.test(word.trim()) && word.includes(fetching.word)) {
+      fetching.cancelled = true;
+    }
     const autoSaved = autoSavedWordRef.current;
     autoSavedWordRef.current = null;
     if (autoSaved && !/\s/.test(word.trim()) && autoSaved === selectedWord && lineIndex === selectedLineIndex && word.includes(autoSaved)) {
@@ -940,7 +955,9 @@ export default function LearnScreen() {
 
           // Japanese characters keep no empty space above them, so a line with nothing to show
           // above it stays as tight as the lyrics themselves
-          const hasAnnotation = !!shouldShowEmoji || !!displayContent;
+          const isLoadingWord = !displayContent && !!cleanedWord &&
+            loadingWords.has(loadingWordKey(cleanedWord, lineIndex, occurrenceMap[i] || 1));
+          const hasAnnotation = !!shouldShowEmoji || !!displayContent || isLoadingWord;
           const keepAnnotationSpace = hasAnnotation || !isCjkWord(word);
 
           return (
@@ -956,6 +973,9 @@ export default function LearnScreen() {
                     <Text style={styles.wordAnnotation} numberOfLines={1}>
                       {displayContent}
                     </Text>
+                  )}
+                  {isLoadingWord && (
+                    <ActivityIndicator size={10} color={Colors.textSecondary} accessibilityLabel="Loading IPA" />
                   )}
                 </View>
               )}
@@ -1030,7 +1050,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1072,7 +1092,7 @@ export default function LearnScreen() {
   // A tapped new word is saved as Seen, as Look up and Save would: with Wiktionary's first IPA, its
   // recordings, and the meaning found in the line's translation (or else the first) for this line.
   // The saved word's card then quizzes that meaning. A word tapped away from before Wiktionary
-  // answers isn't saved, and neither is a phrase Wiktionary doesn't have.
+  // answers keeps loading and is saved once it does; a phrase Wiktionary doesn't have isn't saved.
   const songLanguage = song?.originalLanguages?.[0];
   // Words are ignored per song language, like on the new word card
   const ignoreLanguage = songLanguage || 'unknown';
@@ -1087,7 +1107,17 @@ export default function LearnScreen() {
   }, [selectedWord]);
   useEffect(() => {
     if (!selectedWord || selectedWordSaved || selectedWordIgnored || !songLanguage || !song) return;
-    let cancelled = false;
+    const job = { word: selectedWord, cancelled: false };
+    wordFetchRef.current = job;
+    const loadingKey = loadingWordKey(selectedWord, selectedLineIndex, selectedOccurrence);
+    setLoadingWords((keys) => new Set(keys).add(loadingKey));
+    const doneLoading = () => setLoadingWords((keys) => {
+      if (!keys.has(loadingKey)) return keys;
+      const next = new Set(keys);
+      next.delete(loadingKey);
+      return next;
+    });
+    const stillSelected = () => selectedWordRef.current === job.word;
     setFetchingWord(selectedWord);
     // A word Wiktionary doesn't have is saved as what it's about: a Korean word without its particles,
     // e.g. 너 for 너를, or a Spanish or Portuguese verb without its pronouns, e.g. amar for amarte
@@ -1111,7 +1141,7 @@ export default function LearnScreen() {
       // aufhören for hört … auf or "hört auf", "turn off" for turn … off
       if (!found.definitions?.length && /\s/.test(selectedWord)) {
         for (const candidate of await phraseLookupWords(selectedWord, songLanguage, isGermanSong)) {
-          if (cancelled) break;
+          if (job.cancelled) break;
           const phraseFound = await lookUp(candidate);
           if (phraseFound.definitions?.length) {
             found = phraseFound;
@@ -1122,8 +1152,14 @@ export default function LearnScreen() {
       }
       return found;
     }).then(({ word: savedWord, definitions, pronunciation }) => {
-      if (cancelled) return;
-      setFetchingWord(null);
+      doneLoading();
+      if (job.cancelled) return;
+      setFetchingWord((word) => (word === job.word ? null : word));
+      // Saved or ignored from elsewhere while it loaded in the background
+      if (!stillSelected()) {
+        const { words: savedWords, ignoredWords: ignored } = useStore.getState();
+        if (findSavedWord(savedWords, savedWord, songLanguage) || isWordIgnored(ignored, job.word, songLanguage)) return;
+      }
       // A phrase of two or more words, e.g. "give up", is saved only when Wiktionary has it; otherwise
       // its card stays unsaved for the NEW badge to save it
       if (/\s/.test(savedWord.trim()) && !definitions?.length) return;
@@ -1139,7 +1175,7 @@ export default function LearnScreen() {
         occurrence: selectedOccurrence,
       };
       // Without Wiktionary's answer the saved word's card fetches the IPA and recordings itself
-      autoSavedWordRef.current = savedWord;
+      if (stillSelected()) autoSavedWordRef.current = savedWord;
       const { updateWordEntry } = useStore.getState();
       const addForm = async () => {
         const entry = phraseForm && findSavedWord(useStore.getState().words, savedWord, songLanguage);
@@ -1149,15 +1185,19 @@ export default function LearnScreen() {
       const saved = phraseForm ? findSavedWord(useStore.getState().words, savedWord, songLanguage) : undefined;
       if (saved) {
         autoSavedWordRef.current = null;
-        void updateWordEntry(saved.id, { contexts: [...saved.contexts, context] }).then(addForm).then(() => setJustSavedWord(savedWord));
+        void updateWordEntry(saved.id, { contexts: [...saved.contexts, context] }).then(addForm).then(() => stillSelected() && setJustSavedWord(savedWord));
         return;
       }
       void addOrUpdateWord(savedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio)
         .then(addForm)
-        .then(() => setJustSavedWord(savedWord));
-    });
+        .then(() => stillSelected() && setJustSavedWord(savedWord));
+    }, doneLoading);
+    // Tapping another word (or closing the card) lets it keep loading; the same word tapped again,
+    // ignored or saved meanwhile stops it
     return () => {
-      cancelled = true;
+      if (selectedWordRef.current === job.word) job.cancelled = true;
+      if (job.cancelled) doneLoading();
+      if (wordFetchRef.current === job) wordFetchRef.current = null;
       setFetchingWord(null);
     };
     // Saved once per tap, with the line it was tapped in

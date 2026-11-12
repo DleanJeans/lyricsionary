@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStore } from '../src/store/useStore';
+import { flushWrites } from '../src/services/storageWrites';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -8,7 +9,8 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('uuid', () => ({ v4: () => 'id' }));
 
 const KEY = '@lyricsionary_learn_settings';
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+// Saves wait a moment before they're written
+const flush = () => flushWrites();
 
 describe('Learn settings', () => {
   beforeEach(() => AsyncStorage.clear());

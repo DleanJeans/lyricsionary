@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Linking, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import { DefaultTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -18,6 +18,7 @@ import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 import { useIsWide } from './src/hooks/useLayout';
 import ReviewSession from './src/components/ReviewSession';
 import { buildLaunchReview, type ReviewItem } from './src/utils/reviewQuiz';
+import { flushWrites } from './src/services/storageWrites';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -159,6 +160,15 @@ export default function App() {
     if (navigationRef.getRootState()?.routeNames.includes('Tabs')) nav.navigate('Tabs', { screen: 'Words' });
     else nav.navigate('Words');
   }, [navigationReady, reviewReminderTapped, navigationRef]);
+
+  // Saves wait a moment so a tap's change shows first; leaving the app writes them right away, in case
+  // it's closed before then
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') void flushWrites();
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Hide splash screen when fonts are loaded
   useEffect(() => {

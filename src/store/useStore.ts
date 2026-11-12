@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
+import { persist } from '../services/storageWrites';
 import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
 import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
@@ -36,16 +37,6 @@ export const isWordIgnored = (ignoredWords: IgnoredWord[], word: string, languag
 export function makeIgnoredWordChecker(ignoredWords: IgnoredWord[]): (word: string, language: string) => boolean {
   const keys = new Set(ignoredWords.map((w) => `${w.language}\u0000${w.word}`));
   return (word, language) => keys.has(`${language}\u0000${word.toLowerCase()}`);
-}
-
-// AsyncStorage has no transaction primitive. Serialize writes so a slower
-// earlier operation cannot finish after and overwrite a newer in-memory state.
-let storageWriteQueue: Promise<void> = Promise.resolve();
-
-function persist(key: string, value: string): Promise<void> {
-  const write = storageWriteQueue.then(() => AsyncStorage.setItem(key, value));
-  storageWriteQueue = write.catch(() => {});
-  return write;
 }
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
@@ -177,7 +168,7 @@ function pickLearnSettings(state: LearnSettings): LearnSettings {
 
 function setLearnSettings(settings: Partial<LearnSettings>) {
   useStore.setState(settings);
-  persist(LEARN_SETTINGS_KEY, JSON.stringify(pickLearnSettings(useStore.getState()))).catch((e) =>
+  persist(LEARN_SETTINGS_KEY, () => JSON.stringify(pickLearnSettings(useStore.getState()))).catch((e) =>
     console.error('Failed to save Learn settings', e)
   );
 }
@@ -227,7 +218,7 @@ export const useStore = create<AppState>((set, get) => ({
         }));
         set({ songs: migratedSongs });
         if (JSON.stringify(migratedSongs) !== JSON.stringify(songs)) {
-          await persist(SONGS_KEY, JSON.stringify(migratedSongs));
+          await persist(SONGS_KEY, () => JSON.stringify(migratedSongs));
         }
       }
     } catch (e) {
@@ -252,7 +243,7 @@ export const useStore = create<AppState>((set, get) => ({
     };
     const songs = [...get().songs, song];
     set({ songs, currentSongId: song.id });
-    await persist(SONGS_KEY, JSON.stringify(songs));
+    await persist(SONGS_KEY, () => JSON.stringify(songs));
     return song;
   },
 
@@ -261,14 +252,14 @@ export const useStore = create<AppState>((set, get) => ({
       s.id === id ? { ...s, ...updates, updatedAt: Date.now() } : s
     );
     set({ songs });
-    await persist(SONGS_KEY, JSON.stringify(songs));
+    await persist(SONGS_KEY, () => JSON.stringify(songs));
   },
 
   deleteSong: async (id) => {
     const songs = get().songs.filter((s) => s.id !== id);
     set({ songs });
     if (get().currentSongId === id) set({ currentSongId: null });
-    await persist(SONGS_KEY, JSON.stringify(songs));
+    await persist(SONGS_KEY, () => JSON.stringify(songs));
   },
 
   setCurrentSongId: (id) => set({ currentSongId: id }),
@@ -280,7 +271,7 @@ export const useStore = create<AppState>((set, get) => ({
         : s
     );
     set({ songs });
-    await persist(SONGS_KEY, JSON.stringify(songs));
+    await persist(SONGS_KEY, () => JSON.stringify(songs));
     await get().recordActivity({ opened: 1 });
   },
 
@@ -394,7 +385,7 @@ export const useStore = create<AppState>((set, get) => ({
         });
         set({ words: migratedWords });
         if (JSON.stringify(migratedWords) !== JSON.stringify(loadedWords)) {
-          await persist(WORDS_KEY, JSON.stringify(migratedWords));
+          await persist(WORDS_KEY, () => JSON.stringify(migratedWords));
         }
       }
     } catch (e) {
@@ -440,21 +431,21 @@ export const useStore = create<AppState>((set, get) => ({
       words = [...get().words, entry];
     }
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
     if (!existing) await get().recordActivity({ saved: 1 });
   },
 
   setWordAudio: async (id, audio) => {
     const words = get().words.map((w) => (w.id === id ? { ...w, audio } : w));
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
   },
 
   updateWordEntry: async (id, changes) => {
     if (!get().words.some((w) => w.id === id)) return;
     const words = get().words.map((w) => (w.id === id ? { ...w, ...changes } : w));
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
   },
 
   recordQuizAnswer: async (id, kind, correct) => {
@@ -489,20 +480,20 @@ export const useStore = create<AppState>((set, get) => ({
 
   setReviewReminder: async (on) => {
     set({ reviewReminder: on });
-    await persist(REVIEW_REMINDER_KEY, JSON.stringify(on));
+    await persist(REVIEW_REMINDER_KEY, () => JSON.stringify(on));
   },
 
   recordActivity: async (changes) => {
     const activity = addActivity(get().activity, changes, Date.now());
     set({ activity });
-    await persist(ACTIVITY_KEY, JSON.stringify(activity));
+    await persist(ACTIVITY_KEY, () => JSON.stringify(activity));
   },
 
   deleteWord: async (id) => {
     const deleted = get().words.find((w) => w.id === id);
     const words = get().words.filter((w) => w.id !== id);
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
     // A word saved and removed the same day, e.g. replaced by a phrase grown from it, wasn't learned
     if (deleted?.savedAt && localDay(deleted.savedAt) === localDay(Date.now())) await get().recordActivity({ saved: -1 });
   },
@@ -513,7 +504,7 @@ export const useStore = create<AppState>((set, get) => ({
     const savedToday = get().words.filter((w) => remove.has(w.id) && w.savedAt && localDay(w.savedAt) === today).length;
     const words = get().words.filter((w) => !remove.has(w.id));
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
     if (savedToday) await get().recordActivity({ saved: -savedToday });
   },
 
@@ -526,7 +517,7 @@ export const useStore = create<AppState>((set, get) => ({
       return event ? { ...w, masteryLevel: level, history: addWordEvent(w.history, event) } : w;
     });
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
   },
 
   mergeWords: async (keepId, fromId) => {
@@ -536,7 +527,7 @@ export const useStore = create<AppState>((set, get) => ({
     const merged = mergeWordEntries(keep, from);
     const words = get().words.filter((w) => w.id !== fromId).map((w) => (w.id === keepId ? merged : w));
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
   },
 
   unmergeForm: async (id, form) => {
@@ -545,14 +536,14 @@ export const useStore = create<AppState>((set, get) => ({
     const [kept, split] = splitForm(entry, form, uuidv4(), Date.now());
     const words = [...get().words.map((w) => (w.id === id ? kept : w)), split];
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
   },
 
   restoreWord: async (entry) => {
     if (get().words.some((w) => w.id === entry.id)) return;
     const words = [...get().words, entry];
     set({ words });
-    await persist(WORDS_KEY, JSON.stringify(words));
+    await persist(WORDS_KEY, () => JSON.stringify(words));
     if (entry.savedAt && localDay(entry.savedAt) === localDay(Date.now())) await get().recordActivity({ saved: 1 });
   },
 
@@ -572,7 +563,7 @@ export const useStore = create<AppState>((set, get) => ({
       ? current.filter((w) => !(w.word === lower && w.language === language))
       : [...current, { word: lower, language }];
     set({ ignoredWords });
-    await persist(IGNORED_WORDS_KEY, JSON.stringify(ignoredWords));
+    await persist(IGNORED_WORDS_KEY, () => JSON.stringify(ignoredWords));
   },
 
   loadCompoundSplits: async () => {
@@ -592,7 +583,7 @@ export const useStore = create<AppState>((set, get) => ({
       delete compoundSplits[word.toLowerCase()];
     }
     set({ compoundSplits });
-    await persist(COMPOUND_SPLITS_KEY, JSON.stringify(compoundSplits));
+    await persist(COMPOUND_SPLITS_KEY, () => JSON.stringify(compoundSplits));
   },
 
 }));

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { flushWrites } from './storageWrites';
 
 const KEY_PREFIX = '@lyricsionary_';
 // What this install last played belongs to this phone, not to the data being moved
@@ -40,6 +41,8 @@ async function getSyncedKeys(): Promise<string[]> {
 
 /** Reads every saved song, word and setting, so a new key is included without listing it here */
 export async function createBackup(appName: string): Promise<Backup> {
+  // Saves made in the last moment are written first
+  await flushWrites();
   const entries = await AsyncStorage.multiGet(await getSyncedKeys());
   const data: Record<string, string> = {};
   for (const [key, value] of entries) {
@@ -100,6 +103,8 @@ export function summarizeBackup(backup: Backup): BackupSummary {
 
 /** Replaces this install's data with the backup's; the app must reload afterwards to show it */
 export async function restoreBackup(backup: Backup): Promise<void> {
+  // A save still waiting would otherwise be written over what's restored
+  await flushWrites();
   const stale = (await getSyncedKeys()).filter((key) => !(key in backup.data));
   if (stale.length > 0) await AsyncStorage.multiRemove(stale);
   await AsyncStorage.multiSet(Object.entries(backup.data));

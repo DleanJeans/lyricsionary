@@ -1,4 +1,4 @@
-import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, endingIpa, stemIpa, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
+import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, affixIpaFromWord, endingIpa, stemIpa, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
 import amour from './fixtures/wiktionary/parse-amour.json';
 import corazon from './fixtures/wiktionary/parse-corazón.json';
 import immer from './fixtures/wiktionary/parse-immer.json';
@@ -291,5 +291,39 @@ describe('endingIpa', () => {
   it('gives up on forms that change more than the ending', () => {
     expect(endingIpa('Häuser', 'Haus', '/haʊ̯s/')).toBeUndefined();
     expect(endingIpa('Signalxyz', 'Signal', '/zɪˈɡnaːl/')).toBeUndefined();
+  });
+});
+
+describe('affixIpaFromWord', () => {
+  it('uses the word an affix comes from', () => {
+    expect(affixIpaFromWord('scheiß-', 'Scheiß', '/ʃaɪ̯s/')).toBe('/ʃaɪ̯s/');
+    expect(affixIpaFromWord('scheiß-', 'Scheiße', '/ˈʃaɪ̯sə/')).toBe('/ˈʃaɪ̯s/');
+    expect(affixIpaFromWord('scheiß-', 'Mist', '/mɪst/')).toBeUndefined();
+  });
+});
+
+describe('getWiktionaryPronunciation through an affix’s etymology', () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('puts scheißkalt together from Scheiß and kalt', async () => {
+    const texts: Record<string, string> = {
+      scheißkalt: german(etymology(`${mention('scheiß-')} +&#8206; ${mention('kalt')}`)),
+      'scheiß-': german(etymology(`From ${mention('Scheiß')}.`)),
+      Scheiß: german(etymology(`Clipping of ${mention('Scheiße')}.`) + ipaList('/ʃaɪ̯s/')),
+      kalt: german(ipaList('/kalt/')),
+    };
+    globalThis.fetch = jest.fn(async (url: string) => {
+      const title = decodeURIComponent(url.split('page=').pop() ?? '');
+      const text = texts[title];
+      return { ok: true, status: 200, json: async () => (text ? { parse: { title, text } } : { error: { code: 'missingtitle' } }) };
+    }) as unknown as typeof fetch;
+    expect(await getWiktionaryPronunciation('scheißkalt', 'German')).toEqual({
+      ipa: ['/ˈʃaɪ̯sˌkalt/'],
+      audio: [],
+      derivedFrom: ['scheiß-', 'kalt'],
+    });
   });
 });

@@ -487,6 +487,8 @@ export interface WiktionaryPronunciation {
 }
 
 const MAX_PARTS = 4;
+// How many pages down a part's IPA is looked for, e.g. scheißkalt -> scheiß- -> Scheiß
+const MAX_PART_DEPTH = 3;
 
 /**
  * The pages a word is made of, from its etymology in the language's section, e.g. ["leicht", "-igkeit"] for
@@ -546,7 +548,11 @@ export function joinIpa(parts: { title: string; ipa: string }[], language: strin
   const joined = cleaned.map((part) => {
     let ipa = part.ipa;
     if (stressedSuffix && !part.suffix) ipa = ipa.replace(/ˈ/g, '');
-    else if (stressed) ipa = ipa.replace(/ˈ/g, 'ˌ');
+    else if (stressed) {
+      ipa = ipa.replace(/ˈ/g, 'ˌ');
+      // A later one-syllable word gets a secondary stress too, e.g. kalt in /ˈʃaɪ̯sˌkalt/
+      if (!/[ˌ]/.test(ipa) && !part.affix && marksStress) ipa = `ˌ${ipa}`;
+    }
     else if (!ipa.includes('ˈ') && !part.affix && marksStress && !stressedSuffix) ipa = `ˈ${ipa.replace(/^ˌ/, '')}`;
     if (ipa.includes('ˈ')) stressed = true;
     return ipa;
@@ -554,14 +560,56 @@ export function joinIpa(parts: { title: string; ipa: string }[], language: strin
   return narrow ? `[${joined}]` : `/${joined}/`;
 }
 
-/** A part's first IPA, from its page or, failing that, from its own parts, e.g. -igkeit's -ig + -keit */
-async function getPartIpa(title: string, language: string, depth: number): Promise<string | undefined> {
+/**
+ * The one word in the language an etymology names, e.g. Scheiß in scheiß-'s "From Scheiß", for a page
+ * that isn't made of parts
+ */
+export function parseEtymologySource(html: string, language: string): string | undefined {
+  const section = getLanguageSection(html, language);
+  if (!section) return undefined;
+  const anchor = getWiktionaryLanguage(language).trim().replace(/ /g, '_').toLowerCase();
+  const etymology = section.split(/<div\b[^>]*class="[^"]*\bmw-heading\b[^"]*"[^>]*>/i)
+    .find((part) => /^\s*<h[3-6]\b[^>]*\bid="Etymology(?:_\d+)?"/i.test(part));
+  const paragraph = etymology?.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i)?.[1];
+  if (!paragraph) return undefined;
+  for (const [, mention] of paragraph.matchAll(/<i\b[^>]*class="[^"]*\bmention\b[^"]*"[^>]*>([\s\S]*?)<\/i>/gi)) {
+    const href = mention.match(/<a\b[^>]*\bhref="\/wiki\/([^"#]+)#([^"]+)"/i);
+    if (href && href[2].toLowerCase() === anchor) return decodeURIComponent(href[1]).replace(/_/g, ' ');
+  }
+  return undefined;
+}
+
+/**
+ * An affix's IPA from the word it comes from, e.g. scheiß- from Scheiß, or from Scheiße without its -e.
+ * Undefined when the word is spelled otherwise.
+ */
+export function affixIpaFromWord(affix: string, word: string, wordIpa: string): string | undefined {
+  const bare = affix.replace(/^-|-$/g, '').toLowerCase();
+  const lowerWord = word.toLowerCase();
+  if (lowerWord === bare) return wordIpa;
+  if (lowerWord === `${bare}e` && /ə[/\]]$/.test(wordIpa.trim())) return wordIpa.trim().replace(/ə([/\]])$/, '$1');
+  return undefined;
+}
+
+/**
+ * A part's first IPA, from its page or, failing that, from its own parts (-igkeit's -ig + -keit) or the
+ * word it comes from (scheiß-'s Scheiß), going down up to depth more pages. The title is the part's
+ * without the hyphen when its IPA is a whole word's, so it's stressed like one.
+ */
+async function getPartIpa(title: string, language: string, depth: number): Promise<{ title: string; ipa: string } | undefined> {
   const html = await fetchPageHtml(title);
   if (!html) return undefined;
   const affix = title.startsWith('-') || title.endsWith('-');
   const ipa = parseIpa(html, language, { affix })[0];
-  if (ipa || depth <= 0) return ipa;
-  return (await getDerivedIpa(html, language, depth - 1))?.ipa;
+  if (ipa) return { title, ipa };
+  if (depth <= 0) return undefined;
+  const derived = await getDerivedIpa(html, language, depth - 1);
+  if (derived) return { title, ipa: derived.ipa };
+  const source = affix ? parseEtymologySource(html, language) : undefined;
+  if (!source || source === title) return undefined;
+  const sourceIpa = await getPartIpa(source, language, depth - 1);
+  const fromWord = sourceIpa && affixIpaFromWord(title, sourceIpa.title, sourceIpa.ipa);
+  return fromWord ? { title: title.replace(/^-|-$/g, ''), ipa: fromWord } : undefined;
 }
 
 /** The IPA put together from the word's etymology parts, when every part has one */
@@ -570,7 +618,7 @@ async function getDerivedIpa(html: string, language: string, depth: number): Pro
   if (parts.length < 2) return undefined;
   const ipas = await Promise.all(parts.map((title) => getPartIpa(title, language, depth)));
   if (ipas.some((ipa) => !ipa)) return undefined;
-  return { ipa: joinIpa(parts.map((title, i) => ({ title, ipa: ipas[i]! })), language), parts };
+  return { ipa: joinIpa(ipas.map((part) => part!), language), parts };
 }
 
 const pageRequests = new Map<string, Promise<string | null>>();
@@ -775,7 +823,7 @@ export async function getWiktionaryPronunciation(word: string, language: string)
   }
   try {
     // e.g. Leichtigkeit from leicht +‎ -igkeit
-    const derived = await getDerivedIpa(found.html, language, 1);
+    const derived = await getDerivedIpa(found.html, language, MAX_PART_DEPTH);
     if (derived) return { ...pronunciation, ipa: [derived.ipa], derivedFrom: derived.parts };
   } catch {
     // The word's own recordings are still worth showing

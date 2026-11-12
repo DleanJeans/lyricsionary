@@ -615,6 +615,69 @@ export function soundAlikeForms(word: string, language: string): string[] {
     .map(([ending, replacement]) => word.slice(0, -ending.length) + replacement);
 }
 
+/** Every base form the form-of definitions in a language section link to, e.g. fangen for fang */
+function getFormOfLemmas(section: string): string[] {
+  const lemmas: string[] = [];
+  for (const [link] of section.matchAll(/<span\b[^>]*class="form-of-definition-link"[^>]*>[\s\S]*?<\/a>/gi)) {
+    const lemma = getFormOfLemma(link);
+    if (lemma && !lemmas.includes(lemma)) lemmas.push(lemma);
+  }
+  return lemmas;
+}
+
+// Sounds that lose their voice at the end of a German word, e.g. the g of sagen in sag /zaːk/
+const DEVOICED: Record<string, string> = { b: 'p', d: 't', ɡ: 'k', g: 'k', v: 'f', z: 's', ʒ: 'ʃ' };
+const IPA_VOWEL = /[aeiouyøœɛɔəɐɪʊʏæɑɒʌɜɘɵɤɯ](?!\u032f)|\u0329/g;
+
+/**
+ * The IPA of a German verb form that is its infinitive without the ending, from the infinitive's IPA, e.g.
+ * fang (singular imperative of fangen) /ˈfaŋən/ -> /faŋ/, sage from sagen /ˈzaːɡn̩/ -> /ˈzaːɡə/ or
+ * wander from wandern /ˈvandɐn/ -> /ˈvandɐ/. Undefined for any other form, e.g. fängt or fing.
+ */
+export function stemIpa(word: string, lemma: string, lemmaIpa: string): string | undefined {
+  const lowerWord = word.toLowerCase();
+  const lowerLemma = lemma.toLowerCase();
+  if (!lowerLemma.startsWith(lowerWord)) return undefined;
+  const removed = lowerLemma.slice(lowerWord.length);
+  const open = lemmaIpa.trim()[0];
+  if (open !== '/' && open !== '[') return undefined;
+  const close = open === '/' ? '/' : ']';
+  let ipa = lemmaIpa.trim().slice(1, -1).trim();
+  if (removed === 'en') {
+    // -en is said ən, ɛn or as a syllabic n̩, ŋ̩ or m̩, as in fangen /ˈfaŋən/, [ˈfaŋŋ̩] or leben [ˈleːbm̩]
+    const stripped = ipa.replace(/(?:ə|ɛ)n$|[nŋm]\u0329$/, '');
+    if (stripped === ipa || !stripped) return undefined;
+    ipa = stripped.replace(/[bdɡgvzʒ]$/, (c) => DEVOICED[c]);
+  } else if (removed === 'n' && lowerLemma.endsWith('en')) {
+    // e.g. sage from sagen
+    const stripped = ipa.replace(/(?:ə|ɛ)n$|[nŋm]\u0329$/, 'ə');
+    if (stripped === ipa) return undefined;
+    ipa = stripped;
+  } else if (removed === 'n') {
+    // e.g. wander from wandern, sammel from sammeln
+    if (!ipa.endsWith('n')) return undefined;
+    ipa = ipa.slice(0, -1);
+  } else {
+    return undefined;
+  }
+  // One syllable left needs no stress mark, e.g. /faŋ/
+  if ((ipa.match(IPA_VOWEL) ?? []).length <= 1) ipa = ipa.replace(/[ˈˌ]/g, '');
+  return `${open}${ipa}${close}`;
+}
+
+/** A German verb form's IPA from its infinitive's, e.g. fang's from fangen's, with the infinitive it came from */
+async function getStemIpa(word: string, section: string, language: string): Promise<{ ipa: string; lemma: string } | undefined> {
+  if (getWiktionaryLanguage(language).trim().toLowerCase() !== 'german') return undefined;
+  for (const lemma of getFormOfLemmas(section)) {
+    if (!lemma.toLowerCase().startsWith(word.toLowerCase())) continue;
+    const html = await fetchPageHtml(lemma);
+    const lemmaIpa = html ? parseIpa(html, language)[0] : undefined;
+    const ipa = lemmaIpa && stemIpa(word, lemma, lemmaIpa);
+    if (ipa) return { ipa, lemma };
+  }
+  return undefined;
+}
+
 /**
  * IPA and pronunciation recordings from the word's Wiktionary page in the given language, trying the
  * other casing too like getWiktionaryDefinitions. An inflected form without IPA of its own takes the IPA
@@ -654,6 +717,13 @@ export async function getWiktionaryPronunciation(word: string, language: string)
         // The word's own recordings are still worth showing
       }
     }
+  }
+  try {
+    // e.g. fang from fangen
+    const stem = await getStemIpa(word, section, language);
+    if (stem) return { ...pronunciation, ipa: [stem.ipa], derivedFrom: [stem.lemma] };
+  } catch {
+    // The word's own recordings are still worth showing
   }
   try {
     // e.g. Leichtigkeit from leicht +‎ -igkeit

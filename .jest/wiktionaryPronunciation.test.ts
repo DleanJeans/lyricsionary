@@ -1,4 +1,4 @@
-import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
+import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, stemIpa, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
 import amour from './fixtures/wiktionary/parse-amour.json';
 import corazon from './fixtures/wiktionary/parse-corazón.json';
 import immer from './fixtures/wiktionary/parse-immer.json';
@@ -208,5 +208,61 @@ describe('getWiktionaryPronunciation from etymology parts', () => {
       heiter: german(ipaList('/ˈhaɪ̯tɐ/')),
     });
     expect(await getWiktionaryPronunciation('Heiterkeit', 'German')).toEqual({ ipa: [], audio: [] });
+  });
+});
+
+describe('stemIpa', () => {
+  it('drops -en from the infinitive’s IPA, without stress on one syllable', () => {
+    expect(stemIpa('fang', 'fangen', '/ˈfaŋən/')).toBe('/faŋ/');
+    expect(stemIpa('fang', 'fangen', '[ˈfaŋŋ̩]')).toBe('[faŋ]');
+    expect(stemIpa('lauf', 'laufen', '/ˈlaʊ̯fn̩/')).toBe('/laʊ̯f/');
+    expect(stemIpa('find', 'finden', '/ˈfɪndn̩/')).toBe('/fɪnt/');
+  });
+
+  it('devoices the last sound, as German does at the end of a word', () => {
+    expect(stemIpa('sag', 'sagen', '/ˈzaːɡn̩/')).toBe('/zaːk/');
+    expect(stemIpa('leb', 'leben', '/ˈleːbm̩/')).toBe('/leːp/');
+  });
+
+  it('keeps the stress when more than one syllable is left', () => {
+    expect(stemIpa('erzähl', 'erzählen', '/ɛɐ̯ˈt͡sɛːlən/')).toBe('/ɛɐ̯ˈt͡sɛːl/');
+  });
+
+  it('turns -en into ə for a form that drops only the n', () => {
+    expect(stemIpa('sage', 'sagen', '/ˈzaːɡn̩/')).toBe('/ˈzaːɡə/');
+    expect(stemIpa('fange', 'fangen', '/ˈfaŋən/')).toBe('/ˈfaŋə/');
+  });
+
+  it('drops the n of -ern and -eln verbs', () => {
+    expect(stemIpa('wander', 'wandern', '/ˈvandɐn/')).toBe('/ˈvandɐ/');
+    expect(stemIpa('sammel', 'sammeln', '/ˈzaməln/')).toBe('/ˈzaməl/');
+  });
+
+  it('gives up on forms that change more than the ending', () => {
+    expect(stemIpa('fängt', 'fangen', '/ˈfaŋən/')).toBeUndefined();
+    expect(stemIpa('fing', 'fangen', '/ˈfaŋən/')).toBeUndefined();
+  });
+});
+
+describe('getWiktionaryPronunciation of a verb form', () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+  const formOf = (lemma: string) =>
+    `<ol><li><span class="form-of-definition use-with-mention">singular imperative of <span class="form-of-definition-link">` +
+    `<i class="Latn mention" lang="de"><a href="/wiki/${lemma}#German" title="${lemma}">${lemma}</a></i></span></span></li></ol>`;
+
+  it('takes fang’s IPA from fangen', async () => {
+    const texts: Record<string, string> = {
+      fang: german(`<div class="mw-heading mw-heading3"><h3 id="Verb">Verb</h3></div>${formOf('fangen')}`),
+      fangen: german(ipaList('/ˈfaŋən/', '[ˈfaŋŋ̩]')),
+    };
+    globalThis.fetch = jest.fn(async (url: string) => {
+      const title = decodeURIComponent(url.split('page=').pop() ?? '');
+      const text = texts[title];
+      return { ok: true, status: 200, json: async () => (text ? { parse: { title, text } } : { error: { code: 'missingtitle' } }) };
+    }) as unknown as typeof fetch;
+    expect(await getWiktionaryPronunciation('fang', 'German')).toEqual({ ipa: ['/faŋ/'], audio: [], derivedFrom: ['fangen'] });
   });
 });

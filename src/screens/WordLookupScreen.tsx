@@ -553,9 +553,20 @@ export default function WordLookupScreen() {
     }
   };
 
-  const ipaOptions = cardIpa ?? (lookupSource === 'wiktionary' || ipaSearch ? scrapedIpaResults : []);
+  // A guess for a word the page has no IPA for, e.g. fang's /faŋ/ from fangen /ˈfaŋən/
+  const derivedIpa = wiktionaryPronunciation.derivedFrom && !cardIpa ? wiktionaryPronunciation.ipa : [];
+  const pageIpa = lookupSource === 'wiktionary' || ipaSearch ? scrapedIpaResults : [];
+  const ipaOptions = cardIpa ?? (pageIpa.length > 0 ? pageIpa : derivedIpa);
+  // Fill in an empty pronunciation with the guess, as the page's own IPA would be
+  const firstDerivedIpa = derivedIpa[0];
+  useEffect(() => {
+    if (firstDerivedIpa) setPronunciation((current) => current || firstDerivedIpa);
+  }, [firstDerivedIpa]);
+
   // Wiktionary has no IPA for the word in this language, so Google can be asked instead
-  const wiktionaryHasNoIpa = !cardIpa && wiktionaryPronunciation.loaded && wiktionaryPronunciation.ipa.length === 0
+  // (or only a guess at it)
+  const wiktionaryHasNoIpa = !cardIpa && wiktionaryPronunciation.loaded
+    && (wiktionaryPronunciation.ipa.length === 0 || !!wiktionaryPronunciation.derivedFrom)
     && !(lookupSource === 'wiktionary' && scrapedIpaResults.length > 0);
 
   const ipaPlaceholder = pronunciation

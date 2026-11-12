@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
-import { pickReviewItems, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
+import { pickReviewItems, rebuildReviewQuiz, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
 import { lineTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
@@ -41,8 +41,15 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
   const items = [...firstTries, ...retries];
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
-  const item: ReviewItem | undefined = items[index];
   const isRetry = index >= firstTries.length;
+  // A first try's quiz is built again when it's shown, so a word answered right earlier today, also
+  // in this session, isn't one of its wrong options. A retry keeps the options it was missed with.
+  const listed: ReviewItem | undefined = items[index];
+  const item = useMemo(
+    () => (listed && !isRetry ? { ...listed, quiz: rebuildReviewQuiz(listed, useStore.getState().words) } : listed),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [listed?.entry.id, isRetry, index]
+  );
   const answered = answers.length > index;
   const finished = !!session && index >= items.length;
   // The score is the first tries; retries are practice

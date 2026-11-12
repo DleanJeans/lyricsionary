@@ -301,6 +301,17 @@ const otherWords = (target: QuizTarget, words: WordEntry[]) => {
   );
 };
 
+/**
+ * Whether the word was answered right earlier today. Its answer was just shown as the right one, so
+ * as another quiz's wrong option it's easy to rule out; such options come last (ANSWERED_TODAY) and
+ * are used only when there aren't enough others.
+ */
+export const answeredRightToday = (entry: WordEntry, today: string) =>
+  !!entry.quiz?.lastCorrectAt && localDay(entry.quiz.lastCorrectAt) === today;
+
+// Below every other score, so pickBest takes them only to fill the options up
+const ANSWERED_TODAY = -100;
+
 const finish = (answer: string, wrong: string[], random: () => number): Quiz | null => {
   // Fewer than 2 wrong options makes too easy a quiz
   if (wrong.length < 2) return null;
@@ -311,9 +322,10 @@ const finish = (answer: string, wrong: string[], random: () => number): Quiz | n
 /**
  * A meaning quiz: the target's definition and the definitions of other saved words in its language,
  * preferring the same type of word, then meanings that look like it (lookAlikeScore), then words from
- * the same song
+ * the same song. Words answered right earlier today are options only when there aren't enough others.
  */
-export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random = Math.random): Quiz | null {
+export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random = Math.random, now = Date.now()): Quiz | null {
+  const today = localDay(now);
   const ownMeanings = [
     ...(target.entry.contexts ?? []).map((c) => c.definition),
     ...(target.entry.definitions ?? []).map((d) => d.text),
@@ -325,6 +337,7 @@ export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random 
   const seen = new Set<string>([answer.toLowerCase()]);
   const candidates: { item: string; score: number }[] = [];
   for (const word of otherWords(target, words)) {
+    const used = answeredRightToday(word, today) ? ANSWERED_TODAY : 0;
     const senses = [
       ...(word.contexts ?? []).map((c) => ({ text: c.definition, partOfSpeech: c.partOfSpeech })),
       ...(word.definitions ?? []).map((d) => ({ text: d.text, partOfSpeech: undefined })),
@@ -337,7 +350,7 @@ export function buildMeaningQuiz(target: QuizTarget, words: WordEntry[], random 
       const sameType = !!target.partOfSpeech && sense.partOfSpeech === target.partOfSpeech;
       candidates.push({
         item: text,
-        score: (sameType ? 8 : 0) + lookAlikeScore(text, answer) + (fromSong(word, target.songId) ? 1 : 0),
+        score: used + (sameType ? 8 : 0) + lookAlikeScore(text, answer) + (fromSong(word, target.songId) ? 1 : 0),
       });
     }
   }
@@ -350,9 +363,11 @@ const isCapitalized = (word: string) => word.charAt(0) !== word.charAt(0).toLowe
  * A lyric quiz: the target word and other saved words in its language to fill the lyric's gap with,
  * preferring the same type of word, then words that look like it (lookAlikeScore), then words from the
  * same song. In German only words capitalized like the answer are options, since a noun's capital
- * would give it away.
+ * would give it away. Words answered right earlier today are options only when there aren't enough
+ * others.
  */
-export function buildLyricQuiz(target: QuizTarget, words: WordEntry[], random = Math.random): Quiz | null {
+export function buildLyricQuiz(target: QuizTarget, words: WordEntry[], random = Math.random, now = Date.now()): Quiz | null {
+  const today = localDay(now);
   const answer = target.entry.word;
   const german = isGermanLanguage([target.entry.language]);
   const seen = new Set<string>([answer.toLowerCase()]);
@@ -364,7 +379,11 @@ export function buildLyricQuiz(target: QuizTarget, words: WordEntry[], random = 
     const sameType = !!target.partOfSpeech && (word.contexts ?? []).some((c) => c.partOfSpeech === target.partOfSpeech);
     candidates.push({
       item: word.word,
-      score: (sameType ? 8 : 0) + lookAlikeScore(word.word, answer) + (fromSong(word, target.songId) ? 2 : 0),
+      score:
+        (answeredRightToday(word, today) ? ANSWERED_TODAY : 0) +
+        (sameType ? 8 : 0) +
+        lookAlikeScore(word.word, answer) +
+        (fromSong(word, target.songId) ? 2 : 0),
     });
   }
   return finish(answer, pickBest(candidates, QUIZ_RULES.options - 1, random), random);

@@ -278,3 +278,35 @@ describe('nextDueAt and dueLabel', () => {
     expect(dueLabel(now, now)).toBe('Due for a quiz now');
   });
 });
+
+describe('words answered right earlier today', () => {
+  const rightAt = (entry: WordEntry, at: number): WordEntry => ({ ...entry, quiz: { streak: 1, correct: 1, wrong: 0, lastAnsweredAt: at, lastCorrectAt: at } });
+  const herz = word('Herz', 'heart', 'noun', 'song');
+
+  it('are not wrong options while others are left', () => {
+    const words = [
+      herz,
+      rightAt(word('Liebe', 'love', 'noun', 'song'), start - 60_000),
+      rightAt(word('Schmerz', 'pain', 'noun', 'song'), start - 60_000),
+      word('Nacht', 'night', 'verb'),
+      word('Stern', 'star', 'adjective'),
+      word('Mond', 'moon', 'other'),
+    ];
+    const meaning = buildMeaningQuiz({ entry: herz, answer: 'heart', partOfSpeech: 'noun', songId: 'song' }, words, noShuffle, start)!;
+    expect([...meaning.options].sort()).toEqual(['heart', 'moon', 'night', 'star']);
+    const lyric = buildLyricQuiz({ entry: herz, answer: 'heart', partOfSpeech: 'noun', songId: 'song' }, words, noShuffle, start)!;
+    expect([...lyric.options].sort()).toEqual(['Herz', 'Mond', 'Nacht', 'Stern']);
+  });
+
+  it('fill the options up when there are too few others', () => {
+    const words = [herz, rightAt(word('Liebe', 'love', 'noun'), start - 60_000), word('Nacht', 'night', 'noun'), word('Stern', 'star', 'noun')];
+    const quiz = buildMeaningQuiz({ entry: herz, answer: 'heart', partOfSpeech: 'noun' }, words, noShuffle, start)!;
+    expect([...quiz.options].sort()).toEqual(['heart', 'love', 'night', 'star']);
+  });
+
+  it('are options again the next day', () => {
+    const words = [herz, rightAt(word('Liebe', 'love', 'noun'), start - DAY), word('Nacht', 'night', 'verb'), word('Stern', 'star', 'verb'), word('Mond', 'moon', 'verb')];
+    const quiz = buildMeaningQuiz({ entry: herz, answer: 'heart', partOfSpeech: 'noun' }, words, noShuffle, start)!;
+    expect(quiz.options).toContain('love');
+  });
+});

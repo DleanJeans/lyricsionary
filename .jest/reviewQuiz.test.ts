@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { buildLaunchReview, buildReviewItems, dueWords, findWordInLine, lineWords, pickReviewItems } from '../src/utils/reviewQuiz';
+import { buildLaunchReview, buildReviewItems, dueWords, findWordInLine, lineWords, pickReviewItems, rebuildReviewQuiz } from '../src/utils/reviewQuiz';
 import { isDue } from '../src/utils/wordQuiz';
 
 const HOUR = 60 * 60 * 1000;
@@ -155,5 +155,29 @@ describe('buildLaunchReview', () => {
       'old3',
     ]);
     expect(buildLaunchReview(songs, [known], now, 10)).toEqual([]);
+  });
+});
+
+describe('rebuildReviewQuiz', () => {
+  const meanings: Record<string, string> = { amour: 'love', nuit: 'night', ciel: 'sky', mer: 'sea', jour: 'day' };
+  const make = (names: string[]) => names.map((w) => word(w, meanings[w]));
+  const rightNow = (entry: WordEntry): WordEntry => ({ ...entry, quiz: { streak: 1, correct: 1, wrong: 0, lastAnsweredAt: now, lastCorrectAt: now } });
+
+  it('leaves out a word answered right earlier in the session, when there are enough others', () => {
+    const words = make(['amour', 'nuit', 'ciel', 'mer', 'jour']);
+    const [item] = buildReviewItems([words[0]], words, () => 0.5);
+    // One of the session's first quiz's wrong options is then answered right in its own quiz
+    const used = item.quiz.options.find((o) => o !== 'love')!;
+    const answered = words.map((w) => (meanings[w.word] === used ? rightNow(w) : w));
+    const rebuilt = rebuildReviewQuiz(item, answered, () => 0.5, now + HOUR);
+    expect(rebuilt.options).toHaveLength(4);
+    expect(rebuilt.options).not.toContain(used);
+    expect(rebuilt.options[rebuilt.answerIndex]).toBe('love');
+  });
+
+  it('keeps the quiz it has when no new one can be made', () => {
+    const words = make(['amour', 'nuit', 'ciel']);
+    const [item] = buildReviewItems([words[0]], words);
+    expect(rebuildReviewQuiz(item, [words[0]])).toBe(item.quiz);
   });
 });

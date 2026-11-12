@@ -1,7 +1,7 @@
 import type { WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
 import { isCjkWord } from './cjkWords';
-import { buildLyricQuiz, buildMeaningQuiz, isDue, isTricky, Quiz, QuizKind, quizKindFor } from './wordQuiz';
+import { buildLyricQuiz, buildMeaningQuiz, isDue, isTricky, Quiz, QuizKind, quizKindFor, type QuizTarget } from './wordQuiz';
 
 export interface ReviewItem {
   entry: WordEntry;
@@ -15,6 +15,8 @@ export interface ReviewItem {
   hint?: string;
   /** Asked from the word's recording instead of its line: "Which word did you hear?" */
   listen?: boolean;
+  /** What the quiz was built from, to build it again when it's shown (rebuildReviewQuiz) */
+  target?: QuizTarget;
 }
 
 /** The line's words, also split at apostrophes, e.g. amour in l'amour */
@@ -48,6 +50,19 @@ const pickContext = (entry: WordEntry): WordContext | undefined => {
 const answerFor = (entry: WordEntry, context: WordContext | undefined) =>
   context?.definition?.trim() || entry.definitions?.find((d) => d.text.trim())?.text.trim();
 
+const buildQuiz = (kind: QuizKind, target: QuizTarget, words: WordEntry[], random: () => number, now: number) =>
+  kind === 'meaning' ? buildMeaningQuiz(target, words, random, now) : buildLyricQuiz(target, words, random, now);
+
+/**
+ * The item's quiz built again from the saved words as they are now, for when it's shown: a session's
+ * quizzes are built when it starts, so a word answered right earlier in the session would still be
+ * another quiz's wrong option. Keeps the quiz it has if a new one can't be made.
+ */
+export function rebuildReviewQuiz(item: ReviewItem, words: WordEntry[], random = Math.random, now = Date.now()): Quiz {
+  if (!item.target) return item.quiz;
+  return buildQuiz(item.kind, { ...item.target, entry: words.find((w) => w.id === item.entry.id) ?? item.entry }, words, random, now) ?? item.quiz;
+}
+
 /**
  * Whether a due word can be reviewed: its level has a quiz and it has a meaning to ask for. Cheap,
  * for counting a song's due words without building their quizzes, which compare every saved word.
@@ -76,19 +91,16 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
     if (!answer) continue;
     const line = context?.context?.trim() || undefined;
     const wordAt = line ? findWordInLine(line, entry.word) ?? undefined : undefined;
-    const target = { entry, answer, partOfSpeech: context?.partOfSpeech, songId: context?.songId };
-    const quiz =
-      kind === 'meaning'
-        ? buildMeaningQuiz(target, words, random)
-        : buildLyricQuiz(
-            {
-              ...target,
-              // Words the line shows can't be what's missing from it
-              excludeWords: wordAt && line ? [...line.split(/\s+/).map(removeSpecialChars), ...lineWords(line)] : undefined,
-            },
-            words,
-            random
-          );
+    const target: QuizTarget = {
+      entry,
+      answer,
+      partOfSpeech: context?.partOfSpeech,
+      songId: context?.songId,
+      // Words the line shows can't be what's missing from it
+      excludeWords:
+        kind === 'lyric' && wordAt && line ? [...line.split(/\s+/).map(removeSpecialChars), ...lineWords(line)] : undefined,
+    };
+    const quiz = buildQuiz(kind, target, words, random, now);
     if (!quiz) continue;
     // A word with a recording is sometimes heard instead of read, and always when its line lacks it
     const listen = kind === 'lyric' && !!entry.audio?.length && (!wordAt || random() < 0.5);
@@ -100,6 +112,7 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
       line,
       wordAt,
       hint: kind === 'lyric' ? (wordAt && context?.translation?.trim()) || answer : undefined,
+      target,
     });
   }
   return items;

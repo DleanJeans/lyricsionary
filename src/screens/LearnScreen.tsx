@@ -336,7 +336,10 @@ export default function LearnScreen() {
     [lines]
   );
   // Starts at the tapped or found line, or the first
+  // On while a word's card is open, unless 1 by 1 was on already
+  const autoLineByLine = useRef(false);
   const toggleLineByLine = () => {
+    autoLineByLine.current = false;
     if (lineByLine !== null) {
       const at = lineByLine;
       setLineByLine(null);
@@ -346,7 +349,26 @@ export default function LearnScreen() {
     const start = [selectedLineIndex, foundLine].find((i) => i !== null && contentLines.includes(i));
     setLineByLine(start ?? contentLines[0]);
   };
-  useEffect(() => setLineByLine(null), [song?.id]);
+  useEffect(() => {
+    autoLineByLine.current = false;
+    setLineByLine(null);
+  }, [song?.id]);
+  // A selected word shows only its line, so the lyrics can't be scrolled away from it by accident
+  useEffect(() => {
+    if (selectedWord === null || selectedLineIndex === null || !contentLines.includes(selectedLineIndex)) return;
+    if (lineByLine === null) autoLineByLine.current = true;
+    else if (!autoLineByLine.current) return;
+    setLineByLine(selectedLineIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWord, selectedLineIndex]);
+  // Back to every line once the word card closes
+  useEffect(() => {
+    if (selectedWord !== null || !autoLineByLine.current) return;
+    autoLineByLine.current = false;
+    if (lineByLine !== null) setScrollToLine({ index: lineByLine, key: Date.now() });
+    setLineByLine(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWord]);
   // Updates as words are saved or ignored, like the song's progress in Songs
   const progressSongs = useMemo(() => (song ? [song] : []), [song]);
   const wordProgress = useWordProgress(progressSongs).get(song?.id ?? '');
@@ -1501,6 +1523,8 @@ export default function LearnScreen() {
   const stepLine = (delta: number) => {
     const next = contentLines[lineStep + delta];
     if (next === undefined) return;
+    // Stepping keeps 1 by 1 on after the card closes
+    autoLineByLine.current = false;
     setSelectedWord(null);
     setLineByLine(next);
   };

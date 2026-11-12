@@ -38,7 +38,7 @@ export default function SpotifyBar({
   onToggleFollow: () => void;
   /** Hides the line and plays it, to write it down */
   onDictation?: (lineIndex: number) => void;
-  /** Hides the bar for this song: for good when it has no synced lyrics, else until Spotify plays it */
+  /** Hides the bar for good for a song with no synced lyrics */
   onDismiss?: () => void;
 }) {
   // Line, dictation and loop only work once Spotify plays this song

@@ -1,5 +1,6 @@
 import type { WordEntry } from '../src/types';
 import { lineWordsAt, pickLineQuiz, stepQuizLine } from '../src/utils/lineQuiz';
+import type { ReviewWay } from '../src/utils/reviewQuiz';
 
 const HOUR = 60 * 60 * 1000;
 const now = new Date(2026, 10, 13, 12).getTime();
@@ -65,10 +66,19 @@ describe('pickLineQuiz', () => {
     expect(second).not.toBe(first);
   });
 
-  it('spells a word from its IPA now and then', () => {
+  it('takes turns between the ways of asking, e.g. spelling a word from its IPA after a gap', () => {
     const amour = word('amour', 'love', { masteryLevel: 'Recognized', pronunciation: '/a.muʁ/' });
-    const item = pickLineQuiz({ line: 'Mon amour', lineIndex: 0, songId: 's1', findEntry: finder([amour]), words: [amour], random: () => 0.2, now });
-    expect(item).toMatchObject({ mode: 'spell', ipa: 'a.muʁ' });
+    const counts = new Map();
+    const opts = { line: 'Mon amour', lineIndex: 0, songId: 's1', findEntry: finder([amour]), words: [amour, ...others], counts, random: () => 0.2, now };
+    expect(pickLineQuiz(opts)).toMatchObject({ mode: 'gap' });
+    expect(pickLineQuiz(opts)).toMatchObject({ mode: 'spell', ipa: 'a.muʁ' });
+  });
+
+  it("asks a Seen word's meaning from its recording", () => {
+    const amour = word('amour', 'love', { audio: [{ url: 'a.ogg' } as never] });
+    const counts = new Map<ReviewWay, number>([['meaning', 1]]);
+    const item = pickLineQuiz({ line: 'Mon amour', lineIndex: 0, songId: 's1', findEntry: finder([amour]), words: [amour, ...others], counts, random: noLuck, now });
+    expect(item).toMatchObject({ mode: 'listen', kind: 'meaning' });
   });
 
   it('rebuilds a line with no saved words, and asks nothing of a short one', () => {

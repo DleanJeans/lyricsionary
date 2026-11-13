@@ -8,6 +8,7 @@ import { useStore } from '../store/useStore';
 import type { Song, WordEntry } from '../types';
 import { formatIpa } from '../utils/ipaDisplay';
 import { pickLineQuiz, stepQuizLine, type LineQuizItem } from '../utils/lineQuiz';
+import type { ReviewWay } from '../utils/reviewQuiz';
 import Dictation from './Dictation';
 import type { LearnLine } from './LearnLyricsView';
 import LineDrill from './LineDrill';
@@ -56,6 +57,8 @@ export default function LineQuizMode({
   const [answeredAtLine, setAnsweredAtLine] = useState<number | null>(null);
   // Words asked since quiz mode started, so a repeated chorus asks another of its words
   const asked = useRef(new Set<string>());
+  // How often each way of asking a word came up, so each comes up about as often
+  const wayCounts = useRef(new Map<ReviewWay, number>());
 
   /** Quizzes the line, or the next one with something to ask (unless it's the one Spotify plays) */
   const startAt = (target: number, step: 1 | -1 = 1, followingSpotify = false) => {
@@ -70,6 +73,7 @@ export default function LineQuizMode({
         findEntry,
         words,
         asked: asked.current,
+        counts: wayCounts.current,
         canDictate: spotify.isThisSong && spotify.times[at] != null,
       });
       if (item || followingSpotify) break;
@@ -232,7 +236,7 @@ function LineQuestion({
   const showLine = answered || (!ipa && mode !== 'listen');
   const blank = !answered && (mode === 'gap' || mode === 'spell');
   const hint =
-    mode === 'meaning'
+    kind === 'meaning'
       ? answered
         ? translation
         : undefined
@@ -258,9 +262,11 @@ function LineQuestion({
         entry={entry}
         kind={kind}
         prompt={
-          mode === 'meaning' && ipa && !answered ? (
+          kind === 'meaning' && ipa && !answered ? (
             'What does this word mean?'
-          ) : mode === 'meaning' ? (
+          ) : kind === 'meaning' && mode === 'listen' && !answered ? (
+            'What does the word you heard mean?'
+          ) : kind === 'meaning' ? (
             <>
               What does <Text style={styles.quizWord}>{lineWord}</Text> mean here?
             </>

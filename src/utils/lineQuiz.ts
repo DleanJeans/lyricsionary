@@ -3,7 +3,7 @@ import type { PartOfSpeech } from './partOfSpeech';
 import { cleanLyricWord, isLyricWord, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from './cleanLyrics';
 import { groupCjkTokens, groupSpacedWords } from './cjkWords';
 import { lineDrillPieces } from './lineDrill';
-import { lineWords, reviewIpa, IPA_QUIZ_SHARE } from './reviewQuiz';
+import { lineWords, reviewIpa, reviewWays, type ReviewWay } from './reviewQuiz';
 import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, isTricky, type Quiz, type QuizKind, quizKindFor } from './wordQuiz';
 
 /**
@@ -11,7 +11,7 @@ import { buildLyricQuiz, buildMeaningQuiz, isCoolingDown, isTricky, type Quiz, t
  * - meaning: pick the meaning of a word in the line (from its IPA alone when `ipa` is set)
  * - gap: pick (or, for a Recalled word, type) the word blanked out of the line
  * - spell: type the word from its IPA alone
- * - listen: pick the word heard from its recording
+ * - listen: pick the word heard from its recording, or its meaning for a meaning quiz
  * - drill: rebuild the line from its shuffled words
  * - dictation: write the line down from hearing it on Spotify
  */
@@ -94,6 +94,11 @@ export interface PickLineQuizOptions {
   asked?: ReadonlySet<string>;
   /** Spotify plays this song with the line's time known, so the line can be written down from hearing it */
   canDictate?: boolean;
+  /**
+   * How often each way of asking a word was used since quiz mode started, so each comes up about as
+   * often, as in Review (buildReviewItems); updated with the way picked
+   */
+  counts?: Map<ReviewWay, number>;
   random?: () => number;
   now?: number;
 }
@@ -114,6 +119,7 @@ export function pickLineQuiz({
   words,
   asked = new Set(),
   canDictate = false,
+  counts = new Map(),
   random = Math.random,
   now = Date.now(),
 }: PickLineQuizOptions): LineQuizItem | null {
@@ -156,7 +162,7 @@ export function pickLineQuiz({
   const ranked = unique.map((c) => ({ ...c, score: score(c) })).sort((a, b) => b.score - a.score);
 
   for (const { word, entry } of ranked) {
-    const item = wordQuiz(entry, word, line, lineIndex, songId, words, random, now);
+    const item = wordQuiz(entry, word, line, lineIndex, songId, words, counts, random, now);
     if (item) return item;
   }
   return wholeLine();
@@ -169,6 +175,7 @@ function wordQuiz(
   lineIndex: number,
   songId: string | undefined,
   words: WordEntry[],
+  counts: Map<ReviewWay, number>,
   random: () => number,
   now: number
 ): LineQuizItem | null {
@@ -176,37 +183,42 @@ function wordQuiz(
   const context = lineContext(entry, songId, line);
   const meaning = meaningOf(entry, context);
   const partOfSpeech: PartOfSpeech | undefined = context?.partOfSpeech;
-  // The line has the word itself, not a form or a part of it, e.g. aime in j't'aime: it can be blanked out
+  // The line has the word itself, not a form or a part of it, e.g. aime in j't'aime: it can be blanked
+  // out, spelled or heard
   const exact = word.text.toLowerCase() === entry.word.toLowerCase();
   const kind: QuizKind = levelKind === 'meaning' && meaning ? 'meaning' : exact ? 'lyric' : meaning ? 'meaning' : 'lyric';
   if (kind === 'lyric' && !exact) return null;
   const practice = kind !== levelKind || isCoolingDown(entry.quiz, now);
   const ipaText = exact ? reviewIpa(entry, context) : undefined;
-  const ipa = ipaText && random() < IPA_QUIZ_SHARE ? ipaText : undefined;
   const wordAt = { start: word.start, end: word.end };
 
-  if (kind === 'meaning') {
-    const quiz = buildMeaningQuiz({ entry, answer: meaning!, partOfSpeech, songId }, words, random, now);
-    return quiz ? { lineIndex, mode: 'meaning', entry, kind, quiz, wordAt, ipa, meaning, practice } : null;
-  }
-  const quiz = buildLyricQuiz(
-    {
-      entry,
-      answer: entry.word,
-      partOfSpeech,
-      songId,
-      // Words the line shows can't be what's missing from it
-      excludeWords: [...line.split(/\s+/).map(removeSpecialChars), ...lineWords(line)].filter(Boolean),
-    },
-    words,
-    random,
-    now
-  );
+  const quiz =
+    kind === 'meaning'
+      ? buildMeaningQuiz({ entry, answer: meaning!, partOfSpeech, songId }, words, random, now)
+      : buildLyricQuiz(
+          {
+            entry,
+            answer: entry.word,
+            partOfSpeech,
+            songId,
+            // Words the line shows can't be what's missing from it
+            excludeWords: [...line.split(/\s+/).map(removeSpecialChars), ...lineWords(line)].filter(Boolean),
+          },
+          words,
+          random,
+          now
+        );
+  // The way asked least so far among the ones the word has, as in Review
+  const ways = reviewWays(kind, { hasQuiz: !!quiz, hasLine: true, hasAudio: exact && !!entry.audio?.length, hasIpa: !!ipaText });
+  if (!ways.length) return null;
+  const fewest = Math.min(...ways.map((w) => counts.get(w) ?? 0));
+  const least = ways.filter((w) => (counts.get(w) ?? 0) === fewest);
+  const way = least[Math.min(least.length - 1, Math.floor(random() * least.length))];
+  counts.set(way, fewest + 1);
+  const ipa = way.endsWith('ipa') ? ipaText : undefined;
+  const mode: LineQuizMode = way.endsWith('listen') ? 'listen' : kind === 'meaning' ? 'meaning' : ipa ? 'spell' : 'gap';
   // Spelling is typed, so it needs no other options
-  if (ipa) return { lineIndex, mode: 'spell', entry, kind, quiz: quiz ?? { options: [entry.word], answerIndex: 0 }, wordAt, ipa, meaning, practice };
-  if (!quiz) return null;
-  const listen = !!entry.audio?.length && random() < 0.3;
-  return { lineIndex, mode: listen ? 'listen' : 'gap', entry, kind, quiz, wordAt, meaning, practice };
+  return { lineIndex, mode, entry, kind, quiz: quiz ?? { options: [entry.word], answerIndex: 0 }, wordAt, ipa, meaning, practice };
 }
 
 /** The line after (or before, with step -1) the one quizzed, going back to the first after the last */

@@ -110,11 +110,17 @@ describe('listening quiz', () => {
     expect(buildReviewItems([recognized], [recognized, ...others], () => 0.9)[0].listen).toBe(false);
   });
 
-  it('always asks by ear when the line lacks the word, and never for a meaning quiz', () => {
+  it('always asks by ear when the line lacks the word', () => {
     const lineless = word('cœur', 'heart', { masteryLevel: 'Recognized', audio });
     expect(buildReviewItems([lineless], [lineless, ...others], () => 0.9)[0].listen).toBe(true);
-    const seen = word('cœur', 'heart', { audio });
-    expect(buildReviewItems([seen], [seen, ...others], () => 0.1)[0].listen).toBe(false);
+  });
+
+  it("sometimes has a Seen word's meaning picked from its recording", () => {
+    const seen = word('cœur', 'heart', { audio }, 'Mon cœur bat');
+    const heard = buildReviewItems([seen], [seen, ...others], () => 0.1)[0];
+    expect(heard.kind).toBe('meaning');
+    expect(heard.listen).toBe(true);
+    expect(buildReviewItems([seen], [seen, ...others], () => 0.9)[0].listen).toBe(false);
   });
 });
 

@@ -122,8 +122,11 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
     // Spelling is typed, so it needs no options, but other words make it one when there are enough
     const quiz = buildQuiz(kind, target, words, random, now) ?? (ipa && kind === 'lyric' ? { options: [entry.word], answerIndex: 0 } : null);
     if (!quiz) continue;
-    // A word with a recording is sometimes heard instead of read, and always when its line lacks it
-    const listen = !ipa && kind === 'lyric' && !!entry.audio?.length && (!wordAt || random() < 0.5);
+    // A word with a recording is sometimes heard instead of read: a lyric quiz always when its line
+    // lacks the word, a meaning quiz as often as one from its IPA
+    const hasAudio = !ipa && !!entry.audio?.length;
+    const listen =
+      hasAudio && (kind === 'lyric' ? !wordAt || random() < 0.5 : random() < IPA_QUIZ_SHARE);
     items.push({
       listen,
       ipa,

@@ -23,6 +23,9 @@ interface LearnActionBarProps {
   /** One line at a time, in bigger text */
   lineByLine?: boolean;
   onToggleLineByLine?: () => void;
+  /** Quiz mode, for a song whose words are all saved: a quiz on each line in turn */
+  quizMode?: boolean;
+  onToggleQuizMode?: () => void;
 }
 
 function SmallStepButton({ icon, label, onPress, disabled }: { icon: 'add' | 'remove'; label: string; onPress: () => void; disabled: boolean }) {
@@ -103,6 +106,8 @@ export default function LearnActionBar({
   onToggleTrickyLines,
   lineByLine = false,
   onToggleLineByLine,
+  quizMode = false,
+  onToggleQuizMode,
 }: LearnActionBarProps) {
   const canDecrease = fontSize > 12;
   const canIncrease = fontSize < 32;
@@ -169,6 +174,16 @@ export default function LearnActionBar({
             <Text style={[styles.chipText, lineByLine && styles.chipTextOn]}>1 by 1</Text>
           </HoldTipButton>
         )}
+        {!fontOpen && onToggleQuizMode && (
+          <HoldTipButton
+            tip={quizMode ? 'Back to the lyrics' : 'A quiz on each line in turn'}
+            onPress={onToggleQuizMode}
+            style={[styles.chip, quizMode && styles.chipOn]}
+          >
+            <Ionicons name="school-outline" size={14} color={quizMode ? Colors.white : Colors.primaryLight} />
+            <Text style={[styles.chipText, quizMode && styles.chipTextOn]}>Quiz</Text>
+          </HoldTipButton>
+        )}
         {!fontOpen && onToggleTrickyLines && (
           <TouchableOpacity
             style={[styles.quizButton, trickyLinesOnly && styles.trickyOn]}
@@ -190,8 +205,8 @@ export default function LearnActionBar({
       <Text style={[styles.lineCounter, onShowAllLyrics && styles.lineCounterStacked]} numberOfLines={onShowAllLyrics ? 2 : 1}>
         {/* With the line by line button there's no room for the line count beside the words; line by line counts the lines */}
         {wordProgress
-          ? onToggleLineByLine && !onShowAllLyrics
-            ? onNextLine && !fontOpen
+          ? (onToggleLineByLine || onToggleQuizMode) && !onShowAllLyrics
+            ? (onNextLine || onToggleQuizMode) && !fontOpen
               ? `${wordProgress.known}/${wordProgress.total} words`
               : wordProgress.label
             : `${wordProgress.label}${onShowAllLyrics ? '\n' : ' · '}${lineCount} lines`

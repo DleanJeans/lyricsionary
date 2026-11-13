@@ -38,6 +38,7 @@ import { romanizeLine } from '../utils/romanize';
 import { buildLyricQuiz, buildMeaningQuiz, isTricky, quizKindFor } from '../utils/wordQuiz';
 import { lineWords } from '../utils/reviewQuiz';
 import LineDrill from '../components/LineDrill';
+import LineQuizMode from '../components/LineQuizMode';
 import SpotifyBar from '../components/SpotifyBar';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
@@ -467,6 +468,9 @@ export default function LearnScreen() {
   // Dictation: a line hidden until it's written down from listening
   const [dictation, setDictation] = useState<{ lineIndex: number; checked: boolean } | null>(null);
   useEffect(() => setDictation(null), [song?.id]);
+  // Quiz mode: one quiz on each line in turn, or on the line Spotify plays, in place of the lyrics
+  const [quizMode, setQuizMode] = useState<{ startLine: number } | null>(null);
+  useEffect(() => setQuizMode(null), [song?.id, lyricQuiz]);
   useEffect(() => {
     if (followSpotify && spotify.currentLine !== null) setScrollToLine({ index: spotify.currentLine, key: Date.now() });
   }, [followSpotify, spotify.currentLine]);
@@ -1518,7 +1522,7 @@ export default function LearnScreen() {
     ? <SplitPhraseHint suggestion={separableVerb ?? undefined} trim={phraseTrim} />
     : null;
 
-  const wordPanel = dictationPanel ?? gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry || selectedLine?.trim()) ? (
+  const wordPanel = quizMode ? null : dictationPanel ?? gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry || selectedLine?.trim()) ? (
     <View>
       {wordSpots.length > 1 && (
         <WordSpotStepper
@@ -1533,6 +1537,22 @@ export default function LearnScreen() {
     </View>
   ) : wordCardPanel);
 
+  // Quiz mode is offered once every word in the song is saved (or ignored)
+  const canQuizSong = !lyricQuiz && contentLines.length > 0 && !!wordProgress && wordProgress.total > 0 && wordProgress.newWords === 0;
+  const toggleQuizMode = () => {
+    if (quizMode) {
+      setQuizMode(null);
+      return;
+    }
+    // Starts where Learn was: the tapped word's line, the line shown 1 by 1, or the found line
+    const start = [selectedLineIndex, lineByLine, foundLine].find((i) => i !== null && contentLines.includes(i));
+    setSelectedWord(null);
+    setDictation(null);
+    autoLineByLine.current = false;
+    setLineByLine(null);
+    setQuizMode({ startLine: start ?? contentLines[0] });
+  };
+
   const actionBar = (
     <LearnActionBar
       fontSize={storedFontSize}
@@ -1541,11 +1561,13 @@ export default function LearnScreen() {
       onDecreaseFontSize={() => setFontSize(storedFontSize - 1)}
       onIncreaseFontSize={() => setFontSize(storedFontSize + 1)}
       lineByLine={lineByLine !== null}
-      onToggleLineByLine={contentLines.length > 0 ? toggleLineByLine : undefined}
+      onToggleLineByLine={contentLines.length > 0 && !quizMode ? toggleLineByLine : undefined}
+      quizMode={!!quizMode}
+      onToggleQuizMode={canQuizSong || quizMode ? toggleQuizMode : undefined}
       onShowAllLyrics={lyricQuiz ? () => navigation.setParams({ fillIn: false }) : undefined}
       trickyLinesOnly={trickyLinesOnly}
       onToggleTrickyLines={lyricQuiz && (trickyLines.size > 0 || trickyLinesOnly) ? () => setTrickyLinesOnly(!trickyLinesOnly) : undefined}
-      onNextLine={nextLine !== null && !lyricQuiz ? () => {
+      onNextLine={nextLine !== null && !lyricQuiz && !quizMode ? () => {
         setFoundLine(nextLine);
         setScrollToLine({ index: nextLine, key: Date.now() });
       } : undefined}
@@ -1596,7 +1618,7 @@ export default function LearnScreen() {
           selectedLineIndex={selectedLineIndex}
           follow={followSpotify}
           onToggleFollow={() => setFollowSpotify((f) => !f)}
-          onDictation={(lineIndex) => {
+          onDictation={quizMode ? undefined : (lineIndex) => {
             setSelectedWord(null);
             setDictation({ lineIndex, checked: false });
             void spotify.playLine(lineIndex);
@@ -1605,6 +1627,19 @@ export default function LearnScreen() {
           onDismiss={song && spotify.timings === 'none' ? () => setNoSyncHiddenSongs([...noSyncHiddenSongs, song.id]) : undefined}
         />
       )}
+      {quizMode ? (
+        <LineQuizMode
+          key={song.id}
+          song={song}
+          lines={lines}
+          contentLines={contentLines}
+          startLine={quizMode.startLine}
+          translationLanguages={localSelectedLanguages}
+          findEntry={findSavedEntry}
+          spotify={spotify}
+          isWide={isWide}
+        />
+      ) : (
       <LearnLyricsView
         lines={lines}
         fontSize={fontSize}
@@ -1628,6 +1663,7 @@ export default function LearnScreen() {
         scrollKey={song.id}
         lineNotes={song.lineNotes}
       />
+      )}
       {copiedLine && (
         <View style={styles.toastStack} pointerEvents="box-none">
           <Toast message="Copied the line" />

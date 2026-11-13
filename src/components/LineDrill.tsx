@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { lineDrillPieces, shufflePieces } from '../utils/lineDrill';
 import { Text } from './Text';
 
 /** Rebuild a lyric line by tapping its shuffled words in order */
-export default function LineDrill({ line, hint }: { line: string; hint?: string }) {
+export default function LineDrill({ line, hint, onDone }: { line: string; hint?: string; /** Told once the line is rebuilt */ onDone?: () => void }) {
   const [pieces] = useState(() => lineDrillPieces(line));
   // Indexes into pieces, in the shuffled order shown
   const [order, setOrder] = useState(() => shufflePieces(pieces));
@@ -14,6 +14,10 @@ export default function LineDrill({ line, hint }: { line: string; hint?: string 
   const [wrongIndex, setWrongIndex] = useState<number | null>(null);
   const [mistakes, setMistakes] = useState(0);
   const done = placed.length === pieces.length;
+  useEffect(() => {
+    if (done) onDone?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
 
   const tap = (index: number) => {
     // Any copy of the next word counts, e.g. either "la" in "la la"

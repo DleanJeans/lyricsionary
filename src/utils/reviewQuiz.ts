@@ -20,6 +20,8 @@ export interface ReviewItem {
    * word typed from it (spelling), a meaning quiz picks the word's meaning
    */
   ipa?: string;
+  /** How the word is asked (reviewWays) */
+  way?: ReviewWay;
   /** What the quiz was built from, to build it again when it's shown (rebuildReviewQuiz) */
   target?: QuizTarget;
 }
@@ -62,8 +64,29 @@ const answerFor = (entry: WordEntry, context: WordContext | undefined) =>
 export const reviewIpa = (entry: WordEntry, context: WordContext | undefined): string | undefined =>
   (entry.pronunciation || context?.ipa || '').replace(/[/[\]]/g, '').trim() || undefined;
 
-/** How often a word with IPA is asked from its IPA alone instead of its line */
-export const IPA_QUIZ_SHARE = 1 / 3;
+/**
+ * The ways a quiz can ask a word. A meaning quiz: from the word itself ('meaning'), its IPA alone
+ * ('meaning-ipa') or its recording ('meaning-listen'). A lyric quiz: from the line's gap, or the
+ * meaning when the line lacks the word ('lyric'), its recording ('lyric-listen') or typed from its
+ * IPA alone ('lyric-ipa').
+ */
+export type ReviewWay = 'meaning' | 'meaning-ipa' | 'meaning-listen' | 'lyric' | 'lyric-listen' | 'lyric-ipa';
+
+/**
+ * The ways a word can be asked: IPA ones need its IPA, listening ones a recording, and the others a
+ * quiz with options. A lyric quiz whose line lacks the word is always heard when it can be.
+ */
+export function reviewWays(
+  kind: QuizKind,
+  has: { hasQuiz: boolean; hasLine: boolean; hasAudio: boolean; hasIpa: boolean }
+): ReviewWay[] {
+  const ways: ReviewWay[] = [];
+  const listenOnly = kind === 'lyric' && !has.hasLine && has.hasAudio;
+  if (has.hasQuiz && !listenOnly) ways.push(kind);
+  if (has.hasQuiz && has.hasAudio) ways.push(`${kind}-listen`);
+  if (has.hasIpa && (has.hasQuiz || kind === 'lyric')) ways.push(`${kind}-ipa`);
+  return ways;
+}
 
 const buildQuiz = (kind: QuizKind, target: QuizTarget, words: WordEntry[], random: () => number, now: number) =>
   kind === 'meaning' ? buildMeaningQuiz(target, words, random, now) : buildLyricQuiz(target, words, random, now);
@@ -86,10 +109,16 @@ export const canReview = (entry: WordEntry) => !!quizKindFor(entry.masteryLevel)
 
 /**
  * A quiz for each word that's due (isDue), tricky ones (isTricky) first, then the ones not quizzed
- * for longest. A word whose quiz
- * can't be made, e.g. one with no meaning or too few other saved words in its language, is left out.
+ * for longest. Each word is asked the way asked least so far among the ones it has (reviewWays), so
+ * every way comes up about as often; `counts` keeps how often each was. A word whose quiz can't be
+ * made, e.g. one with no meaning or too few other saved words in its language, is left out.
  */
-export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], random = Math.random): ReviewItem[] {
+export function buildReviewItems(
+  dueWords: WordEntry[],
+  words: WordEntry[],
+  random = Math.random,
+  counts: Map<ReviewWay, number> = new Map()
+): ReviewItem[] {
   const items: ReviewItem[] = [];
   // Tricky words first, then the ones not quizzed for longest
   const now = Date.now();
@@ -115,19 +144,22 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
       excludeWords:
         kind === 'lyric' && wordAt && line ? [...line.split(/\s+/).map(removeSpecialChars), ...lineWords(line)] : undefined,
     };
-    // A word with IPA is sometimes asked from the IPA alone: spelled when it's a lyric quiz, its
-    // meaning picked when it's a meaning quiz
+    // How the word is asked, balanced over the session: the way asked least so far among the ones
+    // the word has (reviewWays)
     const ipaText = reviewIpa(entry, context);
-    const ipa = ipaText && random() < IPA_QUIZ_SHARE ? ipaText : undefined;
+    const built = buildQuiz(kind, target, words, random, now);
+    const ways = reviewWays(kind, { hasQuiz: !!built, hasLine: !!wordAt, hasAudio: !!entry.audio?.length, hasIpa: !!ipaText });
+    if (!ways.length) continue;
+    const fewest = Math.min(...ways.map((w) => counts.get(w) ?? 0));
+    const least = ways.filter((w) => (counts.get(w) ?? 0) === fewest);
+    const way = least[Math.min(least.length - 1, Math.floor(random() * least.length))];
+    counts.set(way, fewest + 1);
+    const ipa = way.endsWith('ipa') ? ipaText : undefined;
+    const listen = way.endsWith('listen');
     // Spelling is typed, so it needs no options, but other words make it one when there are enough
-    const quiz = buildQuiz(kind, target, words, random, now) ?? (ipa && kind === 'lyric' ? { options: [entry.word], answerIndex: 0 } : null);
-    if (!quiz) continue;
-    // A word with a recording is sometimes heard instead of read: a lyric quiz always when its line
-    // lacks the word, a meaning quiz as often as one from its IPA
-    const hasAudio = !ipa && !!entry.audio?.length;
-    const listen =
-      hasAudio && (kind === 'lyric' ? !wordAt || random() < 0.5 : random() < IPA_QUIZ_SHARE);
+    const quiz = built ?? { options: [entry.word], answerIndex: 0 };
     items.push({
+      way,
       listen,
       ipa,
       entry,
@@ -181,13 +213,17 @@ export function buildLaunchReview(
   const recent = songs.filter((s) => !s.archivedAt).sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0));
   const picked: ReviewItem[] = [];
   const taken = new Set<string>();
+  // The ways words are asked are balanced over the whole review, not each song's part
+  const counts = new Map<ReviewWay, number>();
   for (const song of recent) {
     if (picked.length >= size) break;
     const songDue = due.filter((w) => !taken.has(w.id) && w.contexts?.some((c) => c.songId === song.id));
     if (!songDue.length) continue;
-    for (const item of buildReviewItems(songDue, words, random)) {
+    // Counted only for the words taken, so the ones left out don't skew the next song's
+    for (const item of buildReviewItems(songDue, words, random, new Map(counts))) {
       if (picked.length >= size) break;
       picked.push(item);
+      if (item.way) counts.set(item.way, (counts.get(item.way) ?? 0) + 1);
       taken.add(item.entry.id);
     }
   }

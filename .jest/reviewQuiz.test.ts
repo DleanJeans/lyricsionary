@@ -104,60 +104,78 @@ describe('listening quiz', () => {
   const others = [word('chat', 'cat'), word('chien', 'dog'), word('maison', 'house')];
   const audio = [{ title: 'Fr-cœur.ogg', url: 'https://x/Fr-cœur.ogg', label: '' }];
 
-  it('sometimes asks a word with a recording by ear', () => {
+  it('can ask a word with a recording by ear', () => {
     const recognized = word('cœur', 'heart', { masteryLevel: 'Recognized', audio }, 'Mon cœur bat');
-    expect(buildReviewItems([recognized], [recognized, ...others], () => 0.1)[0].listen).toBe(true);
-    expect(buildReviewItems([recognized], [recognized, ...others], () => 0.9)[0].listen).toBe(false);
+    expect(buildReviewItems([recognized], [recognized, ...others], () => 0.9)[0].listen).toBe(true);
+    expect(buildReviewItems([recognized], [recognized, ...others], () => 0)[0].listen).toBe(false);
   });
 
   it('always asks by ear when the line lacks the word', () => {
     const lineless = word('cœur', 'heart', { masteryLevel: 'Recognized', audio });
-    expect(buildReviewItems([lineless], [lineless, ...others], () => 0.9)[0].listen).toBe(true);
+    expect(buildReviewItems([lineless], [lineless, ...others], () => 0)[0].listen).toBe(true);
   });
 
-  it("sometimes has a Seen word's meaning picked from its recording", () => {
+  it("can have a Seen word's meaning picked from its recording", () => {
     const seen = word('cœur', 'heart', { audio }, 'Mon cœur bat');
-    const heard = buildReviewItems([seen], [seen, ...others], () => 0.1)[0];
+    const heard = buildReviewItems([seen], [seen, ...others], () => 0.9)[0];
     expect(heard.kind).toBe('meaning');
     expect(heard.listen).toBe(true);
-    expect(buildReviewItems([seen], [seen, ...others], () => 0.9)[0].listen).toBe(false);
+    expect(buildReviewItems([seen], [seen, ...others], () => 0)[0].listen).toBe(false);
   });
 });
 
 describe('IPA quiz', () => {
   const others = [word('chat', 'cat'), word('chien', 'dog'), word('maison', 'house')];
 
-  it('sometimes has a word with IPA spelled from it, without its slashes, instead of heard', () => {
-    const audio = [{ title: 'Fr-cœur.ogg', url: 'https://x/Fr-cœur.ogg', label: '' }];
-    const recognized = word('cœur', 'heart', { masteryLevel: 'Recognized', pronunciation: '/kœʁ/', audio }, 'Mon cœur bat');
-    const spelled = buildReviewItems([recognized], [recognized, ...others], () => 0.1)[0];
+  it('can have a word with IPA spelled from it, without its slashes', () => {
+    const recognized = word('cœur', 'heart', { masteryLevel: 'Recognized', pronunciation: '/kœʁ/' }, 'Mon cœur bat');
+    const spelled = buildReviewItems([recognized], [recognized, ...others], () => 0.9)[0];
     expect(spelled.ipa).toBe('kœʁ');
     expect(spelled.listen).toBe(false);
-    expect(buildReviewItems([recognized], [recognized, ...others], () => 0.9)[0].ipa).toBeUndefined();
+    expect(buildReviewItems([recognized], [recognized, ...others], () => 0)[0].ipa).toBeUndefined();
   });
 
   it("takes the line's IPA when the word has none, and skips words with no IPA", () => {
     const fromLine = word('cœur', 'heart', { masteryLevel: 'Recalled' }, 'Mon cœur bat');
     fromLine.contexts[0].ipa = '[kœʁ]';
-    expect(buildReviewItems([fromLine], [fromLine, ...others], () => 0.1)[0].ipa).toBe('kœʁ');
+    expect(buildReviewItems([fromLine], [fromLine, ...others], () => 0.9)[0].ipa).toBe('kœʁ');
     const none = word('cœur', 'heart', { masteryLevel: 'Recalled' }, 'Mon cœur bat');
-    expect(buildReviewItems([none], [none, ...others], () => 0.1)[0].ipa).toBeUndefined();
+    expect(buildReviewItems([none], [none, ...others], () => 0.9)[0].ipa).toBeUndefined();
   });
 
-  it("sometimes has a Seen word's meaning picked from its IPA", () => {
+  it("can have a Seen word's meaning picked from its IPA", () => {
     const seen = word('cœur', 'heart', { pronunciation: '/kœʁ/' }, 'Mon cœur bat');
-    const item = buildReviewItems([seen], [seen, ...others], () => 0.1)[0];
+    const item = buildReviewItems([seen], [seen, ...others], () => 0.9)[0];
     expect(item.kind).toBe('meaning');
     expect(item.ipa).toBe('kœʁ');
     expect(item.quiz.options).toContain('heart');
-    expect(buildReviewItems([seen], [seen, ...others], () => 0.9)[0].ipa).toBeUndefined();
   });
 
   it('spells a word even with too few other words for options', () => {
     const alone = word('cœur', 'heart', { masteryLevel: 'Recognized', pronunciation: 'kœʁ' }, 'Mon cœur bat');
-    const items = buildReviewItems([alone], [alone], () => 0.1);
-    expect(items[0].ipa).toBe('kœʁ');
-    expect(buildReviewItems([alone], [alone], () => 0.9)).toEqual([]);
+    expect(buildReviewItems([alone], [alone], () => 0)[0].ipa).toBe('kœʁ');
+    const noIpa = word('cœur', 'heart', { masteryLevel: 'Recognized' }, 'Mon cœur bat');
+    expect(buildReviewItems([noIpa], [noIpa], () => 0)).toEqual([]);
+  });
+});
+
+describe('balancing the ways words are asked', () => {
+  const others = [word('chat', 'cat'), word('chien', 'dog'), word('maison', 'house')];
+  const audio = [{ title: 'x.ogg', url: 'https://x/x.ogg', label: '' }];
+
+  it('asks each way about as often, even with random always picking the first', () => {
+    const seen = ['un', 'deux', 'trois', 'quatre', 'cinq', 'six'].map((w) =>
+      word(w, `${w}-meaning`, { pronunciation: `/${w}/`, audio }, `le ${w} ici`)
+    );
+    const items = buildReviewItems(seen, [...seen, ...others], () => 0);
+    const counts: Record<string, number> = {};
+    for (const item of items) counts[item.way!] = (counts[item.way!] ?? 0) + 1;
+    expect(counts).toEqual({ meaning: 2, 'meaning-listen': 2, 'meaning-ipa': 2 });
+  });
+
+  it('gives a word only the ways it has', () => {
+    const plain = ['un', 'deux', 'trois'].map((w) => word(w, `${w}-meaning`, { masteryLevel: 'Recognized' }, `le ${w} ici`));
+    expect(buildReviewItems(plain, [...plain, ...others], () => 0).map((i) => i.way)).toEqual(['lyric', 'lyric', 'lyric']);
   });
 });
 

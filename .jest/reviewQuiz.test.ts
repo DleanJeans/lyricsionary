@@ -138,6 +138,15 @@ describe('IPA quiz', () => {
     expect(buildReviewItems([none], [none, ...others], () => 0.1)[0].ipa).toBeUndefined();
   });
 
+  it("sometimes has a Seen word's meaning picked from its IPA", () => {
+    const seen = word('cœur', 'heart', { pronunciation: '/kœʁ/' }, 'Mon cœur bat');
+    const item = buildReviewItems([seen], [seen, ...others], () => 0.1)[0];
+    expect(item.kind).toBe('meaning');
+    expect(item.ipa).toBe('kœʁ');
+    expect(item.quiz.options).toContain('heart');
+    expect(buildReviewItems([seen], [seen, ...others], () => 0.9)[0].ipa).toBeUndefined();
+  });
+
   it('spells a word even with too few other words for options', () => {
     const alone = word('cœur', 'heart', { masteryLevel: 'Recognized', pronunciation: 'kœʁ' }, 'Mon cœur bat');
     const items = buildReviewItems([alone], [alone], () => 0.1);

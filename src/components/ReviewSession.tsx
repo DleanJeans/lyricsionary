@@ -199,7 +199,9 @@ function ReviewQuestion({
         entry={entry}
         kind={kind}
         prompt={
-          kind === 'meaning' ? (
+          kind === 'meaning' && ipa && !answered ? (
+            'What does this word mean?'
+          ) : kind === 'meaning' ? (
             <>
               What does <Text style={styles.quizWord}>{entry.word}</Text> mean{showLine ? ' here' : ''}?
             </>

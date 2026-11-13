@@ -115,9 +115,10 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
       excludeWords:
         kind === 'lyric' && wordAt && line ? [...line.split(/\s+/).map(removeSpecialChars), ...lineWords(line)] : undefined,
     };
-    // A word with IPA is sometimes asked from the IPA alone: spelled when it's a lyric quiz
+    // A word with IPA is sometimes asked from the IPA alone: spelled when it's a lyric quiz, its
+    // meaning picked when it's a meaning quiz
     const ipaText = reviewIpa(entry, context);
-    const ipa = kind === 'lyric' && ipaText && random() < IPA_QUIZ_SHARE ? ipaText : undefined;
+    const ipa = ipaText && random() < IPA_QUIZ_SHARE ? ipaText : undefined;
     // Spelling is typed, so it needs no options, but other words make it one when there are enough
     const quiz = buildQuiz(kind, target, words, random, now) ?? (ipa && kind === 'lyric' ? { options: [entry.word], answerIndex: 0 } : null);
     if (!quiz) continue;

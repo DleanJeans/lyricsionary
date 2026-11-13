@@ -118,6 +118,34 @@ describe('listening quiz', () => {
   });
 });
 
+describe('IPA quiz', () => {
+  const others = [word('chat', 'cat'), word('chien', 'dog'), word('maison', 'house')];
+
+  it('sometimes has a word with IPA spelled from it, without its slashes, instead of heard', () => {
+    const audio = [{ title: 'Fr-cœur.ogg', url: 'https://x/Fr-cœur.ogg', label: '' }];
+    const recognized = word('cœur', 'heart', { masteryLevel: 'Recognized', pronunciation: '/kœʁ/', audio }, 'Mon cœur bat');
+    const spelled = buildReviewItems([recognized], [recognized, ...others], () => 0.1)[0];
+    expect(spelled.ipa).toBe('kœʁ');
+    expect(spelled.listen).toBe(false);
+    expect(buildReviewItems([recognized], [recognized, ...others], () => 0.9)[0].ipa).toBeUndefined();
+  });
+
+  it("takes the line's IPA when the word has none, and skips words with no IPA", () => {
+    const fromLine = word('cœur', 'heart', { masteryLevel: 'Recalled' }, 'Mon cœur bat');
+    fromLine.contexts[0].ipa = '[kœʁ]';
+    expect(buildReviewItems([fromLine], [fromLine, ...others], () => 0.1)[0].ipa).toBe('kœʁ');
+    const none = word('cœur', 'heart', { masteryLevel: 'Recalled' }, 'Mon cœur bat');
+    expect(buildReviewItems([none], [none, ...others], () => 0.1)[0].ipa).toBeUndefined();
+  });
+
+  it('spells a word even with too few other words for options', () => {
+    const alone = word('cœur', 'heart', { masteryLevel: 'Recognized', pronunciation: 'kœʁ' }, 'Mon cœur bat');
+    const items = buildReviewItems([alone], [alone], () => 0.1);
+    expect(items[0].ipa).toBe('kœʁ');
+    expect(buildReviewItems([alone], [alone], () => 0.9)).toEqual([]);
+  });
+});
+
 describe('buildLaunchReview', () => {
   const inSong = (text: string, songId: string): WordEntry => {
     const entry = word(text, `${text}ish`);

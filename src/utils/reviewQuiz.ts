@@ -15,6 +15,11 @@ export interface ReviewItem {
   hint?: string;
   /** Asked from the word's recording instead of its line: "Which word did you hear?" */
   listen?: boolean;
+  /**
+   * Asked from the word's IPA alone, with no line, translation or meaning shown: a lyric quiz has the
+   * word typed from it (spelling), a meaning quiz picks the word's meaning
+   */
+  ipa?: string;
   /** What the quiz was built from, to build it again when it's shown (rebuildReviewQuiz) */
   target?: QuizTarget;
 }
@@ -49,6 +54,16 @@ const pickContext = (entry: WordEntry): WordContext | undefined => {
 // The meaning a word's quiz asks for, from the context it's asked about
 const answerFor = (entry: WordEntry, context: WordContext | undefined) =>
   context?.definition?.trim() || entry.definitions?.find((d) => d.text.trim())?.text.trim();
+
+/**
+ * The IPA the word is asked from, without slashes or brackets: the word's own, since a merged form's
+ * line has the form's, else the asked context's
+ */
+export const reviewIpa = (entry: WordEntry, context: WordContext | undefined): string | undefined =>
+  (entry.pronunciation || context?.ipa || '').replace(/[/[\]]/g, '').trim() || undefined;
+
+/** How often a word with IPA is asked from its IPA alone instead of its line */
+export const IPA_QUIZ_SHARE = 1 / 3;
 
 const buildQuiz = (kind: QuizKind, target: QuizTarget, words: WordEntry[], random: () => number, now: number) =>
   kind === 'meaning' ? buildMeaningQuiz(target, words, random, now) : buildLyricQuiz(target, words, random, now);
@@ -100,12 +115,17 @@ export function buildReviewItems(dueWords: WordEntry[], words: WordEntry[], rand
       excludeWords:
         kind === 'lyric' && wordAt && line ? [...line.split(/\s+/).map(removeSpecialChars), ...lineWords(line)] : undefined,
     };
-    const quiz = buildQuiz(kind, target, words, random, now);
+    // A word with IPA is sometimes asked from the IPA alone: spelled when it's a lyric quiz
+    const ipaText = reviewIpa(entry, context);
+    const ipa = kind === 'lyric' && ipaText && random() < IPA_QUIZ_SHARE ? ipaText : undefined;
+    // Spelling is typed, so it needs no options, but other words make it one when there are enough
+    const quiz = buildQuiz(kind, target, words, random, now) ?? (ipa && kind === 'lyric' ? { options: [entry.word], answerIndex: 0 } : null);
     if (!quiz) continue;
     // A word with a recording is sometimes heard instead of read, and always when its line lacks it
-    const listen = kind === 'lyric' && !!entry.audio?.length && (!wordAt || random() < 0.5);
+    const listen = !ipa && kind === 'lyric' && !!entry.audio?.length && (!wordAt || random() < 0.5);
     items.push({
       listen,
+      ipa,
       entry,
       kind,
       quiz,

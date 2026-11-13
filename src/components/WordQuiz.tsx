@@ -29,6 +29,8 @@ interface WordQuizProps {
   showDue?: boolean;
   /** Told whether the quiz shows its result, e.g. so the word card doesn't show the next quiz time twice */
   onAnsweredChange?: (answered: boolean) => void;
+  /** Typed instead of picked whatever the word's level, e.g. spelling a word from its IPA */
+  typed?: boolean;
 }
 
 /**
@@ -38,7 +40,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -57,7 +59,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const [predicted, setPredicted] = useState<WordEntry | null>(null);
   const [undone, setUndone] = useState(false);
   // A Recalled word is typed instead of picked
-  const [typed] = useState(() => isTypedQuiz(entry.masteryLevel, kind));
+  const [typed] = useState(() => typedProp || isTypedQuiz(entry.masteryLevel, kind));
   const [typedText, setTypedText] = useState('');
   const [typedResult, setTypedResult] = useState<'right' | 'accents' | 'wrong' | null>(null);
   const stored = useStore((s) => s.words.find((w) => w.id === entry.id)) ?? entry;

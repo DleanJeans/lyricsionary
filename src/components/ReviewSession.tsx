@@ -5,6 +5,7 @@ import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { pickReviewItems, rebuildReviewQuiz, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
+import { formatIpa } from '../utils/ipaDisplay';
 import { lineTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
 import PronunciationAudio from './PronunciationAudio';
@@ -154,7 +155,7 @@ function ReviewQuestion({
   isWide?: boolean;
   practice?: boolean;
 }) {
-  const { entry, kind, line, wordAt, hint, listen } = item;
+  const { entry, kind, line, wordAt, hint, listen, ipa } = item;
   const lineWord = line && wordAt ? line.slice(wordAt.start, wordAt.end) : null;
   const context = entry.contexts?.find((c) => c.context?.trim() === line);
   const songName = context?.songName;
@@ -163,11 +164,14 @@ function ReviewQuestion({
   const translation = line ? context?.translation?.trim() || (song ? lineTranslation(song, line) : null) : null;
   // A lyric quiz blanks the word out of the line, and shows no line it couldn't find the word in. A
   // listening quiz shows the line and meaning once answered.
-  const showLine = !!line && (kind === 'meaning' || !!lineWord) && (!listen || answered);
+  // An IPA quiz shows nothing but the IPA until it's answered.
+  const showLine = !!line && (kind === 'meaning' || !!lineWord) && ((!listen && !ipa) || answered);
   // A lyric quiz fills the gap from the line's translation when there is one, else from the meaning.
   // A meaning quiz shows the translation once answered, since it would give the meaning away.
-  const shownHint = kind === 'lyric' ? (lineWord && translation) || hint : answered ? translation : null;
-  const showHint = !!shownHint && (!listen || answered);
+  // A spelling quiz shows the meaning once answered.
+  const shownHint =
+    kind === 'lyric' ? (ipa && answered ? hint : (lineWord && translation) || hint) : answered ? translation : null;
+  const showHint = !!shownHint && ((!listen && !ipa) || answered);
   return (
     <View style={styles.question}>
       {showLine && (
@@ -189,6 +193,7 @@ function ReviewQuestion({
       )}
       {showLine && songName ? <Text style={styles.songName}>{songName}</Text> : null}
       {listen && !answered && <PronunciationAudio audio={entry.audio ?? []} autoPlay />}
+      {ipa && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
       {showHint ? <Text style={styles.hint}>{shownHint}</Text> : null}
       <WordQuiz
         entry={entry}
@@ -198,6 +203,8 @@ function ReviewQuestion({
             <>
               What does <Text style={styles.quizWord}>{entry.word}</Text> mean{showLine ? ' here' : ''}?
             </>
+          ) : ipa ? (
+            'Spell the word pronounced like this'
           ) : listen ? (
             'Which word did you hear?'
           ) : lineWord ? (
@@ -210,6 +217,7 @@ function ReviewQuestion({
         onAnswered={onAnswered}
         isWide={isWide}
         practice={practice}
+        typed={!!ipa && kind === 'lyric'}
       />
     </View>
   );
@@ -274,6 +282,12 @@ const styles = StyleSheet.create({
   },
   lineAnswer: {
     color: Colors.success,
+  },
+  ipa: {
+    fontSize: 26,
+    color: Colors.text,
+    textAlign: 'center',
+    paddingVertical: 8,
   },
   songName: {
     fontSize: 12,

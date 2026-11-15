@@ -435,7 +435,7 @@ export default function LearnScreen() {
   );
   const noSyncHidden = !!song && noSyncHiddenSongs.includes(song.id);
   const nextLine = useNextLineToLearn(song, originalLines);
-  const [followSpotify, setFollowSpotify] = useState(true);
+  const [followSpotify, setFollowSpotify] = usePersistedState('@lyricsionary_follow_spotify', true, (v): v is boolean => typeof v === 'boolean');
   // A long press on a line's word copies the line with its translations, to share it
   const [copiedLine, setCopiedLine] = useState(false);
   useEffect(() => {
@@ -1726,7 +1726,7 @@ export default function LearnScreen() {
           sync={spotify}
           selectedLineIndex={selectedLineIndex}
           follow={followSpotify}
-          onToggleFollow={() => setFollowSpotify((f) => !f)}
+          onToggleFollow={() => setFollowSpotify(!followSpotify)}
           onDictation={quizMode ? undefined : (lineIndex) => {
             setSelectedWord(null);
             setDictation({ lineIndex, checked: false });

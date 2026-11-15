@@ -227,6 +227,17 @@ export default function WordsScreen() {
       )
     : levelFilteredWords;
 
+  // A searched word that isn't saved can be looked up on Wiktionary, e.g. one seen outside any song, in
+  // the language filtered on, else the one most words are saved in (Look Up can change it)
+  const typedWord = searchQuery.trim();
+  const lookUpWord = !showFrequency && showSearch && typedWord && !/\s{2,}/.test(typedWord) &&
+    !words.some((w) => w.word.toLowerCase() === typedWord.toLowerCase() ||
+      (w.forms ?? []).some((form) => form.toLowerCase() === typedWord.toLowerCase()))
+    ? typedWord
+    : undefined;
+  const lookUpLanguage = selectedLanguages[0] ??
+    Object.entries(languageCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'English';
+
   const toggleSearch = () => {
     if (showSearch) setSearchQuery('');
     setShowSearch((v) => !v);
@@ -315,6 +326,24 @@ export default function WordsScreen() {
         {showSearch ? searchInput : <View style={styles.titleCenter}>{viewSwitch}</View>}
         {openSearchButton}
       </View>
+
+      {lookUpWord && (
+        <TouchableOpacity
+          style={styles.lookUpRow}
+          onPress={() =>
+            navigation.navigate('WordLookup', { word: lookUpWord, originalLanguages: [lookUpLanguage], source: 'Words' })
+          }
+          accessibilityRole="button"
+          accessibilityLabel={`Look up ${lookUpWord} on Wiktionary`}
+        >
+          <Ionicons name="book-outline" size={18} color={Colors.primaryLight} />
+          <Text style={styles.lookUpText} numberOfLines={1}>
+            Look up “{lookUpWord}”
+          </Text>
+          <Text style={styles.lookUpLanguage}>{lookUpLanguage}</Text>
+          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+        </TouchableOpacity>
+      )}
 
       {showLanguageTabs && availableLanguages.length > 0 && (
         <View style={styles.languageTabsContainer}>
@@ -545,6 +574,29 @@ export default function WordsScreen() {
 }
 
 const styles = StyleSheet.create({
+  lookUpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: Colors.primary,
+  },
+  lookUpText: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.primaryLight,
+    fontWeight: '600',
+  },
+  lookUpLanguage: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
   reviewButton: {
     flexDirection: 'row',
     alignItems: 'center',

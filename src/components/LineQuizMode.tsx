@@ -286,6 +286,7 @@ function LineQuestion({
         onAnswered={onAnswered}
         practice={practice}
         typed={mode === 'spell'}
+        audio={mode !== 'listen'}
         showDue={!practice}
         isWide={isWide}
       />

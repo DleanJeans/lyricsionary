@@ -272,6 +272,7 @@ function ReviewQuestion({
         isWide={isWide}
         practice={practice}
         typed={!!ipa && kind === 'lyric'}
+        audio={!listen}
       />
       {listen && !answered && <SwitchQuizButton onPress={() => setNoAudio(true)} />}
       {answered && !practice && unsaved && showLine && (

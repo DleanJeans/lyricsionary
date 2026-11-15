@@ -8,6 +8,8 @@ import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import { checkTypedAnswer, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
 import DueLabel from './DueLabel';
+import PronunciationAudio from './PronunciationAudio';
+import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 
 interface WordQuizProps {
   entry: WordEntry;
@@ -31,6 +33,8 @@ interface WordQuizProps {
   onAnsweredChange?: (answered: boolean) => void;
   /** Typed instead of picked whatever the word's level, e.g. spelling a word from its IPA */
   typed?: boolean;
+  /** Shows the word's recordings once answered; off where they already show, e.g. in a listening quiz */
+  audio?: boolean;
 }
 
 /**
@@ -40,7 +44,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, audio: showAudio = true }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -222,12 +226,28 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
           {!levelUp && due}
         </View>
       )}
+      {answered && showAudio && <AnswerAudio entry={current} />}
       {typed && !answered && (
         <TouchableOpacity onPress={() => void submitTyped(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show the answer">
           <Text style={styles.giveUpText}>I don't remember</Text>
         </TouchableOpacity>
       )}
       {answered && !practice && <LevelTrack from={unanswered} entry={current} />}
+    </View>
+  );
+}
+
+/** The word's recordings after an answer, to hear how it sounds. Fetched once for a word saved without any. */
+function AnswerAudio({ entry }: { entry: WordEntry }) {
+  const setWordAudio = useStore((s) => s.setWordAudio);
+  const wiktionary = useWiktionaryPronunciation(entry.word, entry.language, { savedAudio: entry.audio, needsIpa: false });
+  useEffect(() => {
+    if (!entry.audio && wiktionary.loaded) void setWordAudio(entry.id, wiktionary.audio);
+  }, [entry.id, entry.audio, wiktionary.loaded, wiktionary.audio, setWordAudio]);
+  if (wiktionary.audio.length === 0) return null;
+  return (
+    <View style={{ alignItems: 'flex-start' }}>
+      <PronunciationAudio audio={wiktionary.audio} short />
     </View>
   );
 }

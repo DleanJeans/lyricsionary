@@ -1409,6 +1409,7 @@ export default function LearnScreen() {
         key={`meaning-${entry.id}-${selectedLineIndex}-${selectedOccurrence}`}
         entry={entry}
         kind="meaning"
+        audio={false}
         prompt={<>What does <Text style={styles.quizWord}>{entry.word}</Text> mean here?</>}
         build={() => buildMeaningQuiz({ entry, ...sense, songId: song.id, excludeWords: parts }, useStore.getState().words)}
         hidden={selectedTranslationSeen || lookedUpTap === selectedTap}

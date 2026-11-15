@@ -368,6 +368,9 @@ export async function getWiktionaryLemmas(word: string, language: string): Promi
   try {
     await visit(word, 1);
     if (lemmas.length === 0 && word !== word.toLowerCase()) await visit(word.toLowerCase(), 1);
+    // e.g. warten for gewartet, which has no page of its own
+    const participleLemma = lemmas.length === 0 ? await findGermanParticipleLemma(word, language) : undefined;
+    if (participleLemma) lemmas.push(participleLemma);
   } catch {
     // No hint is better than a wrong one
   }
@@ -387,6 +390,9 @@ export async function getWiktionaryDefinitions(word: string, language: string): 
       const definitions = await getDefinitionsForTitle(title, language, 0);
       if (definitions.length > 0) return definitions;
     }
+    // A German ge- past participle without a page of its own means what its verb does, e.g. gewartet
+    const lemma = await findGermanParticipleLemma(word, language);
+    if (lemma) return getDefinitionsForTitle(lemma, language, 1);
     return [];
   } catch (error) {
     console.warn(`Wiktionary definitions failed for "${word}":`, error);
@@ -772,6 +778,178 @@ export function endingIpa(word: string, lemma: string, lemmaIpa: string): string
   return `${open}${ipa}${close}`;
 }
 
+// Separable particles of German verbs, longest first so zurück wins over zu, with how they sound when
+// the verb's page has no IPA to take them from, e.g. the auf of aufgehört
+const GERMAN_PARTICLES: [particle: string, ipa: string][] = (
+  [
+    ['ab', 'ap'], ['an', 'an'], ['auf', 'aʊ̯f'], ['aus', 'aʊ̯s'], ['bei', 'baɪ̯'], ['da', 'daː'], ['dar', 'daːɐ̯'],
+    ['durch', 'dʊʁç'], ['ein', 'aɪ̯n'], ['entgegen', 'ɛntˈɡeːɡn̩'], ['fest', 'fɛst'], ['fort', 'fɔʁt'], ['frei', 'fʁaɪ̯'],
+    ['heim', 'haɪ̯m'], ['her', 'heːɐ̯'], ['heran', 'hɛˈʁan'], ['herauf', 'hɛˈʁaʊ̯f'], ['heraus', 'hɛˈʁaʊ̯s'],
+    ['herein', 'hɛˈʁaɪ̯n'], ['herum', 'hɛˈʁʊm'], ['herunter', 'hɛˈʁʊntɐ'], ['hin', 'hɪn'], ['hinauf', 'hɪˈnaʊ̯f'],
+    ['hinaus', 'hɪˈnaʊ̯s'], ['hinein', 'hɪˈnaɪ̯n'], ['hinunter', 'hɪˈnʊntɐ'], ['hoch', 'hoːx'], ['kennen', 'ˈkɛnən'],
+    ['los', 'loːs'], ['mit', 'mɪt'], ['nach', 'naːx'], ['um', 'ʊm'], ['vor', 'foːɐ̯'], ['voran', 'foˈʁan'],
+    ['voraus', 'foˈʁaʊ̯s'], ['vorbei', 'foːɐ̯ˈbaɪ̯'], ['weg', 'vɛk'], ['weiter', 'ˈvaɪ̯tɐ'], ['wieder', 'ˈviːdɐ'],
+    ['zu', 't͡suː'], ['zurück', 't͡suˈʁʏk'], ['zusammen', 't͡suˈzamən'], ['über', 'ˈyːbɐ'], ['unter', 'ˈʊntɐ'],
+  ] as [string, string][]
+).sort((a, b) => b[0].length - a[0].length);
+
+/** A German past participle's separable particle and the rest, e.g. auf + gehört for aufgehört */
+function splitGermanParticle(word: string): { particle: string; ipa: string; core: string } | undefined {
+  const lower = word.toLowerCase();
+  for (const [particle, ipa] of GERMAN_PARTICLES) {
+    if (lower.startsWith(`${particle}ge`) && lower.length > particle.length + 4) {
+      return { particle, ipa, core: lower.slice(particle.length) };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The verbs a German ge- past participle may be of by its spelling, most likely first, e.g. warten for
+ * gewartet, wandern for gewandert, fahren for gefahren or aufhören for aufgehört. Empty for a word that
+ * doesn't look like one.
+ */
+export function germanParticipleLemmas(word: string): string[] {
+  const lower = word.toLowerCase();
+  const split = splitGermanParticle(lower);
+  const particle = split?.particle ?? '';
+  const core = split?.core ?? lower;
+  if (!core.startsWith('ge') || core.length < 5) return [];
+  const body = core.slice(2);
+  const lemmas: string[] = [];
+  // e.g. gewartet (warten), gesagt (sagen), gewandert (wandern), gefahren (fahren)
+  if (body.endsWith('et')) lemmas.push(`${body.slice(0, -2)}en`);
+  if (body.endsWith('t')) lemmas.push(`${body.slice(0, -1)}en`, `${body.slice(0, -1)}n`);
+  if (body.endsWith('en')) lemmas.push(body);
+  return [...new Set(lemmas)].filter((l) => l.length >= 4).map((l) => particle + l);
+}
+
+/** The IPA without its slashes or brackets, e.g. ˈvaʁtn̩ for /ˈvaʁtn̩/ */
+function unwrapIpa(ipaText: string): { open: string; close: string; ipa: string } | undefined {
+  const text = ipaText.trim();
+  const open = text[0];
+  if (open !== '/' && open !== '[') return undefined;
+  const close = open === '/' ? '/' : ']';
+  if (!text.endsWith(close)) return undefined;
+  const ipa = text.slice(1, -1).trim();
+  return ipa ? { open, close, ipa } : undefined;
+}
+
+/** The IPA of a lemma split after the sounds of its particle, e.g. /ˈaʊ̯fˌhøːʁən/ -> ˈaʊ̯f + ˌhøːʁən */
+function splitIpaAfter(ipa: string, particleIpa: string): [head: string, rest: string] | undefined {
+  const bare = (s: string) => s.replace(/[ˈˌ.͜͡]/g, '');
+  const target = bare(particleIpa);
+  for (let i = 1; i < ipa.length; i++) {
+    if (bare(ipa.slice(0, i)) !== target) continue;
+    // Not in the middle of a sound, e.g. before the ̯ of aʊ̯
+    if (/[̀-ͯːˑ]/.test(ipa[i])) continue;
+    return [ipa.slice(0, i), ipa.slice(i)];
+  }
+  return undefined;
+}
+
+/** A ge- participle's IPA from its verb's, without any particle, e.g. warten /ˈvaʁtn̩/ -> gewartet /ɡəˈvaʁtət/ */
+function geParticipleIpa(core: string, lemma: string, lemmaIpa: string): string | undefined {
+  const body = core.slice(2);
+  let ipa = lemmaIpa;
+  if (body === lemma) {
+    // A strong verb keeping its vowel, e.g. gefahren from fahren
+  } else if (lemma.endsWith('en') && (body === `${lemma.slice(0, -2)}et` || body === `${lemma.slice(0, -2)}t`)) {
+    // -en is said ən, ɛn or as a syllabic n̩, ŋ̩ or m̩
+    const stem = ipa.replace(/(?:ə|ɛ)n$|[nŋm]̩$/, '');
+    if (stem === ipa || !stem) return undefined;
+    ipa = body.endsWith('et') && body === `${lemma.slice(0, -2)}et` ? `${stem}ət` : `${devoiceEnd(stem)}t`;
+  } else if (lemma.endsWith('n') && body === `${lemma.slice(0, -1)}t`) {
+    // e.g. gewandert from wandern /ˈvandɐn/, gesammelt from sammeln
+    if (!ipa.endsWith('n')) return undefined;
+    ipa = `${ipa.slice(0, -1)}t`;
+  } else {
+    return undefined;
+  }
+  // ge- is never stressed, so the verb keeps its stress, and a verb starting with a vowel is said with a
+  // glottal stop after it, e.g. gearbeitet /ɡəˈʔaʁbaɪ̯tət/
+  let stressMark = '';
+  if (/^[ˈˌ]/.test(ipa)) {
+    stressMark = 'ˈ';
+    ipa = ipa.slice(1);
+  } else if (!ipa.includes('ˈ')) stressMark = 'ˈ';
+  if (/^[aeiouyøœɛɔəɐɪʊʏæɑ]/.test(ipa)) ipa = `ʔ${ipa}`;
+  return `ɡə${stressMark}${ipa}`;
+}
+
+/**
+ * A stem's last sound as said at the end of a syllable, e.g. leb- /leːb/ -> /leːp/ or hör- /høːr/ ->
+ * /høːɐ̯/ as in gehört (Wiktionary writes German r as r or ʁ)
+ */
+function devoiceEnd(stem: string): string {
+  return stem.replace(/[bdɡgvzʒ]$/, (c) => DEVOICED[c]).replace(/ː[rʁ]$/, 'ːɐ̯');
+}
+
+/**
+ * The IPA of a German ge- past participle from its verb's IPA, e.g. gewartet from warten /ˈvaʁtn̩/ ->
+ * /ɡəˈvaʁtət/, gefahren from fahren -> /ɡəˈfaːʁən/ or aufgehört from aufhören /ˈaʊ̯fˌhøːʁən/ ->
+ * /ˈaʊ̯fɡəˌhøːɐ̯t/. Undefined for any other form or one whose vowel changes, e.g. gesungen.
+ */
+export function participleIpa(word: string, lemma: string, lemmaIpa: string): string | undefined {
+  const lower = word.toLowerCase();
+  const lowerLemma = lemma.toLowerCase();
+  const wrapped = unwrapIpa(lemmaIpa);
+  if (!wrapped) return undefined;
+  const { open, close } = wrapped;
+  const split = splitGermanParticle(lower);
+  if (split && lowerLemma.startsWith(split.particle) && lowerLemma !== split.core.slice(2)) {
+    const parts = splitIpaAfter(wrapped.ipa, split.ipa);
+    if (!parts) return undefined;
+    const core = geParticipleIpa(split.core, lowerLemma.slice(split.particle.length), parts[1].replace(/^ˌ/, 'ˈ'));
+    if (!core) return undefined;
+    return joinIpa([
+      { title: split.particle, ipa: `${open}${parts[0]}${close}` },
+      { title: split.core, ipa: `${open}${core}${close}` },
+    ], 'German');
+  }
+  if (!lower.startsWith('ge')) return undefined;
+  const ipa = geParticipleIpa(lower, lowerLemma, wrapped.ipa);
+  return ipa ? `${open}${ipa}${close}` : undefined;
+}
+
+/**
+ * The verb a German ge- past participle without a page of its own is of, e.g. warten for gewartet, found
+ * by its spelling and kept only when the verb's conjugation table lists the participle
+ */
+async function findGermanParticipleLemma(word: string, language: string): Promise<string | undefined> {
+  if (getWiktionaryLanguage(language).trim().toLowerCase() !== 'german') return undefined;
+  const lower = word.toLowerCase();
+  for (const lemma of germanParticipleLemmas(lower)) {
+    const html = await fetchPageHtml(lemma);
+    const section = html && getLanguageSection(html, language);
+    if (section && section.toLowerCase().includes(`>${lower}<`)) return lemma;
+  }
+  return undefined;
+}
+
+/**
+ * A German ge- past participle's IPA when its page has none, put together from its verb's, e.g. gewartet
+ * from warten, or for a separable verb whose vowel changes, from its core's, e.g. auf + gehört for
+ * aufgehört or mit + genommen for mitgenommen. The verb is the one its page is a form of, or else the one
+ * whose conjugation lists it.
+ */
+async function getParticipleIpa(word: string, section: string | undefined, language: string): Promise<{ ipa: string; lemma: string } | undefined> {
+  if (getWiktionaryLanguage(language).trim().toLowerCase() !== 'german') return undefined;
+  const lower = word.toLowerCase();
+  const split = splitGermanParticle(lower);
+  if (!lower.startsWith('ge') && !split) return undefined;
+  const lemma = (section ? getFormOfLemmas(section)[0] : undefined) ?? (await findGermanParticipleLemma(lower, language));
+  if (!lemma) return undefined;
+  const html = await fetchPageHtml(lemma);
+  const lemmaIpa = html ? parseIpa(html, language)[0] : undefined;
+  const ipa = lemmaIpa && participleIpa(lower, lemma, lemmaIpa);
+  if (ipa) return { ipa, lemma };
+  if (!split || !lemma.toLowerCase().startsWith(split.particle)) return undefined;
+  const core = (await getWiktionaryPronunciation(split.core, language))?.ipa[0];
+  if (!core) return undefined;
+  return { ipa: joinIpa([{ title: split.particle, ipa: `/${split.ipa}/` }, { title: split.core, ipa: core }], language), lemma };
+}
+
 /**
  * A German form's IPA from its base word's, e.g. fang's from fangen's or Signale's from Signal's, with
  * the base word it came from
@@ -816,7 +994,15 @@ export async function getWiktionaryPronunciation(word: string, language: string)
   }
   const pronunciation = found?.pronunciation ?? { ipa: [], audio: [] };
   const section = found && getLanguageSection(found.html, language);
-  if (pronunciation.ipa.length > 0 || !found || !section) return pronunciation;
+  if (pronunciation.ipa.length > 0) return pronunciation;
+  try {
+    // A ge- past participle, e.g. gewartet from warten, aufgehört from aufhören, with or without a page
+    const participle = await getParticipleIpa(word, section, language);
+    if (participle) return { ...pronunciation, ipa: [participle.ipa], derivedFrom: [participle.lemma] };
+  } catch {
+    // The word's own recordings are still worth showing
+  }
+  if (!found || !section) return pronunciation;
   // Only an inflection's ending is silent, e.g. not moment's
   if (isFormOf(section)) {
     for (const form of soundAlikeForms(lower, language)) {

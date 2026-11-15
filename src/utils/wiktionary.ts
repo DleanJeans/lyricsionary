@@ -735,6 +735,21 @@ export function elidedIpa(ipaText: string): string | undefined {
   return `${open}${ipa}${close}`;
 }
 
+/**
+ * The IPA of a German word clipped as erklär'n or geh'n, from its full form's IPA with the schwa the
+ * apostrophe stands for dropped, e.g. erklären /ɛɐ̯ˈklɛːrən/ -> /ɛɐ̯ˈklɛːrn/, gehen /ˈɡeːən/ -> /ˈɡeːn/.
+ * Other clipped words (kauf') drop their whole ending, see elidedIpa. Undefined when no schwa is found.
+ */
+export function clippedFormIpa(word: string, fullIpa: string): string | undefined {
+  if (!/\p{L}['\u2018\u2019\u2032\u02BC`\u00B4][nm]$/u.test(word)) return elidedIpa(fullIpa);
+  const open = fullIpa.trim()[0];
+  if (open !== '/' && open !== '[') return undefined;
+  const body = fullIpa.trim().slice(1, -1).trim();
+  const dropped = body.replace(/ə([nm])$/, '$1');
+  if (dropped === body) return undefined;
+  return `${open}${dropped}${open === '/' ? '/' : ']'}`;
+}
+
 // How an ending added to a German word sounds, e.g. the -e of Signale
 const ADDED_ENDINGS: Record<string, string> = { e: 'ə', en: 'ən', n: 'n', er: 'ɐ', ern: 'ɐn', es: 'əs', em: 'əm', s: 's', se: 'sə' };
 // Sounds a spelling keeps voiceless only at the end of a word, voiced again before an ending's vowel,

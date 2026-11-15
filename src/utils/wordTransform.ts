@@ -121,6 +121,9 @@ export function getGermanExpandedForm(word: string, language?: string): string |
  * (finde -> /ˈfɪndə/, so find takes /fɪnt/). Empty for any other word.
  */
 export function germanFullForms(word: string): string[] {
+  // erklär'n -> erklären, geh‘n -> gehen, unser’m -> unserem
+  const suffix = word.match(germanShortenedSuffixRegex);
+  if (suffix) return [`${suffix[1]}e${suffix[2]}`];
   if (germanTrailingElisionRegex.test(word)) {
     const stem = word.slice(0, -1);
     return [`${stem}e`, `${stem}en`];

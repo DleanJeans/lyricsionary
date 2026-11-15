@@ -167,3 +167,13 @@ describe('germanFullForms', () => {
     expect(germanFullForms('hört auf')).toEqual([]);
   });
 });
+
+describe('germanFullForms clipped -n', () => {
+  it('restores the dropped e for any apostrophe', () => {
+    expect(germanFullForms("erklär'n")).toEqual(['erklären']);
+    expect(germanFullForms('erklär‘n')).toEqual(['erklären']);
+    expect(germanFullForms('geh’n')).toEqual(['gehen']);
+    expect(germanFullForms("unser'm")).toEqual(['unserem']);
+    expect(germanFullForms('kauf’')).toEqual(['kaufe', 'kaufen']);
+  });
+});

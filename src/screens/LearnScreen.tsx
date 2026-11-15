@@ -42,7 +42,7 @@ import SpotifyBar from '../components/SpotifyBar';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
-import { elidedIpa, getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
+import { clippedFormIpa, getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
 import { germanFullForms, getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
@@ -1232,7 +1232,7 @@ export default function LearnScreen() {
           const full = await lookUp(candidate);
           if (!full.definitions?.length) continue;
           const ipa = [full.pronunciation?.ipa[0], ...(full.pronunciation?.ipa.slice(1) ?? [])]
-            .map((i) => (i ? elidedIpa(i) : undefined)).find(Boolean);
+            .map((i) => (i ? clippedFormIpa(selectedWord, i) : undefined)).find(Boolean);
           found = {
             word: selectedWord,
             definitions: full.definitions,
@@ -1366,7 +1366,7 @@ export default function LearnScreen() {
       if (!ipa && isGermanSong) {
         for (const full of germanFullForms(word)) {
           const fullIpa = await first(full);
-          const elided = fullIpa ? elidedIpa(fullIpa) : undefined;
+          const elided = fullIpa ? clippedFormIpa(word, fullIpa) : undefined;
           if (elided) { ipa = elided; break; }
         }
       }
@@ -1424,7 +1424,7 @@ export default function LearnScreen() {
       if (!ipa && lookupLanguage.toLowerCase().startsWith('german')) {
         for (const candidate of germanFullForms(entry.word)) {
           const full = await first(candidate);
-          const elided = full ? elidedIpa(full) : undefined;
+          const elided = full ? clippedFormIpa(entry.word, full) : undefined;
           if (elided) { ipa = elided; break; }
         }
       }

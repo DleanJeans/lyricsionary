@@ -191,7 +191,7 @@ describe('buildLaunchReview', () => {
     { id: 'middle', lastOpenedAt: 2 },
   ];
 
-  it('takes the last song first, then tops up from the ones opened before it', () => {
+  it('shares the review between the 3 last-opened songs after a long absence', () => {
     const words = [
       ...Array.from({ length: 4 }, (_, i) => inSong(`last${i}`, 'last')),
       ...Array.from({ length: 3 }, (_, i) => inSong(`archived${i}`, 'archived')),
@@ -201,9 +201,26 @@ describe('buildLaunchReview', () => {
     const picked = buildLaunchReview(songs, words, now, 10).map((item) => item.entry.word);
     expect(picked).toHaveLength(10);
     expect(picked.filter((w) => w.startsWith('last'))).toHaveLength(4);
-    expect(picked.filter((w) => w.startsWith('middle'))).toHaveLength(4);
-    expect(picked.filter((w) => w.startsWith('old'))).toHaveLength(2);
+    expect(picked.filter((w) => w.startsWith('middle'))).toHaveLength(3);
+    expect(picked.filter((w) => w.startsWith('old'))).toHaveLength(3);
     expect(picked.some((w) => w.startsWith('archived'))).toBe(false);
+  });
+
+  it('draws from every song opened in the last 7 days, then tops up from older ones', () => {
+    const day = 24 * 60 * 60 * 1000;
+    const recent = [
+      { id: 'a', lastOpenedAt: now - day },
+      { id: 'b', lastOpenedAt: now - 2 * day },
+      { id: 'c', lastOpenedAt: now - 3 * day },
+      { id: 'd', lastOpenedAt: now - 4 * day },
+      { id: 'older', lastOpenedAt: now - 30 * day },
+    ];
+    const words = ['a', 'b', 'c', 'd', 'older'].flatMap((id) => Array.from({ length: 4 }, (_, i) => inSong(`${id}${i}`, id)));
+    const picked = buildLaunchReview(recent, words, now, 10).map((item) => item.entry.word);
+    expect(picked).toHaveLength(10);
+    // 4 recent songs give 2 each in 2 rounds of 4, then the last 2 slots come round again
+    expect(picked.filter((w) => w.startsWith('older'))).toHaveLength(0);
+    for (const id of ['a', 'b', 'c', 'd']) expect(picked.filter((w) => w.startsWith(id)).length).toBeGreaterThanOrEqual(2);
   });
 
   it('skips to an older song when the last one has nothing due, and is empty when none has', () => {

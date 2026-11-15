@@ -311,9 +311,9 @@ export default function WordsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        {openSearchButton}
-        {showSearch ? searchInput : <View style={styles.titleCenter}>{viewSwitch}</View>}
         {languageTabsToggle}
+        {showSearch ? searchInput : <View style={styles.titleCenter}>{viewSwitch}</View>}
+        {openSearchButton}
       </View>
 
       {showLanguageTabs && availableLanguages.length > 0 && (

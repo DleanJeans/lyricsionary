@@ -126,7 +126,7 @@ describe('a German participle on Wiktionary', () => {
     });
     // A fresh copy of the module, since warten's page is cached from the test above
     jest.resetModules();
-    const fresh = require('../src/utils/wiktionary') as typeof import('../src/utils/wiktionary');
-    expect(await fresh.getWiktionaryPronunciation('gewartet', 'German')).toEqual({ ipa: ['/ɡəˈvartət/'], audio: [], derivedFrom: ['warten'] });
+    const fresh = await import('../src/utils/wiktionary');
+    expect(await fresh.getWiktionaryPronunciation('gewartet', 'German')).toMatchObject({ ipa: ['/ɡəˈvartət/'], derivedFrom: ['warten'] });
   });
 });

@@ -49,6 +49,7 @@ import { germanTrailingElisionRegex } from '../utils/regex';
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
+import WordSheet from '../components/WordSheet';
 import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
 import { findSavedWord, spellingsOf } from '../utils/wordForms';
@@ -1439,8 +1440,9 @@ export default function LearnScreen() {
 
   const wordCardPanel = (
     selectedWord && selectedWordEntry ? (
-      <View style={[styles.wordCardContainer]}>
+      <View style={[styles.wordCardContainer, !isWide && styles.wordCardInSheet]}>
         <WordCard
+          inSheet={!isWide}
           item={selectedWordEntry}
           showDelete={false}
           showClose={true}
@@ -1485,6 +1487,7 @@ export default function LearnScreen() {
         isWide={isWide}
         occurrence={selectedOccurrence}
         loading={fetchingWord === selectedWord}
+        inSheet={!isWide}
       />
     ) : null);
   const dictationPanel = dictation && lines[dictation.lineIndex] ? (
@@ -1551,14 +1554,31 @@ export default function LearnScreen() {
 
   const wordPanel = quizMode ? null : dictationPanel ?? gapPanel ?? (wordCardPanel && (wordSpots.length > 1 || selectedWordEntry || selectedLine?.trim()) ? (
     <View>
-      {wordSpots.length > 1 && (
-        <WordSpotStepper
-          count={wordSpots.length}
-          index={wordSpotIndex}
-          onStep={goToWordSpot}
-        />
+      {isWide ? (
+        <>
+          {wordSpots.length > 1 && (
+            <WordSpotStepper
+              count={wordSpots.length}
+              index={wordSpotIndex}
+              onStep={goToWordSpot}
+            />
+          )}
+          {selectedWordEntry && <LemmaMergeHint entry={selectedWordEntry} />}
+        </>
+      ) : (wordSpots.length > 1 || selectedWordEntry) && (
+        // In the sheet, the merge hint and the song's other lines with the word share one row
+        <View style={styles.sheetTopRow}>
+          {selectedWordEntry && <LemmaMergeHint entry={selectedWordEntry} compact />}
+          {wordSpots.length > 1 && (
+            <WordSpotStepper
+              count={wordSpots.length}
+              index={wordSpotIndex}
+              onStep={goToWordSpot}
+              compact
+            />
+          )}
+        </View>
       )}
-      {selectedWordEntry && <LemmaMergeHint entry={selectedWordEntry} />}
       {splitPhraseHint}
       {wordCardPanel}
     </View>
@@ -1580,6 +1600,15 @@ export default function LearnScreen() {
     setQuizMode({ startLine: start ?? contentLines[0] });
   };
 
+  const lineStep = lineByLine !== null ? contentLines.indexOf(lineByLine) : -1;
+  const stepLine = (delta: number) => {
+    const next = contentLines[lineStep + delta];
+    if (next === undefined) return;
+    // Stepping keeps 1 by 1 on after the card closes
+    autoLineByLine.current = false;
+    setSelectedWord(null);
+    setLineByLine(next);
+  };
   const actionBar = (
     <LearnActionBar
       fontSize={storedFontSize}
@@ -1589,6 +1618,7 @@ export default function LearnScreen() {
       onIncreaseFontSize={() => setFontSize(storedFontSize + 1)}
       lineByLine={lineByLine !== null}
       onToggleLineByLine={contentLines.length > 0 && !quizMode ? toggleLineByLine : undefined}
+      lineStep={lineByLine !== null && lineStep >= 0 ? { index: lineStep, count: contentLines.length, onStep: stepLine } : undefined}
       quizMode={!!quizMode}
       onToggleQuizMode={canQuizSong || quizMode ? toggleQuizMode : undefined}
       onShowAllLyrics={lyricQuiz ? () => navigation.setParams({ fillIn: false }) : undefined}
@@ -1601,44 +1631,8 @@ export default function LearnScreen() {
     />
   );
 
-  const lineStep = lineByLine !== null ? contentLines.indexOf(lineByLine) : -1;
-  const stepLine = (delta: number) => {
-    const next = contentLines[lineStep + delta];
-    if (next === undefined) return;
-    // Stepping keeps 1 by 1 on after the card closes
-    autoLineByLine.current = false;
-    setSelectedWord(null);
-    setLineByLine(next);
-  };
-  const lineByLineBar = lineByLine !== null && (
-    <View style={styles.lineByLineBar}>
-      <TouchableOpacity
-        onPress={() => stepLine(-1)}
-        disabled={lineStep <= 0}
-        hitSlop={8}
-        style={[styles.lineByLineButton, lineStep <= 0 && styles.lineByLineButtonOff]}
-        accessibilityRole="button"
-        accessibilityLabel="Previous line"
-      >
-        <Ionicons name="chevron-back" size={22} color={Colors.text} />
-      </TouchableOpacity>
-      <Text style={styles.lineByLineText}>{`Line ${lineStep + 1} of ${contentLines.length}`}</Text>
-      <TouchableOpacity
-        onPress={() => stepLine(1)}
-        disabled={lineStep >= contentLines.length - 1}
-        hitSlop={8}
-        style={[styles.lineByLineButton, lineStep >= contentLines.length - 1 && styles.lineByLineButtonOff]}
-        accessibilityRole="button"
-        accessibilityLabel="Next line"
-      >
-        <Ionicons name="chevron-forward" size={22} color={Colors.text} />
-      </TouchableOpacity>
-    </View>
-  );
-
   const lyricsView = (
     <>
-      {lineByLineBar}
       {spotifyConnected && !(noSyncHidden && spotify.timings === 'none') && (
         <SpotifyBar
           sync={spotify}
@@ -1794,13 +1788,19 @@ export default function LearnScreen() {
       ) : (
         /* ── Narrow: stacked ── */
         <View style={styles.narrowMain}>
-          {wordPanel && (
-            <AnimatedHeight appear closing={closingWordCard} onClosed={() => setSelectedWord(null)}>
-              {wordPanel}
-            </AnimatedHeight>
-          )}
           {actionBar}
           {lyricsView}
+          {/* The word opens in a sheet under the lyrics, so nothing above them moves */}
+          {wordPanel && (
+            <AnimatedHeight appear closing={closingWordCard} onClosed={() => setSelectedWord(null)}>
+              <WordSheet
+                resetKey={selectedWord}
+                onClose={dictationPanel ? () => setDictation(null) : selectedWord && !gapPanel ? closeWordCard : undefined}
+              >
+                {wordPanel}
+              </WordSheet>
+            </AnimatedHeight>
+          )}
         </View>
       )}
       {removedWord && (
@@ -1826,27 +1826,12 @@ export default function LearnScreen() {
 const GAP = '_____';
 
 const styles = StyleSheet.create({
-  lineByLineBar: {
+  sheetTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    paddingVertical: 6,
-  },
-  lineByLineButton: {
-    padding: 6,
-    borderRadius: 10,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  lineByLineButtonOff: {
-    opacity: 0.35,
-  },
-  lineByLineText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textSecondary,
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
   gap: { color: Colors.primary },
   gapSelected: { fontWeight: '700', backgroundColor: 'rgba(108, 92, 231, 0.18)' },
@@ -1999,6 +1984,10 @@ const styles = StyleSheet.create({
   },
   wordCardContainer: {
     marginHorizontal: 16,
+  },
+  // The sheet is the card's box, so the card takes its full width
+  wordCardInSheet: {
+    marginHorizontal: 0,
   },
   annotationSpace: {
     minHeight: 14,

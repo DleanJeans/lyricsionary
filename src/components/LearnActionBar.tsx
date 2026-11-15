@@ -23,6 +23,8 @@ interface LearnActionBarProps {
   /** One line at a time, in bigger text */
   lineByLine?: boolean;
   onToggleLineByLine?: () => void;
+  /** Line by line: which line shows, with arrows to step, in place of the word count */
+  lineStep?: { index: number; count: number; onStep: (delta: 1 | -1) => void };
   /** Quiz mode, for a song whose words are all saved: a quiz on each line in turn */
   quizMode?: boolean;
   onToggleQuizMode?: () => void;
@@ -106,6 +108,7 @@ export default function LearnActionBar({
   onToggleTrickyLines,
   lineByLine = false,
   onToggleLineByLine,
+  lineStep,
   quizMode = false,
   onToggleQuizMode,
 }: LearnActionBarProps) {
@@ -201,7 +204,35 @@ export default function LearnActionBar({
           </TouchableOpacity>
         )}
       </View>
-      {/* Beside the Show all button there's no room for one line, so the line count goes under the words */}
+      {lineStep && !fontOpen ? (
+        // Line by line: the line stepper takes the word count's place, so it needs no row of its own
+        <View style={styles.lineStep}>
+          <TouchableOpacity
+            onPress={() => lineStep.onStep(-1)}
+            disabled={lineStep.index <= 0}
+            hitSlop={8}
+            style={[styles.lineStepButton, lineStep.index <= 0 && styles.lineStepButtonOff]}
+            accessibilityRole="button"
+            accessibilityLabel="Previous line"
+          >
+            <Ionicons name="chevron-back" size={18} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.lineStepText} accessibilityLabel={`Line ${lineStep.index + 1} of ${lineStep.count}`}>
+            {`${lineStep.index + 1}/${lineStep.count}`}
+          </Text>
+          <TouchableOpacity
+            onPress={() => lineStep.onStep(1)}
+            disabled={lineStep.index >= lineStep.count - 1}
+            hitSlop={8}
+            style={[styles.lineStepButton, lineStep.index >= lineStep.count - 1 && styles.lineStepButtonOff]}
+            accessibilityRole="button"
+            accessibilityLabel="Next line"
+          >
+            <Ionicons name="chevron-forward" size={18} color={Colors.text} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+      /* Beside the Show all button there's no room for one line, so the line count goes under the words */
       <Text style={[styles.lineCounter, onShowAllLyrics && styles.lineCounterStacked]} numberOfLines={onShowAllLyrics ? 2 : 1}>
         {/* With the line by line button there's no room for the line count beside the words; line by line counts the lines */}
         {wordProgress
@@ -212,6 +243,7 @@ export default function LearnActionBar({
             : `${wordProgress.label}${onShowAllLyrics ? '\n' : ' · '}${lineCount} lines`
           : `${lineCount} lines`}
       </Text>
+      )}
       {wordProgress && (
         <View
           style={styles.progressTrack}
@@ -395,6 +427,28 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     color: Colors.textSecondary,
     fontSize: 13,
+    fontVariant: ['tabular-nums'],
+  },
+  lineStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 8,
+  },
+  lineStepButton: {
+    padding: 4,
+    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  lineStepButtonOff: {
+    opacity: 0.35,
+  },
+  lineStepText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   lineCounterStacked: {

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
@@ -11,18 +11,22 @@ import { Text } from './Text';
 /**
  * The word's lines in the other songs it was saved from, each opening that song at the line. The
  * lines' translations stay hidden while the word's quiz is waiting for an answer, so they don't give
- * the meaning away.
+ * the meaning away. Folded, it starts as one line naming the songs, opened with a tap.
  */
 export default function AlsoInSongs({
   item,
   songId,
   hideTranslations = false,
+  folded = false,
 }: {
   item: WordEntry;
   songId?: string;
   hideTranslations?: boolean;
+  folded?: boolean;
 }) {
   const navigation = useNavigation<any>();
+  const [open, setOpen] = useState(!folded);
+  useEffect(() => setOpen(!folded), [item.id, folded]);
   const songs = useStore((s) => s.songs);
   // One line per song, from songs that are still saved
   const others: { context: WordContext; song: Song; songName: string }[] = [];
@@ -35,6 +39,24 @@ export default function AlsoInSongs({
     others.push({ context, song, songName: song.songName || context.songName || 'Untitled' });
   }
   if (others.length === 0) return null;
+
+  if (!open) {
+    return (
+      <TouchableOpacity
+        style={styles.foldedRow}
+        onPress={() => setOpen(true)}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`Show ${item.word} in ${others.length === 1 ? 'one other song' : `${others.length} other songs`}`}
+      >
+        <Ionicons name="musical-notes-outline" size={14} color={Colors.primaryLight} />
+        <Text style={styles.foldedText} numberOfLines={1}>
+          Also in <Text style={[styles.foldedText, styles.foldedSongs]}>{others.map((o) => o.songName).join(', ')}</Text>
+        </Text>
+        <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} />
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -83,6 +105,23 @@ export default function AlsoInSongs({
 }
 
 const styles = StyleSheet.create({
+  foldedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  foldedText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  // Nested Text resets its font size, so it's repeated from foldedText
+  foldedSongs: {
+    flex: 0,
+    color: Colors.text,
+    fontWeight: '600',
+  },
   container: {
     marginTop: 12,
     gap: 6,

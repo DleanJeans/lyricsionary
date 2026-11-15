@@ -10,12 +10,14 @@ interface WordSpotStepperProps {
   /** Which of them is selected, or -1 */
   index: number;
   onStep: (step: 1 | -1) => void;
+  /** In the word sheet: just "1 of 4" between the arrows, at the end of the merge hint's row */
+  compact?: boolean;
 }
 
 /** Above the word card: how often the word comes up in this song, and arrows to step through those lines */
-export default function WordSpotStepper({ count, index, onStep }: WordSpotStepperProps) {
+export default function WordSpotStepper({ count, index, onStep, compact = false }: WordSpotStepperProps) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, compact && styles.rowCompact]}>
       <TouchableOpacity
         onPress={() => onStep(-1)}
         style={styles.arrow}
@@ -27,7 +29,9 @@ export default function WordSpotStepper({ count, index, onStep }: WordSpotSteppe
       </TouchableOpacity>
       <TouchableOpacity onPress={() => onStep(1)} accessibilityRole="button" accessibilityLabel="Next line with this word">
         <Text style={styles.label}>
-          {index >= 0 ? `${index + 1} of ${count} in this song` : `${count} times in this song`}
+          {compact
+            ? (index >= 0 ? `${index + 1} of ${count}` : `${count} times`)
+            : index >= 0 ? `${index + 1} of ${count} in this song` : `${count} times in this song`}
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -51,6 +55,12 @@ const styles = StyleSheet.create({
     gap: 4,
     marginHorizontal: 16,
     marginBottom: 6,
+  },
+  rowCompact: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    marginLeft: 'auto',
+    gap: 0,
   },
   arrow: {
     padding: 4,

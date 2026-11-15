@@ -12,7 +12,7 @@ import { findSavedWord } from '../utils/wordForms';
 const dismissed = new Set<string>();
 
 /** Above a saved word's card: when Wiktionary says it's a form of another saved word, e.g. veux of vouloir, offers to merge it in */
-export default function LemmaMergeHint({ entry }: { entry: WordEntry }) {
+export default function LemmaMergeHint({ entry, compact = false }: { entry: WordEntry; compact?: boolean }) {
   const words = useStore((s) => s.words);
   const mergeWords = useStore((s) => s.mergeWords);
   const [lemmas, setLemmas] = useState<string[]>([]);
@@ -30,6 +30,38 @@ export default function LemmaMergeHint({ entry }: { entry: WordEntry }) {
 
   const target = lemmas.map((lemma) => findSavedWord(words, lemma, entry.language)).find((w) => w && w.id !== entry.id);
   if (!target || hidden) return null;
+
+  // In the word sheet: a chip, "form of der · Merge", sharing a row with the song's other lines with the word
+  if (compact) {
+    return (
+      <View style={styles.chip}>
+        <Ionicons name="git-merge-outline" size={14} color={Colors.primaryLight} />
+        <Text style={styles.chipText} numberOfLines={1}>
+          form of <Text style={[styles.chipText, styles.bold]}>{target.word}</Text>
+        </Text>
+        <TouchableOpacity
+          onPress={() => void mergeWords(target.id, entry.id)}
+          style={styles.chipMerge}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={`Merge into ${target.word}`}
+        >
+          <Text style={styles.chipMergeText}>Merge</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            dismissed.add(entry.id);
+            setHidden(true);
+          }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss merge hint"
+        >
+          <Ionicons name="close" size={14} color={Colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.row}>
@@ -78,4 +110,18 @@ const styles = StyleSheet.create({
   bold: { flex: 0, color: Colors.text, fontWeight: '600' },
   merge: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   mergeText: { fontSize: 13, color: Colors.white, fontWeight: '600' },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+    paddingLeft: 10,
+    paddingRight: 8,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.surfaceLight,
+  },
+  chipText: { flexShrink: 1, fontSize: 13, color: Colors.textSecondary },
+  chipMerge: { backgroundColor: Colors.primary, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  chipMergeText: { fontSize: 12, color: Colors.white, fontWeight: '600' },
 });

@@ -48,6 +48,9 @@ interface WordCardProps {
   quizPending?: boolean;
   /** Learn: the quiz shows its result, with the next quiz time on its row instead of above it */
   quizAnswered?: boolean;
+  /** Learn on a phone: the card sits in a sheet under the lyrics, so it drops its own box, keeps the
+   * audio beside the word and folds Also in to one line */
+  inSheet?: boolean;
 }
 
 export default function WordCard({
@@ -72,6 +75,7 @@ export default function WordCard({
   justSaved = false,
   quizPending = false,
   quizAnswered = false,
+  inSheet = false,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -146,7 +150,7 @@ export default function WordCard({
       overshootRight={false}
     >
       <TouchableOpacity
-        style={[styles.card, isWide && styles.cardWide]}
+        style={[styles.card, isWide && styles.cardWide, inSheet && styles.cardInSheet]}
         // Learn's card opens Look Up only from its Look up button, so a stray tap doesn't leave the song
         onPress={showClose ? undefined : handleCardPress}
         activeOpacity={1}
@@ -165,6 +169,7 @@ export default function WordCard({
                   {item.word}
                   {ipa ? <RNText style={styles.ipaInline}>{`  ${ipa}`}</RNText> : null}
                 </Text>
+                {inSheet && wiktionary.audio.length > 0 && <PronunciationAudio audio={wiktionary.audio} compact short />}
                 {justSaved && <SavedPill />}
               </View>
               <View style={styles.headerTools}>
@@ -190,7 +195,7 @@ export default function WordCard({
                 </TouchableOpacity>
               </View>
             </View>
-            {wiktionary.audio.length > 0 && (
+            {!inSheet && wiktionary.audio.length > 0 && (
               <View style={styles.ipaRow}>
                 <PronunciationAudio audio={wiktionary.audio} compact short />
               </View>
@@ -222,7 +227,7 @@ export default function WordCard({
                 <Text style={styles.lookUpText}>Look up</Text>
               </TouchableOpacity>
             )}
-            <AlsoInSongs item={item} songId={songId} hideTranslations={quizPending} />
+            <AlsoInSongs item={item} songId={songId} hideTranslations={quizPending} folded={inSheet} />
           </>
         ) : (
           <View style={styles.cardRow}>
@@ -285,6 +290,14 @@ const styles = StyleSheet.create({
   },
   cardWide: {
     flex: 1,
+  },
+  cardInSheet: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingTop: 0,
+    paddingBottom: 4,
+    marginBottom: 0,
   },
   cardRow: {
     flexDirection: 'row',

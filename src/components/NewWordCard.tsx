@@ -34,6 +34,8 @@ interface NewWordCardProps {
   occurrence?: number;
   /** Its meaning and IPA are still being fetched from Wiktionary */
   loading?: boolean;
+  /** Learn on a phone: the card sits in a sheet under the lyrics, so it drops its own box */
+  inSheet?: boolean;
 }
 
 export default function NewWordCard({
@@ -48,6 +50,7 @@ export default function NewWordCard({
   isWide = false,
   occurrence,
   loading = false,
+  inSheet = false,
 }: NewWordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -114,7 +117,7 @@ export default function NewWordCard({
   const isFetching = loading || wiktionary.pending;
 
   return (
-    <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide]}>
+    <View style={[styles.wordPanel, styles.wordPanelPadded, isWide && styles.wordPanelWide, inSheet && styles.wordPanelInSheet]}>
       <View style={styles.wordHeader}>
         <View style={styles.wordTitle}>
           {/* Saves the word at a level, then shows it as on the saved word's card */}
@@ -274,6 +277,15 @@ const styles = StyleSheet.create({
   },
   wordPanelPadded: {
     padding: 16,
+  },
+  wordPanelInSheet: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 0,
+    marginHorizontal: 0,
+    marginBottom: 0,
+    paddingTop: 0,
+    paddingBottom: 4,
   },
   wordPanelWide: {
     marginHorizontal: 0,

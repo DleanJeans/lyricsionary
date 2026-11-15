@@ -136,7 +136,8 @@ export default function LearnScreen() {
           if (withoutPrefix) return withoutPrefix;
         }
       }
-      if (hasFrenchLanguage || hasItalianLanguage) {
+      // (not for words written apart, or a saved ma' would pull the words after it into a phrase with it)
+      if ((hasFrenchLanguage || hasItalianLanguage) && !/\s/.test(cleanedWord)) {
         // The last part with a saved word, e.g. aime in j't'aime
         const parts = splitElisionParts(cleanedWord) ?? [];
         const part = [...parts].reverse().map(findWordEntry).find(Boolean);

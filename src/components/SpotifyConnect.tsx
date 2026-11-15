@@ -5,18 +5,21 @@ import { Colors } from '../constants/theme';
 import {
   getCustomSpotifyClientId,
   setSpotifyClientId,
+  SPOTIFY_AUTOPLAY_KEY,
   signOutOfSpotify,
   spotifyErrorMessage,
   spotifyRedirectUri,
   startSpotifySignIn,
 } from '../services/spotify';
 import { useStore } from '../store/useStore';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { Text, TextInput } from './Text';
 
 /** Signs in to Spotify (Lyricsionary's app, or the user's own), for seeking by lyric line in Learn */
 export default function SpotifyConnect() {
   const connected = useStore((s) => s.spotifyConnected);
   const setConnected = useStore((s) => s.setSpotifyConnected);
+  const [autoplay, setAutoplay] = usePersistedState(SPOTIFY_AUTOPLAY_KEY, true, (v): v is boolean => typeof v === 'boolean');
   const [clientId, setClientId] = useState('');
   const [ownApp, setOwnApp] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,13 +49,26 @@ export default function SpotifyConnect() {
     <View style={styles.container}>
       <Text style={styles.title}>Spotify</Text>
       {connected ? (
-        <View style={styles.row}>
-          <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-          <Text style={styles.text}>Connected. Learn follows the song and seeks by line.</Text>
-          <TouchableOpacity onPress={() => void disconnect()} accessibilityRole="button" accessibilityLabel="Disconnect Spotify">
-            <Text style={styles.link}>Disconnect</Text>
+        <>
+          <View style={styles.row}>
+            <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+            <Text style={styles.text}>Connected. Learn follows the song and seeks by line.</Text>
+            <TouchableOpacity onPress={() => void disconnect()} accessibilityRole="button" accessibilityLabel="Disconnect Spotify">
+              <Text style={styles.link}>Disconnect</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => setAutoplay(!autoplay)}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: autoplay }}
+            accessibilityLabel="Autoplay songs on Spotify"
+          >
+            <Ionicons name={autoplay ? 'play-circle' : 'play-circle-outline'} size={18} color={autoplay ? '#1DB954' : Colors.textMuted} />
+            <Text style={styles.text}>Autoplay a song when opening it from Songs</Text>
+            <Ionicons name={autoplay ? 'toggle' : 'toggle-outline'} size={30} color={autoplay ? '#1DB954' : Colors.textMuted} />
           </TouchableOpacity>
-        </View>
+        </>
       ) : (
         <>
           <Text style={styles.text}>Follow along and jump to any lyric line in Learn (seeking needs Premium).</Text>

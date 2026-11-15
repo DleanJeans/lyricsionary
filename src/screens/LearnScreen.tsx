@@ -1855,8 +1855,9 @@ export default function LearnScreen() {
 
   const lyricsView = (
     <>
-      {spotifyConnected && !(noSyncHidden && spotify.timings === 'none') && (
+      {spotifyConnected && (
         <SpotifyBar
+          hideStatus={noSyncHidden && spotify.timings === 'none'}
           sync={spotify}
           selectedLineIndex={selectedLineIndex}
           follow={followSpotify}

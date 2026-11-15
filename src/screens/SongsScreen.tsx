@@ -10,6 +10,7 @@ import {
 import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
+import { autoPlaySpotifySong } from '../services/spotify';
 import { phraseStartsOf } from '../utils/cjkWords';
 import { Colors } from '../constants/theme';
 import { getFlagForLanguage } from '../constants/languages';
@@ -194,6 +195,7 @@ export default function SongsScreen() {
     setTimeout(() => {
       setCurrentSongId(song.id);
       void trackSongOpen(song.id);
+      void autoPlaySpotifySong(song.songName, song.artistName ?? '');
       navigation.navigate('Editor', { songId: song.id });
       // Found by searching the lyrics: opens at the line
       const match = searchInLyrics && !fillIn ? findMatch(song, searchQuery) : null;

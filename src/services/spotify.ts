@@ -1,3 +1,4 @@
+import { isSameTrack } from '../utils/syncedLyrics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Linking, Platform } from 'react-native';
@@ -332,3 +333,22 @@ export async function getSpotifyPlaylistTracks(id: string): Promise<SpotifyTrack
 
 export const spotifyErrorMessage = (error: unknown) =>
   error instanceof SpotifyError ? error.message : 'Something went wrong talking to Spotify.';
+
+const AUTOPLAY_KEY = '@lyricsionary_spotify_autoplay';
+export const SPOTIFY_AUTOPLAY_KEY = AUTOPLAY_KEY;
+
+/**
+ * Starts a song on Spotify when it's opened from Songs, if the setting (on by default) allows. Leaves
+ * a song Spotify is already on alone, and fails quietly when Spotify is closed or has no match.
+ */
+export async function autoPlaySpotifySong(songName: string, artistName: string): Promise<void> {
+  try {
+    if (JSON.parse((await AsyncStorage.getItem(AUTOPLAY_KEY)) ?? 'true') === false) return;
+    if (!(await isSpotifyConnected())) return;
+    const playback = await getSpotifyPlayback();
+    if (playback && isSameTrack(songName, artistName, playback.trackName, playback.artists)) return;
+    await playSpotifyTrack(await findSpotifyTrackUri(songName, artistName));
+  } catch {
+    // No open Spotify, no Premium or no match: the Play button in Learn says why
+  }
+}

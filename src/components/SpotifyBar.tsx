@@ -30,6 +30,7 @@ export default function SpotifyBar({
   onToggleFollow,
   onDictation,
   onDismiss,
+  hideStatus,
 }: {
   sync: SpotifyLyricsSync;
   /** The line of the tapped word, to play from */
@@ -40,6 +41,8 @@ export default function SpotifyBar({
   onDictation?: (lineIndex: number) => void;
   /** Hides the bar for good for a song with no synced lyrics */
   onDismiss?: () => void;
+  /** Leaves out the status once it was closed, keeping the Play button */
+  hideStatus?: boolean;
 }) {
   // Line, dictation and loop only work once Spotify plays this song
   const canPlaySelected = sync.isThisSong && selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
@@ -48,7 +51,9 @@ export default function SpotifyBar({
   const looping = sync.loopLine !== null;
   const status =
     sync.error ??
-    (sync.timings === 'loading'
+    (hideStatus
+      ? null
+      : sync.timings === 'loading'
       ? 'Looking for synced lyrics...'
       : sync.timings === 'none'
         ? 'No synced lyrics found for this song'

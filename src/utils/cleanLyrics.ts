@@ -54,9 +54,26 @@ export function cleanGeniusLyrics(lyrics: string): string {
   return cleaned;
 }
 
+/**
+ * The word sung with a stutter, without it: D-D-Dann -> Dann, L-l-liebe -> liebe, ich-ich-ich -> ich.
+ * Every part before the last is a start of it, so a real hyphenated word (T-Shirt, well-known) stays.
+ * Two whole words, like bye-bye, are left alone; only a shorter start (D-Dann) or three or more parts count.
+ */
+export const removeStutter = (word: string) => {
+  if (!word.includes('-')) return word;
+  const parts = word.split('-');
+  if (parts.length < 2 || parts.some((part) => !part)) return word;
+  const last = parts[parts.length - 1];
+  const lower = last.toLowerCase();
+  const starts = parts.slice(0, -1);
+  if (!starts.every((part) => part.length <= last.length && lower.startsWith(part.toLowerCase()))) return word;
+  if (parts.length === 2 && starts[0].length === last.length) return word;
+  return last;
+};
+
 // Thai vowel and tone marks are part of the word, e.g. the ั and ้ in รักน้ำ
 export const removeSpecialChars = (word: string) => {
-  return word.replace(/[^\p{L}\p{N}\u0E31\u0E34-\u0E3A\u0E47-\u0E4E'-]/gu, '');
+  return removeStutter(word.replace(/[^\p{L}\p{N}\u0E31\u0E34-\u0E3A\u0E47-\u0E4E'-]/gu, ''));
 }
 /**
  * A lyric line's words, spaces and punctuation, as Learn lays them out to tap: a dash between words

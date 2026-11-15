@@ -964,6 +964,54 @@ export default function LearnScreen() {
               ? getMasteryLevelColor(wordEntry.masteryLevel)
               : Colors.text;
 
+          // A phrase written apart, e.g. viel zu viel, with no IPA of its own shows each of its words' own IPA
+          if (isPhrase && showIpa && !split && !displayContent && !compoundParts) {
+            const phraseWordList = edgePunctuation.core.split(/\s+/).filter(Boolean);
+            const ownIpas = phraseWordList.map((pw) => {
+              const ownWord = cleanLyricWord(pw);
+              const ownEntry = ownWord ? findSavedEntry(ownWord) ?? null : null;
+              if (!ownEntry || (quietKnownWords && ownEntry.masteryLevel === 'Known' && !isActiveOccurrence)) return '';
+              const ownIpa = findWordContext(ownEntry, text)?.ipa || ownEntry.pronunciation;
+              return ownIpa ? formatIpa(ownIpa, showIpaBrackets) : '';
+            });
+            if (ownIpas.some(Boolean)) {
+              const phraseStyle = [
+                {
+                  color: wordColor,
+                  fontWeight: isActiveOccurrence ? ('700' as const) : ('400' as const),
+                  fontSize,
+                  lineHeight: fontSize * 1.6,
+                },
+                !!wordEntry && {
+                  textDecorationLine: 'underline' as const,
+                  textDecorationStyle: 'dotted' as const,
+                  textDecorationColor: wordColor,
+                },
+              ];
+              return (
+                <View key={i} onLayout={onWordLayout(i)} style={{ flexDirection: 'row' }}>
+                  {phraseWordList.map((pw, pi) => (
+                    <View key={pi} style={{ alignItems: 'center' }}>
+                      <View style={styles.annotationSpace}>
+                        {!!ownIpas[pi] && <Text style={styles.wordAnnotation}>{ownIpas[pi]}</Text>}
+                      </View>
+                      <Text
+                        onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1, single)}
+                        onLongPress={() => copyLineRef.current(lineIndex)}
+                        style={{ fontSize, lineHeight: fontSize * 1.6, color: Colors.text }}
+                      >
+                        {pi === 0 && renderEdge(edgePunctuation.leading, wordColor, fontSize)}
+                        <Text style={phraseStyle}>{pw}</Text>
+                        {pi < phraseWordList.length - 1 && <Text style={phraseStyle}>{' '}</Text>}
+                        {pi === phraseWordList.length - 1 && renderEdge(edgePunctuation.trailing, wordColor, fontSize)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            }
+          }
+
           // Japanese characters keep no empty space above them, so a line with nothing to show
           // above it stays as tight as the lyrics themselves
           const isLoadingWord = !displayContent && !!cleanedWord &&

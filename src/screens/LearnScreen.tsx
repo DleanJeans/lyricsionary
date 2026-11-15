@@ -24,7 +24,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
-import { cleanLyricWord, isLyricWord, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
+import { cleanLyricWord, isLyricWord, isTappableLyric, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
 import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
@@ -576,7 +576,7 @@ export default function LearnScreen() {
     }
     const cleaned = isSplitPhrase(word) ? word : cleanLyricWord(word);
     autoSavedWordRef.current = null;
-    if (isLyricWord(cleaned)) {
+    if (isTappableLyric(cleaned)) {
       setSelectedWord(cleaned);
       setSelectedLine(line);
       setSelectedLineIndex(lineIndex);
@@ -715,7 +715,7 @@ export default function LearnScreen() {
         if (dragStartRef.current < 0) return;
         const range = dragTo(event.x, event.y) ?? draggedPhrase(textWords, dragStartRef.current, dragStartRef.current);
         if (range.from === range.to) handleWordPress(textWords[range.from], text, lineIndex, occurrenceMap[range.from] || 1);
-        else if (isLyricWord(range.word)) {
+        else if (isTappableLyric(range.word)) {
           const words = textWords.slice(range.from, range.to + 1).map(cleanLyricWord).filter(Boolean);
           const start = tokenEnds[range.from] - textWords[range.from].length;
           selectPhrase(range.word, text, lineIndex, tokenEnds[range.to], { words, start });

@@ -26,6 +26,7 @@ jobs:
     name: Build Preview APK
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'build-apk'))
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -34,5 +35,46 @@ jobs:
         with:
           expo-token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Queue preview APK
-        run: eas build --platform android --profile preview --non-interactive --no-wait --message "Lyricsionary preview APK"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set build variables
+        id: build-vars
+        env:
+          TZ: Asia/Ho_Chi_Minh
+        run: |
+          ts=$(date +'%Y%m%d-%H%M%S')
+          echo "apk-filename=lyricsionary-dev-preview-$ts.apk" >> "$GITHUB_OUTPUT"
+          echo "zip-filename=lyricsionary-dev-preview-$ts.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Build preview APK on this runner
+        run: eas build --platform android --profile preview --local --non-interactive --output ./${{ steps.build-vars.outputs.apk-filename }}
+
+      - name: Zip APK
+        run: zip ./${{ steps.build-vars.outputs.zip-filename }} ./${{ steps.build-vars.outputs.apk-filename }}
+
+      - name: Create release
+        id: release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.build-vars.outputs.zip-filename }}
+          name: ${{ steps.build-vars.outputs.zip-filename }}
+          body: "`preview` build of ${{ github.sha }}."
+          files: ./${{ steps.build-vars.outputs.zip-filename }}
+
+      - name: Notify
+        if: ${{ always() }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          OK: ${{ job.status == 'success' }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: |
+          [[ -z "$NTFY_TOPIC" ]] && exit 0
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [[ "$OK" == "true" ]]; then
+            curl -fsS -H "Title: lyricsionary: preview build ready" -H "Tags: package" -H "Click: $RELEASE_URL" \
+              -d "${{ steps.build-vars.outputs.zip-filename }}" "https://ntfy.sh/$NTFY_TOPIC" || true
+          else
+            curl -fsS -H "Title: lyricsionary: preview build failed" -H "Tags: x" -H "Priority: high" -H "Click: $run_url" \
+              -d "Preview build did not finish." "https://ntfy.sh/$NTFY_TOPIC" || true
+          fi

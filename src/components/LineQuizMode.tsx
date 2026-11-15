@@ -13,6 +13,7 @@ import Dictation from './Dictation';
 import type { LearnLine } from './LearnLyricsView';
 import LineDrill from './LineDrill';
 import PronunciationAudio from './PronunciationAudio';
+import SwitchQuizButton from './SwitchQuizButton';
 import { Text } from './Text';
 import WordQuiz from './WordQuiz';
 
@@ -208,7 +209,10 @@ function LineQuestion({
   onSkip: () => void;
   isWide?: boolean;
 }) {
-  const { mode, entry, kind, wordAt, ipa, meaning, practice } = item;
+  // A listening quiz that can't be heard is asked from the line instead
+  const [noAudio, setNoAudio] = useState(false);
+  const { entry, kind, wordAt, ipa, meaning, practice } = item;
+  const mode: LineQuizItem['mode'] = noAudio && item.mode === 'listen' ? (kind === 'meaning' ? 'meaning' : 'gap') : item.mode;
 
   if (mode === 'drill') {
     return (
@@ -285,6 +289,7 @@ function LineQuestion({
         showDue={!practice}
         isWide={isWide}
       />
+      {mode === 'listen' && !answered && <SwitchQuizButton onPress={() => setNoAudio(true)} />}
     </>
   );
 }

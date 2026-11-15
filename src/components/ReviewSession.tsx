@@ -10,6 +10,7 @@ import { lineTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
 import { openWordLookup } from '../navigation/navigationRef';
 import PronunciationAudio from './PronunciationAudio';
+import SwitchQuizButton from './SwitchQuizButton';
 import WordQuiz from './WordQuiz';
 
 interface ReviewSessionProps {
@@ -148,7 +149,7 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
 }
 
 function ReviewQuestion({
-  item,
+  item: askedItem,
   answered,
   onAnswered,
   isWide,
@@ -162,6 +163,11 @@ function ReviewQuestion({
   isWide?: boolean;
   practice?: boolean;
 }) {
+  // A listening quiz that can't be heard is asked without its recording instead
+  const [noAudio, setNoAudio] = useState(false);
+  const item: ReviewItem = noAudio
+    ? { ...askedItem, listen: false, ipa: undefined, way: askedItem.kind === 'meaning' ? 'meaning' : 'lyric' }
+    : askedItem;
   const { entry, kind, line, wordAt, hint, listen, ipa, unsaved } = item;
   const lineWord = line && wordAt ? line.slice(wordAt.start, wordAt.end) : null;
   // A line from another song the word wasn't saved from has no saved context
@@ -267,6 +273,7 @@ function ReviewQuestion({
         practice={practice}
         typed={!!ipa && kind === 'lyric'}
       />
+      {listen && !answered && <SwitchQuizButton onPress={() => setNoAudio(true)} />}
       {answered && !practice && unsaved && showLine && (
         <TouchableOpacity
           onPress={saveLine}

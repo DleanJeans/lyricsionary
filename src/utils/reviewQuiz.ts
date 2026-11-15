@@ -3,6 +3,7 @@ import type { Song, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
 import { isCjkWord } from './cjkWords';
 import { lineTranslation } from './wordOfTheDay';
+import { firstIpa } from './ipaList';
 import { buildLyricQuiz, buildMeaningQuiz, isDue, isTricky, Quiz, QuizKind, quizKindFor, type QuizTarget } from './wordQuiz';
 
 export interface ReviewItem {
@@ -156,7 +157,7 @@ const answerFor = (entry: WordEntry, context: WordContext | undefined) =>
  * line has the form's, else the asked context's
  */
 export const reviewIpa = (entry: WordEntry, context: WordContext | undefined): string | undefined =>
-  (entry.pronunciation || context?.ipa || '').replace(/[/[\]]/g, '').trim() || undefined;
+  firstIpa(entry.pronunciation || context?.ipa).replace(/[/[\]]/g, '').trim() || undefined;
 
 /**
  * The ways a quiz can ask a word. A meaning quiz: from the word itself ('meaning'), its IPA alone

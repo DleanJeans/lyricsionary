@@ -52,6 +52,7 @@ import WordSheet from '../components/WordSheet';
 import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
 import { findSavedWord, spellingsOf } from '../utils/wordForms';
+import { firstIpa } from '../utils/ipaList';
 import {
   findSplitPhrases, germanSeparableVerb, isSplitPhrase, joinLineWords, phraseLookupWords, phraseOccurrenceAt, splitPhraseParts,
 } from '../utils/splitPhrases';
@@ -906,7 +907,7 @@ export default function LearnScreen() {
           if (showIpa && compoundParts && compoundEntries) {
             const compoundIpa = joinCompoundIpa(
               compoundParts,
-              compoundEntries.map((entry) => entry && (findWordContext(entry, text)?.ipa || entry.pronunciation))
+              compoundEntries.map((entry) => entry && firstIpa(findWordContext(entry, text)?.ipa || entry.pronunciation))
             );
             if (compoundIpa) displayContent = formatIpa(compoundIpa, showIpaBrackets);
           }
@@ -948,7 +949,7 @@ export default function LearnScreen() {
 
           const edgePunctuation = splitEdgePunctuation(word);
           // A saved Russian or Ukrainian word shows its stress from its IPA, e.g. любо́вь
-          const stressIpa = wordCtx?.ipa || wordEntry?.pronunciation;
+          const stressIpa = firstIpa(wordCtx?.ipa || wordEntry?.pronunciation);
           const stressedWord = isStressSong && showIpa && stressIpa && wordEntry &&
             removeStressMarks(cleanedWord.toLowerCase()) === removeStressMarks(wordEntry.word.toLowerCase())
             ? addStressMark(edgePunctuation.core, stressIpa)

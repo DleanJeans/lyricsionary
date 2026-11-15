@@ -195,11 +195,18 @@ export function pickReviewItems(items: ReviewItem[], size: number, random = Math
 /** How many words the review shown when the app opens asks */
 export const LAUNCH_REVIEW_SIZE = 10;
 
+/** Songs opened within this long count as recent for the launch review */
+export const RECENT_SONG_MS = 7 * 24 * 60 * 60 * 1000;
+/** After a longer absence, this many songs opened before it count as recent */
+export const RECENT_SONGS_AFTER_ABSENCE = 3;
+
 /**
- * The review to show when the app opens: due words from the song opened last, topped up from the
- * one opened before it and so on until there are `size`. Archived songs are skipped. Each song's
- * words keep buildReviewItems' order, tricky ones and the ones waiting longest first; the session
- * shuffles them.
+ * The review to show when the app opens: due words from the songs opened in the last 7 days,
+ * taken from each in turn so one song doesn't fill the review. If the last song was opened longer
+ * ago than that (the user was away), the 3 songs opened last count as recent instead. What is
+ * left over is topped up from older songs, most recent first. Archived songs are skipped. Each
+ * song's words keep buildReviewItems' order, tricky ones and the ones waiting longest first; the
+ * session shuffles them.
  */
 export function buildLaunchReview(
   songs: { id: string; lastOpenedAt?: number; archivedAt?: number }[],
@@ -210,21 +217,37 @@ export function buildLaunchReview(
 ): ReviewItem[] {
   const due = dueWords(words, now).filter(canReview);
   if (!due.length) return [];
-  const recent = songs.filter((s) => !s.archivedAt).sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0));
+  const sorted = songs.filter((s) => !s.archivedAt).sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0));
+  let recentCount = sorted.filter((s) => now - (s.lastOpenedAt ?? 0) <= RECENT_SONG_MS).length;
+  if (!recentCount) recentCount = RECENT_SONGS_AFTER_ABSENCE;
+  const groups = [sorted.slice(0, recentCount), sorted.slice(recentCount)];
   const picked: ReviewItem[] = [];
   const taken = new Set<string>();
   // The ways words are asked are balanced over the whole review, not each song's part
   const counts = new Map<ReviewWay, number>();
-  for (const song of recent) {
+  const queueFor = (song: { id: string }) => {
+    const songDue = due.filter((w) => w.contexts?.some((c) => c.songId === song.id));
+    return songDue.length ? buildReviewItems(songDue, words, random, new Map(counts)) : [];
+  };
+  const take = (item: ReviewItem) => {
+    if (taken.has(item.entry.id)) return false;
+    picked.push(item);
+    if (item.way) counts.set(item.way, (counts.get(item.way) ?? 0) + 1);
+    taken.add(item.entry.id);
+    return true;
+  };
+  // Recent songs share the review a word at a time; older ones fill what is left one song at a time
+  const recentQueues = groups[0].map(queueFor);
+  for (let round = 0; picked.length < size && recentQueues.some((q) => q.length); round++) {
+    for (const queue of recentQueues) {
+      while (queue.length && picked.length < size && !take(queue.shift()!));
+    }
+  }
+  for (const song of groups[1]) {
     if (picked.length >= size) break;
-    const songDue = due.filter((w) => !taken.has(w.id) && w.contexts?.some((c) => c.songId === song.id));
-    if (!songDue.length) continue;
-    // Counted only for the words taken, so the ones left out don't skew the next song's
-    for (const item of buildReviewItems(songDue, words, random, new Map(counts))) {
+    for (const item of queueFor(song)) {
       if (picked.length >= size) break;
-      picked.push(item);
-      if (item.way) counts.set(item.way, (counts.get(item.way) ?? 0) + 1);
-      taken.add(item.entry.id);
+      take(item);
     }
   }
   return picked;

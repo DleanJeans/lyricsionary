@@ -14,7 +14,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
+import * as Clipboard from 'expo-clipboard';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PullUpSheet from '../components/PullUpSheet';
 import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
@@ -38,11 +40,16 @@ import { getScrapeGoogleIpaJS, getScrapeGoogleNumberJS } from '../utils/scrapeGo
 import { findSavedWord, hasCapitals } from '../utils/wordForms';
 import MergeForms from '../components/MergeForms';
 import AnswerHistory from '../components/AnswerHistory';
+import { addIpa } from '../utils/ipaList';
+import { focusWiktionaryJS, wiktionaryNightJS } from '../utils/wiktionaryPageJS';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
 
-const wiktionaryPageUrl = (word: string) => `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
+// The mobile site, as the in-app browser gets anyway, in its night theme
+const wiktionaryPageUrl = (word: string) => `https://en.m.wiktionary.org/wiki/${encodeURIComponent(word)}?minervanightmode=1`;
 // The id of a language's heading on a Wiktionary page, e.g. "Serbo-Croatian" for Croatian
+// The tabs above the browser and the handle over them, peeking under the details
+const SHEET_PEEK_HEIGHT = 72;
 const wiktionarySectionId = (language: string) => getWiktionaryLanguage(language).replace(/ /g, '_');
 // Google's AI overview usually gives the IPA for "<word> <language> IPA", e.g. "Herz German IPA"
 const googleIpaUrl = (word: string, language: string) =>
@@ -70,58 +77,18 @@ export default function WordLookupScreen() {
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
-  const [scrollViewAtBottom, setScrollViewAtBottom] = useState(false);
-  // Outer ScrollView offset and max offset, for scrolling it from WebView drags
-  const outerScrollRef = useRef({ y: 0, maxY: 0 });
-
-  // On Android, a WebView with nestedScrollEnabled keeps every drag that starts on it, and without it never
-  // scrolls. So the page owns drags only once the screen is scrolled to the bottom, and the injected script
-  // hands a drag back to the screen while the page sits at its top (or the screen has left the bottom).
-  // Deciding per touchmove inside the page lets one drag move between the two without getting stuck.
-  const injectedJavaScript = `
-    (function() {
-      if (window.__lyricsionaryScroll) return;
-      window.__lyricsionaryScroll = true;
-      if (window.__outerAtBottom === undefined) window.__outerAtBottom = false;
-      var lastY = null;
-      window.addEventListener('touchstart', function(e) {
-        lastY = e.touches.length === 1 ? e.touches[0].clientY : null;
-      }, { passive: true });
-      window.addEventListener('touchmove', function(e) {
-        if (lastY === null || e.touches.length !== 1) return;
-        var y = e.touches[0].clientY;
-        var dy = y - lastY;
-        lastY = y;
-        if (dy === 0) return;
-        var pageAtTop = (window.scrollY || window.pageYOffset || 0) <= 0;
-        // dy > 0: finger moving down, i.e. scrolling up
-        if ((pageAtTop && dy > 0) || !window.__outerAtBottom) {
-          if (e.cancelable) e.preventDefault();
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'outerScroll', dy: dy }));
-        }
-      }, { passive: false });
-      window.addEventListener('touchend', function() { lastY = null; }, { passive: true });
-      window.addEventListener('touchcancel', function() { lastY = null; }, { passive: true });
-    })();
-    true;
-  `;
-
-  const syncOuterAtBottom = (atBottom: boolean) => {
-    webViewRef.current?.injectJavaScript(`window.__outerAtBottom = ${atBottom}; true;`);
-  };
-
-  useEffect(() => {
-    syncOuterAtBottom(scrollViewAtBottom);
-  }, [scrollViewAtBottom]);
+  // The browser sheet pulled up over the details
+  const [sheetUp, setSheetUp] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Where the details were when a drag began, to tell a drag down past their bottom
+  const dragStartYRef = useRef(0);
+  const setWebUrl = useStore((s) => s.setWebUrl);
 
   const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'outerScroll') {
-        const { y, maxY } = outerScrollRef.current;
-        const nextY = Math.max(0, Math.min(maxY, y - data.dy));
-        outerScrollRef.current.y = nextY;
-        scrollViewRef.current?.scrollTo({ y: nextY, animated: false });
+      if (data.type === 'useDefinition' && data.text) {
+        takeWiktionaryDefinition(String(data.text));
       } else if (data.type === 'ipa' && data.results) {
         setScrapedIpaResults(data.results);
         // Fill in an empty pronunciation with the page's first IPA
@@ -136,12 +103,6 @@ export default function WordLookupScreen() {
         console.log('IPA scraping error:', data.message);
       }
     } catch {}
-  };
-
-  const handleOuterScroll = (event: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    outerScrollRef.current = { y: contentOffset.y, maxY: Math.max(0, contentSize.height - layoutMeasurement.height) };
-    setScrollViewAtBottom(layoutMeasurement.height + contentOffset.y >= contentSize.height - 20);
   };
 
   const [currentUrl, setCurrentUrl] = useState('');
@@ -451,8 +412,13 @@ export default function WordLookupScreen() {
     }
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (canGoBackInWebView && webViewRef.current) {
-        webViewRef.current.goBack();
+      if (menuOpen) {
+        setMenuOpen(false);
+        return true;
+      }
+      // Back first takes the browser down to the details; its own arrow goes back a page
+      if (sheetUp) {
+        setSheetUp(false);
         return true;
       }
 
@@ -469,7 +435,7 @@ export default function WordLookupScreen() {
     return () => {
       backHandler.remove();
     };
-  }, [canGoBackInWebView, isFocused, navigation, source, songId]);
+  }, [menuOpen, sheetUp, isFocused, navigation, source, songId]);
 
   // `at` is where a definition was picked in the line's translation
   const updateWordSense = (index: number, field: keyof WordSenseData, value: string | number, at?: number) => {
@@ -490,6 +456,18 @@ export default function WordLookupScreen() {
   const addWordSense = () => {
     setUndoData(null);
     setWordSenses(prev => [...prev, { uid: mkUid(), context: '', emoji: '', ipa: '', definition: '', songId, songName, occurrence: 1, isNew: true }]);
+  };
+
+  // A meaning picked with "+ Use" on the Wiktionary page goes in the first context without one, else a new context
+  const takeWiktionaryDefinition = (definition: string) => {
+    setUndoData(null);
+    setWordSenses(prev => {
+      const index = prev.findIndex(b => !b.definition.trim());
+      if (index >= 0) {
+        return prev.map((b, i) => (i === index ? { ...b, definition, definitionAt: undefined, partOfSpeech: undefined } : b));
+      }
+      return [...prev, { uid: mkUid(), context: '', emoji: '', ipa: '', definition, songId, songName, occurrence: 1, isNew: true }];
+    });
   };
 
   const removeWordSense = (index: number) => {
@@ -619,6 +597,134 @@ export default function WordLookupScreen() {
 
   const existingWord = findExistingWord();
 
+  const sourceTab = (source: 'wiktionary' | 'google', label: string, icon: 'book-outline' | 'logo-google') => {
+    const active = lookupSource === source;
+    return (
+      <TouchableOpacity
+        style={[styles.sourceButton, active && styles.sourceButtonActive]}
+        // Tapping a tab also pulls the browser up
+        onPress={() => {
+          if (source === 'google') switchToGoogle();
+          else switchToWiktionary();
+          setSheetUp(true);
+        }}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: active }}
+      >
+        <Ionicons name={icon} size={18} color={active ? Colors.primaryLight : Colors.text} />
+        <Text style={[styles.sourceButtonText, active && styles.sourceButtonTextActive]}>{label}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const sourceTabs = (
+    <View style={styles.sourceSelector} accessibilityRole="tablist">
+      {sheetUp && (
+        <TouchableOpacity
+          onPress={() => setSheetUp(false)}
+          style={styles.sheetDownButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back to the word's details"
+        >
+          <Ionicons name="chevron-down" size={22} color={Colors.text} />
+        </TouchableOpacity>
+      )}
+      {sourceTab('wiktionary', 'Wiktionary', 'book-outline')}
+      {sourceTab('google', 'Google', 'logo-google')}
+    </View>
+  );
+
+  const browser = (
+    <View style={styles.webViewContainer}>
+      <View style={styles.webViewHeader}>
+        {canGoBackInWebView && (
+          <TouchableOpacity
+            onPress={handleWebViewGoBack}
+            style={styles.webViewBackButton}
+            accessibilityRole="button"
+            accessibilityLabel="Previous page"
+          >
+            <Ionicons name="arrow-back" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
+        {getFaviconUrl(currentUrl) && (
+          <Image
+            source={{ uri: getFaviconUrl(currentUrl)! }}
+            style={styles.favicon}
+          />
+        )}
+        <Text style={styles.webViewTitle} numberOfLines={1}>
+          {pageTitle || currentUrl}
+        </Text>
+      </View>
+
+      <View style={styles.webViewWrapper}>
+        {currentUrl ? (
+          <WebView
+            ref={webViewRef}
+            source={{ uri: currentUrl }}
+            style={styles.webview}
+            onNavigationStateChange={(navState) => {
+              setPageTitle(navState.title ?? '');
+              setCanGoBackInWebView(navState.canGoBack);
+
+              if (lookupSource === 'wiktionary' && navState.url && webViewRef.current) {
+                const url = navState.url;
+                const isWiktionary = url.includes('wiktionary.org/wiki/');
+                const hasLanguageAnchor = url.includes('#');
+
+                if (isWiktionary && !hasLanguageAnchor && language) {
+                  const newUrl = `${url}#${language}`;
+                  setCurrentUrl(newUrl);
+                }
+              }
+            }}
+            onLoadStart={() => {
+              setLoading(true);
+              setScrapedIpaResults([]);
+            }}
+            onLoadEnd={() => {
+              setLoading(false);
+              if (lookupSource === 'wiktionary' && webViewRef.current) {
+                // Night theme, the word's language only, and "+ Use" on each meaning
+                webViewRef.current.injectJavaScript(focusWiktionaryJS(wiktionarySectionId(language)));
+              }
+              if (lookupSource === 'wiktionary' && !cardIpa && webViewRef.current) {
+                webViewRef.current.injectJavaScript(getScrapeIpaJS(language));
+              } else if (lookupSource === 'google' && numberWord && webViewRef.current) {
+                webViewRef.current.injectJavaScript(getScrapeGoogleNumberJS());
+              } else if (lookupSource === 'google' && ipaSearchRef.current && webViewRef.current) {
+                webViewRef.current.injectJavaScript(getScrapeGoogleIpaJS());
+              }
+            }}
+            javaScriptEnabled
+            injectedJavaScriptBeforeContentLoaded={wiktionaryNightJS}
+            onMessage={handleWebViewMessage}
+          />
+        ) : null}
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        )}
+      </View>
+    </View>
+  );
+
+  const openInWebTab = () => {
+    setMenuOpen(false);
+    if (!currentUrl) return;
+    setWebUrl(currentUrl);
+    navigation.navigate('Web');
+  };
+
+  const copyWord = async () => {
+    setMenuOpen(false);
+    if (displayWord) await Clipboard.setStringAsync(displayWord);
+  };
+
+  const nothingToSave = !hasChanges && !isNewWord;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -633,24 +739,36 @@ export default function WordLookupScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{displayWord}</Text>
         <TouchableOpacity
-          onPress={handleSave}
-          style={[styles.saveButton, isNewWord && { backgroundColor: Colors.success }, !hasChanges && !isNewWord && styles.saveButtonDisabled]}
-          disabled={isSaving || (!hasChanges && !isNewWord)}
-          accessibilityState={{ busy: isSaving }}
+          onPress={() => setMenuOpen((open) => !open)}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="More actions"
         >
-          {/* The label stays but goes invisible under the spinner, so the button keeps its width */}
-          <Text style={[styles.saveButtonText, !hasChanges && !isNewWord && styles.saveButtonTextDisabled, isSaving && { opacity: 0 }]}>{isNewWord ? 'Add' : 'Save'}</Text>
-          {isSaving && <ActivityIndicator size="small" color={Colors.white} style={StyleSheet.absoluteFill} />}
+          <Ionicons name="ellipsis-vertical" size={22} color={Colors.text} />
         </TouchableOpacity>
       </View>
 
+      <PullUpSheet
+        expanded={sheetUp}
+        onExpandedChange={setSheetUp}
+        peekHeight={SHEET_PEEK_HEIGHT}
+        top={sourceTabs}
+        sheet={browser}
+      >
       <ScrollView
         ref={scrollViewRef}
         style={styles.content}
-        contentContainerStyle={{ paddingBottom: insets.bottom }}
+        contentContainerStyle={{ paddingBottom: SHEET_PEEK_HEIGHT + 16 }}
         keyboardShouldPersistTaps="handled"
-        onScroll={handleOuterScroll}
-        scrollEventThrottle={20}
+        onScrollBeginDrag={(e) => {
+          dragStartYRef.current = e.nativeEvent.contentOffset.y;
+        }}
+        onScrollEndDrag={(e) => {
+          // Scrolling on past the bottom of the details pulls the browser up
+          const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+          const atBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 8;
+          if (atBottom && contentOffset.y >= dragStartYRef.current) setSheetUp(true);
+        }}
       >
         {word && (
           <View style={styles.wordTransformButtons}>
@@ -706,9 +824,11 @@ export default function WordLookupScreen() {
                   <TouchableOpacity
                     key={index}
                     style={styles.ipaResultButton}
-                    onPress={() => setPronunciation(ipa)}
+                    // Adds it to the IPAs already there, so a word can keep several
+                    onPress={() => setPronunciation((current) => addIpa(current, ipa))}
+                    accessibilityLabel={`Add IPA ${ipa}`}
                   >
-                    <Text style={styles.ipaResultButtonText}>{ipa}</Text>
+                    <Text style={styles.ipaResultButtonText}>+ {ipa}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -798,129 +918,64 @@ export default function WordLookupScreen() {
             onUndoRemove={undoRemoveWordSense}
           />
 
-          <TouchableOpacity style={styles.addContextButton} onPress={addWordSense}>
+          <TouchableOpacity style={styles.addContextButton} onPress={addWordSense} accessibilityRole="button">
             <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
             <Text style={styles.addContextButtonText}>Add context</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.sourceSelector}>
-          <TouchableOpacity
-            style={[styles.sourceButton, lookupSource === 'wiktionary' && styles.sourceButtonActive]}
-            onPress={switchToWiktionary}
-          >
-            <Ionicons
-              name="book-outline"
-              size={18}
-              color={lookupSource === 'wiktionary' ? Colors.white : Colors.text}
-            />
-            <Text style={[
-              styles.sourceButtonText,
-              lookupSource === 'wiktionary' && styles.sourceButtonTextActive
-            ]}>
-              Wiktionary
-            </Text>
-          </TouchableOpacity>
+      </ScrollView>
+      </PullUpSheet>
 
-        <TouchableOpacity
-            style={[styles.sourceButton, lookupSource === 'google' && styles.sourceButtonActive]}
-            onPress={switchToGoogle}
+      {/* Save stays under the details and goes away while the browser is up */}
+      {!sheetUp && (
+        <View style={[styles.saveBar, { paddingBottom: insets.bottom + 10 }]}>
+          <TouchableOpacity
+            onPress={handleSave}
+            style={[styles.saveButton, nothingToSave && styles.saveButtonDisabled]}
+            disabled={isSaving || nothingToSave}
+            accessibilityRole="button"
+            accessibilityState={{ busy: isSaving, disabled: nothingToSave }}
           >
-            <Ionicons
-              name="logo-google"
-              size={18}
-              color={lookupSource === 'google' ? Colors.white : Colors.text}
-            />
-            <Text style={[
-              styles.sourceButtonText,
-              lookupSource === 'google' && styles.sourceButtonTextActive
-            ]}>
-              Google
+            {/* The label stays but goes invisible under the spinner, so the button keeps its height */}
+            <Text style={[styles.saveButtonText, nothingToSave && styles.saveButtonTextDisabled, isSaving && { opacity: 0 }]}>
+              {isNewWord ? 'Add word' : nothingToSave ? 'Saved' : 'Save word'}
             </Text>
+            {isSaving && <ActivityIndicator size="small" color={Colors.white} style={StyleSheet.absoluteFill} />}
           </TouchableOpacity>
         </View>
+      )}
 
-
-        <View style={styles.webViewContainer}>
-          <View style={styles.webViewHeader}>
-            {canGoBackInWebView && (
-              <TouchableOpacity
-                onPress={handleWebViewGoBack}
-                style={styles.webViewBackButton}
-                accessibilityRole="button"
-                accessibilityLabel="Previous page"
-              >
-                <Ionicons name="arrow-back" size={20} color={Colors.primary} />
+      {menuOpen && (
+        <>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} accessibilityLabel="Close menu" />
+          <View style={[styles.menu, { top: insets.top + 56 }]}>
+            {!!currentUrl && (
+              <TouchableOpacity style={styles.menuItem} onPress={openInWebTab} accessibilityRole="menuitem">
+                <Ionicons name="open-outline" size={18} color={Colors.text} />
+                <Text style={styles.menuText}>Open page in Web tab</Text>
               </TouchableOpacity>
             )}
-            {getFaviconUrl(currentUrl) && (
-              <Image
-                source={{ uri: getFaviconUrl(currentUrl)! }}
-                style={styles.favicon}
-              />
-            )}
-            <Text style={styles.webViewTitle} numberOfLines={1}>
-              {pageTitle || currentUrl}
-            </Text>
-          </View>
-
-          <View style={styles.webViewWrapper}>
-            {currentUrl ? (
-              <WebView
-                ref={webViewRef}
-                source={{ uri: currentUrl }}
-                style={styles.webview}
-                onNavigationStateChange={(navState) => {
-                  setPageTitle(navState.title ?? '');
-                  setCanGoBackInWebView(navState.canGoBack);
-
-                  if (lookupSource === 'wiktionary' && navState.url && webViewRef.current) {
-                    const url = navState.url;
-                    const isWiktionary = url.includes('wiktionary.org/wiki/');
-                    const hasLanguageAnchor = url.includes('#');
-
-                    if (isWiktionary && !hasLanguageAnchor && language) {
-                      const newUrl = `${url}#${language}`;
-                      setCurrentUrl(newUrl);
-                    }
-                  }
+            <TouchableOpacity style={styles.menuItem} onPress={copyWord} accessibilityRole="menuitem">
+              <Ionicons name="copy-outline" size={18} color={Colors.text} />
+              <Text style={styles.menuText}>Copy word</Text>
+            </TouchableOpacity>
+            {existingWord && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  setShowDeleteConfirm(true);
                 }}
-                onLoadStart={() => {
-                  setLoading(true);
-                  setScrapedIpaResults([]);
-                }}
-                onLoadEnd={() => {
-                  setLoading(false);
-                  syncOuterAtBottom(scrollViewAtBottom);
-                  if (lookupSource === 'wiktionary' && !cardIpa && webViewRef.current) {
-                    webViewRef.current.injectJavaScript(getScrapeIpaJS(language));
-                  } else if (lookupSource === 'google' && numberWord && webViewRef.current) {
-                    webViewRef.current.injectJavaScript(getScrapeGoogleNumberJS());
-                  } else if (lookupSource === 'google' && ipaSearchRef.current && webViewRef.current) {
-                    webViewRef.current.injectJavaScript(getScrapeGoogleIpaJS());
-                  }
-                }}
-                javaScriptEnabled
-                nestedScrollEnabled={scrollViewAtBottom}
-                injectedJavaScript={injectedJavaScript}
-                onMessage={handleWebViewMessage}
-              />
-            ) : null}
-            {loading && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-              </View>
+                accessibilityRole="menuitem"
+              >
+                <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+                <Text style={[styles.menuText, { color: Colors.danger }]}>Delete word</Text>
+              </TouchableOpacity>
             )}
           </View>
-        </View>
-
-        {existingWord && (
-          <TouchableOpacity style={styles.deleteButton} onPress={() => setShowDeleteConfirm(true)}>
-            <Ionicons name="trash-outline" size={20} color={Colors.danger} />
-            <Text style={styles.deleteButtonText}>Delete word</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+        </>
+      )}
       <EmojiPicker
         onEmojiSelected={(emojiObject: EmojiType) => {
           if (emojiPickerIndex !== null) {
@@ -1004,14 +1059,14 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: Colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
   },
   saveButtonText: {
     color: Colors.white,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
   saveButtonDisabled: {
     opacity: 0.4,
@@ -1095,36 +1150,29 @@ const styles = StyleSheet.create({
   addContextButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
   },
   addContextButtonText: {
     color: Colors.primary,
     fontSize: 15,
     fontWeight: '600',
   },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginBottom: 16,
-  },
-  deleteButtonText: {
-    color: Colors.danger,
-    fontSize: 15,
-    fontWeight: '600',
-  },
   sourceSelector: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
     paddingHorizontal: 16,
-    marginBottom: 12,
   },
   sourceButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -1135,7 +1183,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   sourceButtonActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: 'rgba(108, 92, 231, 0.18)',
     borderColor: Colors.primary,
   },
   sourceButtonText: {
@@ -1144,21 +1192,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   sourceButtonTextActive: {
-    color: Colors.white,
+    color: Colors.primaryLight,
   },
   webViewContainer: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+    flex: 1,
+    marginTop: 8,
     backgroundColor: Colors.surface,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   webViewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -1178,10 +1225,44 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   webViewWrapper: {
-    height: 525,
+    flex: 1,
   },
   webview: {
     flex: 1,
+  },
+  sheetDownButton: {
+    padding: 4,
+  },
+  saveBar: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    backgroundColor: Colors.surface,
+  },
+  menu: {
+    position: 'absolute',
+    right: 12,
+    minWidth: 210,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 4,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  menuText: {
+    fontSize: 15,
+    color: Colors.text,
   },
   loadingOverlay: {
     position: 'absolute',

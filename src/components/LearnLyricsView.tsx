@@ -55,6 +55,8 @@ interface LearnLyricsViewProps {
   lineNotes?: Record<string, string>;
   /** Remembers the scroll position under this key, e.g. the song's id, and goes back to it */
   scrollKey?: string;
+  /** How much of the bottom a sheet covers, e.g. the word sheet: the lyrics scroll clear of it and center above it */
+  bottomInset?: number;
 }
 
 function TranslationLine({
@@ -216,6 +218,7 @@ function sameLine(prev: LineProps, next: LineProps): boolean {
       case 'onlyLines':
       case 'scrollKey':
       case 'showSections':
+      case 'bottomInset':
         break;
       default:
         return false;
@@ -249,7 +252,7 @@ function SectionBox({ section, children }: { section: SongSection; children: Rea
 }
 
 export default function LearnLyricsView(props: LearnLyricsViewProps) {
-  const { lines, showSections, scrollToLine, scrollKey } = props;
+  const { lines, showSections, scrollToLine, scrollKey, bottomInset = 0 } = props;
   const scrollRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null);
   const lineRefs = useRef(new Map<number, View>());
@@ -257,6 +260,8 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
   // The line to keep in the middle, and how tall the lyrics area is
   const centeringRef = useRef<number | null>(null);
   const viewportHeightRef = useRef(0);
+  const bottomInsetRef = useRef(bottomInset);
+  bottomInsetRef.current = bottomInset;
   const centerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Centers once the lyrics area stops resizing, e.g. after the word card has slid open
   const centerSoon = () => {
@@ -267,13 +272,18 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
       const line = lineRefs.current.get(target);
       if (!line || !contentRef.current) return;
       line.measureLayout(contentRef.current, (_x, y, _w, h) =>
-        scrollRef.current?.scrollTo({ y: Math.max(0, y + h / 2 - viewportHeightRef.current / 2), animated: true })
+        scrollRef.current?.scrollTo({ y: Math.max(0, y + h / 2 - (viewportHeightRef.current - bottomInsetRef.current) / 2), animated: true })
       );
     }, 80);
   };
   useEffect(() => () => {
     if (centerTimerRef.current) clearTimeout(centerTimerRef.current);
   }, []);
+  // A sheet covering more or less of the lyrics brings the line back to the middle of what's left
+  useEffect(() => {
+    if (centeringRef.current !== null) centerSoon();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bottomInset]);
 
   useEffect(() => {
     if (!scrollToLine) return;
@@ -360,7 +370,7 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     <ScrollView
       ref={scrollRef}
       style={styles.lyricsScroll}
-      contentContainerStyle={styles.lyricsContent}
+      contentContainerStyle={[styles.lyricsContent, bottomInset > 0 && { paddingBottom: 40 + bottomInset }]}
       onLayout={(event) => {
         viewportHeightRef.current = event.nativeEvent.layout.height;
         if (centeringRef.current !== null) centerSoon();

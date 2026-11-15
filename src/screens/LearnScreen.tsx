@@ -3,7 +3,6 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { ActivityIndicator, I18nManager, LayoutChangeEvent, StyleSheet, TouchableOpacity, View } from 'react-native';
-import AnimatedHeight from '../components/AnimatedHeight';
 import Toast from '../components/Toast';
 import LearnActionBar from '../components/LearnActionBar';
 import { useNextLineToLearn, useWordProgress } from '../hooks/useWordProgress';
@@ -168,6 +167,8 @@ export default function LearnScreen() {
   const wordFetchRef = useRef<{ word: string; cancelled: boolean } | null>(null);
   // The X on the word card folds it away first on narrow screens, then clears the word
   const [closingWordCard, setClosingWordCard] = useState(false);
+  // How much of the lyrics the word sheet covers on a phone
+  const [sheetHeight, setSheetHeight] = useState(0);
   // A new word (or none) stops the folding, so tapping another word mid-close opens the card back up
   useEffect(() => setClosingWordCard(false), [selectedWord]);
   const closeWordCard = useCallback(() => (isWide ? setSelectedWord(null) : setClosingWordCard(true)), [isWide]);
@@ -1682,6 +1683,7 @@ export default function LearnScreen() {
         onlyLines={lineByLine !== null ? new Set([lineByLine]) : trickyLinesOnly ? trickyLines : null}
         scrollKey={song.id}
         lineNotes={song.lineNotes}
+        bottomInset={isWide ? 0 : sheetHeight}
       />
       )}
       {copiedLine && (
@@ -1789,16 +1791,17 @@ export default function LearnScreen() {
         <View style={styles.narrowMain}>
           {actionBar}
           {lyricsView}
-          {/* The word opens in a sheet under the lyrics, so nothing above them moves */}
+          {/* The word opens in a sheet sliding over the bottom of the lyrics, so nothing above them moves */}
           {wordPanel && (
-            <AnimatedHeight appear closing={closingWordCard} onClosed={() => setSelectedWord(null)}>
-              <WordSheet
-                resetKey={selectedWord}
-                onClose={dictationPanel ? () => setDictation(null) : selectedWord && !gapPanel ? closeWordCard : undefined}
-              >
-                {wordPanel}
-              </WordSheet>
-            </AnimatedHeight>
+            <WordSheet
+              resetKey={selectedWord}
+              closing={closingWordCard}
+              onClosed={() => setSelectedWord(null)}
+              onHeight={setSheetHeight}
+              onClose={dictationPanel ? () => setDictation(null) : selectedWord && !gapPanel ? closeWordCard : undefined}
+            >
+              {wordPanel}
+            </WordSheet>
           )}
         </View>
       )}
@@ -1918,6 +1921,8 @@ const styles = StyleSheet.create({
   },
   narrowMain: {
     flex: 1,
+    // The word sheet starts below, out of sight, and slides up
+    overflow: 'hidden',
   },
   wordPlaceholder: {
     flex: 1,

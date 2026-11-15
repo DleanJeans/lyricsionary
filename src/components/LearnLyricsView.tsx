@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { memo, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { isRomanized } from '../constants/languages';
 import { Colors } from '../constants/theme';
@@ -285,6 +285,31 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomInset]);
 
+  // Leaving 1 by 1 shows every line again: keep the lyrics hidden until the line is back in place, so they don't scroll from the top
+  const [hidden, setHidden] = useState(false);
+  const hiddenRef = useRef(false);
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reveal = () => {
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    hiddenRef.current = false;
+    setHidden(false);
+  };
+  const prevOnlyLines = useRef(props.onlyLines);
+  useLayoutEffect(() => {
+    const prev = prevOnlyLines.current;
+    prevOnlyLines.current = props.onlyLines;
+    if (prev?.size === 1 && !props.onlyLines) {
+      hiddenRef.current = true;
+      setHidden(true);
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = setTimeout(reveal, 500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.onlyLines]);
+  useEffect(() => () => {
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+  }, []);
+
   useEffect(() => {
     if (!scrollToLine) return;
     if (scrollToLine.center) {
@@ -296,8 +321,15 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     // After the lines have laid out
     const timer = setTimeout(() => {
       const line = lineRefs.current.get(scrollToLine.index);
-      if (!line || !contentRef.current) return;
-      line.measureLayout(contentRef.current, (_x, y) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: true }));
+      if (!line || !contentRef.current) {
+        if (hiddenRef.current) reveal();
+        return;
+      }
+      const instant = hiddenRef.current;
+      line.measureLayout(contentRef.current, (_x, y) => {
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: !instant });
+        if (instant) requestAnimationFrame(reveal);
+      });
     }, 100);
     return () => clearTimeout(timer);
   }, [scrollToLine]);
@@ -369,7 +401,7 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
   return (
     <ScrollView
       ref={scrollRef}
-      style={styles.lyricsScroll}
+      style={[styles.lyricsScroll, hidden && { opacity: 0 }]}
       contentContainerStyle={[styles.lyricsContent, bottomInset > 0 && { paddingBottom: 40 + bottomInset }]}
       onLayout={(event) => {
         viewportHeightRef.current = event.nativeEvent.layout.height;

@@ -866,11 +866,21 @@ export default function LearnScreen() {
 
           const wordCtx = wordEntry ? findWordContext(wordEntry, text, occurrenceMap[i] || 1) : null;
 
-          // Known words go without IPA and emoji, unless tapped. A phrase whose words sit apart shows them
-          // over its first word only
+          // Known words go without IPA and emoji, unless tapped. A phrase whose words sit apart shows its emoji
+          // over its first word only, and each word its own IPA
           const quiet = (quietKnownWords && wordEntry?.masteryLevel === 'Known' && !isActiveOccurrence) || !!split?.part;
           let displayContent = '';
-          if (showIpa && wordEntry && !quiet) {
+          if (showIpa && split) {
+            // Each word of a phrase whose words sit apart shows its own IPA, as any word does
+            const ownWord = cleanLyricWord(word);
+            const ownEntry = ownWord ? findSavedEntry(ownWord) ?? null : null;
+            const ownQuiet = quietKnownWords && ownEntry?.masteryLevel === 'Known' && !isActiveOccurrence;
+            if (ownEntry && !ownQuiet) {
+              const ownCtx = findWordContext(ownEntry, text, wordOccurrences[i] || 1);
+              const ownIpa = ownCtx?.ipa || ownEntry.pronunciation;
+              if (ownIpa) displayContent = formatIpa(ownIpa, showIpaBrackets);
+            }
+          } else if (showIpa && wordEntry && !quiet) {
             const ipaValue = wordCtx?.ipa || wordEntry.pronunciation;
             if (ipaValue) {
               displayContent = formatIpa(ipaValue, showIpaBrackets);

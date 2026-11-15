@@ -57,6 +57,10 @@ import {
 } from '../utils/splitPhrases';
 
 const PREVIEW_MAX_WORDS = 8;
+// Words looked up at once while preloading, and the pause after each so Wiktionary isn't hammered
+const PRELOAD_CONCURRENCY = 2;
+const PRELOAD_PAUSE_MS = 150;
+const preloadKey = (language: string | undefined, word: string) => `${(language ?? '').toLowerCase()}|${word}`;
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -656,6 +660,12 @@ export default function LearnScreen() {
     }
   };
 
+  // IPA of unsaved words preloaded from Wiktionary as their lines scroll into view, by song language and word;
+  // an empty string is a word with none. Read through a ref so a lookup only redraws the lines it belongs to
+  const preloadedIpaRef = useRef(new Map<string, string>());
+  const [preloadedLines, setPreloadedLines] = useState<Record<number, number>>({});
+  const [visibleRange, setVisibleRange] = useState<{ from: number; to: number } | null>(null);
+
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
     // CJK scripts do not separate words with spaces, so each CJK character is a selectable token, joined
     // back into a word when the characters are a saved word, or the word being selected, e.g. 二人
@@ -927,6 +937,12 @@ export default function LearnScreen() {
               effectiveEmoji = compoundEmoji;
               shouldShowEmoji = true;
             }
+          }
+
+          // A new word shows the IPA preloaded for it, in white like any word not saved, without saving it
+          if (showIpa && !displayContent && !wordEntry && !isIgnored && !split && !isPhrase && cleanedWord) {
+            const preloaded = preloadedIpaRef.current.get(preloadKey(song?.originalLanguages?.[0], cleanedWord));
+            if (preloaded) displayContent = formatIpa(preloaded, showIpaBrackets);
           }
 
           const gap = !compoundParts && !split ? gapEntry(cleanedWord) : undefined;
@@ -1290,6 +1306,104 @@ export default function LearnScreen() {
     };
     // Saved once per tap, with the line it was tapped in
   }, [selectedWord, selectedWordSaved, selectedWordIgnored, songLanguage, selectedLineIndex, selectedOccurrence]);
+
+  // Unsaved words in the lines on screen (and a screen's worth around them) have their IPA preloaded, so it shows
+  // above them like a saved word's. Only the lookup is kept for the session: nothing is saved. Words are asked
+  // two at a time, nearest the screen first, each once; saved, ignored and number words are left out
+  const preloadQueueRef = useRef<{ key: string; word: string; lines: number[] }[]>([]);
+  const preloadActiveRef = useRef(0);
+  const preloadRequestedRef = useRef(new Set<string>());
+  const preloadDirtyRef = useRef(new Set<number>());
+  const preloadFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const preloadAliveRef = useRef(true);
+  useEffect(() => {
+    preloadAliveRef.current = true;
+    return () => {
+      preloadAliveRef.current = false;
+      if (preloadFlushRef.current) clearTimeout(preloadFlushRef.current);
+    };
+  }, []);
+  const preloadSongLanguage = song?.originalLanguages?.[0];
+  useEffect(() => {
+    if (!showIpa || !visibleRange || !preloadSongLanguage || !song) return;
+    const language = preloadSongLanguage;
+    const candidates = new Map<string, { key: string; word: string; lines: number[] }>();
+    const mid = (visibleRange.from + visibleRange.to) / 2;
+    const order = lines.map((_, i) => i).filter((i) => i >= visibleRange.from && i <= visibleRange.to)
+      .sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid));
+    for (const lineIndex of order) {
+      for (const token of splitLyricTokens(lines[lineIndex].original)) {
+        if (!token.trim()) continue;
+        const word = cleanLyricWord(token);
+        if (!word || !isLyricWord(word) || /\p{N}/u.test(word) || word.includes(' ') || isCjkWord(word)) continue;
+        // Elided words, e.g. l'essence, show their parts' IPA instead
+        if ((hasFrenchLanguage || hasItalianLanguage) && hasContractedPrefix(word)) continue;
+        if (findSavedEntry(word) || isIgnoredWord(word, language)) continue;
+        const key = preloadKey(language, word);
+        if (preloadedIpaRef.current.has(key) || preloadRequestedRef.current.has(key)) continue;
+        const known = candidates.get(key);
+        if (known) {
+          if (!known.lines.includes(lineIndex)) known.lines.push(lineIndex);
+        } else candidates.set(key, { key, word, lines: [lineIndex] });
+      }
+    }
+    // What's on screen now goes first, ahead of words queued for lines scrolled away from
+    preloadQueueRef.current = [...candidates.values()];
+    const flush = () => {
+      preloadFlushRef.current = null;
+      if (!preloadAliveRef.current || preloadDirtyRef.current.size === 0) return;
+      const dirty = [...preloadDirtyRef.current];
+      preloadDirtyRef.current.clear();
+      setPreloadedLines((prev) => {
+        const next = { ...prev };
+        for (const index of dirty) next[index] = (next[index] ?? 0) + 1;
+        return next;
+      });
+    };
+    const lookUp = async (word: string): Promise<string> => {
+      const first = async (candidate: string) => (await getWiktionaryPronunciation(candidate, language))?.ipa.find(Boolean);
+      let ipa = await first(word);
+      if (!ipa && isGermanSong) {
+        for (const full of germanFullForms(word)) {
+          const fullIpa = await first(full);
+          const elided = fullIpa ? elidedIpa(fullIpa) : undefined;
+          if (elided) { ipa = elided; break; }
+        }
+      }
+      if (!ipa) {
+        // A Korean word without its particles or a Spanish or Portuguese verb without its pronouns, as a tapped one
+        const base = (isKoreanSong ? getKoreanStem(word, { loose: true }) : null) ??
+          getRomanceBaseWord(word, song.originalLanguages, { loose: true });
+        if (base && base !== word) ipa = await first(base);
+      }
+      return ipa ?? '';
+    };
+    const pump = () => {
+      while (preloadAliveRef.current && preloadActiveRef.current < PRELOAD_CONCURRENCY && preloadQueueRef.current.length) {
+        const job = preloadQueueRef.current.shift()!;
+        if (preloadRequestedRef.current.has(job.key)) continue;
+        preloadRequestedRef.current.add(job.key);
+        preloadActiveRef.current++;
+        lookUp(job.word).catch(() => '').then((ipa) => {
+          // A failed or empty lookup is left empty, and not asked again this session
+          preloadedIpaRef.current.set(job.key, ipa);
+          if (ipa) {
+            job.lines.forEach((i) => preloadDirtyRef.current.add(i));
+            // Lines drawn after the lookup started that hold the same word
+            lines.forEach((l, i) => { if (!job.lines.includes(i) && l.original.includes(job.word)) preloadDirtyRef.current.add(i); });
+            if (!preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, 400);
+          }
+          setTimeout(() => {
+            preloadActiveRef.current--;
+            pump();
+          }, PRELOAD_PAUSE_MS);
+        });
+      }
+    };
+    pump();
+    // Unsaved words, ignored words and settings are read when the lines come into view or any of them changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleRange, lines, showIpa, preloadSongLanguage, ignoredWords, words]);
 
   // A saved word tapped without any IPA, e.g. saved before IPA was fetched, gets it from Wiktionary
   // (including IPA put together from its etymology or inflected form). Only an empty IPA is filled
@@ -1761,6 +1875,8 @@ export default function LearnScreen() {
         highlightLineIndex={selectedLineIndex}
         highlightDefinitions={selectedDefinitions}
         showSections={showSections}
+        onVisibleRange={setVisibleRange}
+        preloadedLines={preloadedLines}
         reverse={reverseLyrics && showTranslations && !lyricQuiz}
         revealedOriginals={revealedOriginals}
         onRevealOriginal={(lineIndex) => setRevealedOriginals((prev) => new Set(prev).add(lineIndex))}

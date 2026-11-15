@@ -57,6 +57,10 @@ interface LearnLyricsViewProps {
   scrollKey?: string;
   /** How much of the bottom a sheet covers, e.g. the word sheet: the lyrics scroll clear of it and center above it */
   bottomInset?: number;
+  /** The lines on screen and a little around them, once the lyrics stop scrolling, e.g. to preload their words */
+  onVisibleRange?: (range: { from: number; to: number }) => void;
+  /** How many times each line's preloaded IPA changed, so only the lines that got some are drawn again */
+  preloadedLines?: Record<number, number>;
 }
 
 function TranslationLine({
@@ -219,6 +223,10 @@ function sameLine(prev: LineProps, next: LineProps): boolean {
       case 'scrollKey':
       case 'showSections':
       case 'bottomInset':
+      case 'onVisibleRange':
+        break;
+      case 'preloadedLines':
+        if (prev.preloadedLines?.[i] !== next.preloadedLines?.[i]) return false;
         break;
       default:
         return false;
@@ -340,6 +348,45 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
     [originals, showSections]
   );
 
+  // Tells which lines are on screen or just off it once scrolling settles, measured from where each line sits
+  const scrollYRef = useRef(0);
+  const visibleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visibleRangeRef = useRef('');
+  const reportVisibleSoon = () => {
+    if (!latest.current.onVisibleRange) return;
+    if (visibleTimerRef.current) clearTimeout(visibleTimerRef.current);
+    visibleTimerRef.current = setTimeout(() => {
+      const content = contentRef.current;
+      const viewport = viewportHeightRef.current;
+      if (!content || !viewport) return;
+      const top = scrollYRef.current - viewport / 2;
+      const bottom = scrollYRef.current + viewport * 1.5;
+      const entries = [...lineRefs.current.entries()];
+      let pending = entries.length;
+      let from = Infinity;
+      let to = -1;
+      for (const [index, view] of entries) {
+        view.measureLayout(content, (_x, y, _w, h) => {
+          if (y + h >= top && y <= bottom) {
+            from = Math.min(from, index);
+            to = Math.max(to, index);
+          }
+          if (--pending === 0 && to >= 0) {
+            const key = `${from}-${to}`;
+            if (key === visibleRangeRef.current) return;
+            visibleRangeRef.current = key;
+            latest.current.onVisibleRange?.({ from, to });
+          }
+        }, () => {
+          --pending;
+        });
+      }
+    }, 300);
+  };
+  useEffect(() => () => {
+    if (visibleTimerRef.current) clearTimeout(visibleTimerRef.current);
+  }, []);
+
   // Goes back to where the song was left, once its lines have laid out
   const restoredRef = useRef<string | null>(null);
   const restoreScroll = () => {
@@ -405,6 +452,7 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
       contentContainerStyle={[styles.lyricsContent, bottomInset > 0 && { paddingBottom: 40 + bottomInset }]}
       onLayout={(event) => {
         viewportHeightRef.current = event.nativeEvent.layout.height;
+        reportVisibleSoon();
         if (centeringRef.current !== null) centerSoon();
       }}
       // Scrolling by hand stops the line being brought back to the middle
@@ -413,8 +461,11 @@ export default function LearnLyricsView(props: LearnLyricsViewProps) {
       }}
       onContentSizeChange={(_w, h) => {
         if (h > 0 && lines.length > 0) restoreScroll();
+        reportVisibleSoon();
       }}
       onScroll={(event) => {
+        scrollYRef.current = event.nativeEvent.contentOffset.y;
+        reportVisibleSoon();
         if (scrollKey && restoredRef.current === scrollKey) setScrollPosition(scrollKey, event.nativeEvent.contentOffset.y);
       }}
       scrollEventThrottle={200}

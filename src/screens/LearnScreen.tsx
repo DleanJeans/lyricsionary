@@ -818,7 +818,7 @@ export default function LearnScreen() {
                     </Text>
                   )}
                   {displayContent && (
-                    <Text style={styles.wordAnnotation} numberOfLines={1}>
+                    <Text style={styles.wordAnnotation}>
                       {displayContent}
                     </Text>
                   )}
@@ -981,7 +981,7 @@ export default function LearnScreen() {
                     </Text>
                   )}
                   {displayContent && (
-                    <Text style={styles.wordAnnotation} numberOfLines={1}>
+                    <Text style={styles.wordAnnotation}>
                       {displayContent}
                     </Text>
                   )}
@@ -2015,6 +2015,5 @@ const styles = StyleSheet.create({
   wordAnnotation: {
     fontSize: 10,
     color: Colors.textSecondary,
-    maxWidth: 100,
   },
 });

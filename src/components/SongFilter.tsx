@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import type { Song } from '../types';
-import { FilterChip } from './LanguageTabButtons';
 import { Text } from './Text';
 
 interface SongFilterProps {
@@ -13,7 +12,7 @@ interface SongFilterProps {
   onChange: (songId: string | null) => void;
 }
 
-/** A chip that picks one song to show the saved words of */
+/** A dropdown button that picks one song to show the saved words of */
 export default function SongFilter({ songs, selectedSongId, onChange }: SongFilterProps) {
   const [open, setOpen] = useState(false);
   const selected = songs.find((s) => s.song.id === selectedSongId);
@@ -24,14 +23,19 @@ export default function SongFilter({ songs, selectedSongId, onChange }: SongFilt
   };
   return (
     <>
-      <FilterChip
-        icon={<Ionicons name="musical-notes-outline" size={16} color={selected ? Colors.white : Colors.textSecondary} />}
-        label={selected ? selected.song.songName : 'Song'}
-        count={selected?.count ?? 0}
-        selected={!!selected}
+      <Pressable
         onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.button, !!selected && styles.buttonSelected, pressed && { opacity: 0.7 }]}
+        accessibilityRole="button"
         accessibilityLabel={selected ? `Words from ${selected.song.songName}` : 'Filter by song'}
-      />
+        accessibilityState={{ selected: !!selected }}
+      >
+        <Ionicons name="musical-notes-outline" size={15} color={selected ? Colors.white : Colors.textSecondary} />
+        <Text style={[styles.buttonLabel, !!selected && styles.buttonLabelSelected]} numberOfLines={1}>
+          {selected ? selected.song.songName : 'All songs'}
+        </Text>
+        <Ionicons name="chevron-down" size={13} color={selected ? Colors.white : Colors.textMuted} />
+      </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
           <Pressable style={styles.sheet}>
@@ -66,6 +70,32 @@ export default function SongFilter({ songs, selectedSongId, onChange }: SongFilt
 }
 
 const styles = StyleSheet.create({
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  buttonSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  buttonLabel: {
+    fontSize: 13,
+    color: Colors.text,
+    flexShrink: 1,
+  },
+  buttonLabelSelected: {
+    color: Colors.white,
+    fontWeight: '600',
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',

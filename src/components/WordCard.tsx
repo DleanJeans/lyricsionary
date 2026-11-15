@@ -4,11 +4,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View, Text as RNText } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { getFlagForLanguage } from '../constants/languages';
-import { Colors } from '../constants/theme';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { useStore } from '../store/useStore';
 import { WordEntry } from '../types';
 import { prepareEmojiSuggestions } from '../utils/emojiSuggestion';
+import { splitIpas } from '../utils/ipaList';
+import { findSearchMatches } from '../utils/search';
+import { nextDueAt } from '../utils/wordQuiz';
 import { emojisByCategory } from 'rn-emoji-keyboard';
 import AlsoInSongs from './AlsoInSongs';
 import QuickNote from './QuickNote';
@@ -17,6 +20,7 @@ import MasteryLevelBadge from './MasteryLevelBadge';
 import MasteryLevelSelector from './MasteryLevelSelector';
 import SavedPill from './SavedPill';
 import HighlightedText from './HighlightedText';
+import HoldToDeleteButton from './HoldToDeleteButton';
 import PronunciationAudio from './PronunciationAudio';
 import { Text } from './Text';
 
@@ -51,6 +55,8 @@ interface WordCardProps {
   /** Learn on a phone: the card sits in a sheet under the lyrics, so it drops its own box, keeps the
    * audio beside the word and folds Also in to one line */
   inSheet?: boolean;
+  /** Words: show the lyric line the word was saved from, with its song */
+  showLyricLine?: boolean;
 }
 
 export default function WordCard({
@@ -76,6 +82,7 @@ export default function WordCard({
   quizPending = false,
   quizAnswered = false,
   inSheet = false,
+  showLyricLine = true,
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
@@ -108,7 +115,10 @@ export default function WordCard({
   const context =
     item.contexts?.find((c) => c.songId === songId && c.context === lyricsLine && (c.occurrence || 1) === (occurrence || 1)) ??
     item.contexts?.find((c) => c.songId === songId && c.context === lyricsLine) ??
+    // Words: the first one from a song, for the lyric line on its card
+    (showClose ? undefined : item.contexts?.find((c) => c.songId && c.context?.trim())) ??
     item.contexts?.[0];
+  const contextArtist = useStore((s) => (showClose || !context?.songId ? undefined : s.songs.find((song) => song.id === context.songId)?.artistName));
   const flag = context?.emoji || item.emoji || getFlagForLanguage(item.language);
 
   const handleCardPress = () => {
@@ -128,18 +138,11 @@ export default function WordCard({
 
   const renderDeleteActions = () => {
     if (!showDelete) return null;
-
     return (
-      <TouchableOpacity
-        style={styles.deleteButton}
-        accessibilityRole="button"
+      <HoldToDeleteButton
         accessibilityLabel={`Delete ${item.word}`}
-        onPress={() => onDelete?.(item, () => swipeableRef.current?.close())}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="trash" size={24} color={Colors.white} />
-        <Text style={styles.deleteButtonText}>Delete</Text>
-      </TouchableOpacity>
+        onDelete={() => onDelete?.(item, () => swipeableRef.current?.close())}
+      />
     );
   };
 
@@ -150,7 +153,7 @@ export default function WordCard({
       overshootRight={false}
     >
       <TouchableOpacity
-        style={[styles.card, isWide && styles.cardWide, inSheet && styles.cardInSheet]}
+        style={[styles.card, !showClose && styles.cardWords, isWide && styles.cardWide, inSheet && styles.cardInSheet]}
         // Learn's card opens Look Up only from its Look up button, so a stray tap doesn't leave the song
         onPress={showClose ? undefined : handleCardPress}
         activeOpacity={1}
@@ -230,39 +233,204 @@ export default function WordCard({
             <AlsoInSongs item={item} songId={songId} hideTranslations={quizPending} folded={inSheet} />
           </>
         ) : (
-          <View style={styles.cardRow}>
-            <Text style={styles.flag}>{flag}</Text>
-            <View style={styles.cardContent}>
-              <HighlightedText
-                text={item.word}
-                query={searchQuery}
-                style={styles.cardWordText}
-              />
-              {ipa ? (
-                <HighlightedText
-                  text={ipa}
-                  query={searchQuery}
-                  style={styles.pronunciation}
-                />
-              ) : null}
-            </View>
-            {!!item.forms?.length && (
-              <View style={styles.formsChip} accessibilityLabel={`Also ${item.forms.join(', ')}`}>
-                <Text style={styles.formsChipText}>
-                  +{item.forms.length} {item.forms.length === 1 ? 'form' : 'forms'}
-                </Text>
-              </View>
-            )}
-          </View>
+          <WordsCardContent
+            item={item}
+            flag={flag}
+            context={context}
+            artistName={contextArtist}
+            searchQuery={searchQuery}
+            showLyricLine={showLyricLine}
+          />
         )}
       </TouchableOpacity>
     </Swipeable>
   );
 }
 
+/** "Due", "5h", "tomorrow" or "in 3 days" for a word's next quiz; "Known" once it has none */
+function shortDue(item: WordEntry, now: number): { text: string; due: boolean } | null {
+  const dueAt = nextDueAt(item, now);
+  if (dueAt === null) return item.masteryLevel === 'Known' ? { text: 'Known', due: false } : null;
+  if (dueAt <= now) return { text: 'Due', due: true };
+  const hours = Math.ceil((dueAt - now) / (60 * 60 * 1000));
+  if (hours < 12) return { text: `in ${hours}h`, due: false };
+  const startOf = (t: number) => new Date(t).setHours(0, 0, 0, 0);
+  const days = Math.round((startOf(dueAt) - startOf(now)) / (24 * 60 * 60 * 1000));
+  if (days <= 0) return { text: `in ${hours}h`, due: false };
+  return { text: days === 1 ? 'tomorrow' : `in ${days} days`, due: false };
+}
+
+interface WordsCardContentProps {
+  item: WordEntry;
+  flag: string;
+  context: WordEntry['contexts'][number] | undefined;
+  artistName: string | undefined;
+  searchQuery: string;
+  showLyricLine: boolean;
+}
+
+/** A saved word in the Words list: word, IPA and next quiz; level, meaning and type; then its lyric line */
+function WordsCardContent({ item, flag, context, artistName, searchQuery, showLyricLine }: WordsCardContentProps) {
+  const ipas = splitIpas(item.pronunciation);
+  const ipa = ipas[0] ? (ipas[0].includes('/') || ipas[0].includes('[') ? ipas[0] : `/${ipas[0]}/`) : '';
+  const level = item.masteryLevel || 'Seen';
+  const meaning = context?.definition || item.contexts?.find((c) => c.definition)?.definition || item.definitions?.[0]?.text;
+  const partOfSpeech = context?.partOfSpeech ?? item.contexts?.find((c) => c.partOfSpeech)?.partOfSpeech;
+  const due = shortDue(item, Date.now());
+  const line = context?.context?.trim();
+  // The word in its line: as saved, else one of its merged forms, e.g. jag for jagen
+  const lineWord = line ? [item.word, ...(item.forms ?? [])].find((w) => findSearchMatches(line, w).length > 0) : undefined;
+  return (
+    <View>
+      <View style={styles.wordsTop}>
+        <Text style={styles.wordsEmoji}>{flag}</Text>
+        <HighlightedText text={item.word} query={searchQuery} style={styles.wordsWord} numberOfLines={1} />
+        {!!ipa && <HighlightedText text={ipa} query={searchQuery} style={styles.wordsIpa} numberOfLines={1} />}
+        {ipas.length > 1 && (
+          <View style={styles.moreChip} accessibilityLabel={`${ipas.length - 1} more IPA`}>
+            <Text style={styles.moreChipText}>+{ipas.length - 1}</Text>
+          </View>
+        )}
+        {due && <Text style={[styles.wordsDue, due.due && styles.wordsDueNow]}>{due.text}</Text>}
+      </View>
+      <View style={styles.wordsMeaningRow}>
+        <View style={styles.levelPill}>
+          <View style={[styles.levelDot, { backgroundColor: getMasteryLevelColor(level) }]} />
+          <Text style={styles.levelPillText}>{level}</Text>
+        </View>
+        {!!meaning && <HighlightedText text={meaning} query={searchQuery} style={styles.wordsMeaning} numberOfLines={1} />}
+        {!!partOfSpeech && <Text style={styles.wordsPos}>{partOfSpeech}</Text>}
+        {!!item.forms?.length && (
+          <View style={styles.formsChip} accessibilityLabel={`Also ${item.forms.join(', ')}`}>
+            <Text style={styles.formsChipText}>+{item.forms.length} {item.forms.length === 1 ? 'form' : 'forms'}</Text>
+          </View>
+        )}
+      </View>
+      {showLyricLine && !!line && (
+        <View style={styles.wordsLine}>
+          <HighlightedText
+            text={line}
+            query={lineWord ?? ''}
+            style={styles.wordsLineText}
+            highlightStyle={styles.wordsLineWord}
+            numberOfLines={2}
+          />
+          {!!context?.songName && (
+            <View style={styles.wordsSongRow}>
+              <Ionicons name="musical-note" size={11} color={Colors.textMuted} />
+              <Text style={styles.wordsSong} numberOfLines={1}>
+                {context.songName}{artistName ? ` · ${artistName}` : ''}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
 const webWordBreak = Platform.OS === 'web' ? ({ wordBreak: 'break-word' } as object) : {};
 
 const styles = StyleSheet.create({
+  wordsTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  wordsEmoji: {
+    fontSize: 18,
+  },
+  wordsWord: {
+    flexShrink: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  wordsIpa: {
+    flexShrink: 1,
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  moreChip: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
+    backgroundColor: 'rgba(108,92,231,0.18)',
+  },
+  moreChipText: {
+    fontSize: 10.5,
+    color: Colors.primaryLight,
+  },
+  wordsDue: {
+    marginLeft: 'auto',
+    paddingLeft: 6,
+    fontSize: 11.5,
+    color: Colors.textMuted,
+  },
+  wordsDueNow: {
+    color: Colors.warning,
+    fontWeight: '700',
+  },
+  wordsMeaningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  levelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceLight,
+  },
+  levelDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  levelPillText: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+  },
+  wordsMeaning: {
+    flexShrink: 1,
+    fontSize: 14,
+    color: '#D9D9E8',
+  },
+  wordsPos: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: Colors.textMuted,
+  },
+  wordsLine: {
+    marginTop: 7,
+    paddingLeft: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.border,
+  },
+  wordsLineText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+  },
+  wordsLineWord: {
+    color: Colors.primaryLight,
+    fontWeight: '700',
+  },
+  wordsSongRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 1,
+  },
+  wordsSong: {
+    flexShrink: 1,
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
   lookUpButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -288,6 +456,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  cardWords: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
   cardWide: {
     flex: 1,
   },
@@ -298,10 +471,6 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 4,
     marginBottom: 0,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -350,13 +519,6 @@ const styles = StyleSheet.create({
     fontFamily: 'GoogleSans',
     fontWeight: 'normal',
   },
-  flag: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  cardContent: {
-    flex: 1,
-  },
   formsChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -366,32 +528,5 @@ const styles = StyleSheet.create({
   formsChipText: {
     fontSize: 12,
     color: Colors.textSecondary,
-  },
-  cardWordText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  pronunciation: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  deleteButton: {
-    backgroundColor: Colors.dangerDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 100,
-    marginBottom: 10,
-    marginRight: -28,
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
-    paddingRight: 28,
-  },
-  deleteButtonText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
   },
 });

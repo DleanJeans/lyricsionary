@@ -10,15 +10,16 @@ import { Text, TextInput } from '../components/Text';
 import { useNavigation } from '@react-navigation/native';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
-import { languageKey } from '../constants/languages';
+import { getFlagForLanguage, languageKey } from '../constants/languages';
 import { MasteryLevel, WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
-import LanguageTabButtons, { FilterChip } from '../components/LanguageTabButtons';
-import MasteryLevelTabs from '../components/MasteryLevelTabs';
+import { FilterChip } from '../components/LanguageTabButtons';
+import LevelBar from '../components/LevelBar';
+import Dropdown, { MenuDivider, MenuHeader, MenuItem, MenuSwitch } from '../components/Dropdown';
 import EmptyState from '../components/EmptyState';
 import IconButton from '../components/IconButton';
 import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
@@ -28,7 +29,7 @@ import BulkEditBar from '../components/BulkEditBar';
 import ReviewSession from '../components/ReviewSession';
 import SongFilter from '../components/SongFilter';
 import { buildReviewItems, canReview, dueWords, ReviewItem } from '../utils/reviewQuiz';
-import { compareMostMissed, isTricky } from '../utils/wordQuiz';
+import { compareMostMissed, isTricky, nextDueAt } from '../utils/wordQuiz';
 import { useStoreWhileShown } from '../hooks/useStoreWhileShown';
 
 interface PendingDeletion {
@@ -37,6 +38,9 @@ interface PendingDeletion {
 }
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+
+type WordSort = 'recent' | 'missed' | 'due';
+const isWordSort = (value: unknown): value is WordSort => value === 'recent' || value === 'missed' || value === 'due';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -61,15 +65,24 @@ export default function WordsScreen() {
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
-  // Most missed first, by the share of quiz answers that were wrong, kept across restarts
-  const [mostMissed, setMostMissed] = usePersistedState('@lyricsionary_words_most_missed', false, isBoolean);
-  const sortedWords = [...words].sort((a, b) =>
-    (mostMissed ? compareMostMissed(a.quiz, b.quiz) : 0) || b.lastLookedUp - a.lastLookedUp
-  );
-  const hasMissedWords = words.some((w) => (w.quiz?.wrong ?? 0) > 0);
+  // Recently saved first, most missed first (by the share of quiz answers that were wrong) or the
+  // next due first, kept across restarts
+  const [sort, setSort] = usePersistedState<WordSort>('@lyricsionary_words_sort', 'recent', isWordSort);
+  // The lyric line each word was saved from, under its meaning; off to fit more words on screen
+  const [showLyricLines, setShowLyricLines] = usePersistedState('@lyricsionary_words_lyric_lines', true, isBoolean);
+  const sortedWords = React.useMemo(() => {
+    const now = Date.now();
+    // Not due again (Known) last
+    const dueAt = (w: WordEntry) => nextDueAt(w, now) ?? Infinity;
+    const due = sort === 'due' ? new Map(words.map((w) => [w.id, dueAt(w)])) : null;
+    return [...words].sort((a, b) =>
+      (sort === 'missed' ? compareMostMissed(a.quiz, b.quiz) : 0) ||
+      (due ? due.get(a.id)! - due.get(b.id)! || 0 : 0) ||
+      b.lastLookedUp - a.lastLookedUp
+    );
+  }, [words, sort]);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showLanguageTabs, setShowLanguageTabs] = useState(true);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<MasteryLevel | null>(null);
   // Only the words saved from this song
@@ -205,6 +218,7 @@ export default function WordsScreen() {
   // Saved in the last 7 days, like the sidebar's count
   const savedThisWeek = (w: WordEntry) => (w.savedAt ?? 0) > now - WEEK_MS;
   const thisWeekCount = languageFilteredWords.filter(savedThisWeek).length;
+  const missedCount = languageFilteredWords.filter((w) => (w.quiz?.wrong ?? 0) > 0).length;
   const levelFilteredWords = languageFilteredWords.filter(
     (w) =>
       (!selectedLevel || (w.masteryLevel || 'Seen') === selectedLevel) &&
@@ -273,13 +287,99 @@ export default function WordsScreen() {
     />
   );
 
-  const languageTabsToggle = (
-    <IconButton
-      icon="language-outline"
-      label={showLanguageTabs ? 'Hide filters' : 'Show filters'}
-      onPress={() => setShowLanguageTabs(!showLanguageTabs)}
-      selected={selectedLanguages.length > 0 || (showFrequency ? hideSavedInTop : !!selectedLevel || trickyOnly || thisWeekOnly || !!songFilterId)}
-    />
+  // The language filter: one language or all of them, picked from the flag in the title row
+  const selectedLanguage = selectedLanguages.length === 1 ? selectedLanguages[0] : null;
+  const allLanguagesCount = Object.values(languageCounts).reduce((sum, n) => sum + n, 0);
+  const languageMenu = (
+    <Dropdown
+      plain
+      icon={
+        selectedLanguage ? (
+          <Text style={styles.flagIcon}>{getFlagForLanguage(selectedLanguage)}</Text>
+        ) : (
+          <Ionicons name="globe-outline" size={22} color={Colors.textSecondary} />
+        )
+      }
+      accessibilityLabel={selectedLanguage ? `Language: ${selectedLanguage}` : 'Language: all'}
+    >
+      {(close) => (
+        <>
+          <MenuItem
+            icon="globe-outline"
+            label="All languages"
+            count={allLanguagesCount}
+            checked={!selectedLanguage}
+            onPress={() => {
+              setSelectedLanguages([]);
+              close();
+            }}
+          />
+          {[...availableLanguages]
+            .sort((a, b) => (languageCounts[b] ?? 0) - (languageCounts[a] ?? 0))
+            .map((language) => (
+              <MenuItem
+                key={language}
+                icon={<Text style={styles.menuFlag}>{getFlagForLanguage(language)}</Text>}
+                label={language}
+                count={languageCounts[language] ?? 0}
+                checked={selectedLanguage === language}
+                onPress={() => {
+                  setSelectedLanguages([language]);
+                  close();
+                }}
+              />
+            ))}
+        </>
+      )}
+    </Dropdown>
+  );
+
+  const extraFilterLabel = [thisWeekOnly && 'This week', trickyOnly && 'Tricky'].filter(Boolean).join(', ');
+  const filtersMenu = (
+    <Dropdown
+      icon={trickyOnly ? 'alert-circle-outline' : thisWeekOnly ? 'calendar-outline' : 'options-outline'}
+      label={extraFilterLabel || 'Filters'}
+      selected={!!extraFilterLabel}
+      accessibilityLabel="Filters, sort and card options"
+    >
+      {() => (
+        <>
+          <MenuHeader title="Show only" />
+          <MenuItem
+            icon="calendar-outline"
+            iconColor={Colors.primaryLight}
+            label="This week"
+            count={thisWeekCount}
+            checked={thisWeekOnly}
+            onPress={() => setThisWeekOnly(!thisWeekOnly)}
+          />
+          <MenuItem
+            icon="alert-circle-outline"
+            iconColor={Colors.warning}
+            label="Tricky"
+            count={trickyCount}
+            checked={trickyOnly}
+            onPress={() => setTrickyOnly(!trickyOnly)}
+          />
+          <MenuDivider />
+          <MenuHeader title="Sort" />
+          <MenuItem kind="radio" icon="time-outline" label="Recently saved" checked={sort === 'recent'} onPress={() => setSort('recent')} />
+          <MenuItem
+            kind="radio"
+            icon="trending-down"
+            iconColor={Colors.danger}
+            label="Most missed"
+            count={missedCount}
+            checked={sort === 'missed'}
+            onPress={() => setSort('missed')}
+          />
+          <MenuItem kind="radio" icon="flash-outline" label="Due first" checked={sort === 'due'} onPress={() => setSort('due')} />
+          <MenuDivider />
+          <MenuHeader title="Cards" />
+          <MenuSwitch icon="musical-notes-outline" label="Lyric lines" value={showLyricLines} onValueChange={setShowLyricLines} />
+        </>
+      )}
+    </Dropdown>
   );
 
   const openSearchButton = (
@@ -322,7 +422,7 @@ export default function WordsScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.titleRow}>
-        {languageTabsToggle}
+        {languageMenu}
         {showSearch ? searchInput : <View style={styles.titleCenter}>{viewSwitch}</View>}
         {openSearchButton}
       </View>
@@ -345,77 +445,52 @@ export default function WordsScreen() {
         </TouchableOpacity>
       )}
 
-      {showLanguageTabs && availableLanguages.length > 0 && (
-        <View style={styles.languageTabsContainer}>
-          <LanguageTabButtons
-            selectedLanguages={selectedLanguages}
-            onLanguagesChange={setSelectedLanguages}
-            availableLanguages={availableLanguages}
-            languageCounts={languageCounts}
+      {showFrequency ? (
+        <View style={styles.topFilters}>
+          <FilterChip
+            icon={<Ionicons name="bookmark-outline" size={16} color={hideSavedInTop ? Colors.white : Colors.textSecondary} />}
+            label="Not saved"
+            count={unsavedFrequencyCount}
+            selected={hideSavedInTop}
+            onPress={() => setHideSavedInTop(!hideSavedInTop)}
+            accessibilityLabel="Only words not saved yet"
           />
-          {showFrequency ? (
-            <View style={styles.topFilters}>
-              <FilterChip
-                icon={<Ionicons name="bookmark-outline" size={16} color={hideSavedInTop ? Colors.white : Colors.textSecondary} />}
-                label="Not saved"
-                count={unsavedFrequencyCount}
-                selected={hideSavedInTop}
-                onPress={() => setHideSavedInTop(!hideSavedInTop)}
-                accessibilityLabel="Only words not saved yet"
-              />
-              <Text style={styles.topHint}>Long press a word to ignore it</Text>
-            </View>
-          ) : (
-            <MasteryLevelTabs
-              selectedLevel={selectedLevel}
-              onLevelChange={setSelectedLevel}
-              levelCounts={levelCounts}
-              leading={<SongFilter songs={songsWithWords} selectedSongId={songFilterId} onChange={setSelectedSongId} />}
-            >
-              {(thisWeekCount > 0 || thisWeekOnly) && (
-                <FilterChip
-                  icon={<Ionicons name="calendar-outline" size={16} color={thisWeekOnly ? Colors.white : Colors.primaryLight} />}
-                  label="This week"
-                  count={thisWeekCount}
-                  selected={thisWeekOnly}
-                  onPress={() => setThisWeekOnly(!thisWeekOnly)}
-                  accessibilityLabel="Words saved in the last 7 days"
-                />
-              )}
-              {(trickyCount > 0 || trickyOnly) && (
-                <FilterChip
-                  icon={<Ionicons name="alert-circle-outline" size={16} color={trickyOnly ? Colors.white : Colors.warning} />}
-                  label="Tricky"
-                  count={trickyCount}
-                  selected={trickyOnly}
-                  onPress={() => setTrickyOnly(!trickyOnly)}
-                  accessibilityLabel="Words answered wrong lately"
-                />
-              )}
-              {(hasMissedWords || mostMissed) && (
-                <FilterChip
-                  icon={<Ionicons name="trending-down" size={16} color={mostMissed ? Colors.white : Colors.danger} />}
-                  label="Most missed"
-                  count={languageFilteredWords.filter((w) => (w.quiz?.wrong ?? 0) > 0).length}
-                  selected={mostMissed}
-                  onPress={() => setMostMissed(!mostMissed)}
-                  accessibilityLabel="Sort by most missed in quizzes"
-                />
-              )}
-              <FilterChip
-                icon={<Ionicons name="checkbox-outline" size={16} color={selecting ? Colors.white : Colors.textSecondary} />}
-                label="Select"
-                count={selecting ? selectedIds.size : searchedWords.length}
+          <Text style={styles.topHint}>Long press a word to ignore it</Text>
+        </View>
+      ) : (
+        words.length > 0 && (
+          <>
+            <LevelBar levelCounts={levelCounts} selectedLevel={selectedLevel} onLevelChange={setSelectedLevel} />
+            <View style={styles.filterRow}>
+              <SongFilter songs={songsWithWords} selectedSongId={songFilterId} onChange={setSelectedSongId} />
+              {filtersMenu}
+              <IconButton
+                icon="checkbox-outline"
+                label="Select words to edit together"
                 selected={selecting}
                 onPress={() => {
                   setSelecting(!selecting);
                   setSelectedIds(new Set());
                 }}
-                accessibilityLabel="Select words to edit together"
+                style={[styles.selectButton, selecting && styles.selectButtonOn]}
               />
-            </MasteryLevelTabs>
-          )}
-        </View>
+              {!selecting && due.length > 0 && (
+                <TouchableOpacity
+                  style={styles.reviewButton}
+                  onPress={() => {
+                    const items = buildReviewItems(due, words, undefined, undefined, useStore.getState().songs);
+                    if (items.length) setReviewing(items);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Review ${due.length} due ${due.length === 1 ? 'word' : 'words'}`}
+                >
+                  <Ionicons name="flash" size={15} color={Colors.white} />
+                  <Text style={styles.reviewButtonText}>{due.length}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        )
       )}
       {!showFrequency && selecting && (
         <BulkEditBar
@@ -434,22 +509,6 @@ export default function WordsScreen() {
             setSelectedIds(new Set());
           }}
         />
-      )}
-      {!showFrequency && !selecting && due.length > 0 && (
-        <TouchableOpacity
-          style={styles.reviewButton}
-          onPress={() => {
-            const items = buildReviewItems(due, words, undefined, undefined, useStore.getState().songs);
-            if (items.length) setReviewing(items);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={`Review ${due.length} due ${due.length === 1 ? 'word' : 'words'}`}
-        >
-          <Ionicons name="flash-outline" size={18} color={Colors.white} />
-          <Text style={styles.reviewButtonText}>
-            Review {due.length} due {due.length === 1 ? 'word' : 'words'}
-          </Text>
-        </TouchableOpacity>
       )}
       {reviewing && <ReviewSession dueItems={reviewing} onClose={() => setReviewing(null)} isWide={isWide} />}
       {showFrequency ? (
@@ -500,7 +559,7 @@ export default function WordsScreen() {
           numColumns={numColumns}
           data={searchedWords}
           keyExtractor={(item) => item.id}
-          extraData={selecting ? selectedIds : null}
+          extraData={selecting ? selectedIds : showLyricLines}
           renderItem={({ item }) => {
             const card = (
               <WordCard
@@ -511,6 +570,7 @@ export default function WordsScreen() {
                 showClose={false}
                 onDelete={handleDelete}
                 source="Words"
+                showLyricLine={showLyricLines}
               />
             );
             if (!selecting) return card;
@@ -597,27 +657,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
   },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  selectButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  selectButtonOn: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '30',
+  },
   reviewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 10,
-    paddingVertical: 10,
+    gap: 4,
+    marginLeft: 'auto',
+    height: 32,
+    paddingHorizontal: 12,
     borderRadius: 10,
     backgroundColor: Colors.primary,
   },
   reviewButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: Colors.white,
+  },
+  flagIcon: {
+    fontSize: 22,
+  },
+  menuFlag: {
+    fontSize: 16,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   titleCenter: {
     flex: 1,
@@ -633,14 +716,14 @@ const styles = StyleSheet.create({
   },
   viewSwitchOption: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 11,
   },
   viewSwitchOptionSelected: {
     backgroundColor: Colors.primary,
   },
   viewSwitchLabel: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
     color: Colors.textSecondary,
   },
@@ -691,9 +774,6 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 8,
     zIndex: 1000,
-  },
-  languageTabsContainer: {
-    marginBottom: 12,
   },
   topHint: {
     flexShrink: 1,

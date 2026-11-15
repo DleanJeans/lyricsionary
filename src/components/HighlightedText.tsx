@@ -8,6 +8,8 @@ interface HighlightedTextProps {
   query: string;
   style: any;
   numberOfLines?: number;
+  /** Replaces the yellow search highlight, e.g. the saved word in its lyric line */
+  highlightStyle?: any;
 }
 
 export default function HighlightedText({
@@ -15,6 +17,7 @@ export default function HighlightedText({
   query,
   style,
   numberOfLines,
+  highlightStyle,
 }: HighlightedTextProps) {
   if (!query.trim()) {
     return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
@@ -43,7 +46,7 @@ export default function HighlightedText({
   return (
     <Text style={style} numberOfLines={numberOfLines}>
       {parts.map((part, i) => (
-        <Text key={i} style={part.highlight ? [font, styles.highlight] : font}>{part.text}</Text>
+        <Text key={i} style={part.highlight ? [font, highlightStyle ?? styles.highlight] : font}>{part.text}</Text>
       ))}
     </Text>
   );

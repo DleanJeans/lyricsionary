@@ -773,6 +773,27 @@ export function endingIpa(word: string, lemma: string, lemmaIpa: string): string
 }
 
 /**
+ * The IPA of a weak verb's past participle from its infinitive's, e.g. gewartet from warten /ˈvartən/ ->
+ * /ɡəˈvartət/ or gewandert from wandern. Undefined for any other form, e.g. gefahren.
+ */
+export function participleIpa(word: string, lemma: string, lemmaIpa: string): string | undefined {
+  const lowerWord = word.toLowerCase();
+  const stem = lemma.toLowerCase().replace(/e?n$/, '');
+  if (!lowerWord.startsWith('ge') || !lemma.toLowerCase().endsWith('n')) return undefined;
+  const core = lowerWord.slice(2);
+  const ending = core === `${stem}t` ? 't' : core === `${stem}et` ? 'ət' : undefined;
+  const open = lemmaIpa.trim()[0];
+  if (!ending || (open !== '/' && open !== '[')) return undefined;
+  const close = open === '/' ? '/' : ']';
+  const ipa = lemmaIpa.trim().slice(1, -1).trim();
+  const stripped = ipa.replace(/(?:ə|ɛ)n$|[nŋm]\u0329$/, '');
+  const base = stripped === ipa && /ɐn$/.test(ipa) ? ipa.slice(0, -1) : stripped;
+  if (base === ipa || !base) return undefined;
+  const voiceless = ending === 't' ? base.replace(/[bdɡgvzʒ]$/, (c) => DEVOICED[c]) : base;
+  return `${open}ɡə${voiceless}${ending}${close}`;
+}
+
+/**
  * A German form's IPA from its base word's, e.g. fang's from fangen's or Signale's from Signal's, with
  * the base word it came from
  */
@@ -781,10 +802,10 @@ async function getStemIpa(word: string, section: string, language: string): Prom
   for (const lemma of getFormOfLemmas(section)) {
     const lower = word.toLowerCase();
     const lowerLemma = lemma.toLowerCase();
-    if (!lowerLemma.startsWith(lower) && !lower.startsWith(lowerLemma)) continue;
+    if (!lowerLemma.startsWith(lower) && !lower.startsWith(lowerLemma) && !lower.startsWith('ge')) continue;
     const html = await fetchPageHtml(lemma);
     const lemmaIpa = html ? parseIpa(html, language)[0] : undefined;
-    const ipa = lemmaIpa && (stemIpa(word, lemma, lemmaIpa) ?? endingIpa(word, lemma, lemmaIpa));
+    const ipa = lemmaIpa && (stemIpa(word, lemma, lemmaIpa) ?? endingIpa(word, lemma, lemmaIpa) ?? participleIpa(word, lemma, lemmaIpa));
     if (ipa) return { ipa, lemma };
   }
   return undefined;

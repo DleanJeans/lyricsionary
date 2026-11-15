@@ -1,4 +1,4 @@
-import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, affixIpaFromWord, endingIpa, stemIpa, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
+import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, affixIpaFromWord, endingIpa, participleIpa, stemIpa, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
 import amour from './fixtures/wiktionary/parse-amour.json';
 import corazon from './fixtures/wiktionary/parse-corazón.json';
 import immer from './fixtures/wiktionary/parse-immer.json';
@@ -264,6 +264,18 @@ describe('getWiktionaryPronunciation of a verb form', () => {
       return { ok: true, status: 200, json: async () => (text ? { parse: { title, text } } : { error: { code: 'missingtitle' } }) };
     }) as unknown as typeof fetch;
     expect(await getWiktionaryPronunciation('fang', 'German')).toEqual({ ipa: ['/faŋ/'], audio: [], derivedFrom: ['fangen'] });
+  });
+});
+
+describe('participleIpa', () => {
+  it('builds a weak verb’s participle from its infinitive', () => {
+    expect(participleIpa('gewartet', 'warten', '/ˈvartən/')).toBe('/ɡəˈvartət/');
+    expect(participleIpa('gewandert', 'wandern', '/ˈvandɐn/')).toBe('/ɡəˈvandɐt/');
+    expect(participleIpa('gesagt', 'sagen', '/ˈzaːɡn̩/')).toBe('/ɡəˈzaːkt/');
+  });
+
+  it('gives up on strong participles', () => {
+    expect(participleIpa('gefahren', 'fahren', '/ˈfaːʁən/')).toBeUndefined();
   });
 });
 

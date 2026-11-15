@@ -115,6 +115,20 @@ export function getGermanExpandedForm(word: string, language?: string): string |
   return null;
 }
 
+/**
+ * Full forms to look a German word up as when Wiktionary has no entry for it as written, most likely
+ * first: kaufe and kaufen for kauf', with its ending dropped, or finde for find, written without the -e
+ * (finde -> /ˈfɪndə/, so find takes /fɪnt/). Empty for any other word.
+ */
+export function germanFullForms(word: string): string[] {
+  if (germanTrailingElisionRegex.test(word)) {
+    const stem = word.slice(0, -1);
+    return [`${stem}e`, `${stem}en`];
+  }
+  if (/^\p{L}{2,}$/u.test(word) && !/e$/i.test(word)) return [`${word}e`];
+  return [];
+}
+
 export function getLowercaseVersion(word: string): string {
   return word.charAt(0).toLowerCase() + word.slice(1);
 }

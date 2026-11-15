@@ -1,4 +1,4 @@
-import { getGermanExpandedForm, getWordTransforms, splitElisionParts, splitContractedPrefix } from '../src/utils/wordTransform';
+import { germanFullForms, getGermanExpandedForm, getWordTransforms, splitElisionParts, splitContractedPrefix } from '../src/utils/wordTransform';
 
 describe('getWordTransforms', () => {
   it('returns empty array for empty input', () => {
@@ -153,5 +153,17 @@ describe('splitContractedPrefix', () => {
 
   it("splits dell'umanità into prefix and base", () => {
     expect(splitContractedPrefix("dell'umanità")).toEqual(["dell'", 'umanità']);
+  });
+});
+
+describe('germanFullForms', () => {
+  it('adds back a dropped ending', () => {
+    expect(germanFullForms("kauf'")).toEqual(['kaufe', 'kaufen']);
+    expect(germanFullForms('find')).toEqual(['finde']);
+  });
+  it('leaves words already ending in -e or not plain words', () => {
+    expect(germanFullForms('finde')).toEqual([]);
+    expect(germanFullForms('a')).toEqual([]);
+    expect(germanFullForms('hört auf')).toEqual([]);
   });
 });

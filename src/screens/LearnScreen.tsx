@@ -43,8 +43,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { elidedIpa, getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
-import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
-import { germanTrailingElisionRegex } from '../utils/regex';
+import { germanFullForms, getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
@@ -1209,11 +1208,10 @@ export default function LearnScreen() {
         const stemFound = await lookUp(baseWord);
         if (stemFound.definitions?.length) found = stemFound;
       }
-      // A German word with its ending dropped, e.g. kauf' for kaufe or kaufen, is saved as written with
-      // the meaning of its full form and that form's IPA without the ending
-      if (isGermanSong && !found.definitions?.length && germanTrailingElisionRegex.test(selectedWord)) {
-        const stem = selectedWord.slice(0, -1);
-        for (const candidate of [`${stem}e`, `${stem}en`]) {
+      // A German word with its ending dropped, e.g. kauf' for kaufe or kaufen, or find for finde, is saved
+      // as written with the meaning of its full form and that form's IPA without the ending
+      if (isGermanSong && !found.definitions?.length) {
+        for (const candidate of germanFullForms(selectedWord)) {
           if (job.cancelled) break;
           const full = await lookUp(candidate);
           if (!full.definitions?.length) continue;
@@ -1308,10 +1306,9 @@ export default function LearnScreen() {
     (async () => {
       const first = async (word: string) => (await getWiktionaryPronunciation(word, lookupLanguage))?.ipa.find(Boolean);
       let ipa = await first(entry.word);
-      // A German word with its ending dropped, e.g. kauf' for kaufe or kaufen
-      if (!ipa && lookupLanguage.toLowerCase().startsWith('german') && germanTrailingElisionRegex.test(entry.word)) {
-        const stem = entry.word.slice(0, -1);
-        for (const candidate of [`${stem}e`, `${stem}en`]) {
+      // A German word with its ending dropped, e.g. kauf' for kaufe or kaufen, or find for finde
+      if (!ipa && lookupLanguage.toLowerCase().startsWith('german')) {
+        for (const candidate of germanFullForms(entry.word)) {
           const full = await first(candidate);
           const elided = full ? elidedIpa(full) : undefined;
           if (elided) { ipa = elided; break; }

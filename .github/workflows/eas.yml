@@ -20,6 +20,7 @@ jobs:
       ota-label: expo ota
     secrets:
       expo-token: ${{ secrets.EXPO_TOKEN }}
+      ntfy-topic: ${{ secrets.NTFY_TOPIC }}
 
   preview-build:
     name: Build Preview APK

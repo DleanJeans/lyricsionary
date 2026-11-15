@@ -65,6 +65,18 @@ export default function SpotifyBar({
       ) : null}
       {!sync.isThisSong && (
         <TouchableOpacity
+          style={styles.queue}
+          onPress={() => void sync.queueSong()}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Add this song to the Spotify queue"
+        >
+          <Ionicons name={sync.queued ? 'checkmark' : 'list'} size={14} color={sync.queued ? SPOTIFY_GREEN : Colors.text} />
+          <Text style={styles.queueText}>{sync.queued ? 'Queued' : 'Queue'}</Text>
+        </TouchableOpacity>
+      )}
+      {!sync.isThisSong && (
+        <TouchableOpacity
           style={[styles.fromLine, sync.startingSong && styles.controlDisabled]}
           onPress={() => void sync.playSong()}
           disabled={sync.startingSong}
@@ -166,6 +178,21 @@ const styles = StyleSheet.create({
   },
   controlDisabled: {
     opacity: 0.4,
+  },
+  queue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  queueText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text,
   },
   fromLine: {
     flexDirection: 'row',

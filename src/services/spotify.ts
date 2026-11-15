@@ -245,6 +245,11 @@ export async function playSpotifyTrack(uri: string, positionMs = 0): Promise<voi
   }
 }
 
+/** Adds a track to the end of the play queue (needs Spotify open on a device) */
+export async function queueSpotifyTrack(uri: string): Promise<void> {
+  await api(`/me/player/queue?uri=${encodeURIComponent(uri)}`, { method: 'POST' });
+}
+
 /** Opens a track in the Spotify app, or on open.spotify.com without it */
 export async function openSpotifyTrack(uri: string): Promise<void> {
   const web = `https://open.spotify.com/track/${uri.split(':').pop()}`;

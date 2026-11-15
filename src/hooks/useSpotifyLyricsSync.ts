@@ -9,6 +9,7 @@ import {
   playSongOnSpotify,
   resumeSpotify,
   playSpotifyTrack,
+  queueSpotifyTrack,
   seekSpotify,
   SpotifyError,
   spotifyErrorMessage,
@@ -48,6 +49,10 @@ export interface SpotifyLyricsSync {
   playSong: () => Promise<void>;
   /** playSong is finding the song or waiting for Spotify to open */
   startingSong: boolean;
+  /** Adds the song to the end of Spotify's queue */
+  queueSong: () => Promise<void>;
+  /** The song was just queued, for a moment */
+  queued: boolean;
 }
 
 /** Follows Spotify while it plays the song open in Learn, and seeks it by lyric line */
@@ -186,6 +191,19 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
     setTimeout(() => void refresh(), 300);
   };
 
+  const [queued, setQueued] = useState(false);
+  const queueSong = async () => {
+    if (!song) return;
+    try {
+      await queueSpotifyTrack(await findSpotifyTrackUri(song.songName, song.artistName ?? ''));
+      setError(null);
+      setQueued(true);
+      setTimeout(() => setQueued(false), 2500);
+    } catch (e) {
+      setError(spotifyErrorMessage(e));
+    }
+  };
+
   const seekToLine = async (lineIndex: number) => {
     const time = times[lineIndex];
     if (time === null || time === undefined || !song) return;
@@ -240,5 +258,7 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
     },
     playSong,
     startingSong,
+    queueSong,
+    queued,
   };
 }

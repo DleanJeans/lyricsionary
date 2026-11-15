@@ -34,7 +34,7 @@ import { getGermanExpandedForm } from '../utils/wordTransform';
 import { emojiData } from '../utils/emojiData';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
-import { getScrapeGoogleIpaJS } from '../utils/scrapeGoogleIpaJS';
+import { getScrapeGoogleIpaJS, getScrapeGoogleNumberJS } from '../utils/scrapeGoogleIpaJS';
 import { findSavedWord, hasCapitals } from '../utils/wordForms';
 import MergeForms from '../components/MergeForms';
 import AnswerHistory from '../components/AnswerHistory';
@@ -47,6 +47,11 @@ const wiktionarySectionId = (language: string) => getWiktionaryLanguage(language
 // Google's AI overview usually gives the IPA for "<word> <language> IPA", e.g. "Herz German IPA"
 const googleIpaUrl = (word: string, language: string) =>
   `https://www.google.com/search?igu=1&q=${encodeURIComponent(`${word} ${language} IPA`)}`;
+// A number from the lyrics, e.g. 42 or 2024, which Wiktionary has no page on in the song's language
+const isNumberWord = (word: string) => /^\p{N}+(?:[.,]\p{N}+)*$/u.test(word);
+// Google's AI overview gives a number written out with its IPA, e.g. zweiundvierzig /ˈt͡svaɪ̯ʊntˌfiːɐ̯t͡sɪç/
+const googleNumberUrl = (number: string, language: string) =>
+  `https://www.google.com/search?igu=1&q=${encodeURIComponent(`how is the number ${number} written out in ${language} words, with IPA pronunciation`)}`;
 
 export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
@@ -124,6 +129,9 @@ export default function WordLookupScreen() {
         if (firstIpa) {
           setPronunciation((current) => current || firstIpa);
         }
+      } else if (data.type === 'spelledOut' && data.text) {
+        // A number's written-out form, e.g. zweiundvierzig for 42, goes in an empty note
+        setNote((current) => current || data.text);
       } else if (data.type === 'ipaError') {
         console.log('IPA scraping error:', data.message);
       }
@@ -179,6 +187,9 @@ export default function WordLookupScreen() {
   // Page the Wiktionary tab shows instead of displayWord when it has no entry (e.g. "hab'n" -> "haben")
   const [wiktionaryRedirect, setWiktionaryRedirect] = useState<{ from: string; to: string } | null>(null);
   const wiktionaryWord = wiktionaryRedirect && wiktionaryRedirect.from === displayWord ? wiktionaryRedirect.to : displayWord;
+
+  // A number is looked up on Google, which reads its written-out form into the note and its IPA
+  const numberWord = !!displayWord && isNumberWord(displayWord);
 
   const findExistingWord = () => (wordId ? words.find((entry) => entry.id === wordId) : findSavedWord(words, displayWord, language));
 
@@ -376,7 +387,8 @@ export default function WordLookupScreen() {
 
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
-        ? (ipaSearchRef.current ? googleIpaUrl(displayWord, languageRef.current) : `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`)
+        ? (isNumberWord(displayWord) ? googleNumberUrl(displayWord, languageRef.current)
+          : ipaSearchRef.current ? googleIpaUrl(displayWord, languageRef.current) : `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`)
         : `${wiktionaryPageUrl(wiktionaryWord!)}#${wiktionarySectionId(languageRef.current)}`;
       setCurrentUrl(url);
       setScrapedIpaResults([]);
@@ -387,6 +399,13 @@ export default function WordLookupScreen() {
       entryCheckedWordRef.current = displayWord;
       ipaSearchRef.current = false;
       setIpaSearch(false);
+      if (isNumberWord(displayWord)) {
+        if (lookupSource === 'google') open('google');
+        else setLookupSource('google');
+        return () => {
+          cancelled = true;
+        };
+      }
       setLoading(true);
       const lowercase = displayWord.toLowerCase();
       hasWiktionaryEntry(displayWord).then(async (exists) => {
@@ -580,7 +599,7 @@ export default function WordLookupScreen() {
 
   // A guess for a word the page has no IPA for, e.g. fang's /faŋ/ from fangen /ˈfaŋən/
   const derivedIpa = wiktionaryPronunciation.derivedFrom && !cardIpa ? wiktionaryPronunciation.ipa : [];
-  const pageIpa = lookupSource === 'wiktionary' || ipaSearch ? scrapedIpaResults : [];
+  const pageIpa = lookupSource === 'wiktionary' || ipaSearch || numberWord ? scrapedIpaResults : [];
   const ipaOptions = cardIpa ?? (pageIpa.length > 0 ? pageIpa : derivedIpa);
   // Fill in an empty pronunciation with the guess, as the page's own IPA would be
   const firstDerivedIpa = derivedIpa[0];
@@ -670,7 +689,7 @@ export default function WordLookupScreen() {
               placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
               placeholderTextColor={Colors.textMuted}
             />
-            {wiktionaryHasNoIpa && !pronunciation.trim() && !(ipaSearch && lookupSource === 'google') && (
+            {!numberWord && wiktionaryHasNoIpa && !pronunciation.trim() && !(ipaSearch && lookupSource === 'google') && (
               <TouchableOpacity
                 style={styles.ipaSearchButton}
                 onPress={searchGoogleForIpa}
@@ -875,6 +894,8 @@ export default function WordLookupScreen() {
                   syncOuterAtBottom(scrollViewAtBottom);
                   if (lookupSource === 'wiktionary' && !cardIpa && webViewRef.current) {
                     webViewRef.current.injectJavaScript(getScrapeIpaJS(language));
+                  } else if (lookupSource === 'google' && numberWord && webViewRef.current) {
+                    webViewRef.current.injectJavaScript(getScrapeGoogleNumberJS());
                   } else if (lookupSource === 'google' && ipaSearchRef.current && webViewRef.current) {
                     webViewRef.current.injectJavaScript(getScrapeGoogleIpaJS());
                   }

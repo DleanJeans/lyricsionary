@@ -255,7 +255,7 @@ function LineQuestion({
           {after}
         </Text>
       )}
-      {mode === 'listen' && !answered && <PronunciationAudio audio={entry.audio ?? []} autoPlay />}
+      {mode === 'listen' && <PronunciationAudio audio={entry.audio ?? []} autoPlay={!answered} />}
       {ipa && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       <WordQuiz

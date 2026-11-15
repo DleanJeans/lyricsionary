@@ -108,3 +108,22 @@ export function splitForm(entry: WordEntry, form: string, id: string, now: numbe
   };
   return [kept, split];
 }
+
+/** A meaning's first letter in lowercase, e.g. "That" -> "that"; acronyms and names like "TV" or "McDonald's" stay */
+export const lowerFirst = (text: string): string =>
+  /^\p{Lu}\p{Ll}/u.test(text) || /^\p{Lu}$/u.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text;
+
+/** Whether a saved word or any of its meanings starts with a capital that lowercasing would change */
+export const hasCapitals = (entry: WordEntry): boolean =>
+  entry.word !== entry.word.toLowerCase() ||
+  entry.contexts.some((c) => !!c.definition && lowerFirst(c.definition) !== c.definition) ||
+  (entry.definitions ?? []).some((d) => lowerFirst(d.text) !== d.text);
+
+/** The word and its meanings in lowercase, e.g. Sodass -> sodass, "That" -> "that" */
+export const lowercaseEntry = (entry: WordEntry): WordEntry => ({
+  ...entry,
+  word: entry.word.toLowerCase(),
+  forms: entry.forms?.map((f) => f.toLowerCase()),
+  contexts: entry.contexts.map((c) => (c.definition ? { ...c, definition: lowerFirst(c.definition) } : c)),
+  definitions: entry.definitions?.map((d) => ({ ...d, text: lowerFirst(d.text) })),
+});

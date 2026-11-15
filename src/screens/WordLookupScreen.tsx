@@ -35,7 +35,7 @@ import { emojiData } from '../utils/emojiData';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import { getScrapeGoogleIpaJS } from '../utils/scrapeGoogleIpaJS';
-import { findSavedWord } from '../utils/wordForms';
+import { findSavedWord, hasCapitals } from '../utils/wordForms';
 import MergeForms from '../components/MergeForms';
 import AnswerHistory from '../components/AnswerHistory';
 
@@ -59,6 +59,7 @@ export default function WordLookupScreen() {
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const mergeWords = useStore((s) => s.mergeWords);
+  const lowercaseWord = useStore((s) => s.lowercaseWord);
   const unmergeForm = useStore((s) => s.unmergeForm);
   const deleteWord = useStore((s) => s.deleteWord);
   const webViewRef = useRef<WebView>(null);
@@ -714,6 +715,22 @@ export default function WordLookupScreen() {
             />
           </View>
 
+          {existingWord && hasCapitals(existingWord) && (
+            <TouchableOpacity
+              onPress={async () => {
+                filledLookupRef.current = undefined;
+                const kept = await lowercaseWord(existingWord.id);
+                if (kept) navigation.setParams({ wordId: kept.id, word: kept.word });
+              }}
+              style={styles.lowercaseButton}
+              accessibilityRole="button"
+              accessibilityLabel="Lowercase word and meanings"
+            >
+              <Ionicons name="text-outline" size={16} color={Colors.primaryLight} />
+              <Text style={styles.lowercaseText}>Lowercase “{existingWord.word}” and its meanings</Text>
+            </TouchableOpacity>
+          )}
+
           {existingWord && (
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Forms</Text>
@@ -933,6 +950,8 @@ export default function WordLookupScreen() {
 }
 
 const styles = StyleSheet.create({
+  lowercaseButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, alignSelf: 'flex-start' },
+  lowercaseText: { fontSize: 14, color: Colors.primaryLight },
   noteInput: {
     minHeight: 60,
     textAlignVertical: 'top',

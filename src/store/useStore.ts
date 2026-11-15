@@ -7,7 +7,8 @@ import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordCo
 import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
 import { ActivityLog, addActivity, DayActivity } from '../utils/activity';
-import { findSavedWord, mergeWordEntries, splitForm } from '../utils/wordForms';
+import { findSavedWord, lowercaseEntry, mergeWordEntries, splitForm } from '../utils/wordForms';
+import { isSameLanguage } from '../constants/languages';
 import { addWordEvent, levelChangeEvent } from '../utils/wordHistory';
 
 const SONGS_KEY = '@lyricsionary_songs';
@@ -134,6 +135,8 @@ interface AppState {
   setWordsLevel: (ids: string[], level: MasteryLevel) => Promise<void>;
   /** Merges a form saved apart into a word, e.g. voulez into veux, keeping its contexts and quiz answers */
   mergeWords: (keepId: string, fromId: string) => Promise<void>;
+  /** Lowercases a saved word and its meanings; merges into the lowercase word when one is saved. Returns the word it ended up as */
+  lowercaseWord: (id: string) => Promise<WordEntry | undefined>;
   /** Splits a merged form back out as its own word, with the contexts whose line has it */
   unmergeForm: (id: string, form: string) => Promise<void>;
   /** Puts a deleted word back as it was, e.g. on Undo */
@@ -528,6 +531,23 @@ export const useStore = create<AppState>((set, get) => ({
     const words = get().words.filter((w) => w.id !== fromId).map((w) => (w.id === keepId ? merged : w));
     set({ words });
     await persist(WORDS_KEY, () => JSON.stringify(words));
+  },
+
+  lowercaseWord: async (id) => {
+    const entry = get().words.find((w) => w.id === id);
+    if (!entry) return undefined;
+    const lowered = lowercaseEntry(entry);
+    const twin = get().words.find(
+      (w) => w.id !== id && isSameLanguage(w.language, entry.language) && w.word === lowered.word
+    );
+    const keepId = twin ? twin.id : id;
+    const result = twin ? mergeWordEntries(lowercaseEntry(twin), lowered) : lowered;
+    const words = get()
+      .words.filter((w) => w.id !== id || !twin)
+      .map((w) => (w.id === keepId ? { ...result, id: keepId } : w));
+    set({ words });
+    await persist(WORDS_KEY, () => JSON.stringify(words));
+    return words.find((w) => w.id === keepId);
   },
 
   unmergeForm: async (id, form) => {

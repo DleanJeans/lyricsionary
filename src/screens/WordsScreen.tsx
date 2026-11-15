@@ -410,7 +410,7 @@ export default function WordsScreen() {
         <TouchableOpacity
           style={styles.reviewButton}
           onPress={() => {
-            const items = buildReviewItems(due, words);
+            const items = buildReviewItems(due, words, undefined, undefined, useStore.getState().songs);
             if (items.length) setReviewing(items);
           }}
           accessibilityRole="button"

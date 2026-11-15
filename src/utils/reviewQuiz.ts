@@ -1,6 +1,8 @@
-import type { WordContext, WordEntry } from '../types';
+import { languageKey } from '../constants/languages';
+import type { Song, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
 import { isCjkWord } from './cjkWords';
+import { lineTranslation } from './wordOfTheDay';
 import { buildLyricQuiz, buildMeaningQuiz, isDue, isTricky, Quiz, QuizKind, quizKindFor, type QuizTarget } from './wordQuiz';
 
 export interface ReviewItem {
@@ -24,7 +26,16 @@ export interface ReviewItem {
   way?: ReviewWay;
   /** What the quiz was built from, to build it again when it's shown (rebuildReviewQuiz) */
   target?: QuizTarget;
+  /**
+   * The line is from another song the word is in but wasn't saved from (otherSongLines), so it has
+   * no saved context: the session shows that song and its translation of the line, and offers to save it
+   */
+  unsaved?: { songId: string; songName: string; artistName?: string; translation?: string; definition: string; partOfSpeech?: WordContext['partOfSpeech'] };
 }
+
+/** What the review reads from a song: its lyrics to find a word's other lines in, and its name */
+export type ReviewSong = Pick<Song, 'id'> &
+  Partial<Pick<Song, 'songName' | 'artistName' | 'originalLyrics' | 'originalLanguages' | 'translations' | 'archivedAt' | 'lastOpenedAt'>>;
 
 /** The line's words, also split at apostrophes, e.g. amour in l'amour */
 export const lineWords = (line: string) =>
@@ -42,6 +53,89 @@ export function findWordInLine(line: string, word: string): { start: number; end
     if (!wholeWord || (!isLetter(line[start - 1]) && !isLetter(line[end]))) return { start, end };
   }
   return null;
+}
+
+interface IndexedLine {
+  song: ReviewSong;
+  line: string;
+}
+
+// Each language's song lines by the words in them, built once for each list of songs (the store
+// makes a new list when a song changes), so finding a word's lines doesn't read every song's lyrics
+const lineIndexes = new WeakMap<object, Map<string, Map<string, IndexedLine[]>>>();
+
+function lineIndex(songs: ReviewSong[]): Map<string, Map<string, IndexedLine[]>> {
+  const kept = lineIndexes.get(songs);
+  if (kept) return kept;
+  const index = new Map<string, Map<string, IndexedLine[]>>();
+  for (const song of songs) {
+    const language = song.originalLanguages?.[0];
+    if (song.archivedAt || !language || !song.originalLyrics) continue;
+    const key = languageKey(language);
+    let byWord = index.get(key);
+    if (!byWord) index.set(key, (byWord = new Map()));
+    const lines = new Set(song.originalLyrics.split('\n').map((l) => l.trim()).filter(Boolean));
+    for (const line of lines) {
+      for (const token of new Set(lineWords(line).map((w) => w.toLowerCase()))) {
+        let list = byWord.get(token);
+        if (!list) byWord.set(token, (list = []));
+        list.push({ song, line });
+      }
+    }
+  }
+  lineIndexes.set(songs, index);
+  return index;
+}
+
+/**
+ * The word's lines in songs of its language it wasn't saved from, one line per lyric (a line two
+ * songs share comes once). Archived songs are skipped. Words written without spaces aren't looked for,
+ * as their lines can't be split into words.
+ */
+export function otherSongLines(entry: WordEntry, songs: ReviewSong[]): IndexedLine[] {
+  if (!songs.length || !entry.language || isCjkWord(entry.word)) return [];
+  const first = lineWords(entry.word)[0]?.toLowerCase();
+  if (!first) return [];
+  const savedSongs = new Set((entry.contexts ?? []).map((c) => c.songId).filter(Boolean));
+  const savedLines = new Set((entry.contexts ?? []).map((c) => c.context?.trim().toLowerCase()).filter(Boolean));
+  const found: IndexedLine[] = [];
+  for (const spot of lineIndex(songs).get(languageKey(entry.language))?.get(first) ?? []) {
+    const lower = spot.line.toLowerCase();
+    if (savedSongs.has(spot.song.id) || savedLines.has(lower) || !findWordInLine(spot.line, entry.word)) continue;
+    savedLines.add(lower);
+    found.push(spot);
+  }
+  return found;
+}
+
+/** One of the items, picked at random; no random number is taken when there's only one */
+const pickOne = <T,>(items: T[], random: () => number): T =>
+  items.length === 1 ? items[0] : items[Math.min(items.length - 1, Math.floor(random() * items.length))];
+
+/**
+ * The line to ask the word from: a song picked at random among the ones it has a line in, saved or
+ * not, then one of its lines, so the same line doesn't come up every time
+ */
+function pickLine(
+  entry: WordEntry,
+  songs: ReviewSong[],
+  random: () => number
+): { context: WordContext; song?: undefined } | { context?: undefined; song: ReviewSong; line: string } | null {
+  const bySong = new Map<string, ({ context: WordContext } | { song: ReviewSong; line: string })[]>();
+  const add = (key: string, choice: { context: WordContext } | { song: ReviewSong; line: string }) => {
+    const list = bySong.get(key);
+    if (list) list.push(choice);
+    else bySong.set(key, [choice]);
+  };
+  (entry.contexts ?? []).forEach((context, i) => {
+    if (context.definition?.trim() && context.context?.trim() && findWordInLine(context.context, entry.word)) {
+      add(context.songId ?? `context ${i}`, { context });
+    }
+  });
+  for (const spot of otherSongLines(entry, songs)) add(spot.song.id, spot);
+  if (!bySong.size) return null;
+  const choice = pickOne(pickOne([...bySong.values()], random), random);
+  return 'context' in choice ? { context: choice.context } : { song: choice.song, line: choice.line };
 }
 
 // The context to ask about: the first with a lyric line and a meaning, otherwise the first with a meaning
@@ -117,7 +211,8 @@ export function buildReviewItems(
   dueWords: WordEntry[],
   words: WordEntry[],
   random = Math.random,
-  counts: Map<ReviewWay, number> = new Map()
+  counts: Map<ReviewWay, number> = new Map(),
+  songs: ReviewSong[] = []
 ): ReviewItem[] {
   const items: ReviewItem[] = [];
   // Tricky words first, then the ones not quizzed for longest
@@ -130,16 +225,20 @@ export function buildReviewItems(
   for (const entry of ordered) {
     const kind = quizKindFor(entry.masteryLevel);
     if (!kind) continue;
-    const context = pickContext(entry);
+    // The line is one of the word's saved ones or another song's it wasn't saved from; that one asks
+    // for the meaning saved first
+    const picked = pickLine(entry, songs, random);
+    const context = picked?.context ?? pickContext(entry);
     const answer = answerFor(entry, context);
     if (!answer) continue;
-    const line = context?.context?.trim() || undefined;
+    const other = picked?.song;
+    const line = (other ? picked.line : context?.context?.trim()) || undefined;
     const wordAt = line ? findWordInLine(line, entry.word) ?? undefined : undefined;
     const target: QuizTarget = {
       entry,
       answer,
       partOfSpeech: context?.partOfSpeech,
-      songId: context?.songId,
+      songId: other ? other.id : context?.songId,
       // Words the line shows can't be what's missing from it
       excludeWords:
         kind === 'lyric' && wordAt && line ? [...line.split(/\s+/).map(removeSpecialChars), ...lineWords(line)] : undefined,
@@ -158,6 +257,8 @@ export function buildReviewItems(
     const listen = way.endsWith('listen');
     // Spelling is typed, so it needs no options, but other words make it one when there are enough
     const quiz = built ?? { options: [entry.word], answerIndex: 0 };
+    const otherTranslation =
+      other && line && other.originalLyrics && other.translations ? lineTranslation(other as Song, line) ?? undefined : undefined;
     items.push({
       way,
       listen,
@@ -167,8 +268,18 @@ export function buildReviewItems(
       quiz,
       line,
       wordAt,
-      hint: kind === 'lyric' ? (wordAt && context?.translation?.trim()) || answer : undefined,
+      hint: kind === 'lyric' ? (wordAt && (other ? otherTranslation : context?.translation?.trim())) || answer : undefined,
       target,
+      unsaved: other
+        ? {
+            songId: other.id,
+            songName: other.songName || 'Untitled',
+            artistName: other.artistName || undefined,
+            translation: otherTranslation,
+            definition: answer,
+            partOfSpeech: context?.partOfSpeech,
+          }
+        : undefined,
     });
   }
   return items;
@@ -209,7 +320,7 @@ export const RECENT_SONGS_AFTER_ABSENCE = 3;
  * session shuffles them.
  */
 export function buildLaunchReview(
-  songs: { id: string; lastOpenedAt?: number; archivedAt?: number }[],
+  songs: ReviewSong[],
   words: WordEntry[],
   now = Date.now(),
   size = LAUNCH_REVIEW_SIZE,
@@ -227,7 +338,7 @@ export function buildLaunchReview(
   const counts = new Map<ReviewWay, number>();
   const queueFor = (song: { id: string }) => {
     const songDue = due.filter((w) => w.contexts?.some((c) => c.songId === song.id));
-    return songDue.length ? buildReviewItems(songDue, words, random, new Map(counts)) : [];
+    return songDue.length ? buildReviewItems(songDue, words, random, new Map(counts), songs) : [];
   };
   const take = (item: ReviewItem) => {
     if (taken.has(item.entry.id)) return false;

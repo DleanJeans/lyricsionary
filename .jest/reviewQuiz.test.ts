@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { buildLaunchReview, buildReviewItems, dueWords, findWordInLine, lineWords, pickReviewItems, rebuildReviewQuiz } from '../src/utils/reviewQuiz';
+import { buildLaunchReview, buildReviewItems, dueWords, findWordInLine, lineWords, otherSongLines, pickReviewItems, rebuildReviewQuiz } from '../src/utils/reviewQuiz';
 import { isDue } from '../src/utils/wordQuiz';
 
 const HOUR = 60 * 60 * 1000;
@@ -257,5 +257,48 @@ describe('rebuildReviewQuiz', () => {
     const words = make(['amour', 'nuit', 'ciel']);
     const [item] = buildReviewItems([words[0]], words);
     expect(rebuildReviewQuiz(item, [words[0]])).toBe(item.quiz);
+  });
+});
+
+describe('lines from other songs', () => {
+  const song = (id: string, lyrics: string, extra = {}) => ({
+    id,
+    songName: `Song ${id}`,
+    artistName: `Artist ${id}`,
+    originalLyrics: lyrics,
+    originalLanguages: ['fr'],
+    translations: [{ language: 'English', lyrics: lyrics.split('\n').map((l) => `EN ${l}`).join('\n') }],
+    ...extra,
+  });
+  const others = ['chat', 'chien', 'maison', 'arbre'].map((w) => word(w, `meaning of ${w}`));
+
+  it('finds the word in songs it was not saved from, skipping archived ones and other languages', () => {
+    const amour = word('amour', 'love', {}, "Mon amour");
+    const songs = [
+      song('s1', 'Mon amour\nAutre amour'),
+      song('s2', "C'est l'amour\nRien"),
+      song('s3', 'Mon amour', {}),
+      song('s4', 'Notre amour', { archivedAt: 1 }),
+      song('s5', 'amour toujours', { originalLanguages: ['de'] }),
+    ];
+    expect(otherSongLines(amour, songs).map((l) => [l.song.id, l.line])).toEqual([['s2', "C'est l'amour"]]);
+  });
+
+  it('asks a line from another song, with that song and its translation', () => {
+    const amour = word('amour', 'love', { masteryLevel: 'Recognized' }, 'Mon amour');
+    const songs = [song('s1', 'Mon amour'), song('s2', "C'est l'amour")];
+    // The second song, then its only line
+    const [item] = buildReviewItems([amour], [amour, ...others], () => 0.99, new Map(), songs);
+    expect(item.line).toBe("C'est l'amour");
+    expect(item.wordAt).toEqual({ start: 8, end: 13 });
+    expect(item.unsaved).toMatchObject({ songId: 's2', songName: 'Song s2', artistName: 'Artist s2', translation: "EN C'est l'amour", definition: 'love' });
+    expect(item.target?.songId).toBe('s2');
+  });
+
+  it('keeps asking the saved line when no other song has the word', () => {
+    const amour = word('amour', 'love', {}, 'Mon amour');
+    const [item] = buildReviewItems([amour], [amour, ...others], () => 0.99, new Map(), [song('s1', 'Mon amour')]);
+    expect(item.line).toBe('Mon amour');
+    expect(item.unsaved).toBeUndefined();
   });
 });

@@ -162,13 +162,45 @@ function ReviewQuestion({
   isWide?: boolean;
   practice?: boolean;
 }) {
-  const { entry, kind, line, wordAt, hint, listen, ipa } = item;
+  const { entry, kind, line, wordAt, hint, listen, ipa, unsaved } = item;
   const lineWord = line && wordAt ? line.slice(wordAt.start, wordAt.end) : null;
-  const context = entry.contexts?.find((c) => c.context?.trim() === line);
-  const songName = context?.songName;
-  const song = useStore((s) => (context?.songId ? s.songs.find((x) => x.id === context.songId) : undefined));
+  // A line from another song the word wasn't saved from has no saved context
+  const context = unsaved ? undefined : entry.contexts?.find((c) => c.context?.trim() === line);
+  const songId = unsaved?.songId ?? context?.songId;
+  const song = useStore((s) => (songId ? s.songs.find((x) => x.id === songId) : undefined));
+  const songName = unsaved ? unsaved.songName : context?.songName || song?.songName;
+  const artistName = unsaved ? unsaved.artistName : song?.artistName;
   // The translation saved with the word, or else the song's translation of the line
-  const translation = line ? context?.translation?.trim() || (song ? lineTranslation(song, line) : null) : null;
+  const translation = line
+    ? (unsaved ? unsaved.translation : context?.translation?.trim()) || (song ? lineTranslation(song, line) : null)
+    : null;
+  const updateWordEntry = useStore((s) => s.updateWordEntry);
+  const [savedLine, setSavedLine] = useState(false);
+  // Saves the other song's line as one of the word's contexts, with the meaning it was asked for
+  const saveLine = () => {
+    if (!unsaved || !line) return;
+    const current = useStore.getState().words.find((w) => w.id === entry.id);
+    if (!current) return;
+    const exists = current.contexts.some((c) => c.songId === unsaved.songId && c.context?.trim() === line);
+    if (!exists) {
+      updateWordEntry(entry.id, {
+        contexts: [
+          ...current.contexts,
+          {
+            context: line,
+            songId: unsaved.songId,
+            songName: unsaved.songName,
+            translation: translation || undefined,
+            definition: unsaved.definition,
+            partOfSpeech: unsaved.partOfSpeech,
+            fromSong: true,
+            occurrence: 1,
+          },
+        ],
+      });
+    }
+    setSavedLine(true);
+  };
   // A lyric quiz blanks the word out of the line, and shows no line it couldn't find the word in. A
   // listening quiz shows the line and meaning once answered.
   // An IPA quiz shows nothing but the IPA until it's answered.
@@ -198,7 +230,12 @@ function ReviewQuestion({
           )}
         </Text>
       )}
-      {showLine && songName ? <Text style={styles.songName}>{songName}</Text> : null}
+      {showLine && songName ? (
+        <Text style={styles.songName}>
+          {artistName ? `${songName} · ${artistName}` : songName}
+          {unsaved && !savedLine ? ' · not saved here yet' : ''}
+        </Text>
+      ) : null}
       {listen && <PronunciationAudio audio={entry.audio ?? []} autoPlay={!answered} />}
       {ipa && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
       {showHint ? <Text style={styles.hint}>{shownHint}</Text> : null}
@@ -212,7 +249,7 @@ function ReviewQuestion({
             'What does the word you heard mean?'
           ) : kind === 'meaning' ? (
             <>
-              What does <Text style={styles.quizWord}>{entry.word}</Text> mean{showLine ? ' here' : ''}?
+              What does <Text style={styles.quizWord}>{entry.word}</Text> mean{showLine && !unsaved ? ' here' : ''}?
             </>
           ) : ipa ? (
             'Spell the word pronounced like this'
@@ -230,9 +267,24 @@ function ReviewQuestion({
         practice={practice}
         typed={!!ipa && kind === 'lyric'}
       />
+      {answered && !practice && unsaved && showLine && (
+        <TouchableOpacity
+          onPress={saveLine}
+          disabled={savedLine}
+          hitSlop={8}
+          style={styles.lookUp}
+          accessibilityRole="button"
+          accessibilityLabel={savedLine ? 'Line saved' : 'Save this line'}
+        >
+          <Ionicons name={savedLine ? 'checkmark-circle' : 'bookmark-outline'} size={14} color={savedLine ? Colors.success : Colors.primary} />
+          <Text style={[styles.lookUpText, savedLine && { color: Colors.success }]}>
+            {savedLine ? `Saved this line to ${entry.word}` : `Save this line to ${entry.word}`}
+          </Text>
+        </TouchableOpacity>
+      )}
       {answered && !practice && (
         <TouchableOpacity
-          onPress={() => onLookUp(entry, line, context?.songId, context?.songName)}
+          onPress={() => onLookUp(entry, line, songId, songName)}
           hitSlop={8}
           style={styles.lookUp}
           accessibilityRole="button"

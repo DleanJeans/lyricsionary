@@ -512,7 +512,7 @@ export default function SongsScreen() {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => {
-                  const items = buildReviewItems(songDue.get(item.id)!, useStore.getState().words);
+                  const items = buildReviewItems(songDue.get(item.id)!, useStore.getState().words, undefined, undefined, useStore.getState().songs);
                   if (items.length) setReviewing(items);
                 }}
                 disabled={isAnySongLoading}

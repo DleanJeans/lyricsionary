@@ -43,8 +43,9 @@ import SpotifyBar from '../components/SpotifyBar';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
-import { getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
+import { elidedIpa, getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
 import { getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
+import { germanTrailingElisionRegex } from '../utils/regex';
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
@@ -1141,6 +1142,24 @@ export default function LearnScreen() {
       if (baseWord && !found.definitions?.length) {
         const stemFound = await lookUp(baseWord);
         if (stemFound.definitions?.length) found = stemFound;
+      }
+      // A German word with its ending dropped, e.g. kauf' for kaufe or kaufen, is saved as written with
+      // the meaning of its full form and that form's IPA without the ending
+      if (isGermanSong && !found.definitions?.length && germanTrailingElisionRegex.test(selectedWord)) {
+        const stem = selectedWord.slice(0, -1);
+        for (const candidate of [`${stem}e`, `${stem}en`]) {
+          if (job.cancelled) break;
+          const full = await lookUp(candidate);
+          if (!full.definitions?.length) continue;
+          const ipa = [full.pronunciation?.ipa[0], ...(full.pronunciation?.ipa.slice(1) ?? [])]
+            .map((i) => (i ? elidedIpa(i) : undefined)).find(Boolean);
+          found = {
+            word: selectedWord,
+            definitions: full.definitions,
+            pronunciation: { ...(full.pronunciation ?? { audio: [] }), ipa: ipa ? [ipa] : [], audio: [] },
+          };
+          break;
+        }
       }
       // A phrase whose words sit apart, or a German verb with its particle, as Wiktionary has it:
       // aufhören for hört … auf or "hört auf", "turn off" for turn … off

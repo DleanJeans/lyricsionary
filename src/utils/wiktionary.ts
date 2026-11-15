@@ -713,6 +713,22 @@ export function stemIpa(word: string, lemma: string, lemmaIpa: string): string |
   return `${open}${ipa}${close}`;
 }
 
+/**
+ * The IPA of a German word whose last -e or -en is dropped (kauf' for kaufe or kaufen), from the full
+ * form's IPA, e.g. kaufe /ˈkaʊ̯fə/ or kaufen /ˈkaʊ̯fn̩/ -> /ˈkaʊ̯f/. Undefined when no such ending is found.
+ */
+export function elidedIpa(ipaText: string): string | undefined {
+  const open = ipaText.trim()[0];
+  if (open !== '/' && open !== '[') return undefined;
+  const close = open === '/' ? '/' : ']';
+  let ipa = ipaText.trim().slice(1, -1).trim();
+  const stripped = ipa.replace(/(?:ə|ɛ)n$|[nŋm]\u0329$|ə$/, '');
+  if (stripped === ipa || !stripped) return undefined;
+  ipa = stripped.replace(/[bdɡgvzʒ]$/, (c) => DEVOICED[c]);
+  if ((ipa.match(IPA_VOWEL) ?? []).length <= 1) ipa = ipa.replace(/[ˈˌ]/g, '');
+  return `${open}${ipa}${close}`;
+}
+
 // How an ending added to a German word sounds, e.g. the -e of Signale
 const ADDED_ENDINGS: Record<string, string> = { e: 'ə', en: 'ən', n: 'n', er: 'ɐ', ern: 'ɐn', es: 'əs', em: 'əm', s: 's', se: 'sə' };
 // Sounds a spelling keeps voiceless only at the end of a word, voiced again before an ending's vowel,

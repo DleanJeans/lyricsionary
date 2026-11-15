@@ -205,7 +205,7 @@ export default function LearnScreen() {
   const [meaningQuizPending, setMeaningQuizPending] = useState(false);
   const [meaningQuizAnswered, setMeaningQuizAnswered] = useState(false);
   // A word just removed from its card's level picker, or ignored, offered back with Undo for a few seconds
-  const [removedWord, setRemovedWord] = useState<{ entry: WordEntry; ignored?: boolean } | null>(null);
+  const [removedWord, setRemovedWord] = useState<{ entry: WordEntry } | null>(null);
   useEffect(() => {
     if (!removedWord) return;
     const timer = setTimeout(() => setRemovedWord(null), 5000);
@@ -1455,9 +1455,8 @@ export default function LearnScreen() {
           }}
           onIgnore={(item) => {
             // Ignored first, so the word isn't saved again while it stays selected; its card then
-            // shows it as ignored, with the button to unignore it
+            // shows it as ignored, with the button to unignore it, so no toast covers it
             void toggleIgnoredWord(item.word, ignoreLanguage);
-            setRemovedWord({ entry: item, ignored: true });
             void deleteWord(item.id);
           }}
           source="Learn"
@@ -1806,13 +1805,9 @@ export default function LearnScreen() {
       {removedWord && (
         <View style={styles.toastStack} pointerEvents="box-none">
           <Toast
-            message={<>{removedWord.ignored ? 'Ignored' : 'Removed'}<Text style={{ fontWeight: 'bold' }}> {removedWord.entry.word}</Text></>}
+            message={<>Removed<Text style={{ fontWeight: 'bold' }}> {removedWord.entry.word}</Text></>}
             onUndo={() => {
-              // Saved back first, so unignoring a selected word doesn't save it as a new word
               void restoreWord(removedWord.entry);
-              if (removedWord.ignored && isIgnoredWord(removedWord.entry.word, ignoreLanguage)) {
-                void toggleIgnoredWord(removedWord.entry.word, ignoreLanguage);
-              }
               setRemovedWord(null);
             }}
           />

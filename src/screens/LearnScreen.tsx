@@ -1129,7 +1129,15 @@ export default function LearnScreen() {
       : lookUp(selectedWord);
     // The phrase as Wiktionary has it, which it's saved as, with the phrase as written as a form
     let phraseForm: string | undefined;
+    // A capitalized word opening a line is capitalized by the line, e.g. Dann, and one Wiktionary has
+    // no entry for as written is saved lowercase; otherwise it's saved as written, e.g. a German noun
+    const lowered = selectedWord.toLowerCase();
+    const opensLine = !!selectedLine && selectedLine.replace(/^[^\p{L}\p{N}]+/u, '').startsWith(selectedWord) && selectedOccurrence === 1;
     firstLookUp.then(async (found) => {
+      if (lowered !== selectedWord && !isSplitPhrase(selectedWord) && !/\s/.test(selectedWord)) {
+        const asLower = await lookUp(lowered);
+        if (asLower.definitions?.length && (opensLine || !found.definitions?.length)) found = asLower;
+      }
       if (baseWord && !found.definitions?.length) {
         const stemFound = await lookUp(baseWord);
         if (stemFound.definitions?.length) found = stemFound;

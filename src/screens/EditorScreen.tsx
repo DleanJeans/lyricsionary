@@ -87,6 +87,22 @@ export default function EditorScreen() {
 
   const skipMatchingRef = useRef(false);
 
+  // A line opened from Learn stays highlighted on every tab, so its translations are quick to find
+  const [openedLine, setOpenedLine] = useState<{ songId: string; index: number; key: number; focus: boolean } | null>(null);
+  useEffect(() => {
+    const lineIndex = route.params?.lineIndex as number | undefined;
+    if (lineIndex === undefined || !paramSongId) return;
+    setOpenedLine({ songId: paramSongId, index: lineIndex, key: Date.now(), focus: true });
+    setActiveTab(0);
+    // A translation tab shows the original line above its own
+    setIsShowingOriginal(true);
+    navigation.setParams({ lineIndex: undefined });
+  }, [route.params?.lineIndex, route.params?.lineKey]);
+  // The keyboard comes up for the line when it's opened, not again on each tab
+  useEffect(() => {
+    if (activeTab !== 0) setOpenedLine((line) => (line?.focus ? { ...line, focus: false } : line));
+  }, [activeTab]);
+
   // Track original state for Reset button
   const [originalState, setOriginalState] = useState<{
     songName: string;
@@ -812,6 +828,12 @@ export default function EditorScreen() {
           showLineNumbers={true}
           referenceLines={bilingualReferenceLines}
           onFocus={() => setIsEditingMetadata(false)}
+          revealLine={openedLine && openedLine.songId === editSongId ? {
+            index: openedLine.index,
+            key: `${openedLine.key}-${activeTab}`,
+            focus: openedLine.focus && activeTab === 0,
+          } : null}
+          onLeaveRevealedLine={() => setOpenedLine(null)}
         />
       </View>
     </View>

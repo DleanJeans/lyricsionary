@@ -40,6 +40,10 @@ interface LyricsEditorProps {
   showLineNumbers?: boolean;
   referenceLines?: string[];
   onFocus?: () => void;
+  /** A line opened from Learn: shown highlighted and scrolled to, and focused when asked, each time its key changes */
+  revealLine?: { index: number; key: string; focus?: boolean } | null;
+  /** Another line was focused, so the opened line no longer needs to stand out */
+  onLeaveRevealedLine?: () => void;
 }
 
 export default function LyricsEditor({
@@ -48,6 +52,8 @@ export default function LyricsEditor({
   showLineNumbers = true,
   referenceLines,
   onFocus,
+  revealLine,
+  onLeaveRevealedLine,
 }: LyricsEditorProps) {
   const lines = lyrics.split('\n');
   const hasReference = !!referenceLines && referenceLines.length > 0;
@@ -96,7 +102,34 @@ export default function LyricsEditor({
     setStructural(null);
   };
 
+  // Where each line sits in the list, to scroll the opened line into view
+  const scrollRef = useRef<ScrollView>(null);
+  const lineYRef = useRef<Record<number, number>>({});
+  const pendingRevealRef = useRef<{ index: number; focus?: boolean } | null>(null);
+  const revealPending = () => {
+    const pending = pendingRevealRef.current;
+    const y = pending ? lineYRef.current[pending.index] : undefined;
+    if (!pending || y === undefined) return;
+    pendingRevealRef.current = null;
+    // A line of context above it
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 40), animated: true });
+    if (pending.focus) inputRefs.current[pending.index]?.focus();
+  };
+  useEffect(() => {
+    if (!revealLine) return;
+    pendingRevealRef.current = { index: revealLine.index, focus: revealLine.focus };
+    // Once the lines have laid out, or right away when they already have
+    const timer = setTimeout(revealPending, 150);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealLine?.key]);
+  const onLineLayout = (i: number, y: number) => {
+    lineYRef.current[i] = y;
+    if (pendingRevealRef.current?.index === i) revealPending();
+  };
+
   const handleLineFocus = (i: number) => {
+    if (revealLine && revealLine.index !== i) onLeaveRevealedLine?.();
     setAnchor((prev) => (prev?.index === i ? prev : { index: i, from: lines[i] ?? '' }));
     setStructural((prev) => (prev?.index === i ? prev : null));
     onFocus?.();
@@ -241,7 +274,7 @@ export default function LyricsEditor({
   const renderLineNumber = (i: number) =>
     showLineNumbers && (
       <Pressable onPress={() => inputRefs.current[i]?.focus()}>
-        <Text style={[styles.lineNumber, syncTargetSet.has(i) && styles.lineNumberSynced]}>{i + 1}</Text>
+        <Text style={[styles.lineNumber, (syncTargetSet.has(i) || revealLine?.index === i) && styles.lineNumberSynced]}>{i + 1}</Text>
       </Pressable>
     );
 
@@ -287,9 +320,10 @@ export default function LyricsEditor({
   const renderLine = (i: number) => {
     const line = i < lines.length ? lines[i] : '';
     const lineKey = `${i}-${lineGenerations[i] || 0}`;
+    const revealed = revealLine?.index === i;
     if (!hasReference) {
       return (
-        <View key={lineKey} style={styles.lineSoloWrap}>
+        <View key={lineKey} style={[styles.lineSoloWrap, revealed && styles.revealedLine]} onLayout={(e) => onLineLayout(i, e.nativeEvent.layout.y)}>
           <View style={styles.lineSolo}>
             {renderLineNumber(i)}
             {renderLineInput(line, i)}
@@ -303,7 +337,7 @@ export default function LyricsEditor({
     const refLine = referenceLines![i] ?? '';
     const hasLyricsRow = i < lines.length;
     return (
-      <View key={lineKey} style={styles.linePair}>
+      <View key={lineKey} style={[styles.linePair, revealed && styles.revealedLine]} onLayout={(e) => onLineLayout(i, e.nativeEvent.layout.y)}>
         <View style={styles.line}>
             {renderLineNumber(i)}
             <Text style={styles.referenceLineText}>{refLine}</Text>
@@ -342,7 +376,7 @@ export default function LyricsEditor({
 
   return (
     <View style={styles.column}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {Array.from({ length: totalLines }, (_, i) => renderLine(i))}
       </ScrollView>
     </View>
@@ -359,6 +393,10 @@ const styles = StyleSheet.create({
   linePair: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+  },
+  // Tinted like the line Learn jumps to
+  revealedLine: {
+    backgroundColor: 'rgba(108, 92, 231, 0.18)',
   },
   lineSoloWrap: {
     borderBottomWidth: 1,

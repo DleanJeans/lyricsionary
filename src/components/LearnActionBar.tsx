@@ -25,6 +25,8 @@ interface LearnActionBarProps {
   onToggleLineByLine?: () => void;
   /** Line by line: which line shows, with arrows to step, in place of the word count */
   lineStep?: { index: number; count: number; onStep: (delta: 1 | -1) => void };
+  /** Line by line: opens the line shown in Editor, to fix its lyrics or translations */
+  onEditLine?: () => void;
   /** Quiz mode, for a song whose words are all saved: a quiz on each line in turn */
   quizMode?: boolean;
   onToggleQuizMode?: () => void;
@@ -109,6 +111,7 @@ export default function LearnActionBar({
   lineByLine = false,
   onToggleLineByLine,
   lineStep,
+  onEditLine,
   quizMode = false,
   onToggleQuizMode,
 }: LearnActionBarProps) {
@@ -207,6 +210,17 @@ export default function LearnActionBar({
       {lineStep && !fontOpen ? (
         // Line by line: the line stepper takes the word count's place, so it needs no row of its own
         <View style={styles.lineStep}>
+          {onEditLine && (
+            <TouchableOpacity
+              onPress={onEditLine}
+              hitSlop={8}
+              style={[styles.lineStepButton, styles.editLineButton]}
+              accessibilityRole="button"
+              accessibilityLabel="Edit this line in Editor"
+            >
+              <Ionicons name="create-outline" size={18} color={Colors.primaryLight} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() => lineStep.onStep(-1)}
             disabled={lineStep.index <= 0}
@@ -441,6 +455,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  // Set apart from the arrows, as it acts on the line rather than moving between lines
+  editLineButton: {
+    marginRight: 4,
   },
   lineStepButtonOff: {
     opacity: 0.35,

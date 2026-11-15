@@ -1678,6 +1678,7 @@ export default function LearnScreen() {
       lineByLine={lineByLine !== null}
       onToggleLineByLine={contentLines.length > 0 && !quizMode ? toggleLineByLine : undefined}
       lineStep={lineByLine !== null && lineStep >= 0 ? { index: lineStep, count: contentLines.length, onStep: stepLine } : undefined}
+      onEditLine={lineByLine !== null && !lyricQuiz ? () => navigation.navigate('Editor', { songId: song.id, lineIndex: lineByLine, lineKey: Date.now() }) : undefined}
       quizMode={!!quizMode}
       onToggleQuizMode={canQuizSong || quizMode ? toggleQuizMode : undefined}
       onShowAllLyrics={lyricQuiz ? () => navigation.setParams({ fillIn: false }) : undefined}

@@ -57,9 +57,9 @@ import {
 } from '../utils/splitPhrases';
 
 const PREVIEW_MAX_WORDS = 8;
-// Words looked up at once while preloading, and the pause after each so Wiktionary isn't hammered
-const PRELOAD_CONCURRENCY = 2;
-const PRELOAD_PAUSE_MS = 150;
+// Words looked up together in a batch while preloading, and the pause after each batch so Wiktionary isn't hammered
+const PRELOAD_BATCH = 5;
+const PRELOAD_PAUSE_MS = 250;
 const preloadKey = (language: string | undefined, word: string) => `${(language ?? '').toLowerCase()}|${word}`;
 
 export default function LearnScreen() {
@@ -663,6 +663,8 @@ export default function LearnScreen() {
   // IPA of unsaved words preloaded from Wiktionary as their lines scroll into view, by song language and word;
   // an empty string is a word with none. Read through a ref so a lookup only redraws the lines it belongs to
   const preloadedIpaRef = useRef(new Map<string, string>());
+  // Words waiting for or being looked up, which show the loading spinner a tapped word does
+  const preloadPendingRef = useRef(new Set<string>());
   const [preloadedLines, setPreloadedLines] = useState<Record<number, number>>({});
   const [visibleRange, setVisibleRange] = useState<{ from: number; to: number } | null>(null);
 
@@ -1034,8 +1036,10 @@ export default function LearnScreen() {
 
           // Japanese characters keep no empty space above them, so a line with nothing to show
           // above it stays as tight as the lyrics themselves
-          const isLoadingWord = !displayContent && !!cleanedWord &&
-            loadingWords.has(loadingWordKey(cleanedWord, lineIndex, occurrenceMap[i] || 1));
+          const isLoadingWord = !displayContent && !!cleanedWord && (
+            loadingWords.has(loadingWordKey(cleanedWord, lineIndex, occurrenceMap[i] || 1)) ||
+            (showIpa && !wordEntry && !isIgnored && !split && !isPhrase &&
+              preloadPendingRef.current.has(preloadKey(song?.originalLanguages?.[0], cleanedWord))));
           const hasAnnotation = !!shouldShowEmoji || !!displayContent || isLoadingWord;
           const keepAnnotationSpace = hasAnnotation || !isCjkWord(word);
 
@@ -1309,7 +1313,7 @@ export default function LearnScreen() {
 
   // Unsaved words in the lines on screen (and a screen's worth around them) have their IPA preloaded, so it shows
   // above them like a saved word's. Only the lookup is kept for the session: nothing is saved. Words are asked
-  // two at a time, nearest the screen first, each once; saved, ignored and number words are left out
+  // five at a time in reading order, each once; saved, ignored and number words are left out
   const preloadQueueRef = useRef<{ key: string; word: string; lines: number[] }[]>([]);
   const preloadActiveRef = useRef(0);
   const preloadRequestedRef = useRef(new Set<string>());
@@ -1328,9 +1332,8 @@ export default function LearnScreen() {
     if (!showIpa || !visibleRange || !preloadSongLanguage || !song) return;
     const language = preloadSongLanguage;
     const candidates = new Map<string, { key: string; word: string; lines: number[] }>();
-    const mid = (visibleRange.from + visibleRange.to) / 2;
-    const order = lines.map((_, i) => i).filter((i) => i >= visibleRange.from && i <= visibleRange.to)
-      .sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid));
+    // Top to bottom, and left to right within a line
+    const order = lines.map((_, i) => i).filter((i) => i >= visibleRange.from && i <= visibleRange.to);
     for (const lineIndex of order) {
       for (const token of splitLyricTokens(lines[lineIndex].original)) {
         if (!token.trim()) continue;
@@ -1347,8 +1350,18 @@ export default function LearnScreen() {
         } else candidates.set(key, { key, word, lines: [lineIndex] });
       }
     }
-    // What's on screen now goes first, ahead of words queued for lines scrolled away from
+    // What's on screen now goes first, ahead of words queued for lines scrolled away from, which stop loading
+    for (const old of preloadQueueRef.current) {
+      if (candidates.has(old.key)) continue;
+      preloadPendingRef.current.delete(old.key);
+      old.lines.forEach((i) => preloadDirtyRef.current.add(i));
+    }
     preloadQueueRef.current = [...candidates.values()];
+    for (const job of preloadQueueRef.current) {
+      if (preloadPendingRef.current.has(job.key)) continue;
+      preloadPendingRef.current.add(job.key);
+      job.lines.forEach((i) => preloadDirtyRef.current.add(i));
+    }
     const flush = () => {
       preloadFlushRef.current = null;
       if (!preloadAliveRef.current || preloadDirtyRef.current.size === 0) return;
@@ -1360,6 +1373,7 @@ export default function LearnScreen() {
         return next;
       });
     };
+    if (preloadDirtyRef.current.size && !preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, 50);
     const lookUp = async (word: string): Promise<string> => {
       const first = async (candidate: string) => (await getWiktionaryPronunciation(candidate, language))?.ipa.find(Boolean);
       let ipa = await first(word);
@@ -1378,27 +1392,33 @@ export default function LearnScreen() {
       }
       return ipa ?? '';
     };
+    // One batch of words at a time, in reading order; the next starts a moment after the last finishes
     const pump = () => {
-      while (preloadAliveRef.current && preloadActiveRef.current < PRELOAD_CONCURRENCY && preloadQueueRef.current.length) {
+      if (!preloadAliveRef.current || preloadActiveRef.current > 0) return;
+      const batch: { key: string; word: string; lines: number[] }[] = [];
+      while (batch.length < PRELOAD_BATCH && preloadQueueRef.current.length) {
         const job = preloadQueueRef.current.shift()!;
         if (preloadRequestedRef.current.has(job.key)) continue;
         preloadRequestedRef.current.add(job.key);
-        preloadActiveRef.current++;
-        lookUp(job.word).catch(() => '').then((ipa) => {
-          // A failed or empty lookup is left empty, and not asked again this session
-          preloadedIpaRef.current.set(job.key, ipa);
-          if (ipa) {
-            job.lines.forEach((i) => preloadDirtyRef.current.add(i));
-            // Lines drawn after the lookup started that hold the same word
-            lines.forEach((l, i) => { if (!job.lines.includes(i) && l.original.includes(job.word)) preloadDirtyRef.current.add(i); });
-            if (!preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, 400);
-          }
-          setTimeout(() => {
-            preloadActiveRef.current--;
-            pump();
-          }, PRELOAD_PAUSE_MS);
-        });
+        batch.push(job);
       }
+      if (!batch.length) return;
+      preloadActiveRef.current = 1;
+      Promise.all(batch.map((job) => lookUp(job.word).catch(() => '').then((ipa) => {
+        // A failed or empty lookup is left empty, and not asked again this session
+        preloadedIpaRef.current.set(job.key, ipa);
+        preloadPendingRef.current.delete(job.key);
+        // The spinner goes even when there's no IPA
+        job.lines.forEach((i) => preloadDirtyRef.current.add(i));
+        if (!ipa) return;
+        lines.forEach((l, i) => { if (!job.lines.includes(i) && l.original.includes(job.word)) preloadDirtyRef.current.add(i); });
+      }))).then(() => {
+        if (preloadDirtyRef.current.size && !preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, 100);
+        setTimeout(() => {
+          preloadActiveRef.current = 0;
+          pump();
+        }, PRELOAD_PAUSE_MS);
+      });
     };
     pump();
     // Unsaved words, ignored words and settings are read when the lines come into view or any of them changes

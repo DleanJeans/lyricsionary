@@ -1288,6 +1288,42 @@ export default function LearnScreen() {
     // Saved once per tap, with the line it was tapped in
   }, [selectedWord, selectedWordSaved, selectedWordIgnored, songLanguage, selectedLineIndex, selectedOccurrence]);
 
+  // A saved word tapped without any IPA, e.g. saved before IPA was fetched, gets it from Wiktionary
+  // (including IPA put together from its etymology or inflected form). Only an empty IPA is filled
+  const selectedWordEntry0 = selectedWord ? findSavedEntry(selectedWord) : null;
+  const savedNeedsIpa = !!selectedWordEntry0 && !selectedWordEntry0.pronunciation?.trim() &&
+    !selectedWordEntry0.contexts?.some((c) => c.ipa?.trim());
+  const savedNeedsIpaId = savedNeedsIpa ? selectedWordEntry0!.id : null;
+  useEffect(() => {
+    if (!savedNeedsIpaId || !selectedWord || !songLanguage) return;
+    let cancelled = false;
+    const entry = useStore.getState().words.find((w) => w.id === savedNeedsIpaId);
+    if (!entry) return;
+    const lookupLanguage = entry.language || songLanguage;
+    (async () => {
+      const first = async (word: string) => (await getWiktionaryPronunciation(word, lookupLanguage))?.ipa.find(Boolean);
+      let ipa = await first(entry.word);
+      // A German word with its ending dropped, e.g. kauf' for kaufe or kaufen
+      if (!ipa && lookupLanguage.toLowerCase().startsWith('german') && germanTrailingElisionRegex.test(entry.word)) {
+        const stem = entry.word.slice(0, -1);
+        for (const candidate of [`${stem}e`, `${stem}en`]) {
+          const full = await first(candidate);
+          const elided = full ? elidedIpa(full) : undefined;
+          if (elided) { ipa = elided; break; }
+        }
+      }
+      if (!ipa && entry.word !== entry.word.toLowerCase()) ipa = await first(entry.word.toLowerCase());
+      if (cancelled || !ipa) return;
+      // Re-read the word: it may have gained an IPA or changed while Wiktionary answered
+      const latest = useStore.getState().words.find((w) => w.id === savedNeedsIpaId);
+      if (!latest || latest.pronunciation?.trim() || latest.contexts?.some((c) => c.ipa?.trim())) return;
+      await useStore.getState().updateWordEntry(latest.id, { pronunciation: ipa });
+    })().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [savedNeedsIpaId, selectedWord, songLanguage]);
+
   // A phrase whose words sit apart, saved from Look Up with them together, e.g. "hört auf" for hört … auf,
   // takes it as a form, so the line shows it saved
   useEffect(() => {

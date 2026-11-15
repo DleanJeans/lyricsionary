@@ -7,7 +7,8 @@ import { pickReviewItems, rebuildReviewQuiz, REVIEW_SIZES, type ReviewItem } fro
 import type { Quiz } from '../utils/wordQuiz';
 import { formatIpa } from '../utils/ipaDisplay';
 import { lineTranslation } from '../utils/wordOfTheDay';
-import { Text, TextInput } from './Text';
+import { Text } from './Text';
+import { openWordLookup } from '../navigation/navigationRef';
 import PronunciationAudio from './PronunciationAudio';
 import WordQuiz from './WordQuiz';
 
@@ -123,6 +124,10 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
                 onAnswered={onAnswered}
                 isWide={isWide}
                 practice={isRetry}
+                onLookUp={(entry, line, songId, songName) => {
+                  onClose();
+                  openWordLookup({ word: entry.word, wordId: entry.id, songId, songName, lyricsLine: line ?? undefined, source: 'Words' });
+                }}
               />
             )}
           </ScrollView>
@@ -148,7 +153,9 @@ function ReviewQuestion({
   onAnswered,
   isWide,
   practice,
+  onLookUp,
 }: {
+  onLookUp: (entry: ReviewItem['entry'], line?: string | null, songId?: string, songName?: string) => void;
   item: ReviewItem;
   answered: boolean;
   onAnswered: (correct: boolean) => void;
@@ -223,78 +230,25 @@ function ReviewQuestion({
         practice={practice}
         typed={!!ipa && kind === 'lyric'}
       />
-      {answered && !practice && <EditMeaning entryId={entry.id} line={line} />}
-    </View>
-  );
-}
-
-/** Lets the saved meaning be fixed once the quiz is answered, e.g. one that's too obvious or wrongly capitalized */
-function EditMeaning({ entryId, line }: { entryId: string; line?: string | null }) {
-  const entry = useStore((s) => s.words.find((w) => w.id === entryId));
-  const updateWordEntry = useStore((s) => s.updateWordEntry);
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState('');
-  const contexts = entry?.contexts ?? [];
-  const index = Math.max(0, contexts.findIndex((c) => c.context?.trim() === line));
-  const saved = contexts[index]?.definition?.trim();
-  if (!entry || !saved) return null;
-  const save = () => {
-    const next = text.trim();
-    setEditing(false);
-    if (!next || next === saved) return;
-    void updateWordEntry(entryId, {
-      contexts: contexts.map((c, i) => (i === index ? { ...c, definition: next } : c)),
-    });
-  };
-  if (!editing) {
-    return (
-      <TouchableOpacity
-        onPress={() => {
-          setText(saved);
-          setEditing(true);
-        }}
-        hitSlop={8}
-        style={styles.editRow}
-        accessibilityRole="button"
-        accessibilityLabel="Edit saved meaning"
-      >
-        <Ionicons name="pencil" size={13} color={Colors.primary} />
-        <Text style={styles.editText}>Edit meaning: {saved}</Text>
-      </TouchableOpacity>
-    );
-  }
-  return (
-    <View style={styles.editRow}>
-      <TextInput
-        style={styles.editInput}
-        value={text}
-        onChangeText={setText}
-        onSubmitEditing={save}
-        autoFocus
-        autoCapitalize="none"
-        accessibilityLabel="Saved meaning"
-      />
-      <TouchableOpacity onPress={save} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save meaning">
-        <Text style={styles.editSave}>Save</Text>
-      </TouchableOpacity>
+      {answered && !practice && (
+        <TouchableOpacity
+          onPress={() => onLookUp(entry, line, context?.songId, context?.songName)}
+          hitSlop={8}
+          style={styles.lookUp}
+          accessibilityRole="button"
+          accessibilityLabel="Look up word"
+        >
+          <Ionicons name="search" size={14} color={Colors.primary} />
+          <Text style={styles.lookUpText}>Look up {entry.word} to edit it</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  editRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  editText: { fontSize: 13, color: Colors.primary, flexShrink: 1 },
-  editInput: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  editSave: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  lookUp: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  lookUpText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, Linking, Platform } from 'react-native';
-import { DefaultTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Updates from 'expo-updates';
@@ -16,6 +16,7 @@ import { useReviewReminderResponse, useReviewReminderSchedule, useStreakSaverSch
 import { completeSpotifySignIn, isSpotifyCallback, isSpotifyConnected } from './src/services/spotify';
 import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 import { useIsWide } from './src/hooks/useLayout';
+import { navigationRef } from './src/navigation/navigationRef';
 import ReviewSession from './src/components/ReviewSession';
 import { buildLaunchReview, type ReviewItem } from './src/utils/reviewQuiz';
 import { flushWrites } from './src/services/storageWrites';
@@ -42,7 +43,7 @@ const linking = {
 const navigationTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: Colors.background } };
 
 export default function App() {
-  const navigationRef = useNavigationContainerRef();
+  
   const [navigationReady, setNavigationReady] = useState(false);
   const [nowPlayingRequest, setNowPlayingRequest] = useState<NowPlayingRequest | null>(null);
   useNowPlayingResponse(setNowPlayingRequest);

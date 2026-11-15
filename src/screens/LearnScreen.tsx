@@ -1389,16 +1389,6 @@ export default function LearnScreen() {
     selectedLineTranslationCount > 0 &&
     (!blurTranslations || reverseLyrics || seenAllTranslations || seenTranslationLines.has(selectedLineIndex));
 
-  const revealSelectedTranslation = () => {
-    if (selectedLineIndex === null || !blurTranslations) return;
-    setUnblurredTranslations((prev) => {
-      const next = new Set(prev);
-      for (let t = 0; t < selectedLineTranslationCount; t++) next.add(`${selectedLineIndex}-${t}`);
-      return next;
-    });
-    setSeenTranslationLines((prev) => new Set(prev).add(selectedLineIndex));
-  };
-
   // The meaning asked about: the definition saved for this line, otherwise any saved definition
   const quizSense = (entry: WordEntry): { answer: string; partOfSpeech?: PartOfSpeech } | null => {
     const context = selectedLine !== null ? findWordContext(entry, selectedLine, selectedOccurrence) : null;
@@ -1423,9 +1413,8 @@ export default function LearnScreen() {
         build={() => buildMeaningQuiz({ entry, ...sense, songId: song.id, excludeWords: parts }, useStore.getState().words)}
         hidden={selectedTranslationSeen || lookedUpTap === selectedTap}
         alreadyAnswered={answeredMeanings.has(entry.word.toLowerCase())}
-        onAnswered={(correct) => {
+        onAnswered={() => {
           setAnsweredMeanings((prev) => new Set(prev).add(entry.word.toLowerCase()));
-          if (!correct) revealSelectedTranslation();
         }}
         onPendingChange={setMeaningQuizPending}
         onAnsweredChange={setMeaningQuizAnswered}

@@ -354,6 +354,7 @@ export default function LearnScreen() {
   // Starts at the tapped or found line, or the first
   // On while a word's card is open, unless 1 by 1 was on already
   const autoLineByLine = useRef(false);
+  const autoLineByLineSetting = useStore((s) => s.autoLineByLine);
   const toggleLineByLine = () => {
     autoLineByLine.current = false;
     if (lineByLine !== null) {
@@ -371,7 +372,7 @@ export default function LearnScreen() {
   }, [song?.id]);
   // A selected word shows only its line, so the lyrics can't be scrolled away from it by accident
   useEffect(() => {
-    if (selectedWord === null || selectedLineIndex === null || !contentLines.includes(selectedLineIndex)) return;
+    if (!autoLineByLineSetting || selectedWord === null || selectedLineIndex === null || !contentLines.includes(selectedLineIndex)) return;
     if (lineByLine === null) autoLineByLine.current = true;
     else if (!autoLineByLine.current) return;
     setLineByLine(selectedLineIndex);
@@ -421,6 +422,7 @@ export default function LearnScreen() {
   const toggleHighlightNewWords = useStore((s) => s.toggleHighlightNewWords);
   const quietKnownWords = useStore((s) => s.quietKnownWords);
   const toggleQuietKnownWords = useStore((s) => s.toggleQuietKnownWords);
+  const toggleAutoLineByLine = useStore((s) => s.toggleAutoLineByLine);
   const toggleWideWordSpacing = useStore((s) => s.toggleWideWordSpacing);
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
@@ -1856,6 +1858,8 @@ export default function LearnScreen() {
           onToggleHighlightNewWords={toggleHighlightNewWords}
           quietKnownWords={quietKnownWords}
           onToggleQuietKnownWords={toggleQuietKnownWords}
+          autoLineByLine={autoLineByLineSetting}
+          onToggleAutoLineByLine={toggleAutoLineByLine}
           showMasteryLevelColors={showMasteryLevelColors}
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
           previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}

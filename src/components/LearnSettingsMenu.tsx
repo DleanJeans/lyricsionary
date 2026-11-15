@@ -30,6 +30,8 @@ interface LearnSettingsMenuProps {
   onToggleHighlightNewWords: () => void;
   quietKnownWords: boolean;
   onToggleQuietKnownWords: () => void;
+  autoLineByLine: boolean;
+  onToggleAutoLineByLine: () => void;
   showMasteryLevelColors: boolean;
   onToggleShowMasteryLevelColors: () => void;
   showSections: boolean;
@@ -144,6 +146,8 @@ export default function LearnSettingsMenu({
   onToggleHighlightNewWords,
   quietKnownWords,
   onToggleQuietKnownWords,
+  autoLineByLine,
+  onToggleAutoLineByLine,
   showMasteryLevelColors,
   onToggleShowMasteryLevelColors,
   showSections,
@@ -292,6 +296,13 @@ export default function LearnSettingsMenu({
                 icon={<Ionicons name="checkmark-done-outline" size={18} color={chipIconColor(quietKnownWords)} />}
                 selected={quietKnownWords}
                 onPress={onToggleQuietKnownWords}
+              />
+              {/* A tapped word shows only its line (1 by 1) while its card is open */}
+              <Chip
+                label="Auto 1 by 1"
+                icon={<Ionicons name="reorder-two-outline" size={18} color={chipIconColor(autoLineByLine)} />}
+                selected={autoLineByLine}
+                onPress={onToggleAutoLineByLine}
               />
               {/* Debug: copy the detected sections to check them */}
               <TouchableOpacity

@@ -42,7 +42,7 @@ export function makeIgnoredWordChecker(ignoredWords: IgnoredWord[]): (word: stri
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
 // current song's selected translation languages.
-const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords', 'quietKnownWords'] as const;
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -76,6 +76,7 @@ interface AppState {
   highlightNewWords: boolean;
   /** Known words drop their IPA and emoji, which they no longer need */
   quietKnownWords: boolean;
+  autoLineByLine: boolean;
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
@@ -116,6 +117,7 @@ interface AppState {
   toggleWideWordSpacing: () => void;
   toggleHighlightNewWords: () => void;
   toggleQuietKnownWords: () => void;
+  toggleAutoLineByLine: () => void;
   loadLearnSettings: () => Promise<void>;
 
   // Word actions
@@ -203,6 +205,7 @@ export const useStore = create<AppState>((set, get) => ({
   wideWordSpacing: false,
   highlightNewWords: false,
   quietKnownWords: true,
+  autoLineByLine: true,
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
@@ -323,6 +326,8 @@ export const useStore = create<AppState>((set, get) => ({
   toggleWideWordSpacing: () => setLearnSettings({ wideWordSpacing: !get().wideWordSpacing }),
   toggleHighlightNewWords: () => setLearnSettings({ highlightNewWords: !get().highlightNewWords }),
   toggleQuietKnownWords: () => setLearnSettings({ quietKnownWords: !get().quietKnownWords }),
+
+  toggleAutoLineByLine: () => setLearnSettings({ autoLineByLine: !get().autoLineByLine }),
 
   loadLearnSettings: async () => {
     try {

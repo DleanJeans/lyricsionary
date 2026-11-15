@@ -250,6 +250,20 @@ export async function queueSpotifyTrack(uri: string): Promise<void> {
   await api(`/me/player/queue?uri=${encodeURIComponent(uri)}`, { method: 'POST' });
 }
 
+/** Jumps to the first track in the queue; Spotify has no way to reorder the queue */
+export async function skipSpotifyToNext(): Promise<void> {
+  await api('/me/player/next', { method: 'POST' });
+}
+
+/** Plays a queued track right away, leaving the rest of the queue as it is */
+export async function playQueuedTrackNow(uri: string): Promise<void> {
+  const body: any = await (await api('/me/player/queue')).json();
+  const first = body?.queue?.[0]?.uri;
+  // Next in line: skipping reaches it and nothing is dropped; otherwise starting it directly keeps the queue
+  if (first === uri) await skipSpotifyToNext();
+  else await playSpotifyTrack(uri);
+}
+
 /** Opens a track in the Spotify app, or on open.spotify.com without it */
 export async function openSpotifyTrack(uri: string): Promise<void> {
   const web = `https://open.spotify.com/track/${uri.split(':').pop()}`;

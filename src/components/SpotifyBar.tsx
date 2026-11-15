@@ -53,7 +53,9 @@ export default function SpotifyBar({
       : sync.timings === 'none'
         ? 'No synced lyrics found for this song'
         : !sync.isThisSong
-          ? 'Not playing on Spotify'
+          ? sync.queued
+            ? 'In your queue'
+            : 'Not playing on Spotify'
           : null);
   return (
     <View style={styles.container}>
@@ -69,13 +71,13 @@ export default function SpotifyBar({
           onPress={() => void sync.queueSong()}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel="Add this song to the Spotify queue"
+          accessibilityLabel={sync.queued ? 'Skip to this song in the Spotify queue' : 'Add this song to the Spotify queue'}
         >
-          <Ionicons name={sync.queued ? 'checkmark' : 'list'} size={14} color={sync.queued ? SPOTIFY_GREEN : Colors.text} />
-          <Text style={styles.queueText}>{sync.queued ? 'Queued' : 'Queue'}</Text>
+          <Ionicons name={sync.queued ? 'play-skip-forward' : 'list'} size={14} color={sync.queued ? SPOTIFY_GREEN : Colors.text} />
+          <Text style={styles.queueText}>{sync.queued ? 'Play now' : 'Queue'}</Text>
         </TouchableOpacity>
       )}
-      {!sync.isThisSong && (
+      {!sync.isThisSong && !sync.queued && (
         <TouchableOpacity
           style={[styles.fromLine, sync.startingSong && styles.controlDisabled]}
           onPress={() => void sync.playSong()}

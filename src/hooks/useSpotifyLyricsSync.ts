@@ -8,6 +8,7 @@ import {
   pauseSpotify,
   playSongOnSpotify,
   resumeSpotify,
+  playQueuedTrackNow,
   playSpotifyTrack,
   queueSpotifyTrack,
   seekSpotify,
@@ -51,7 +52,7 @@ export interface SpotifyLyricsSync {
   startingSong: boolean;
   /** Adds the song to the end of Spotify's queue */
   queueSong: () => Promise<void>;
-  /** The song was just queued, for a moment */
+  /** The song is in the queue, so queueSong plays it right away instead */
   queued: boolean;
 }
 
@@ -191,17 +192,28 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
     setTimeout(() => void refresh(), 300);
   };
 
-  const [queued, setQueued] = useState(false);
+  // The track queued from this song, so a second press plays it now
+  const [queuedUri, setQueuedUri] = useState<string | null>(null);
+  useEffect(() => setQueuedUri(null), [song?.id]);
+  useEffect(() => {
+    if (isThisSong) setQueuedUri(null);
+  }, [isThisSong]);
   const queueSong = async () => {
     if (!song) return;
     try {
-      await queueSpotifyTrack(await findSpotifyTrackUri(song.songName, song.artistName ?? ''));
+      if (queuedUri) {
+        await playQueuedTrackNow(queuedUri);
+        setQueuedUri(null);
+      } else {
+        const uri = await findSpotifyTrackUri(song.songName, song.artistName ?? '');
+        await queueSpotifyTrack(uri);
+        setQueuedUri(uri);
+      }
       setError(null);
-      setQueued(true);
-      setTimeout(() => setQueued(false), 2500);
     } catch (e) {
       setError(spotifyErrorMessage(e));
     }
+    setTimeout(() => void refresh(), 500);
   };
 
   const seekToLine = async (lineIndex: number) => {
@@ -259,6 +271,6 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
     playSong,
     startingSong,
     queueSong,
-    queued,
+    queued: !!queuedUri,
   };
 }

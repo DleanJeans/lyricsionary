@@ -54,20 +54,8 @@ export default function VersionInfo() {
     try {
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
-        Alert.alert(
-          'Update Available',
-          'A new update is available. The app will now download and restart.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Update',
-              onPress: async () => {
-                await Updates.fetchUpdateAsync();
-                await Updates.reloadAsync();
-              },
-            },
-          ]
-        );
+        await Updates.fetchUpdateAsync();
+        await Updates.reloadAsync();
       } else {
         Alert.alert(
           'No Updates',
@@ -78,7 +66,7 @@ export default function VersionInfo() {
     } catch (error) {
       Alert.alert(
         'Update Check Failed',
-        'Failed to check for updates. Please try again later.',
+        'Failed to update. Please try again later.',
         [{ text: 'OK' }]
       );
       console.error('Error checking for updates:', error);

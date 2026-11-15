@@ -1029,9 +1029,9 @@ export default function LearnScreen() {
                     {word.slice(compoundStart + cleanedWord.length)}
                   </>
                 ) : (
-                  // The punctuation around the word stays uncolored, e.g. the question mark in mich?
+                  // The punctuation around the word takes its color, e.g. the brackets in (Amore) and the question mark in mich?
                   <>
-                    {edgePunctuation.leading}
+                    {renderEdge(edgePunctuation.leading, wordColor, fontSize)}
                     <Text
                       style={[
                         {
@@ -1050,7 +1050,7 @@ export default function LearnScreen() {
                     >
                       {stressedWord}
                     </Text>
-                    {edgePunctuation.trailing}
+                    {renderEdge(edgePunctuation.trailing, wordColor, fontSize)}
                   </>
                 )}
               </Text>
@@ -1832,6 +1832,12 @@ export default function LearnScreen() {
 
 // A gap in the lyrics, the same length whatever the missing word, so it doesn't give it away
 const GAP = '_____';
+
+// Punctuation next to a word (brackets, quotes, commas, ?) is colored like the word
+function renderEdge(text: string, color: string, fontSize: number): React.ReactNode {
+  if (!text) return text;
+  return <Text style={{ color, fontSize, lineHeight: fontSize * 1.6 }}>{text}</Text>;
+}
 
 const styles = StyleSheet.create({
   sheetTopRow: {

@@ -32,12 +32,13 @@ export default function PronunciationAudio({ audio, compact = false, autoPlay = 
   }, [heldUrl]);
   const shortLabels = short ? shortAudioLabels(audio.map((item) => item.label)) : [];
 
-  // Once per recording list shown
+  // Once per first recording shown
+  const firstUrl = audio[0]?.url;
   useEffect(() => {
-    if (!autoPlay || !audio[0]) return;
-    setPlayingUrl(audio[0].url);
-    playerRef.current?.play(audio[0].url);
-  }, [autoPlay, audio]);
+    if (!autoPlay || !firstUrl) return;
+    setPlayingUrl(firstUrl);
+    playerRef.current?.play(firstUrl);
+  }, [autoPlay, firstUrl]);
 
   if (audio.length === 0) return null;
 

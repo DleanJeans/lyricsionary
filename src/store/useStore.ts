@@ -42,7 +42,7 @@ export function makeIgnoredWordChecker(ignoredWords: IgnoredWord[]): (word: stri
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
 // current song's selected translation languages.
-const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine'] as const;
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine', 'autoPlayAudio'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -77,6 +77,7 @@ interface AppState {
   /** Known words drop their IPA and emoji, which they no longer need */
   quietKnownWords: boolean;
   autoLineByLine: boolean;
+  autoPlayAudio: boolean;
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
@@ -118,6 +119,7 @@ interface AppState {
   toggleHighlightNewWords: () => void;
   toggleQuietKnownWords: () => void;
   toggleAutoLineByLine: () => void;
+  toggleAutoPlayAudio: () => void;
   loadLearnSettings: () => Promise<void>;
 
   // Word actions
@@ -206,6 +208,7 @@ export const useStore = create<AppState>((set, get) => ({
   highlightNewWords: false,
   quietKnownWords: true,
   autoLineByLine: true,
+  autoPlayAudio: false,
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
@@ -328,6 +331,7 @@ export const useStore = create<AppState>((set, get) => ({
   toggleQuietKnownWords: () => setLearnSettings({ quietKnownWords: !get().quietKnownWords }),
 
   toggleAutoLineByLine: () => setLearnSettings({ autoLineByLine: !get().autoLineByLine }),
+  toggleAutoPlayAudio: () => setLearnSettings({ autoPlayAudio: !get().autoPlayAudio }),
 
   loadLearnSettings: async () => {
     try {

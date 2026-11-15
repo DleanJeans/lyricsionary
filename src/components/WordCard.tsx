@@ -86,6 +86,7 @@ export default function WordCard({
 }: WordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  const autoPlayAudio = useStore((s) => s.autoPlayAudio) && showClose;
   // Learn: the level badge opens a level picker, to change it without opening the word
   const [choosingLevel, setChoosingLevel] = useState(false);
   useEffect(() => setChoosingLevel(false), [item.id]);
@@ -172,7 +173,7 @@ export default function WordCard({
                   {item.word}
                   {ipa ? <RNText style={styles.ipaInline}>{`  ${ipa}`}</RNText> : null}
                 </Text>
-                {inSheet && wiktionary.audio.length > 0 && <PronunciationAudio audio={wiktionary.audio} compact short />}
+                {inSheet && wiktionary.audio.length > 0 && <PronunciationAudio audio={wiktionary.audio} compact short autoPlay={autoPlayAudio} />}
                 {justSaved && <SavedPill />}
               </View>
               <View style={styles.headerTools}>
@@ -200,7 +201,7 @@ export default function WordCard({
             </View>
             {!inSheet && wiktionary.audio.length > 0 && (
               <View style={styles.ipaRow}>
-                <PronunciationAudio audio={wiktionary.audio} compact short />
+                <PronunciationAudio audio={wiktionary.audio} compact short autoPlay={autoPlayAudio} />
               </View>
             )}
             {choosingLevel && (

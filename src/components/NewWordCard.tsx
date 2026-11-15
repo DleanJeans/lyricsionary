@@ -54,6 +54,7 @@ export default function NewWordCard({
 }: NewWordCardProps) {
   const navigation = useNavigation<any>();
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  const autoPlayAudio = useStore((s) => s.autoPlayAudio);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   const language = originalLanguages?.[0] || 'unknown';
@@ -170,7 +171,7 @@ export default function NewWordCard({
       </View>
       {(wiktionary.audio.length > 0 || isFetching) && (
         <View style={styles.ipaRow}>
-          <PronunciationAudio audio={wiktionary.audio} compact short />
+          <PronunciationAudio audio={wiktionary.audio} compact short autoPlay={autoPlayAudio} />
           {isFetching && (
             <View style={styles.loadingRow} accessibilityLabel="Loading from Wiktionary">
               <ActivityIndicator size="small" color={Colors.textSecondary} />

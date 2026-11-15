@@ -423,6 +423,8 @@ export default function LearnScreen() {
   const quietKnownWords = useStore((s) => s.quietKnownWords);
   const toggleQuietKnownWords = useStore((s) => s.toggleQuietKnownWords);
   const toggleAutoLineByLine = useStore((s) => s.toggleAutoLineByLine);
+  const autoPlayAudio = useStore((s) => s.autoPlayAudio);
+  const toggleAutoPlayAudio = useStore((s) => s.toggleAutoPlayAudio);
   const toggleWideWordSpacing = useStore((s) => s.toggleWideWordSpacing);
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
   const spotify = useSpotifyLyricsSync(song, originalLines, spotifyConnected);
@@ -1850,6 +1852,8 @@ export default function LearnScreen() {
           onToggleQuietKnownWords={toggleQuietKnownWords}
           autoLineByLine={autoLineByLineSetting}
           onToggleAutoLineByLine={toggleAutoLineByLine}
+          autoPlayAudio={autoPlayAudio}
+          onToggleAutoPlayAudio={toggleAutoPlayAudio}
           showMasteryLevelColors={showMasteryLevelColors}
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
           previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}

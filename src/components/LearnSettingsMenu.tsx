@@ -32,6 +32,8 @@ interface LearnSettingsMenuProps {
   onToggleQuietKnownWords: () => void;
   autoLineByLine: boolean;
   onToggleAutoLineByLine: () => void;
+  autoPlayAudio: boolean;
+  onToggleAutoPlayAudio: () => void;
   showMasteryLevelColors: boolean;
   onToggleShowMasteryLevelColors: () => void;
   showSections: boolean;
@@ -148,6 +150,8 @@ export default function LearnSettingsMenu({
   onToggleQuietKnownWords,
   autoLineByLine,
   onToggleAutoLineByLine,
+  autoPlayAudio,
+  onToggleAutoPlayAudio,
   showMasteryLevelColors,
   onToggleShowMasteryLevelColors,
   showSections,
@@ -303,6 +307,13 @@ export default function LearnSettingsMenu({
                 icon={<Ionicons name="reorder-two-outline" size={18} color={chipIconColor(autoLineByLine)} />}
                 selected={autoLineByLine}
                 onPress={onToggleAutoLineByLine}
+              />
+              {/* A tapped word plays its pronunciation when its card opens */}
+              <Chip
+                label="Auto-play audio"
+                icon={<Ionicons name="volume-medium-outline" size={18} color={chipIconColor(autoPlayAudio)} />}
+                selected={autoPlayAudio}
+                onPress={onToggleAutoPlayAudio}
               />
               {/* Debug: copy the detected sections to check them */}
               <TouchableOpacity

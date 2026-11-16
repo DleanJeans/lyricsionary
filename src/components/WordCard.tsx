@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     columnGap: 8,
-    rowGap: 2,
+    rowGap: 8,
   },
   levelPicker: {
     marginTop: 10,

@@ -1205,13 +1205,30 @@ export default function LearnScreen() {
     // e.g. 너 for 너를, or a Spanish or Portuguese verb without its pronouns, e.g. amar for amarte
     const baseWord = (isKoreanSong ? getKoreanStem(selectedWord, { loose: true }) : null) ??
       getRomanceBaseWord(selectedWord, song.originalLanguages, { loose: true });
-    const lookUp = (word: string) =>
-      Promise.all([getWiktionaryDefinitions(word, songLanguage), getWiktionaryPronunciation(word, songLanguage)])
+    // A song in several languages, e.g. German then French, has each word looked up in the first language that
+    // has it, and the word is saved in that language
+    let wordLanguage = songLanguage;
+    const lookUp = (word: string, language = wordLanguage) =>
+      Promise.all([getWiktionaryDefinitions(word, language), getWiktionaryPronunciation(word, language)])
         .then(([definitions, pronunciation]) => ({ word, definitions, pronunciation }));
+    const lookUpInSongLanguages = async (word: string) => {
+      const languages = song.originalLanguages?.length ? song.originalLanguages : [songLanguage];
+      let first: Awaited<ReturnType<typeof lookUp>> | undefined;
+      for (const language of languages) {
+        const found = await lookUp(word, language);
+        first ??= found;
+        if (found.definitions?.length || found.pronunciation?.ipa.length) {
+          wordLanguage = language;
+          return found;
+        }
+        if (job.cancelled) break;
+      }
+      return first!;
+    };
     // A phrase whose words sit apart isn't a page on Wiktionary, e.g. hört … auf
     const firstLookUp = isSplitPhrase(selectedWord)
       ? Promise.resolve({ word: selectedWord, definitions: null, pronunciation: null })
-      : lookUp(selectedWord);
+      : lookUpInSongLanguages(selectedWord);
     // The phrase as Wiktionary has it, which it's saved as, with the phrase as written as a form
     let phraseForm: string | undefined;
     // A capitalized word opening a line is capitalized by the line, e.g. Dann, and one Wiktionary has
@@ -1229,7 +1246,7 @@ export default function LearnScreen() {
       }
       // A German word with its ending dropped, e.g. kauf' for kaufe or kaufen, or find for finde, is saved
       // as written with the meaning of its full form and that form's IPA without the ending
-      if (isGermanSong && !found.definitions?.length) {
+      if (isGermanLanguage([wordLanguage]) && !found.definitions?.length) {
         for (const candidate of germanFullForms(selectedWord)) {
           if (job.cancelled) break;
           const full = await lookUp(candidate);
@@ -1247,7 +1264,7 @@ export default function LearnScreen() {
       // A phrase whose words sit apart, or a German verb with its particle, as Wiktionary has it:
       // aufhören for hört … auf or "hört auf", "turn off" for turn … off
       if (!found.definitions?.length && /\s/.test(selectedWord)) {
-        for (const candidate of await phraseLookupWords(selectedWord, songLanguage, isGermanSong)) {
+        for (const candidate of await phraseLookupWords(selectedWord, wordLanguage, isGermanLanguage([wordLanguage]))) {
           if (job.cancelled) break;
           const phraseFound = await lookUp(candidate);
           if (phraseFound.definitions?.length) {
@@ -1265,7 +1282,7 @@ export default function LearnScreen() {
       // Saved or ignored from elsewhere while it loaded in the background
       if (!stillSelected()) {
         const { words: savedWords, ignoredWords: ignored } = useStore.getState();
-        if (findSavedWord(savedWords, savedWord, songLanguage) || isWordIgnored(ignored, job.word, songLanguage)) return;
+        if (findSavedWord(savedWords, savedWord, wordLanguage) || isWordIgnored(ignored, job.word, songLanguage)) return;
       }
       // A phrase of two or more words, e.g. "give up", is saved only when Wiktionary has it; otherwise
       // its card stays unsaved for the NEW badge to save it
@@ -1285,17 +1302,17 @@ export default function LearnScreen() {
       if (stillSelected()) autoSavedWordRef.current = savedWord;
       const { updateWordEntry } = useStore.getState();
       const addForm = async () => {
-        const entry = phraseForm && findSavedWord(useStore.getState().words, savedWord, songLanguage);
+        const entry = phraseForm && findSavedWord(useStore.getState().words, savedWord, wordLanguage);
         if (entry && phraseForm) await updateWordEntry(entry.id, { forms: [...(entry.forms ?? []), phraseForm] });
       };
       // A phrase's dictionary form saved before, e.g. aufhören, takes it as another form, keeping its level
-      const saved = phraseForm ? findSavedWord(useStore.getState().words, savedWord, songLanguage) : undefined;
+      const saved = phraseForm ? findSavedWord(useStore.getState().words, savedWord, wordLanguage) : undefined;
       if (saved) {
         autoSavedWordRef.current = null;
         void updateWordEntry(saved.id, { contexts: [...saved.contexts, context] }).then(addForm).then(() => stillSelected() && setJustSavedWord(savedWord));
         return;
       }
-      void addOrUpdateWord(savedWord, songLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio)
+      void addOrUpdateWord(savedWord, wordLanguage, pronunciation?.ipa[0], [context], 'Seen', pronunciation?.audio)
         .then(addForm)
         .then(() => stillSelected() && setJustSavedWord(savedWord));
     }, doneLoading);
@@ -1391,27 +1408,44 @@ export default function LearnScreen() {
       });
     };
     if (preloadDirtyRef.current.size && !preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, 50);
-    const lookUp = async (word: string, translation?: string): Promise<PreloadedWord> => {
-      const first = async (candidate: string) => (await getWiktionaryPronunciation(candidate, language))?.ipa.find(Boolean);
-      let ipa = await first(word);
-      if (!ipa && isGermanSong) {
+    // A song in several languages, e.g. German then French, has each word looked up in the first language that has it
+    const languages = song.originalLanguages?.length ? song.originalLanguages : [language];
+    const lookUpIn = async (word: string, wordLanguage: string, translation: string | undefined, fallbacks: boolean): Promise<PreloadedWord> => {
+      const first = async (candidate: string) => (await getWiktionaryPronunciation(candidate, wordLanguage))?.ipa.find(Boolean);
+      const [direct, definitions] = await Promise.all([
+        first(word),
+        getWiktionaryDefinitions(word, wordLanguage).catch(() => null),
+      ]);
+      let ipa = direct;
+      // The slower guesses only when no language had the word as written
+      if (fallbacks && !ipa && isGermanLanguage([wordLanguage])) {
         for (const full of germanFullForms(word)) {
           const fullIpa = await first(full);
           const elided = fullIpa ? clippedFormIpa(word, fullIpa) : undefined;
           if (elided) { ipa = elided; break; }
         }
       }
-      if (!ipa) {
+      if (fallbacks && !ipa) {
         // A Korean word without its particles or a Spanish or Portuguese verb without its pronouns, as a tapped one
-        const base = (isKoreanSong ? getKoreanStem(word, { loose: true }) : null) ??
-          getRomanceBaseWord(word, song.originalLanguages, { loose: true });
+        const base = (isKoreanLanguage([wordLanguage]) ? getKoreanStem(word, { loose: true }) : null) ??
+          getRomanceBaseWord(word, [wordLanguage], { loose: true });
         if (base && base !== word) ipa = await first(base);
       }
       // The meaning that appears in the line's translation, else the first
-      const definitions = await getWiktionaryDefinitions(word, language).catch(() => null);
       const definition = definitions?.length ? pickDefinition(definitions, translation) ?? definitions[0].text : undefined;
       const partOfSpeech = definition ? normalizePartOfSpeech(definitions!.find((d) => d.text === definition)?.partOfSpeech) : undefined;
-      return { ipa: ipa ?? '', definition, partOfSpeech };
+      return { ipa: ipa ?? '', definition, partOfSpeech, language: wordLanguage };
+    };
+    const lookUp = async (word: string, translation?: string): Promise<PreloadedWord> => {
+      let firstFound: PreloadedWord | undefined;
+      for (const fallbacks of [false, true]) {
+        for (const wordLanguage of languages) {
+          const found = await lookUpIn(word, wordLanguage, translation, fallbacks);
+          firstFound ??= found;
+          if (found.ipa || found.definition) return found;
+        }
+      }
+      return firstFound ?? { ipa: '' };
     };
     // One batch of words at a time, in reading order; the next starts a moment after the last finishes
     const pump = () => {
@@ -1425,9 +1459,9 @@ export default function LearnScreen() {
       }
       if (!batch.length) return;
       preloadActiveRef.current = 1;
-      Promise.all(batch.map((job) => lookUp(job.word, job.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech }) => {
+      Promise.all(batch.map((job) => lookUp(job.word, job.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech, language }) => {
         // A failed or empty lookup is left empty, and not asked again this session
-        setPreloadedWord(job.key, { ipa, definition, partOfSpeech });
+        setPreloadedWord(job.key, { ipa, definition, partOfSpeech, language });
         preloadPendingRef.current.delete(job.key);
         // The spinner goes even when there's no IPA
         job.lines.forEach((i) => preloadDirtyRef.current.add(i));

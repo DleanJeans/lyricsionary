@@ -16,6 +16,8 @@ export interface PreloadedWord {
   /** The meaning matching the line's translation where it was found, else the first meaning */
   definition?: string;
   partOfSpeech?: string;
+  /** The song language the word was found in, e.g. French in a German and French song */
+  language?: string;
 }
 const cache = new Map<string, PreloadedWord>();
 let loading: Promise<void> | undefined;
@@ -32,7 +34,7 @@ export function loadPreloadedIpa(): Promise<void> {
       for (const entry of saved) {
         const value = Array.isArray(entry) ? (entry[1] as Partial<PreloadedWord> | undefined) : undefined;
         if (typeof entry?.[0] === 'string' && typeof value?.ipa === 'string' && !cache.has(entry[0])) {
-          cache.set(entry[0], { ipa: value.ipa, definition: value.definition, partOfSpeech: value.partOfSpeech });
+          cache.set(entry[0], { ipa: value.ipa, definition: value.definition, partOfSpeech: value.partOfSpeech, language: value.language });
         }
       }
     })

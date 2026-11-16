@@ -52,6 +52,7 @@ import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
 import { findSavedWord, spellingsOf } from '../utils/wordForms';
 import { firstIpa } from '../utils/ipaList';
+import { hasPreloadedIpa, loadPreloadedIpa, preloadedIpaKey as preloadKey, getPreloadedIpa, setPreloadedWord, type PreloadedWord } from '../utils/preloadedIpa';
 import {
   findSplitPhrases, germanSeparableVerb, isSplitPhrase, joinLineWords, phraseLookupWords, phraseOccurrenceAt, splitPhraseParts,
 } from '../utils/splitPhrases';
@@ -60,7 +61,6 @@ const PREVIEW_MAX_WORDS = 8;
 // Words looked up together in a batch while preloading, and the pause after each batch so Wiktionary isn't hammered
 const PRELOAD_BATCH = 5;
 const PRELOAD_PAUSE_MS = 250;
-const preloadKey = (language: string | undefined, word: string) => `${(language ?? '').toLowerCase()}|${word}`;
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -660,9 +660,8 @@ export default function LearnScreen() {
     }
   };
 
-  // IPA of unsaved words preloaded from Wiktionary as their lines scroll into view, by song language and word;
-  // an empty string is a word with none. Read through a ref so a lookup only redraws the lines it belongs to
-  const preloadedIpaRef = useRef(new Map<string, string>());
+  // IPA of unsaved words preloaded from Wiktionary as their lines scroll into view is cached (utils/preloadedIpa),
+  // also across restarts. Read from there, so a lookup only redraws the lines it belongs to
   // Words waiting for or being looked up, which show the loading spinner a tapped word does
   const preloadPendingRef = useRef(new Set<string>());
   const [preloadedLines, setPreloadedLines] = useState<Record<number, number>>({});
@@ -943,7 +942,7 @@ export default function LearnScreen() {
 
           // A new word shows the IPA preloaded for it, in white like any word not saved, without saving it
           if (showIpa && !displayContent && !wordEntry && !isIgnored && !split && !isPhrase && cleanedWord) {
-            const preloaded = preloadedIpaRef.current.get(preloadKey(song?.originalLanguages?.[0], cleanedWord));
+            const preloaded = getPreloadedIpa(song?.originalLanguages?.[0], cleanedWord);
             if (preloaded) displayContent = formatIpa(preloaded, showIpaBrackets);
           }
 
@@ -1314,7 +1313,7 @@ export default function LearnScreen() {
   // Unsaved words in the lines on screen (and a screen's worth around them) have their IPA preloaded, so it shows
   // above them like a saved word's. Only the lookup is kept for the session: nothing is saved. Words are asked
   // five at a time in reading order, each once; saved, ignored and number words are left out
-  const preloadQueueRef = useRef<{ key: string; word: string; lines: number[] }[]>([]);
+  const preloadQueueRef = useRef<{ key: string; word: string; lines: number[]; translation?: string }[]>([]);
   const preloadActiveRef = useRef(0);
   const preloadRequestedRef = useRef(new Set<string>());
   const preloadDirtyRef = useRef(new Set<number>());
@@ -1328,10 +1327,21 @@ export default function LearnScreen() {
     };
   }, []);
   const preloadSongLanguage = song?.originalLanguages?.[0];
+  // Words looked up in earlier sessions show at once, and aren't asked again
+  const [preloadCacheLoaded, setPreloadCacheLoaded] = useState(false);
   useEffect(() => {
-    if (!showIpa || !visibleRange || !preloadSongLanguage || !song) return;
+    void loadPreloadedIpa().then(() => {
+      if (!preloadAliveRef.current) return;
+      setPreloadCacheLoaded(true);
+      // Lines drawn before the cache was read
+      setPreloadedLines((prev) => Object.fromEntries(Object.keys(prev).concat(lines.map((_, i) => String(i))).map((i) => [i, (prev[+i] ?? 0) + 1])));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!preloadCacheLoaded || !showIpa || !visibleRange || !preloadSongLanguage || !song) return;
     const language = preloadSongLanguage;
-    const candidates = new Map<string, { key: string; word: string; lines: number[] }>();
+    const candidates = new Map<string, { key: string; word: string; lines: number[]; translation?: string }>();
     // Top to bottom, and left to right within a line
     const order = lines.map((_, i) => i).filter((i) => i >= visibleRange.from && i <= visibleRange.to);
     for (const lineIndex of order) {
@@ -1343,11 +1353,18 @@ export default function LearnScreen() {
         if ((hasFrenchLanguage || hasItalianLanguage) && hasContractedPrefix(word)) continue;
         if (findSavedEntry(word) || isIgnoredWord(word, language)) continue;
         const key = preloadKey(language, word);
-        if (preloadedIpaRef.current.has(key) || preloadRequestedRef.current.has(key)) continue;
+        if (hasPreloadedIpa(key) || preloadRequestedRef.current.has(key)) continue;
         const known = candidates.get(key);
         if (known) {
           if (!known.lines.includes(lineIndex)) known.lines.push(lineIndex);
-        } else candidates.set(key, { key, word, lines: [lineIndex] });
+        } else {
+          // The line's translation, to pick the meaning it's about
+          const translation = lines[lineIndex].translations
+            .filter((tl) => !isRomanized(tl.language) && tl.text)
+            .map((tl) => tl.text)
+            .join(' / ');
+          candidates.set(key, { key, word, lines: [lineIndex], translation: translation || undefined });
+        }
       }
     }
     // What's on screen now goes first, ahead of words queued for lines scrolled away from, which stop loading
@@ -1374,7 +1391,7 @@ export default function LearnScreen() {
       });
     };
     if (preloadDirtyRef.current.size && !preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, 50);
-    const lookUp = async (word: string): Promise<string> => {
+    const lookUp = async (word: string, translation?: string): Promise<PreloadedWord> => {
       const first = async (candidate: string) => (await getWiktionaryPronunciation(candidate, language))?.ipa.find(Boolean);
       let ipa = await first(word);
       if (!ipa && isGermanSong) {
@@ -1390,12 +1407,16 @@ export default function LearnScreen() {
           getRomanceBaseWord(word, song.originalLanguages, { loose: true });
         if (base && base !== word) ipa = await first(base);
       }
-      return ipa ?? '';
+      // The meaning that appears in the line's translation, else the first
+      const definitions = await getWiktionaryDefinitions(word, language).catch(() => null);
+      const definition = definitions?.length ? pickDefinition(definitions, translation) ?? definitions[0].text : undefined;
+      const partOfSpeech = definition ? normalizePartOfSpeech(definitions!.find((d) => d.text === definition)?.partOfSpeech) : undefined;
+      return { ipa: ipa ?? '', definition, partOfSpeech };
     };
     // One batch of words at a time, in reading order; the next starts a moment after the last finishes
     const pump = () => {
       if (!preloadAliveRef.current || preloadActiveRef.current > 0) return;
-      const batch: { key: string; word: string; lines: number[] }[] = [];
+      const batch: { key: string; word: string; lines: number[]; translation?: string }[] = [];
       while (batch.length < PRELOAD_BATCH && preloadQueueRef.current.length) {
         const job = preloadQueueRef.current.shift()!;
         if (preloadRequestedRef.current.has(job.key)) continue;
@@ -1404,9 +1425,9 @@ export default function LearnScreen() {
       }
       if (!batch.length) return;
       preloadActiveRef.current = 1;
-      Promise.all(batch.map((job) => lookUp(job.word).catch(() => '').then((ipa) => {
+      Promise.all(batch.map((job) => lookUp(job.word, job.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech }) => {
         // A failed or empty lookup is left empty, and not asked again this session
-        preloadedIpaRef.current.set(job.key, ipa);
+        setPreloadedWord(job.key, { ipa, definition, partOfSpeech });
         preloadPendingRef.current.delete(job.key);
         // The spinner goes even when there's no IPA
         job.lines.forEach((i) => preloadDirtyRef.current.add(i));
@@ -1423,7 +1444,7 @@ export default function LearnScreen() {
     pump();
     // Unsaved words, ignored words and settings are read when the lines come into view or any of them changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleRange, lines, showIpa, preloadSongLanguage, ignoredWords, words]);
+  }, [preloadCacheLoaded, visibleRange, lines, showIpa, preloadSongLanguage, ignoredWords, words]);
 
   // A saved word tapped without any IPA, e.g. saved before IPA was fetched, gets it from Wiktionary
   // (including IPA put together from its etymology or inflected form). Only an empty IPA is filled

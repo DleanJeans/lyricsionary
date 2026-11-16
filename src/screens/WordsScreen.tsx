@@ -31,6 +31,8 @@ import SongFilter from '../components/SongFilter';
 import { buildReviewItems, canReview, dueWords, ReviewItem } from '../utils/reviewQuiz';
 import { compareMostMissed, isTricky, nextDueAt } from '../utils/wordQuiz';
 import { useStoreWhileShown } from '../hooks/useStoreWhileShown';
+import { getPreloadedIpa, getPreloadedWord, loadPreloadedIpa } from '../utils/preloadedIpa';
+import { formatIpa } from '../utils/ipaDisplay';
 
 interface PendingDeletion {
   id: string;
@@ -62,6 +64,19 @@ export default function WordsScreen() {
   const [showFrequency, setShowFrequency] = usePersistedState('@lyricsionary_words_top_view', false, isBoolean);
   // Top view: only words not saved yet, the ones left to learn
   const [hideSavedInTop, setHideSavedInTop] = usePersistedState('@lyricsionary_words_top_unsaved', false, isBoolean);
+  // Unsaved view: words of the lyrics not saved yet whose IPA Learn preloaded, most frequent first
+  const [showUnsaved, setShowUnsaved] = usePersistedState('@lyricsionary_words_unsaved_view', false, isBoolean);
+  const showIpaBrackets = useStore((s) => s.showIpaBrackets);
+  const [ipaCacheLoaded, setIpaCacheLoaded] = useState(false);
+  const [, setCacheTick] = useState(0);
+  React.useEffect(() => {
+    void loadPreloadedIpa().then(() => setIpaCacheLoaded(true));
+    // Words Learn preloaded meanwhile are listed when coming back to this screen
+    return navigation.addListener('focus', () => setCacheTick((n) => n + 1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Top and Unsaved both list the lyrics' words by how often they come up
+  const listsFrequencies = showFrequency || showUnsaved;
   const isWide = useIsWide();
   useBackToQuit();
   const numColumns = isWide ? 2 : 1;
@@ -97,21 +112,21 @@ export default function WordsScreen() {
 
   // Words in saved lyrics sorted by occurrences, excluding ignored words
   const wordFrequencies = React.useMemo(
-    () => (showFrequency ? countWordOccurrences(songs, makeIgnoredWordChecker(ignoredWords)) : []),
-    [showFrequency, songs, ignoredWords],
+    () => (listsFrequencies ? countWordOccurrences(songs, makeIgnoredWordChecker(ignoredWords)) : []),
+    [listsFrequencies, songs, ignoredWords],
   );
 
   // Get all unique languages from words and count occurrences
   const { availableLanguages, languageCounts } = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    (showFrequency ? wordFrequencies : words).forEach((word) => {
+    (listsFrequencies ? wordFrequencies : words).forEach((word) => {
       counts[word.language] = (counts[word.language] ?? 0) + 1;
     });
     return {
       availableLanguages: Object.keys(counts).sort(),
       languageCounts: counts,
     };
-  }, [words, wordFrequencies, showFrequency]);
+  }, [words, wordFrequencies, listsFrequencies]);
 
   // Saved words by language and lowercase word, for coloring the Top list (the first one wins, like find);
   // keyed by languageKey so a word saved under "French" colors a song's "fr" word. A form merged into
@@ -130,8 +145,10 @@ export default function WordsScreen() {
     (w) => selectedLanguages.length === 0 || selectedLanguages.includes(w.language),
   );
   const unsavedFrequencyCount = languageFrequencies.filter((w) => !isSavedFrequency(w)).length;
-  const searchedFrequencies = languageFrequencies.filter(
-    (w) => (!hideSavedInTop || !isSavedFrequency(w)) && matchesSearch(w.word, searchQuery),
+  const searchedFrequencies = languageFrequencies.filter((w) =>
+    (showUnsaved
+      ? !isSavedFrequency(w) && !!getPreloadedWord(w.language, w.word)
+      : !hideSavedInTop || !isSavedFrequency(w)) && matchesSearch(w.word, searchQuery),
   );
 
 
@@ -157,12 +174,24 @@ export default function WordsScreen() {
         accessibilityHint="Long press to ignore"
       >
         <Text style={styles.frequencyRank}>{index + 1}</Text>
-        <Text
-          style={[styles.frequencyWord, savedWord?.masteryLevel && { color: getMasteryLevelColor(savedWord.masteryLevel) }]}
-          numberOfLines={1}
-        >
-          {item.word}
-        </Text>
+        <View style={styles.frequencyWordColumn}>
+          <Text
+            style={[styles.frequencyWord, savedWord?.masteryLevel && { color: getMasteryLevelColor(savedWord.masteryLevel) }]}
+            numberOfLines={1}
+          >
+            {item.word}
+          </Text>
+          {!savedWord && !!getPreloadedWord(item.language, item.word)?.definition && (
+            <Text style={styles.frequencyMeaning} numberOfLines={1}>
+              {getPreloadedWord(item.language, item.word)!.definition}
+            </Text>
+          )}
+        </View>
+        {!savedWord && !!getPreloadedIpa(item.language, item.word) && (
+          <Text style={styles.frequencyIpa} numberOfLines={1}>
+            {formatIpa(getPreloadedIpa(item.language, item.word)!, showIpaBrackets)}
+          </Text>
+        )}
         <Text style={styles.frequencySongs}>
           {item.songCount} {item.songCount === 1 ? 'song' : 'songs'}
         </Text>
@@ -244,7 +273,7 @@ export default function WordsScreen() {
   // A searched word that isn't saved can be looked up on Wiktionary, e.g. one seen outside any song, in
   // the language filtered on, else the one most words are saved in (Look Up can change it)
   const typedWord = searchQuery.trim();
-  const lookUpWord = !showFrequency && showSearch && typedWord && !/\s{2,}/.test(typedWord) &&
+  const lookUpWord = !listsFrequencies && showSearch && typedWord && !/\s{2,}/.test(typedWord) &&
     !words.some((w) => w.word.toLowerCase() === typedWord.toLowerCase() ||
       (w.forms ?? []).some((form) => form.toLowerCase() === typedWord.toLowerCase()))
     ? typedWord
@@ -390,26 +419,28 @@ export default function WordsScreen() {
     />
   );
 
-  const selectView = (frequency: boolean) => {
-    if (frequency === showFrequency) return;
-    setShowFrequency(frequency);
+  const selectView = (view: 'saved' | 'top' | 'unsaved') => {
+    if (view === (showUnsaved ? 'unsaved' : showFrequency ? 'top' : 'saved')) return;
+    setShowFrequency(view === 'top');
+    setShowUnsaved(view === 'unsaved');
     setSelectedLanguages([]);
   };
 
   const viewSwitch = (
     <View style={styles.viewSwitch} accessibilityRole="tablist">
       {[
-        { label: 'Saved', frequency: false },
-        { label: 'Top', frequency: true },
-      ].map(({ label, frequency }) => {
-        const selected = showFrequency === frequency;
+        { label: 'Saved', view: 'saved' as const },
+        { label: 'Top', view: 'top' as const },
+        { label: 'Unsaved', view: 'unsaved' as const },
+      ].map(({ label, view }) => {
+        const selected = (showUnsaved ? 'unsaved' : showFrequency ? 'top' : 'saved') === view;
         return (
           <TouchableOpacity
             key={label}
             style={[styles.viewSwitchOption, selected && styles.viewSwitchOptionSelected]}
-            onPress={() => selectView(frequency)}
+            onPress={() => selectView(view)}
             accessibilityRole="tab"
-            accessibilityLabel={frequency ? 'Top words' : 'Saved words'}
+            accessibilityLabel={`${label} words`}
             accessibilityState={{ selected }}
           >
             <Text style={[styles.viewSwitchLabel, selected && styles.viewSwitchLabelSelected]}>{label}</Text>
@@ -445,16 +476,16 @@ export default function WordsScreen() {
         </TouchableOpacity>
       )}
 
-      {showFrequency ? (
+      {listsFrequencies ? (
         <View style={styles.topFilters}>
-          <FilterChip
+          {showFrequency && <FilterChip
             icon={<Ionicons name="bookmark-outline" size={16} color={hideSavedInTop ? Colors.white : Colors.textSecondary} />}
             label="Not saved"
             count={unsavedFrequencyCount}
             selected={hideSavedInTop}
             onPress={() => setHideSavedInTop(!hideSavedInTop)}
             accessibilityLabel="Only words not saved yet"
-          />
+          />}
           <Text style={styles.topHint}>Long press a word to ignore it</Text>
         </View>
       ) : (
@@ -492,7 +523,7 @@ export default function WordsScreen() {
           </>
         )
       )}
-      {!showFrequency && selecting && (
+      {!listsFrequencies && selecting && (
         <BulkEditBar
           count={selectedIds.size}
           allSelected={searchedWords.length > 0 && searchedWords.every((w) => selectedIds.has(w.id))}
@@ -511,12 +542,14 @@ export default function WordsScreen() {
         />
       )}
       {reviewing && <ReviewSession dueItems={reviewing} onClose={() => setReviewing(null)} isWide={isWide} />}
-      {showFrequency ? (
+      {listsFrequencies ? (
         searchedFrequencies.length === 0 ? (
           <EmptyState
-            icon="stats-chart-outline"
-            title={wordFrequencies.length === 0 ? 'No lyrics yet' : 'No words found'}
-            message={wordFrequencies.length === 0 ? 'Save a song with lyrics to see its most frequent words.' : 'Try a different search or clear the active filters.'}
+            icon={showUnsaved ? 'bookmark-outline' : 'stats-chart-outline'}
+            title={showUnsaved && ipaCacheLoaded && wordFrequencies.length > 0 ? 'No unsaved words yet' : wordFrequencies.length === 0 ? 'No lyrics yet' : 'No words found'}
+            message={showUnsaved && wordFrequencies.length > 0
+              ? 'Open a song in Learn: words you haven\'t saved show their IPA as they scroll into view and are kept here.'
+              : wordFrequencies.length === 0 ? 'Save a song with lyrics to see its most frequent words.' : 'Try a different search or clear the active filters.'}
           />
         ) : (
           <FlatList
@@ -802,10 +835,21 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   frequencyWord: {
-    flex: 1,
     fontSize: 17,
     fontWeight: '600',
     color: Colors.text,
+  },
+  frequencyWordColumn: {
+    flex: 1,
+  },
+  frequencyMeaning: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  frequencyIpa: {
+    maxWidth: 140,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   frequencySongs: {
     fontSize: 13,

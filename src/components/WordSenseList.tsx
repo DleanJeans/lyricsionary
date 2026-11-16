@@ -24,6 +24,10 @@ export interface WordSenseData {
 }
 
 interface WordSenseListProps {
+  /** The word's language, for its lines' colors and IPA */
+  language?: string;
+  /** A word of a context's line was tapped, to look it up: its song, line and translation come along */
+  onWordPress?: (word: string, occurrence: number, block: WordSenseData) => void;
   wordSenses: WordSenseData[];
   undoData: {
     block: WordSenseData;
@@ -53,6 +57,8 @@ type SenseListItem =
     };
 
 export default function WordSenseList({
+  language,
+  onWordPress,
   wordSenses,
   undoData,
   displayWord,
@@ -139,6 +145,7 @@ export default function WordSenseList({
                 songName={songName}
                 artistName={artistName}
                 {...songOf(item.block)}
+                language={language}
                 isRemoved
               />
             </View>
@@ -180,6 +187,8 @@ export default function WordSenseList({
               artistName={artistName}
               isNew={!!block.isNew}
               {...songOf(block)}
+              language={language}
+              onWordPress={onWordPress ? (tapped, tappedOccurrence) => onWordPress(tapped, tappedOccurrence, block) : undefined}
               expanded={wordSenses.length === 1 || block.uid === shownOpenUid}
               onExpand={wordSenses.length > 1 ? () => setOpenUid(block.uid) : undefined}
             />

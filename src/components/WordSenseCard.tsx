@@ -48,6 +48,10 @@ interface WordSenseCardProps {
   /** Folded, the card shows only its line, translation and meaning; tap it to open it */
   expanded?: boolean;
   onExpand?: () => void;
+  /** The language of the word, for the line's colors and IPA when its song isn't known */
+  language?: string;
+  /** Another word of the line was tapped, to look it up */
+  onWordPress?: (word: string, occurrence: number, songId?: string) => void;
 }
 
 export default function WordSenseCard({
@@ -81,7 +85,13 @@ export default function WordSenseCard({
   song,
   expanded = true,
   onExpand,
+  language,
+  onWordPress,
 }: WordSenseCardProps) {
+  const lineLanguages = useMemo(
+    () => (song?.originalLanguages?.length ? song.originalLanguages : language ? [language] : undefined),
+    [song?.originalLanguages, language]
+  );
   const canLowercase = !isRemoved && definition !== definition.toLowerCase();
   const [choosingType, setChoosingType] = useState(false);
   const [editingIpa, setEditingIpa] = useState(false);
@@ -147,7 +157,7 @@ export default function WordSenseCard({
           accessibilityLabel={`Edit context: ${shown || context}`}
         >
           {fromSong && context ? (
-            <SongContextBlock context={context} word={word} occurrence={occurrence} translation={translation} showSongName={false} />
+            <SongContextBlock context={context} word={word} occurrence={occurrence} translation={translation} showSongName={false} languages={lineLanguages} />
           ) : (
             <>
               {context ? <Text style={styles.foldedContext}>{context}</Text> : null}
@@ -189,6 +199,8 @@ export default function WordSenseCard({
               artistName={artistName}
               translation={translation}
               showSongName={false}
+              languages={lineLanguages}
+              onWordPress={isRemoved || !onWordPress ? undefined : (tapped, tappedOccurrence) => onWordPress(tapped, tappedOccurrence, song?.id)}
               onTranslationSelect={isRemoved ? undefined : onDefinitionChange}
               selectedTranslation={definition}
               selectedTranslationAt={definitionAt}

@@ -422,6 +422,7 @@ export default function WordLookupScreen() {
         return true;
       }
 
+      if (backToPage()) return true;
       if (source === 'Words') {
         navigation.navigate('Words');
       } else if (source === 'Learn' && songId) {
@@ -529,7 +530,34 @@ export default function WordLookupScreen() {
     }
   };
 
+  // A page opened by tapping a word in a context's line goes back to the page it came from first
+  const backToPage = () => {
+    if (!route.params?.from) return false;
+    navigation.navigate('WordLookup', route.params.from);
+    return true;
+  };
+
+  // A word of a context's line looks up on its own page, in that line's song, with back going to this page
+  const openLineWord = (tapped: string, tappedOccurrence: number, block: WordSenseData) => {
+    const blockSong = block.songId ? useStore.getState().songs.find((song) => song.id === block.songId) : undefined;
+    const saved = findSavedWord(useStore.getState().words, tapped, language);
+    navigation.navigate('WordLookup', {
+      word: tapped,
+      wordId: saved?.id,
+      songId: block.songId ?? songId,
+      songName: blockSong?.songName ?? block.songName ?? songName,
+      artistName: blockSong?.artistName ?? artistName,
+      lyricsLine: block.context,
+      translationLine: block.translation,
+      originalLanguages: blockSong?.originalLanguages ?? [language],
+      source: block.songId || songId ? 'Learn' : source,
+      occurrence: tappedOccurrence,
+      from: route.params,
+    });
+  };
+
   const handleCancel = () => {
+    if (backToPage()) return;
     if (source === 'Words') {
       navigation.navigate('Words');
     } else if (source === 'Learn' && songId) {
@@ -904,6 +932,8 @@ export default function WordLookupScreen() {
 
           <Text style={styles.fieldLabel}>Contexts</Text>
           <WordSenseList
+            language={language}
+            onWordPress={openLineWord}
             wordSenses={wordSenses}
             undoData={undoData}
             displayWord={displayWord}

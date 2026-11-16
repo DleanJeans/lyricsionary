@@ -4,6 +4,7 @@ import { Text } from './Text';
 import { Colors } from '../constants/theme';
 import SelectableTranslation from './SelectableTranslation';
 import { findWordOccurrences } from '../utils/wordOccurrences';
+import ContextLyricLine from './ContextLyricLine';
 
 interface SongContextBlockProps {
   context: string;
@@ -18,6 +19,9 @@ interface SongContextBlockProps {
   onTranslationSelect?: (text: string, at: number) => void;
   selectedTranslation?: string;
   selectedTranslationAt?: number;
+  /** The song's languages: the line is then drawn as in Learn, with colors, IPA and tappable words */
+  languages?: string[];
+  onWordPress?: (word: string, occurrence: number) => void;
 }
 
 export default function SongContextBlock({
@@ -33,11 +37,25 @@ export default function SongContextBlock({
   onTranslationSelect,
   selectedTranslation,
   selectedTranslationAt,
+  languages,
+  onWordPress,
 }: SongContextBlockProps) {
   const ranges = useMemo(() => findWordOccurrences(context, word || ''), [context, word]);
   const computedOccurrenceCount = occurrenceCount ?? ranges.length;
 
   const renderHighlightedText = () => {
+    if (languages && context) {
+      return (
+        <ContextLyricLine
+          line={context}
+          word={word}
+          occurrence={occurrence}
+          languages={languages}
+          onWordPress={onWordPress}
+          onOccurrencePress={onOccurrenceChange}
+        />
+      );
+    }
     if (!word || !context) return <Text style={styles.contextText}>{context}</Text>;
 
     const parts: { text: string; isHighlight: boolean }[] = [];

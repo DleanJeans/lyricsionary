@@ -123,5 +123,7 @@ export type RootTabParamList = {
     occurrence?: number;
     // IPA the Look Up card already found, so the page doesn't have to be read again
     ipa?: string[];
+    // The page this one was opened from by tapping a word in a context's line, which back goes to
+    from?: NonNullable<RootTabParamList['WordLookup']>;
   } | undefined;
 };

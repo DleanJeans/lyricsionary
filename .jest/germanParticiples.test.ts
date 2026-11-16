@@ -129,4 +129,31 @@ describe('a German participle on Wiktionary', () => {
     const fresh = await import('../src/utils/wiktionary');
     expect(await fresh.getWiktionaryPronunciation('gewartet', 'German')).toMatchObject({ ipa: ['/ɡəˈvartət/'], derivedFrom: ['warten'] });
   });
+
+  const altSpelling = (target: string) =>
+    `<ol><li><span class="form-of-definition use-with-mention">Alternative spelling of <span class="form-of-definition-link">` +
+    `<i class="Latn mention" lang="de"><a href="/wiki/${target}#German" title="${target}">${target}</a></i></span></span></li></ol>`;
+
+  it('takes heiss’s IPA and meaning from the heiß its page is an alternative spelling of', async () => {
+    serve(
+      { heiss: german(altSpelling('heiß')), heiß: german(ipaList('/haɪ̯s/')) },
+      { heiß: { de: [{ language: 'German', partOfSpeech: 'Adjective', definitions: [{ definition: 'hot' }] }] } },
+    );
+    expect(await getWiktionaryPronunciation('heiss', 'German')).toMatchObject({ ipa: ['/haɪ̯s/'] });
+    expect(await getWiktionaryDefinitions('heiss', 'German')).toEqual([{ partOfSpeech: 'Adjective', text: 'hot' }]);
+  });
+
+  it('tries the ß spelling when an ss word has no page', async () => {
+    serve(
+      { grüssen: '', grüßen: german(ipaList('/ˈɡʁyːsn̩/')) },
+      { grüßen: { de: [{ language: 'German', partOfSpeech: 'Verb', definitions: [{ definition: 'to greet' }] }] } },
+    );
+    expect(await getWiktionaryPronunciation('grüssen', 'German')).toMatchObject({ ipa: ['/ˈɡʁyːsn̩/'] });
+    expect(await getWiktionaryDefinitions('grüssen', 'German')).toEqual([{ partOfSpeech: 'Verb', text: 'to greet' }]);
+  });
+
+  it('leaves non-German ss words alone', async () => {
+    serve({ grüßen: german(ipaList('/x/')) });
+    expect(await getWiktionaryPronunciation('grüssen', 'English')).toEqual({ ipa: [], audio: [] });
+  });
 });

@@ -378,6 +378,31 @@ export async function getWiktionaryLemmas(word: string, language: string): Promi
 }
 
 /**
+ * A German word written with ss, or its ß spelling when it has one, e.g. heiß for heiss, so a Swiss
+ * spelling without a page of its own can be looked up as the one that has. Empty for other words.
+ */
+export function germanEszettForms(word: string, language: string): string[] {
+  if (getWiktionaryLanguage(language).trim().toLowerCase() !== 'german' || !/ss/i.test(word)) return [];
+  const forms = [word.replace(/ss/g, 'ß').replace(/SS/g, 'ẞ')];
+  const lower = word.toLowerCase().replace(/ss/g, 'ß');
+  if (!forms.includes(lower)) forms.push(lower);
+  return forms.filter((f) => f !== word);
+}
+
+const ALTERNATIVE_SPELLING_OF =
+  /\b(?:alternative|alt\.?|obsolete|dated|archaic|nonstandard|non-standard|superseded|rare|uncommon|older|former|Swiss|reformed|pre-reform)\b[^.]{0,60}\b(?:spelling|form|variant|orthography|writing)\s+of\b/i;
+
+/**
+ * The page a word's page says it is only another spelling of, e.g. heiß for heiss's "Alternative spelling
+ * of heiß", or undefined when it isn't one
+ */
+export function getAlternativeSpellingTarget(section: string): string | undefined {
+  const text = section.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  if (!ALTERNATIVE_SPELLING_OF.test(text)) return undefined;
+  return getFormOfLemmas(section)[0];
+}
+
+/**
  * Definitions from the word's Wiktionary page in the given language. Titles are case-sensitive, so
  * when the page has none ("liebe" vs "Liebe") the other casing is tried too. Inflected forms without a
  * meaning of their own ("fragt") use their base form's ("fragen"). Resolves null on failure.
@@ -393,6 +418,11 @@ export async function getWiktionaryDefinitions(word: string, language: string): 
     // A German ge- past participle without a page of its own means what its verb does, e.g. gewartet
     const lemma = await findGermanParticipleLemma(word, language);
     if (lemma) return getDefinitionsForTitle(lemma, language, 1);
+    // A Swiss or reformed spelling without a page, e.g. heiss for heiß
+    for (const title of germanEszettForms(word, language)) {
+      const definitions = await getDefinitionsForTitle(title, language, 1);
+      if (definitions.length > 0) return definitions;
+    }
     return [];
   } catch (error) {
     console.warn(`Wiktionary definitions failed for "${word}":`, error);
@@ -988,7 +1018,7 @@ async function getStemIpa(word: string, section: string, language: string): Prom
  * other casing too like getWiktionaryDefinitions. An inflected form without IPA of its own takes the IPA
  * of the form it sounds like, e.g. rires from rire. Resolves null on failure.
  */
-export async function getWiktionaryPronunciation(word: string, language: string): Promise<WiktionaryPronunciation | null> {
+export async function getWiktionaryPronunciation(word: string, language: string, followed = 0): Promise<WiktionaryPronunciation | null> {
   const lower = word.toLowerCase();
   const variants = [word, word === lower ? word.charAt(0).toUpperCase() + word.slice(1) : lower];
   let found: { html: string; pronunciation: WiktionaryPronunciation } | undefined;
@@ -1016,6 +1046,20 @@ export async function getWiktionaryPronunciation(word: string, language: string)
     if (participle) return { ...pronunciation, ipa: [participle.ipa], derivedFrom: [participle.lemma] };
   } catch {
     // The word's own recordings are still worth showing
+  }
+  // Another spelling of a word, e.g. heiss for heiß, or heiss with no page at all, sounds like it
+  if (followed < 2) {
+    try {
+      const target = section ? getAlternativeSpellingTarget(section) : undefined;
+      const targets = target && target.toLowerCase() !== lower ? [target] : [];
+      if (!targets.length && (!found || !section)) targets.push(...germanEszettForms(word, language));
+      for (const title of targets) {
+        const sameSound = await getWiktionaryPronunciation(title, language, followed + 1);
+        if (sameSound?.ipa.length) return { ...pronunciation, ipa: sameSound.ipa, audio: pronunciation.audio.length ? pronunciation.audio : sameSound.audio };
+      }
+    } catch {
+      // The word's own recordings are still worth showing
+    }
   }
   if (!found || !section) return pronunciation;
   // Only an inflection's ending is silent, e.g. not moment's

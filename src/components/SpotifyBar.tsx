@@ -51,8 +51,12 @@ export default function SpotifyBar({
   const looping = sync.loopLine !== null;
   const status =
     sync.error ??
-    (hideStatus
+    (hideStatus && !sync.isThisSong
       ? null
+      : hideStatus
+      ? sync.isPlaying
+        ? 'Playing on Spotify, no synced lyrics'
+        : 'Paused on Spotify, no synced lyrics'
       : sync.timings === 'loading'
       ? 'Looking for synced lyrics...'
       : sync.timings === 'none'
@@ -103,6 +107,9 @@ export default function SpotifyBar({
         >
           <Ionicons name="close" size={16} color={Colors.textMuted} />
         </TouchableOpacity>
+      )}
+      {sync.timings !== 'ready' && sync.isThisSong && (
+        <ControlButton icon={sync.isPlaying ? 'pause' : 'play'} label={sync.isPlaying ? 'Pause' : 'Play'} onPress={() => void sync.togglePlay()} />
       )}
       {sync.timings === 'ready' && (
         <View style={[styles.controls, !status && styles.controlsFull]}>

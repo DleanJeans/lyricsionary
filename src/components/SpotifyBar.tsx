@@ -98,6 +98,9 @@ export default function SpotifyBar({
           <Text style={styles.fromLineText}>{sync.startingSong ? 'Starting...' : 'Play'}</Text>
         </TouchableOpacity>
       )}
+      {sync.timings !== 'ready' && sync.isThisSong && (
+        <ControlButton icon={sync.isPlaying ? 'pause' : 'play'} label={sync.isPlaying ? 'Pause' : 'Play'} onPress={() => void sync.togglePlay()} />
+      )}
       {status && (sync.error || onDismiss) && (
         <TouchableOpacity
           onPress={sync.error ? sync.clearError : onDismiss}
@@ -107,9 +110,6 @@ export default function SpotifyBar({
         >
           <Ionicons name="close" size={16} color={Colors.textMuted} />
         </TouchableOpacity>
-      )}
-      {sync.timings !== 'ready' && sync.isThisSong && (
-        <ControlButton icon={sync.isPlaying ? 'pause' : 'play'} label={sync.isPlaying ? 'Pause' : 'Play'} onPress={() => void sync.togglePlay()} />
       )}
       {sync.timings === 'ready' && (
         <View style={[styles.controls, !status && styles.controlsFull]}>

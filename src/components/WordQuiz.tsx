@@ -7,6 +7,7 @@ import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import { checkTypedAnswer, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
+import { getFlagForLanguage } from '../constants/languages';
 import DueLabel from './DueLabel';
 import PronunciationAudio from './PronunciationAudio';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
@@ -126,7 +127,12 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
 
   return (
     <View style={styles.container}>
-      <Text style={styles.prompt}>{prompt}</Text>
+      <View style={styles.promptRow}>
+        <Text style={styles.flag} accessibilityLabel={`${entry.language} word`}>
+          {getFlagForLanguage(entry.language)}
+        </Text>
+        <Text style={[styles.prompt, styles.promptText]}>{prompt}</Text>
+      </View>
       {typed ? (
         <View style={styles.typedRow}>
           <TextInput
@@ -346,6 +352,18 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 12,
     gap: 8,
+  },
+  promptRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  flag: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  promptText: {
+    flex: 1,
   },
   prompt: {
     fontSize: 14,

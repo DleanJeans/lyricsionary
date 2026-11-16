@@ -156,4 +156,17 @@ describe('a German participle on Wiktionary', () => {
     serve({ grüßen: german(ipaList('/x/')) });
     expect(await getWiktionaryPronunciation('grüssen', 'English')).toEqual({ ipa: [], audio: [] });
   });
+
+  it('follows a Swiss Standard German spelling of line, e.g. draussen for draußen', async () => {
+    serve({
+      draussen: german(`<ol><li><span class="form-of-definition use-with-mention"><span class="ib-brac">(</span>Switzerland and Liechtenstein<span class="ib-brac">)</span> standard spelling of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a href="/wiki/drau%C3%9Fen#German" title="draußen">draußen</a></i></span></span></li></ol>`),
+      draußen: german(ipaList('/ˈdʁaʊ̯sn̩/')),
+    });
+    expect(await getWiktionaryPronunciation('draussen', 'German')).toMatchObject({ ipa: ['/ˈdʁaʊ̯sn̩/'] });
+  });
+
+  it('tries ß when an ss page exists but has no IPA', async () => {
+    serve({ strasse: german('<p>stub</p>'), straße: german(ipaList('/ˈʃtʁaːsə/')) });
+    expect(await getWiktionaryPronunciation('strasse', 'German')).toMatchObject({ ipa: ['/ˈʃtʁaːsə/'] });
+  });
 });

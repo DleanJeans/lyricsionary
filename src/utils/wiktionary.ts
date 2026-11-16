@@ -390,7 +390,7 @@ export function germanEszettForms(word: string, language: string): string[] {
 }
 
 const ALTERNATIVE_SPELLING_OF =
-  /\b(?:alternative|alt\.?|obsolete|dated|archaic|nonstandard|non-standard|superseded|rare|uncommon|older|former|Swiss|reformed|pre-reform)\b[^.]{0,60}\b(?:spelling|form|variant|orthography|writing)\s+of\b/i;
+  /\b(?:spelling|orthography|writing|variant|romanization)\s+of\b|\b(?:alternative|alt\.?|obsolete|dated|archaic|nonstandard|non-standard|superseded|rare|uncommon|older|former)\s+form\s+of\b/i;
 
 /**
  * The page a word's page says it is only another spelling of, e.g. heiß for heiss's "Alternative spelling
@@ -1052,7 +1052,8 @@ export async function getWiktionaryPronunciation(word: string, language: string,
     try {
       const target = section ? getAlternativeSpellingTarget(section) : undefined;
       const targets = target && target.toLowerCase() !== lower ? [target] : [];
-      if (!targets.length && (!found || !section)) targets.push(...germanEszettForms(word, language));
+      // Also when the page exists but says nothing useful, e.g. a Swiss draussen
+      if (!targets.length) targets.push(...germanEszettForms(word, language));
       for (const title of targets) {
         const sameSound = await getWiktionaryPronunciation(title, language, followed + 1);
         if (sameSound?.ipa.length) return { ...pronunciation, ipa: sameSound.ipa, audio: pronunciation.audio.length ? pronunciation.audio : sameSound.audio };

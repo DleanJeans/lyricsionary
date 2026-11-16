@@ -407,7 +407,24 @@ export function getAlternativeSpellingTarget(section: string): string | undefine
  * when the page has none ("liebe" vs "Liebe") the other casing is tried too. Inflected forms without a
  * meaning of their own ("fragt") use their base form's ("fragen"). Resolves null on failure.
  */
+const definitionResults = new Map<string, WiktionaryDefinition[]>();
+const definitionKey = (word: string, language: string) => `${getWiktionaryLanguage(language).toLowerCase()}\u0000${word}`;
+
+/** Definitions already known for a word, e.g. read from Wiktionary in an earlier session, so they aren't asked for again */
+export function seedWiktionaryDefinitions(word: string, language: string, definitions: WiktionaryDefinition[]): void {
+  if (definitions.length > 0) definitionResults.set(definitionKey(word, language), definitions);
+}
+
 export async function getWiktionaryDefinitions(word: string, language: string): Promise<WiktionaryDefinition[] | null> {
+  const known = definitionResults.get(definitionKey(word, language));
+  if (known) return known;
+  const definitions = await fetchWiktionaryDefinitions(word, language);
+  // Failures (null) are asked again next time
+  if (definitions && definitions.length > 0) definitionResults.set(definitionKey(word, language), definitions);
+  return definitions;
+}
+
+async function fetchWiktionaryDefinitions(word: string, language: string): Promise<WiktionaryDefinition[] | null> {
   const lower = word.toLowerCase();
   const variants = [word, word === lower ? word.charAt(0).toUpperCase() + word.slice(1) : lower];
   try {

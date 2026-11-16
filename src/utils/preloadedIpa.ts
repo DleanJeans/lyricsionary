@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { languageKey } from '../constants/languages';
 import { persist } from '../services/storageWrites';
+import { seedWiktionaryDefinitions, type WiktionaryDefinition } from './wiktionary';
 
 const STORAGE_KEY = '@lyricsionary_preloaded_ipa';
 // Oldest lookups go first when the cache grows past this
-const MAX_ENTRIES = 20000;
+const MAX_ENTRIES = 6000;
 
 /**
  * IPA and meanings looked up from Wiktionary for words not saved yet, by song language and word, as Learn
@@ -16,6 +17,8 @@ export interface PreloadedWord {
   /** The meaning matching the line's translation where it was found, else the first meaning */
   definition?: string;
   partOfSpeech?: string;
+  /** All the meanings Wiktionary gave, so tapping the word needn't ask again */
+  definitions?: WiktionaryDefinition[];
   /** The song language the word was found in, e.g. French in a German and French song */
   language?: string;
 }
@@ -34,7 +37,8 @@ export function loadPreloadedIpa(): Promise<void> {
       for (const entry of saved) {
         const value = Array.isArray(entry) ? (entry[1] as Partial<PreloadedWord> | undefined) : undefined;
         if (typeof entry?.[0] === 'string' && typeof value?.ipa === 'string' && !cache.has(entry[0])) {
-          cache.set(entry[0], { ipa: value.ipa, definition: value.definition, partOfSpeech: value.partOfSpeech, language: value.language });
+          if (Array.isArray(value.definitions) && value.language) seedWiktionaryDefinitions(entry[0].split('\u0000')[1] ?? '', value.language, value.definitions);
+          cache.set(entry[0], { ipa: value.ipa, definition: value.definition, partOfSpeech: value.partOfSpeech, language: value.language, definitions: Array.isArray(value.definitions) ? value.definitions : undefined });
         }
       }
     })

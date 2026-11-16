@@ -52,7 +52,7 @@ import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
 import { findSavedWord, spellingsOf } from '../utils/wordForms';
 import { firstIpa } from '../utils/ipaList';
-import { hasPreloadedIpa, loadPreloadedIpa, preloadedIpaKey as preloadKey, getPreloadedIpa, setPreloadedWord, type PreloadedWord } from '../utils/preloadedIpa';
+import { hasPreloadedIpa, loadPreloadedIpa, preloadedIpaKey as preloadKey, getPreloadedIpa, getPreloadedWord, setPreloadedWord, type PreloadedWord } from '../utils/preloadedIpa';
 import {
   findSplitPhrases, germanSeparableVerb, isSplitPhrase, joinLineWords, phraseLookupWords, phraseOccurrenceAt, splitPhraseParts,
 } from '../utils/splitPhrases';
@@ -1226,10 +1226,31 @@ export default function LearnScreen() {
     // A song in several languages, e.g. German then French, has each word looked up in the first language that
     // has it, and the word is saved in that language
     let wordLanguage = songLanguage;
-    const lookUp = (word: string, language = wordLanguage) =>
-      Promise.all([getWiktionaryDefinitions(word, language), getWiktionaryPronunciation(word, language)])
+    const lookUp = (word: string, language = wordLanguage) => {
+      const cached = preloaded(word, language);
+      if (cached) return Promise.resolve(cached);
+      return Promise.all([getWiktionaryDefinitions(word, language), getWiktionaryPronunciation(word, language)])
         .then(([definitions, pronunciation]) => ({ word, definitions, pronunciation }));
+    };
+    // What Learn preloaded for the word is used as it is, not asked of Wiktionary again
+    const preloaded = (word: string, language?: string) => {
+      const cached = getPreloadedWord(songLanguage, word);
+      if (!cached || (!cached.ipa && !cached.definitions?.length)) return undefined;
+      if (language && !isSameLanguage(cached.language ?? songLanguage, language)) return undefined;
+      return {
+        word,
+        definitions: cached.definitions?.length ? cached.definitions : null,
+        // No recordings cached: the saved word's card fetches them, as when Wiktionary gave no answer
+        pronunciation: { ipa: cached.ipa ? [cached.ipa] : [], audio: undefined as unknown as [] },
+        language: cached.language ?? songLanguage,
+      };
+    };
     const lookUpInSongLanguages = async (word: string) => {
+      const cached = preloaded(word);
+      if (cached) {
+        wordLanguage = cached.language;
+        return cached;
+      }
       const languages = song.originalLanguages?.length ? song.originalLanguages : [songLanguage];
       let first: Awaited<ReturnType<typeof lookUp>> | undefined;
       for (const language of languages) {
@@ -1254,9 +1275,10 @@ export default function LearnScreen() {
     const lowered = selectedWord.toLowerCase();
     const opensLine = !!selectedLine && selectedLine.replace(/^[^\p{L}\p{N}]+/u, '').startsWith(selectedWord) && selectedOccurrence === 1;
     firstLookUp.then(async (found) => {
-      if (lowered !== selectedWord && !isSplitPhrase(selectedWord) && !/\s/.test(selectedWord)) {
+      // The lowercase page is only asked about when it could be used: for a word opening a line, or one with no meaning
+      if (lowered !== selectedWord && !isSplitPhrase(selectedWord) && !/\s/.test(selectedWord) && (opensLine || !found.definitions?.length)) {
         const asLower = await lookUp(lowered);
-        if (asLower.definitions?.length && (opensLine || !found.definitions?.length)) found = asLower;
+        if (asLower.definitions?.length) found = asLower;
       }
       if (baseWord && !found.definitions?.length) {
         const stemFound = await lookUp(baseWord);
@@ -1452,7 +1474,7 @@ export default function LearnScreen() {
       // The meaning that appears in the line's translation, else the first
       const definition = definitions?.length ? pickDefinition(definitions, translation) ?? definitions[0].text : undefined;
       const partOfSpeech = definition ? normalizePartOfSpeech(definitions!.find((d) => d.text === definition)?.partOfSpeech) : undefined;
-      return { ipa: ipa ?? '', definition, partOfSpeech, language: wordLanguage };
+      return { ipa: ipa ?? '', definition, partOfSpeech, language: wordLanguage, definitions: definitions?.length ? definitions : undefined };
     };
     const lookUp = async (word: string, translation?: string): Promise<PreloadedWord> => {
       let firstFound: PreloadedWord | undefined;
@@ -1477,9 +1499,9 @@ export default function LearnScreen() {
       }
       if (!batch.length) return;
       preloadActiveRef.current = 1;
-      Promise.all(batch.map((job) => lookUp(job.word, job.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech, language }) => {
+      Promise.all(batch.map((job) => lookUp(job.word, job.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech, language, definitions }) => {
         // A failed or empty lookup is left empty, and not asked again this session
-        setPreloadedWord(job.key, { ipa, definition, partOfSpeech, language });
+        setPreloadedWord(job.key, { ipa, definition, partOfSpeech, language, definitions });
         preloadPendingRef.current.delete(job.key);
         // The spinner goes even when there's no IPA
         job.lines.forEach((i) => preloadDirtyRef.current.add(i));

@@ -11,7 +11,13 @@ export interface WordSpot {
  * Every place a word comes up in the song, tokenized the way Learn's lyrics are, so a spot selects
  * the same word as tapping it there. `isWord` says which words written apart join into one, e.g. a saved phrase.
  */
-export function findWordSpots(lines: string[], word: string, isWord: (candidate: string) => boolean): WordSpot[] {
+export function findWordSpots(
+  lines: string[],
+  word: string,
+  isWord: (candidate: string) => boolean,
+  /** The elided starts a word is shown split into, e.g. j' for j'ai, which are tapped on their own */
+  elidedStarts?: (cleaned: string) => string[]
+): WordSpot[] {
   const target = word.toLowerCase();
   const joins = (candidate: string) => candidate === word || isWord(candidate);
   const spots: WordSpot[] = [];
@@ -21,7 +27,15 @@ export function findWordSpots(lines: string[], word: string, isWord: (candidate:
     for (const token of groupSpacedWords(groupCjkTokens(splitLyricTokens(line), joins), joins)) {
       if (!token.trim()) continue;
       const cleaned = cleanLyricWord(token).toLowerCase();
-      if (!cleaned || cleaned !== target) continue;
+      if (!cleaned) continue;
+      if (cleaned !== target) {
+        for (const start of elidedStarts?.(cleaned) ?? []) {
+          if (start.toLowerCase() !== target) continue;
+          count++;
+          spots.push({ lineIndex, occurrence: count });
+        }
+        continue;
+      }
       count++;
       spots.push({ lineIndex, occurrence: count });
     }

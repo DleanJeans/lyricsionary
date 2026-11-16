@@ -72,8 +72,9 @@ export const removeStutter = (word: string) => {
 };
 
 // Thai vowel and tone marks are part of the word, e.g. the ั and ้ in รักน้ำ
+// A curly or other apostrophe between letters counts as the plain one, e.g. J’ai -> J'ai
 export const removeSpecialChars = (word: string) => {
-  return removeStutter(word.replace(/[^\p{L}\p{N}\u0E31\u0E34-\u0E3A\u0E47-\u0E4E'-]/gu, ''));
+  return removeStutter(word.replace(/(?<=\p{L})[\u2019\u2018\u02BC\u2032`´](?=\p{L})/gu, "'").replace(/[^\p{L}\p{N}\u0E31\u0E34-\u0E3A\u0E47-\u0E4E'-]/gu, ''));
 }
 /**
  * A lyric line's words, spaces and punctuation, as Learn lays them out to tap: a dash between words

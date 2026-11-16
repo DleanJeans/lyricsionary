@@ -159,6 +159,14 @@ export default function LearnScreen() {
     },
     [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong, song?.originalLanguages]
   );
+  // The elided starts of a French or Italian word shown split, e.g. j' for j'ai, selectable on their own
+  const elidedStartsOf = useCallback(
+    (cleaned: string) =>
+      (hasFrenchLanguage || hasItalianLanguage) && !/\s/.test(cleaned) && !findWordEntry(cleaned)
+        ? (splitElisionParts(cleaned) ?? []).slice(0, -1)
+        : [],
+    [findWordEntry, hasFrenchLanguage, hasItalianLanguage]
+  );
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   // The selected word as of the last render, for a word's Wiktionary fetch to tell it's been tapped away from
   const selectedWordRef = useRef(selectedWord);
@@ -405,8 +413,8 @@ export default function LearnScreen() {
 
   // Every line in this song: where the selected word comes up, stepped through from its card
   const wordSpots = useMemo(
-    () => (selectedWord ? findWordSpots(lines.map((line) => line.original), selectedWord, (candidate) => !!findSavedEntry(candidate)) : []),
-    [selectedWord, lines, findSavedEntry]
+    () => (selectedWord ? findWordSpots(lines.map((line) => line.original), selectedWord, (candidate) => !!findSavedEntry(candidate), elidedStartsOf) : []),
+    [selectedWord, lines, findSavedEntry, elidedStartsOf]
   );
   const wordSpotIndex = wordSpots.findIndex((s) => s.lineIndex === selectedLineIndex && s.occurrence === selectedOccurrence);
   const goToWordSpot = (step: 1 | -1) => {
@@ -677,6 +685,8 @@ export default function LearnScreen() {
     const textWords = groupSpacedWords(cjkGrouped, isWord);
     const occurrenceMap: Record<number, number> = {};
     const wordCountMap: Record<string, number> = {};
+    // How many times each elided start, e.g. j', has come up so far in the line
+    const elidedStartCounts: Record<string, number> = {};
     // Where each token ends in the line, so a grown selection knows which occurrence it is
     const tokenEnds: number[] = [];
     let offset = 0;
@@ -842,8 +852,14 @@ export default function LearnScreen() {
                   {leading}
                   {elisionParts.map((part, pi) => {
                     const partEntry = partEntries[pi];
-                    const isPartSelected = selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase();
-                    const isPartActiveOccurrence = isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence;
+                    // The start of the word, e.g. j', is selected on its own; the rest selects the whole word
+                    const isElidedStart = pi < elisionParts.length - 1;
+                    const startOccurrence = isElidedStart ? (elidedStartCounts[part.toLowerCase()] = (elidedStartCounts[part.toLowerCase()] || 0) + 1) : 0;
+                    const isStartSelected = isElidedStart && !!selectedWord && part.toLowerCase() === selectedWord.toLowerCase() &&
+                      lineIndex === selectedLineIndex && startOccurrence === selectedOccurrence;
+                    const isPartSelected = (selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase()) || isStartSelected;
+                    const isPartActiveOccurrence = isStartSelected ||
+                      (isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence);
                     const partColor = isPartSelected || isDragged(i)
                       ? Colors.primary
                       : highlightNewWords
@@ -855,7 +871,9 @@ export default function LearnScreen() {
                     return (
                       <Text
                         key={pi}
-                        onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
+                        onPress={() => isElidedStart
+                          ? handleWordPress(part, text, lineIndex, startOccurrence)
+                          : handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
                         onLongPress={() => copyLineRef.current(lineIndex)}
                         style={{
                           color: partColor,

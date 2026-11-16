@@ -1,4 +1,4 @@
-import { cleanGeniusLyrics, isLyricWord, splitEdgePunctuation } from '../src/utils/cleanLyrics';
+import { cleanGeniusLyrics, isLyricWord, removeSpecialChars, splitEdgePunctuation } from '../src/utils/cleanLyrics';
 
 describe('cleanGeniusLyrics', () => {
   it('removes the translations header, section tags and extra blank lines', () => {
@@ -31,5 +31,18 @@ describe('splitEdgePunctuation', () => {
     expect(splitEdgePunctuation('(mich?)')).toEqual({ leading: '(', core: 'mich', trailing: '?)' });
     expect(splitEdgePunctuation("l'amour,")).toEqual({ leading: '', core: "l'amour", trailing: ',' });
     expect(splitEdgePunctuation('Zeit')).toEqual({ leading: '', core: 'Zeit', trailing: '' });
+  });
+});
+
+describe('removeSpecialChars with apostrophes', () => {
+  it('turns a curly apostrophe between letters into the plain one', () => {
+    expect(removeSpecialChars('J’ai,')).toBe("J'ai");
+    expect(removeSpecialChars('n’est')).toBe("n'est");
+  });
+  it('keeps clipped words and stutters as they were', () => {
+    expect(removeSpecialChars("kauf'")).toBe("kauf'");
+    expect(removeSpecialChars("hab'n")).toBe("hab'n");
+    expect(removeSpecialChars("ma'")).toBe("ma'");
+    expect(removeSpecialChars('D-D-Dann')).toBe('Dann');
   });
 });

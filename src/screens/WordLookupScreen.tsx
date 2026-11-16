@@ -273,6 +273,8 @@ export default function WordLookupScreen() {
 
   // The word a language was picked by hand for, which stops the switch to the song's next language
   const languagePickedForRef = useRef<string | undefined>(undefined);
+  // A saved word with no details that was moved to another of its song's languages, saved there in place
+  const relanguageRef = useRef<{ id: string; language: string } | null>(null);
   const pickLanguage = (picked: string) => {
     languagePickedForRef.current = displayWord;
     setLanguage(picked);
@@ -291,13 +293,27 @@ export default function WordLookupScreen() {
         setDefinitionSuggestions(definitions);
         return;
       }
-      const songLanguages = originalLanguages ?? [];
+      const existing = findExistingWord();
+      // A saved word with no IPA and no meaning, e.g. a French word saved as German in a German and French
+      // song, is moved to the song's language that has it; one with details of its own stays as it is
+      const bare = !!existing && !existing.pronunciation?.trim() && !existing.definitions?.length &&
+        !(existing.contexts ?? []).some((c) => c.definition?.trim() || c.ipa?.trim());
+      if (languagePickedForRef.current === displayWord || (existing && !bare) || (!existing && wordId)) return;
+      const fromSongs = originalLanguages?.length
+        ? originalLanguages
+        : [...new Set((existing?.contexts ?? []).flatMap((c) => useStore.getState().songs.find((song) => song.id === c.songId)?.originalLanguages ?? []))];
+      const songLanguages = fromSongs;
       const at = songLanguages.findIndex((songLanguage) => isSameLanguage(songLanguage, language));
-      if (at < 0 || wordId || languagePickedForRef.current === displayWord || findExistingWord()) return;
-      for (const next of songLanguages.slice(at + 1)) {
+      if (at < 0 && !existing) return;
+      // A new word moves on to the song's next languages, a saved one to any of its other languages
+      const candidates = existing
+        ? songLanguages.filter((songLanguage) => !isSameLanguage(songLanguage, language))
+        : songLanguages.slice(at + 1);
+      for (const next of candidates) {
         const found = await getWiktionaryDefinitions(wiktionaryWord, next);
         if (cancelled) return;
         if (found && found.length > 0) {
+          if (existing) relanguageRef.current = { id: existing.id, language: next };
           setLanguage(next);
           return;
         }
@@ -510,6 +526,9 @@ export default function WordLookupScreen() {
 
     setIsSaving(true);
     try {
+      const moved = relanguageRef.current;
+      relanguageRef.current = null;
+      if (moved && isSameLanguage(moved.language, language)) await updateWordEntry(moved.id, { language });
       await addOrUpdateWord(
         displayWord, language, pronunciation, contexts, masteryLevel,
         wiktionaryPronunciation.loaded ? pronunciationAudio : undefined

@@ -15,7 +15,7 @@ import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
 import WordCard from '../components/WordCard';
 import WordQuiz from '../components/WordQuiz';
-import { getFlagForLanguage, isRomanized, isRtlLanguage } from '../constants/languages';
+import { getFlagForLanguage, isRomanized, isRtlLanguage, isSameLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { findWordIndex, type WordRect } from '../components/SelectableTranslation';
@@ -1504,11 +1504,23 @@ export default function LearnScreen() {
         }
       }
       if (!ipa && entry.word !== entry.word.toLowerCase()) ipa = await first(entry.word.toLowerCase());
+      // A word with no meaning either that the song's other language has, e.g. a French word saved as German in
+      // a German and French song, is moved to that language with its IPA
+      let movedTo: string | undefined;
+      const hasMeaning = !!entry.definitions?.length || !!entry.contexts?.some((c) => c.definition?.trim());
+      if (!ipa && !hasMeaning) {
+        for (const other of song?.originalLanguages ?? []) {
+          if (cancelled) return;
+          if (isSameLanguage(other, lookupLanguage)) continue;
+          const found = (await getWiktionaryPronunciation(entry.word, other))?.ipa.find(Boolean);
+          if (found) { ipa = found; movedTo = other; break; }
+        }
+      }
       if (cancelled || !ipa) return;
       // Re-read the word: it may have gained an IPA or changed while Wiktionary answered
       const latest = useStore.getState().words.find((w) => w.id === savedNeedsIpaId);
       if (!latest || latest.pronunciation?.trim() || latest.contexts?.some((c) => c.ipa?.trim())) return;
-      await useStore.getState().updateWordEntry(latest.id, { pronunciation: ipa });
+      await useStore.getState().updateWordEntry(latest.id, movedTo ? { pronunciation: ipa, language: movedTo } : { pronunciation: ipa });
     })().catch(() => {});
     return () => {
       cancelled = true;

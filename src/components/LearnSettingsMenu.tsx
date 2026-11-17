@@ -20,6 +20,8 @@ interface LearnSettingsMenuProps {
   onToggleShowIpaBrackets: () => void;
   showEmoji: boolean;
   onShowEmojiChange: (show: boolean) => void;
+  showMeaning: boolean;
+  onShowMeaningChange: (show: boolean) => void;
   blurTranslations: boolean;
   onToggleBlur: () => void;
   reverseLyrics: boolean;
@@ -50,15 +52,16 @@ const NO_UNBLURRED = new Set<string>();
 
 // Shown when the song has no saved words with an emoji or IPA to preview
 const SAMPLE_WORDS = [
-  { text: 'Bonjour', emoji: '👋', ipa: '/bɔ̃.ʒuʁ/', color: Colors.masteryRecognized },
-  { text: 'le', emoji: '', ipa: '/lə/', color: Colors.masteryKnown },
-  { text: 'monde', emoji: '🌍', ipa: '/mɔ̃d/', color: Colors.masterySeen },
+  { text: 'Bonjour', meaning: 'hello', emoji: '👋', ipa: '/bɔ̃.ʒuʁ/', color: Colors.masteryRecognized },
+  { text: 'le', meaning: 'the', emoji: '', ipa: '/lə/', color: Colors.masteryKnown },
+  { text: 'monde', meaning: 'world', emoji: '🌍', ipa: '/mɔ̃d/', color: Colors.masterySeen },
 ];
 
 function SamplePreview({
   showIpa,
   showIpaBrackets,
   showEmoji,
+  showMeaning,
   showMasteryLevelColors,
   blurTranslations,
   showTranslations,
@@ -66,6 +69,7 @@ function SamplePreview({
   showIpa: boolean;
   showIpaBrackets: boolean;
   showEmoji: boolean;
+  showMeaning: boolean;
   showMasteryLevelColors: boolean;
   blurTranslations: boolean;
   showTranslations: boolean;
@@ -76,6 +80,7 @@ function SamplePreview({
         {SAMPLE_WORDS.map((word) => (
           <View key={word.text} style={styles.sampleWord}>
             <View style={styles.sampleAnnotations}>
+              {showMeaning && <Text style={styles.sampleAnnotation}>{word.meaning}</Text>}
               {showEmoji && !!word.emoji && <Text style={styles.sampleAnnotation}>{word.emoji}</Text>}
               {showIpa && <Text style={styles.sampleAnnotation}>{formatIpa(word.ipa, showIpaBrackets)}</Text>}
             </View>
@@ -138,6 +143,8 @@ export default function LearnSettingsMenu({
   onToggleShowIpaBrackets,
   showEmoji,
   onShowEmojiChange,
+  showMeaning,
+  onShowMeaningChange,
   blurTranslations,
   onToggleBlur,
   reverseLyrics,
@@ -217,6 +224,7 @@ export default function LearnSettingsMenu({
                   showIpa={showIpa}
                   showIpaBrackets={showIpaBrackets}
                   showEmoji={showEmoji}
+                  showMeaning={showMeaning}
                   showMasteryLevelColors={showMasteryLevelColors}
                   blurTranslations={blurTranslations}
                   showTranslations={showTranslations}
@@ -231,6 +239,12 @@ export default function LearnSettingsMenu({
                 icon={<Ionicons name="happy-outline" size={18} color={chipIconColor(showEmoji)} />}
                 selected={showEmoji}
                 onPress={() => onShowEmojiChange(!showEmoji)}
+              />
+              <Chip
+                label="Meaning"
+                icon={<Ionicons name="book-outline" size={18} color={chipIconColor(showMeaning)} />}
+                selected={showMeaning}
+                onPress={() => onShowMeaningChange(!showMeaning)}
               />
               <Chip
                 label="IPA"

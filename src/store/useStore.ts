@@ -43,7 +43,7 @@ export function makeIgnoredWordChecker(ignoredWords: IgnoredWord[]): (word: stri
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
 // current song's selected translation languages.
-const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine', 'autoPlayAudio'] as const;
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showMeaning', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine', 'autoPlayAudio'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -68,6 +68,7 @@ interface AppState {
   showIpa: boolean;
   showIpaBrackets: boolean;  // Slashes or brackets around the IPA above words
   showEmoji: boolean;
+  showMeaning: boolean;  // The word's first saved meaning above it, cut short
   showSections: boolean;
   /** Learn shows the translation and blurs the original, to recall it from the meaning */
   reverseLyrics: boolean;
@@ -114,6 +115,7 @@ interface AppState {
   setShowIpa: (show: boolean) => void;
   toggleShowIpaBrackets: () => void;
   setShowEmoji: (show: boolean) => void;
+  setShowMeaning: (show: boolean) => void;
   toggleShowSections: () => void;
   toggleReverseLyrics: () => void;
   toggleWideWordSpacing: () => void;
@@ -203,6 +205,7 @@ export const useStore = create<AppState>((set, get) => ({
   showIpa: true,
   showIpaBrackets: true,
   showEmoji: true,
+  showMeaning: false,
   showSections: true,
   reverseLyrics: false,
   wideWordSpacing: false,
@@ -326,6 +329,7 @@ export const useStore = create<AppState>((set, get) => ({
   toggleShowIpaBrackets: () => setLearnSettings({ showIpaBrackets: !get().showIpaBrackets }),
 
   setShowEmoji: (showEmoji) => setLearnSettings({ showEmoji }),
+  setShowMeaning: (showMeaning) => setLearnSettings({ showMeaning }),
 
   toggleShowSections: () => setLearnSettings({ showSections: !get().showSections }),
 

@@ -28,6 +28,7 @@ import { cleanLyricWord, isLyricWord, isTappableLyric, removeSpecialChars, split
 import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
+import { meaningAbove } from '../utils/meaningDisplay';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 import { draggedPhrase, groupCjkTokens, groupSpacedWords, isCjkWord } from '../utils/cjkWords';
@@ -100,6 +101,8 @@ export default function LearnScreen() {
   const toggleShowIpaBrackets = useStore((s) => s.toggleShowIpaBrackets);
   const showEmoji = useStore((s) => s.showEmoji);
   const setShowEmoji = useStore((s) => s.setShowEmoji);
+  const showMeaning = useStore((s) => s.showMeaning);
+  const setShowMeaning = useStore((s) => s.setShowMeaning);
   const showSections = useStore((s) => s.showSections);
   const toggleShowSections = useStore((s) => s.toggleShowSections);
   const isLoadingSong = useStore((s) => s.isLoadingSong);
@@ -920,9 +923,16 @@ export default function LearnScreen() {
             const shouldShowEmoji = showEmoji && mainEntry && !quiet && effectiveEmoji &&
               effectiveEmoji !== getFlagForLanguage(mainEntry.language);
 
+            const meaningText = showMeaning && mainEntry && !quiet ? meaningAbove(mainEntry, ctx) : '';
+
             return (
               <View key={i} onLayout={onWordLayout(i)} style={{ alignItems: 'center' }}>
                 <View style={styles.annotationSpace}>
+                  {!!meaningText && (
+                    <Text style={styles.wordAnnotation}>
+                      {meaningText}
+                    </Text>
+                  )}
                   {shouldShowEmoji && (
                     <Text style={styles.wordAnnotation}>
                       {effectiveEmoji}
@@ -1148,13 +1158,19 @@ export default function LearnScreen() {
             loadingWords.has(loadingWordKey(cleanedWord, lineIndex, occurrenceMap[i] || 1)) ||
             (showIpa && !wordEntry && !isIgnored && !split && !isPhrase &&
               preloadPendingRef.current.has(preloadKey(song?.originalLanguages?.[0], cleanedWord))));
-          const hasAnnotation = !!shouldShowEmoji || !!displayContent || isLoadingWord;
+          const meaningText = showMeaning && wordEntry && !quiet ? meaningAbove(wordEntry, wordCtx) : '';
+          const hasAnnotation = !!shouldShowEmoji || !!displayContent || !!meaningText || isLoadingWord;
           const keepAnnotationSpace = hasAnnotation || !isCjkWord(word);
 
           return (
             <View key={i} onLayout={onWordLayout(i)} style={{ alignItems: 'center' }}>
               {keepAnnotationSpace && (
                 <View style={styles.annotationSpace}>
+                  {!!meaningText && (
+                    <Text style={styles.wordAnnotation}>
+                      {meaningText}
+                    </Text>
+                  )}
                   {shouldShowEmoji && (
                     <Text style={styles.wordAnnotation}>
                       {effectiveEmoji}
@@ -1241,7 +1257,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -2227,6 +2243,8 @@ export default function LearnScreen() {
           onToggleShowIpaBrackets={toggleShowIpaBrackets}
           showEmoji={showEmoji}
           onShowEmojiChange={setShowEmoji}
+          showMeaning={showMeaning}
+          onShowMeaningChange={setShowMeaning}
           showSections={showSections}
           onToggleShowSections={toggleShowSections}
           onCopySections={() => Clipboard.setStringAsync(formatSongSections(song.originalLyrics.split('\n')))}

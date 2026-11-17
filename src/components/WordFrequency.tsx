@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { openWordLookup } from '../navigation/navigationRef';
@@ -19,6 +20,8 @@ type Entry = Pick<WordEntry, 'word' | 'language' | 'contexts'>;
 export default function WordFrequency({ entry, onLookUpWord }: { entry: Entry; onLookUpWord?: () => void }) {
   const songs = useStore((s) => s.songs);
   const [open, setOpen] = useState(false);
+  // A modal can draw under the system navigation bar (3-button or gesture), so the list ends above it
+  const bottomSpace = Math.max(useSafeAreaInsets().bottom, 48) + 16;
   const sentences = useMemo(() => wordSentences(entry, songs), [entry, songs]);
   const songCount = new Set(sentences.flatMap((x) => x.songs.map((y) => y.id).filter(Boolean))).size;
   if (!sentences.length) return null;
@@ -41,7 +44,7 @@ export default function WordFrequency({ entry, onLookUpWord }: { entry: Entry; o
                 <Ionicons name="close" size={24} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={styles.list}>
+            <ScrollView contentContainerStyle={[styles.list, { paddingBottom: bottomSpace }]}>
               {sentences.map((sentence) => {
                 const main = sentence.songs[0];
                 const translation = sentence.songs.find((x) => x.translation)?.translation;

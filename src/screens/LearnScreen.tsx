@@ -940,7 +940,9 @@ export default function LearnScreen() {
                     const isPartSelected = (selectedWord && cleanedWord.toLowerCase() === selectedWord.toLowerCase()) || isStartSelected;
                     const isPartActiveOccurrence = isStartSelected ||
                       (isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence);
-                    const partColor = isPartSelected || isDragged(i)
+                    // Picking words to mark picks a word like c'est, I'm or l'envers whole, not its parts
+                    const isPartMarked = markMode && !!cleanedWord && marked.has(cleanedWord.toLowerCase());
+                    const partColor = isPartSelected || isDragged(i) || isPartMarked
                       ? Colors.primary
                       : highlightNewWords
                       ? (partEntry ? Colors.textMuted : Colors.text)
@@ -951,7 +953,7 @@ export default function LearnScreen() {
                     return (
                       <Text
                         key={pi}
-                        onPress={() => isElidedStart
+                        onPress={() => isElidedStart && !markMode
                           ? handleWordPress(part, text, lineIndex, startOccurrence)
                           : handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
                         onLongPress={() => copyLineRef.current(lineIndex)}

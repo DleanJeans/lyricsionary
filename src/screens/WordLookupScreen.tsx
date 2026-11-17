@@ -29,7 +29,7 @@ import PronunciationAudio from '../components/PronunciationAudio';
 import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
 import { isSameLanguage } from '../constants/languages';
-import { useStore } from '../store/useStore';
+import { isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
 import { pickDefinition } from '../utils/definitionHighlight';
 import { getGermanExpandedForm } from '../utils/wordTransform';
@@ -74,6 +74,8 @@ export default function WordLookupScreen() {
   const lowercaseWord = useStore((s) => s.lowercaseWord);
   const unmergeForm = useStore((s) => s.unmergeForm);
   const deleteWord = useStore((s) => s.deleteWord);
+  const ignoredWords = useStore((s) => s.ignoredWords);
+  const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
@@ -1024,6 +1026,23 @@ export default function WordLookupScreen() {
               <Ionicons name="copy-outline" size={18} color={Colors.text} />
               <Text style={styles.menuText}>Copy word</Text>
             </TouchableOpacity>
+            {!existingWord && !!displayWord && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  void toggleIgnoredWord(displayWord, language);
+                }}
+                accessibilityRole="menuitem"
+              >
+                <Ionicons
+                  name={isWordIgnored(ignoredWords, displayWord, language) ? 'eye-outline' : 'eye-off-outline'}
+                  size={18}
+                  color={Colors.text}
+                />
+                <Text style={styles.menuText}>{isWordIgnored(ignoredWords, displayWord, language) ? 'Unignore' : 'Ignore'}</Text>
+              </TouchableOpacity>
+            )}
             {existingWord && (
               <TouchableOpacity
                 style={styles.menuItem}

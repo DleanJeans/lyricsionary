@@ -193,6 +193,28 @@ export default function WordsScreen() {
     setTimeout(() => setJustIgnored((prev) => prev.filter((w) => w !== item)), 5000);
   };
 
+  // Marks a Top word Known: saves it when it isn't saved yet, else moves the saved word up to Known
+  const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
+  const [justKnown, setJustKnown] = useState<{ item: WordFrequency; id?: string; before?: MasteryLevel }[]>([]);
+  const markKnown = async (item: WordFrequency) => {
+    const saved = savedWordIndex.get(`${languageKey(item.language)}\u0000${item.word.toLowerCase()}`);
+    const entry = { item, id: saved?.id, before: saved ? saved.masteryLevel || 'Seen' : undefined };
+    if (saved) await setWordsLevel([saved.id], 'Known');
+    else await addOrUpdateWord(item.word, item.language, getPreloadedIpa(item.language, item.word) || undefined, undefined, 'Known');
+    setJustKnown((prev) => [...prev, entry]);
+    setTimeout(() => setJustKnown((prev) => prev.filter((w) => w !== entry)), 5000);
+  };
+  const undoKnown = async (entry: { item: WordFrequency; id?: string; before?: MasteryLevel }) => {
+    setJustKnown((prev) => prev.filter((w) => w !== entry));
+    if (entry.id && entry.before) await setWordsLevel([entry.id], entry.before);
+    else {
+      const added = useStore.getState().words.find(
+        (w) => w.word.toLowerCase() === entry.item.word.toLowerCase() && languageKey(w.language) === languageKey(entry.item.language),
+      );
+      if (added) await deleteWord(added.id);
+    }
+  };
+
   const undoIgnore = (item: WordFrequency) => {
     void toggleIgnoredWord(item.word, item.language);
     setJustIgnored((prev) => prev.filter((w) => w !== item));
@@ -233,6 +255,14 @@ export default function WordsScreen() {
           </Text>
         </View>
         <Text style={styles.frequencyCount}>×{item.count}</Text>
+        {savedWord?.masteryLevel !== 'Known' && (
+          <IconButton
+            icon="checkmark-circle-outline"
+            label={`Mark ${item.word} Known`}
+            onPress={() => void markKnown(item)}
+            style={styles.knownButton}
+          />
+        )}
       </TouchableOpacity>
     );
   };
@@ -722,6 +752,18 @@ export default function WordsScreen() {
             onUndo={() => undoIgnore(item)}
           />
         ))}
+        {justKnown.map((entry) => (
+          <Toast
+            key={`known-${entry.item.language}-${entry.item.word}`}
+            message={
+              <>
+                Marked
+                <Text style={{ fontWeight: 'bold' }}> {entry.item.word}</Text> Known
+              </>
+            }
+            onUndo={() => void undoKnown(entry)}
+          />
+        ))}
         {pendingDeletions.map((d) => (
           <Toast
             key={d.id}
@@ -880,6 +922,10 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 8,
     zIndex: 1000,
+  },
+  knownButton: {
+    width: 32,
+    height: 32,
   },
   frequencyStats: {
     alignItems: 'flex-end',

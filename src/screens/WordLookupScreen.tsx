@@ -140,8 +140,6 @@ export default function WordLookupScreen() {
   ]);
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  // Ignoring a saved word deletes it too, so it asks first
-  const [ignoreOnDelete, setIgnoreOnDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [undoData, setUndoData] = useState<{ block: WordSenseData; index: number } | null>(null);
@@ -595,12 +593,8 @@ export default function WordLookupScreen() {
     const existing = findExistingWord();
     if (existing) {
       await deleteWord(existing.id);
-      if (ignoreOnDelete && !isWordIgnored(useStore.getState().ignoredWords, existing.word, existing.language)) {
-        await toggleIgnoredWord(existing.word, existing.language);
-      }
     }
     setIsDeleting(false);
-    setIgnoreOnDelete(false);
     setShowDeleteConfirm(false);
     handleCancel();
   };
@@ -1037,19 +1031,16 @@ export default function WordLookupScreen() {
                 style={styles.menuItem}
                 onPress={() => {
                   setMenuOpen(false);
-                  if (existingWord) {
-                    setIgnoreOnDelete(true);
-                    setShowDeleteConfirm(true);
-                  } else void toggleIgnoredWord(displayWord, language);
+                  void toggleIgnoredWord(existingWord?.word ?? displayWord, existingWord?.language ?? language);
                 }}
                 accessibilityRole="menuitem"
               >
                 <Ionicons
-                  name={isWordIgnored(ignoredWords, displayWord, language) ? 'eye-outline' : 'eye-off-outline'}
+                  name={isWordIgnored(ignoredWords, existingWord?.word ?? displayWord, existingWord?.language ?? language) ? 'eye-outline' : 'eye-off-outline'}
                   size={18}
                   color={Colors.text}
                 />
-                <Text style={styles.menuText}>{isWordIgnored(ignoredWords, displayWord, language) ? 'Unignore' : 'Ignore'}</Text>
+                <Text style={styles.menuText}>{isWordIgnored(ignoredWords, existingWord?.word ?? displayWord, existingWord?.language ?? language) ? 'Unignore' : 'Ignore'}</Text>
               </TouchableOpacity>
             )}
             {existingWord && (
@@ -1057,7 +1048,6 @@ export default function WordLookupScreen() {
                 style={styles.menuItem}
                 onPress={() => {
                   setMenuOpen(false);
-                  setIgnoreOnDelete(false);
                   setShowDeleteConfirm(true);
                 }}
                 accessibilityRole="menuitem"
@@ -1104,14 +1094,12 @@ export default function WordLookupScreen() {
       />
       <ConfirmDialog
         visible={showDeleteConfirm}
-        title={ignoreOnDelete ? 'Ignore Word' : 'Delete Word'}
-        message={ignoreOnDelete
-          ? `Ignore "${displayWord}"? This deletes the saved word and stops it from showing up in Learn. This cannot be undone.`
-          : `Are you sure you want to delete "${displayWord}"? This cannot be undone.`}
-        confirmText={ignoreOnDelete ? 'Ignore' : 'Delete'}
+        title="Delete Word"
+        message={`Are you sure you want to delete "${displayWord}"? This cannot be undone.`}
+        confirmText="Delete"
         cancelText="Cancel"
         onConfirm={handleDelete}
-        onCancel={() => { setShowDeleteConfirm(false); setIgnoreOnDelete(false); }}
+        onCancel={() => setShowDeleteConfirm(false)}
         destructive
         loading={isDeleting}
       />

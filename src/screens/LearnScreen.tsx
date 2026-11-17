@@ -10,6 +10,7 @@ import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
 import LearnSettingsMenu from '../components/LearnSettingsMenu';
 import EmptyState from '../components/EmptyState';
 import NewWordCard from '../components/NewWordCard';
+import WordTransformButtons from '../components/WordTransformButtons';
 import ScreenWrapper from '../components/ScreenWrapper';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
@@ -1884,6 +1885,24 @@ export default function LearnScreen() {
           quizAnswered={meaningQuizAnswered}
           justSaved={justSavedWord?.toLowerCase() === selectedWordEntry.word.toLowerCase()}
         />
+        {/* Kept for a saved word with an apostrophe (l'envers), to look up and save the part after it */}
+        {/['’‘]/.test(selectedWordEntry.word) && (
+          <View style={styles.savedAlsoLookUp}>
+            <WordTransformButtons
+              word={selectedWordEntry.word}
+              songId={song.id}
+              songName={song.songName}
+              artistName={song.artistName}
+              lyricsLine={selectedLine ?? undefined}
+              translationLine={selectedTranslationLine}
+              originalLanguages={song.originalLanguages}
+              source="Learn"
+              occurrence={selectedOccurrence}
+              hideOriginalWord
+              compact
+            />
+          </View>
+        )}
       </View>
     ) : selectedWord ? (
       <NewWordCard
@@ -2479,6 +2498,10 @@ const styles = StyleSheet.create({
   // The sheet is the card's box, so the card takes its full width
   wordCardInSheet: {
     marginHorizontal: 0,
+  },
+  savedAlsoLookUp: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   annotationSpace: {
     minHeight: 14,

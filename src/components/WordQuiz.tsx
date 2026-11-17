@@ -10,6 +10,7 @@ import { Text, TextInput } from './Text';
 import { getFlagForLanguage } from '../constants/languages';
 import DueLabel from './DueLabel';
 import PronunciationAudio from './PronunciationAudio';
+import WordFrequency from './WordFrequency';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 
 interface WordQuizProps {
@@ -238,6 +239,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
           <Text style={styles.giveUpText}>I don't remember</Text>
         </TouchableOpacity>
       )}
+      {answered && <WordFrequency entry={current} />}
       {answered && !practice && <LevelTrack from={unanswered} entry={current} />}
     </View>
   );

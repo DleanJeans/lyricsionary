@@ -39,6 +39,7 @@ import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import { getScrapeGoogleIpaJS, getScrapeGoogleNumberJS } from '../utils/scrapeGoogleIpaJS';
 import { findSavedWord, hasCapitals } from '../utils/wordForms';
 import MergeForms from '../components/MergeForms';
+import WordFrequency from '../components/WordFrequency';
 import AnswerHistory from '../components/AnswerHistory';
 import { addIpa } from '../utils/ipaList';
 import { focusWiktionaryJS, wiktionaryNightJS } from '../utils/wiktionaryPageJS';
@@ -957,6 +958,12 @@ export default function WordLookupScreen() {
                   void unmergeForm(existingWord.id, form);
                 }}
               />
+            </View>
+          )}
+
+          {existingWord && (
+            <View style={styles.field}>
+              <WordFrequency entry={existingWord} />
             </View>
           )}
 

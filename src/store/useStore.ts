@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
 import { GOOGLE_SEARCH_URL } from '../constants/urls';
 import { persist } from '../services/storageWrites';
+import { replaceEmDashes } from '../utils/deeplTranslation';
 import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
 import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
@@ -224,6 +225,10 @@ export const useStore = create<AppState>((set, get) => ({
           ...song,
           lastOpenedAt: song.lastOpenedAt ?? song.updatedAt ?? song.createdAt,
           openCount: song.openCount ?? 0,
+          // Replace em dashes in saved translations (e.g. from DeepL) with commas
+          translations: (song.translations ?? []).map((t) =>
+            t.lyrics?.includes('—') ? { ...t, lyrics: replaceEmDashes(t.lyrics) } : t
+          ),
         }));
         set({ songs: migratedSongs });
         if (JSON.stringify(migratedSongs) !== JSON.stringify(songs)) {

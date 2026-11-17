@@ -547,6 +547,7 @@ export default function WordsScreen() {
       )}
 
       {listsFrequencies ? (
+        <>
         <View style={styles.topFilters}>
           {showFrequency && <FilterChip
             icon={<Ionicons name="bookmark-outline" size={16} color={hideSavedInTop ? Colors.white : Colors.textSecondary} />}
@@ -557,8 +558,9 @@ export default function WordsScreen() {
             accessibilityLabel="Only words not saved yet"
           />}
           {showFrequency && topSortMenu}
-          <Text style={styles.topHint}>Long press a word to ignore it</Text>
         </View>
+        <Text style={styles.topHint}>Long press a word to ignore it</Text>
+        </>
       ) : (
         words.length > 0 && (
           <>
@@ -883,16 +885,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   topHint: {
-    flexShrink: 1,
+    paddingHorizontal: 4,
+    paddingBottom: 8,
     fontSize: 12,
     color: Colors.textMuted,
   },
   topFilters: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     paddingHorizontal: 4,
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
   frequencyRow: {
     flexDirection: 'row',

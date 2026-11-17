@@ -337,7 +337,32 @@ export function buildReviewItems(
   return items;
 }
 
-export const dueWords = (words: WordEntry[], now: number) => words.filter((w) => isDue(w, now));
+const phraseWordKey = (word: string) => removeSpecialChars(word).replace(/['’]/g, '').toLowerCase();
+
+/** The words (lowercased, no apostrophes) of the saved phrases, by language, e.g. dreh and durch for "dreh' durch" */
+function phraseWordsOf(words: WordEntry[]): Map<string, Set<string>> {
+  const result = new Map<string, Set<string>>();
+  for (const w of words) {
+    if (isCjkWord(w.word) || !/\s/.test(w.word.trim())) continue;
+    const set = result.get(w.language) ?? new Set<string>();
+    lineWords(w.word).forEach((part) => set.add(phraseWordKey(part)));
+    result.set(w.language, set);
+  }
+  return result;
+}
+
+/**
+ * The words due for review. A single word that is part of a saved phrase of the same language
+ * (`all` is every saved word, by default `words`) isn't asked on its own: the phrase is.
+ */
+export const dueWords = (words: WordEntry[], now: number, all: WordEntry[] = words) => {
+  const inPhrases = phraseWordsOf(all);
+  return words.filter((w) => {
+    if (!isDue(w, now)) return false;
+    const isPhrase = isCjkWord(w.word) || /\s/.test(w.word.trim());
+    return isPhrase || !inPhrases.get(w.language)?.has(phraseWordKey(w.word));
+  });
+};
 
 /** Review session sizes to pick from when more words are due than the smallest */
 export const REVIEW_SIZES = [10, 20];
@@ -378,7 +403,7 @@ export function buildLaunchReview(
   size = LAUNCH_REVIEW_SIZE,
   random = Math.random
 ): ReviewItem[] {
-  const due = dueWords(words, now).filter(canReview);
+  const due = dueWords(words, now, words).filter(canReview);
   if (!due.length) return [];
   const sorted = songs.filter((s) => !s.archivedAt).sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0));
   let recentCount = sorted.filter((s) => now - (s.lastOpenedAt ?? 0) <= RECENT_SONG_MS).length;

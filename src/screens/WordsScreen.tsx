@@ -305,7 +305,7 @@ export default function WordsScreen() {
   // The words in the chosen languages that a quiz now would move toward their next level. Their quizzes
   // are built when Review is tapped: building them here took seconds with many saved words.
   const due = React.useMemo(
-    () => dueWords(languageFilteredWords, Date.now()).filter(canReview),
+    () => dueWords(languageFilteredWords, Date.now(), words).filter(canReview),
     // languageFilteredWords comes from these
     [words, selectedLanguages, pendingDeletions, songFilterId],
   );

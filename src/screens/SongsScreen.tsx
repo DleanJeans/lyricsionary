@@ -316,7 +316,7 @@ export default function SongsScreen() {
   // quizzes are built when Review is tapped: building them all here took seconds with many saved words.
   const songDue = useMemo(() => {
     const now = Date.now();
-    return new Map([...songWords].map(([songId, entries]) => [songId, dueWords(entries, now).filter(canReview)]));
+    return new Map([...songWords].map(([songId, entries]) => [songId, dueWords(entries, now, words).filter(canReview)]));
   }, [songWords]);
   const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
 

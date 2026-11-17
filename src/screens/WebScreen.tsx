@@ -61,6 +61,8 @@ export default function WebScreen() {
   const [loading, setLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Supported lyrics sites found in Google results with no lyrics panel, offered as rows to open
+  const [lyricsSites, setLyricsSites] = useState<{ domain: string; url: string; title: string }[]>([]);
   const backPressedOnce = useRef(false);
   const timeoutRef = useRef<number | null>(null);
   const [webViewKey, setWebViewKey] = useState(0);
@@ -281,6 +283,9 @@ export default function WebScreen() {
           navigation.navigate('Editor', scraped);
         }
       }
+      if (data.type === 'lyricsSites' && Array.isArray(data.sites)) {
+        setLyricsSites(data.sites);
+      }
       if (data.type === 'error') {
         setToast(data.message || 'Failed to scrape lyrics');
         if (useStore.getState().autoFetch?.step === 'lyrics') useStore.getState().setAutoFetch(null);
@@ -489,6 +494,7 @@ export default function WebScreen() {
         onLoadStart={() => {
           setLoading(true);
           setShowFab(false);
+          setLyricsSites([]);
         }}
         onLoadProgress={({ nativeEvent }) => {
           if (nativeEvent.progress >= 1) {
@@ -513,6 +519,37 @@ export default function WebScreen() {
             size="large"
             color={Colors.primary}
           />
+        </View>
+      )}
+
+      {lyricsSites.length > 0 && !toast && (
+        <View style={styles.sitesSheet}>
+          <View style={styles.sitesHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sitesTitle}>Google has no lyrics panel</Text>
+              <Text style={styles.sitesSubtitle}>Pick a site to open it, then tap Get Lyrics</Text>
+            </View>
+            <TouchableOpacity onPress={() => setLyricsSites([])} hitSlop={10}>
+              <Ionicons name="close" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          {lyricsSites.map((site) => (
+            <TouchableOpacity
+              key={site.domain}
+              style={styles.siteRow}
+              onPress={() => {
+                setLyricsSites([]);
+                setWebUrl(site.url);
+              }}
+            >
+              <Image source={{ uri: getFaviconUrl(site.url) ?? undefined }} style={styles.siteIcon} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.siteName}>{site.domain}</Text>
+                {!!site.title && <Text style={styles.siteResult} numberOfLines={1}>{site.title}</Text>}
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.primaryLight} />
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
@@ -603,6 +640,36 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
   },
+  sitesSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.surfaceLight,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 12,
+    paddingBottom: 16,
+  },
+  sitesHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 },
+  sitesTitle: { color: Colors.text, fontSize: 14, fontWeight: '700' },
+  sitesSubtitle: { color: Colors.textSecondary, fontSize: 12, marginTop: 2, marginBottom: 6 },
+  siteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+  },
+  siteIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: Colors.surfaceLight },
+  siteName: { color: Colors.text, fontSize: 14, fontWeight: '700' },
+  siteResult: { color: Colors.textSecondary, fontSize: 11 },
   loadingOverlay: {
     position: 'absolute',
     top: 0,

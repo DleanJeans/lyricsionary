@@ -645,6 +645,18 @@ export default function LearnScreen() {
     setMarkedToast(`Marked ${picked.length} ${picked.length === 1 ? 'word' : 'words'} Known`);
   };
 
+  // Ignores the picked words that aren't saved; saved ones are left as they are
+  const ignorePicked = async () => {
+    const language = song?.originalLanguages?.[0] || 'unknown';
+    const picked = [...marked.values()].filter((item) => !findSavedEntry(item.word));
+    const skipped = marked.size - picked.length;
+    if (marked.size === 0) return;
+    exitMarkMode();
+    for (const item of picked) await toggleIgnoredWord(item.word, language);
+    const done = `Ignored ${picked.length} ${picked.length === 1 ? 'word' : 'words'}`;
+    setMarkedToast(skipped ? `${done}, ${skipped} saved left as is` : done);
+  };
+
   // The word the last tap saved as new, which a longer Chinese or Japanese word grown from it replaces
   const autoSavedWordRef = useRef<string | null>(null);
 
@@ -2015,6 +2027,16 @@ export default function LearnScreen() {
         {marked.size === 0 ? 'Tap or drag across words' : `${marked.size} ${marked.size === 1 ? 'word' : 'words'} picked`}
       </Text>
       <TouchableOpacity
+        onPress={() => void ignorePicked()}
+        disabled={marked.size === 0}
+        style={[styles.markButton, styles.ignoreButton, marked.size === 0 && { opacity: 0.4 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Ignore picked words"
+      >
+        <Ionicons name="eye-off-outline" size={18} color={Colors.textSecondary} />
+        <Text style={[styles.markButtonText, { color: Colors.textSecondary }]}>Ignore</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
         onPress={() => void markPickedKnown()}
         disabled={marked.size === 0}
         style={[styles.markButton, marked.size === 0 && { opacity: 0.4 }]}
@@ -2416,6 +2438,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: Colors.primary,
   },
+  ignoreButton: { backgroundColor: Colors.background },
   markButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   headerBtn: {
     padding: 8,

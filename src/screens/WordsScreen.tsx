@@ -11,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { getFlagForLanguage, languageKey } from '../constants/languages';
-import { MasteryLevel, WordEntry } from '../types';
+import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useIsWide } from '../hooks/useLayout';
 import { useBackToQuit } from '../hooks/useBackToQuit';
@@ -44,6 +44,14 @@ const isBoolean = (value: unknown): value is boolean => typeof value === 'boolea
 type WordSort = 'recent' | 'missed' | 'due';
 const isWordSort = (value: unknown): value is WordSort => value === 'recent' || value === 'missed' || value === 'due';
 
+type TopSort = 'songs' | 'sentences' | 'appearances' | 'level';
+const isTopSort = (value: unknown): value is TopSort =>
+  value === 'songs' || value === 'sentences' || value === 'appearances' || value === 'level';
+// Top words' levels, as saved words have them; a word not saved yet is below Seen
+const TOP_LEVELS: (MasteryLevel | 'Unsaved')[] = ['Unsaved', ...MASTERY_LEVELS];
+const isTopLevels = (value: unknown): value is (MasteryLevel | 'Unsaved')[] =>
+  Array.isArray(value) && value.every((v) => TOP_LEVELS.includes(v));
+
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function WordsScreen() {
@@ -64,6 +72,11 @@ export default function WordsScreen() {
   const [showFrequency, setShowFrequency] = usePersistedState('@lyricsionary_words_top_view', false, isBoolean);
   // Top view: only words not saved yet, the ones left to learn
   const [hideSavedInTop, setHideSavedInTop] = usePersistedState('@lyricsionary_words_top_unsaved', false, isBoolean);
+  // Top view: what ranks the words, kept across restarts
+  const [topSort, setTopSort] = usePersistedState<TopSort>('@lyricsionary_words_top_sort', 'appearances', isTopSort);
+  // Top view: levels hidden from the list (e.g. Known words like "ich"), kept across restarts
+  const [hiddenTopLevels, setHiddenTopLevels] = usePersistedState<(MasteryLevel | 'Unsaved')[]>(
+    '@lyricsionary_words_top_hidden_levels', [], isTopLevels);
   // Unsaved view: words of the lyrics not saved yet whose IPA Learn preloaded, most frequent first
   const [showUnsaved, setShowUnsaved] = usePersistedState('@lyricsionary_words_unsaved_view', false, isBoolean);
   const showIpaBrackets = useStore((s) => s.showIpaBrackets);
@@ -145,11 +158,33 @@ export default function WordsScreen() {
     (w) => selectedLanguages.length === 0 || selectedLanguages.includes(w.language),
   );
   const unsavedFrequencyCount = languageFrequencies.filter((w) => !isSavedFrequency(w)).length;
+  const topLevelOf = (w: WordFrequency): MasteryLevel | 'Unsaved' => {
+    const saved = savedWordIndex.get(`${languageKey(w.language)}\u0000${w.word.toLowerCase()}`);
+    return saved ? saved.masteryLevel || 'Seen' : 'Unsaved';
+  };
+  const topLevelCounts: Partial<Record<MasteryLevel | 'Unsaved', number>> = {};
+  if (showFrequency) for (const w of languageFrequencies) {
+    const level = topLevelOf(w);
+    topLevelCounts[level] = (topLevelCounts[level] ?? 0) + 1;
+  }
   const searchedFrequencies = languageFrequencies.filter((w) =>
     (showUnsaved
       ? !isSavedFrequency(w) && !!getPreloadedWord(w.language, w.word)
-      : !hideSavedInTop || !isSavedFrequency(w)) && matchesSearch(w.word, searchQuery),
+      : !hideSavedInTop || !isSavedFrequency(w)) && matchesSearch(w.word, searchQuery) &&
+      (!showFrequency || !hiddenTopLevels.includes(topLevelOf(w))),
   );
+  const rankedFrequencies = (() => {
+    if (!showFrequency) return searchedFrequencies;
+    const levelRank = (w: WordFrequency) => TOP_LEVELS.indexOf(topLevelOf(w));
+    const by = {
+      songs: (a: WordFrequency, b: WordFrequency) => b.songCount - a.songCount || b.sentenceCount - a.sentenceCount,
+      sentences: (a: WordFrequency, b: WordFrequency) => b.sentenceCount - a.sentenceCount || b.songCount - a.songCount,
+      appearances: () => 0,
+      level: (a: WordFrequency, b: WordFrequency) => levelRank(a) - levelRank(b),
+    }[topSort];
+    // Ties keep the order of appearances (searchedFrequencies is already sorted by them)
+    return [...searchedFrequencies].sort((a, b) => by(a, b) || b.count - a.count);
+  })();
 
 
   const ignoreFrequencyWord = (item: WordFrequency) => {
@@ -192,9 +227,11 @@ export default function WordsScreen() {
             {formatIpa(getPreloadedIpa(item.language, item.word)!, showIpaBrackets)}
           </Text>
         )}
-        <Text style={styles.frequencySongs}>
-          {item.songCount} {item.songCount === 1 ? 'song' : 'songs'}
-        </Text>
+        <View style={styles.frequencyStats}>
+          <Text style={styles.frequencySongs}>
+            {item.songCount} {item.songCount === 1 ? 'song' : 'songs'} · {item.sentenceCount} {item.sentenceCount === 1 ? 'line' : 'lines'}
+          </Text>
+        </View>
         <Text style={styles.frequencyCount}>×{item.count}</Text>
       </TouchableOpacity>
     );
@@ -411,6 +448,39 @@ export default function WordsScreen() {
     </Dropdown>
   );
 
+  const topSortMenu = (
+    <Dropdown
+      icon="swap-vertical-outline"
+      label={{ songs: 'Songs', sentences: 'Lines', appearances: 'Appearances', level: 'Level' }[topSort]}
+      accessibilityLabel="Sort and filter top words"
+    >
+      {() => (
+        <>
+          <MenuHeader title="Sort by" />
+          <MenuItem kind="radio" icon="albums-outline" label="Songs" checked={topSort === 'songs'} onPress={() => setTopSort('songs')} />
+          <MenuItem kind="radio" icon="reorder-three-outline" label="Different lines" checked={topSort === 'sentences'} onPress={() => setTopSort('sentences')} />
+          <MenuItem kind="radio" icon="repeat-outline" label="Appearances" checked={topSort === 'appearances'} onPress={() => setTopSort('appearances')} />
+          <MenuItem kind="radio" icon="stats-chart-outline" label="Level" checked={topSort === 'level'} onPress={() => setTopSort('level')} />
+          <MenuDivider />
+          <MenuHeader title="Show levels" />
+          {TOP_LEVELS.map((level) => (
+            <MenuItem
+              key={level}
+              icon="ellipse"
+              iconColor={level === 'Unsaved' ? Colors.textMuted : getMasteryLevelColor(level)}
+              label={level === 'Unsaved' ? 'Not saved' : level}
+              count={topLevelCounts[level] ?? 0}
+              checked={!hiddenTopLevels.includes(level)}
+              onPress={() =>
+                setHiddenTopLevels(hiddenTopLevels.includes(level) ? hiddenTopLevels.filter((l) => l !== level) : [...hiddenTopLevels, level])
+              }
+            />
+          ))}
+        </>
+      )}
+    </Dropdown>
+  );
+
   const openSearchButton = (
     <IconButton
       icon={showSearch ? 'close' : 'search'}
@@ -486,6 +556,7 @@ export default function WordsScreen() {
             onPress={() => setHideSavedInTop(!hideSavedInTop)}
             accessibilityLabel="Only words not saved yet"
           />}
+          {showFrequency && topSortMenu}
           <Text style={styles.topHint}>Long press a word to ignore it</Text>
         </View>
       ) : (
@@ -553,7 +624,7 @@ export default function WordsScreen() {
           />
         ) : (
           <FlatList
-            data={searchedFrequencies}
+            data={rankedFrequencies}
             keyExtractor={(item) => `${item.language}-${item.word}`}
             renderItem={renderFrequencyItem}
             contentContainerStyle={styles.list}
@@ -807,6 +878,9 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 8,
     zIndex: 1000,
+  },
+  frequencyStats: {
+    alignItems: 'flex-end',
   },
   topHint: {
     flexShrink: 1,

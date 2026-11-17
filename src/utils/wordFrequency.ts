@@ -11,6 +11,8 @@ export interface WordFrequency {
   language: string;
   count: number;
   songCount: number;
+  /** Distinct sentences it's in: a line sung again (a chorus) counts once, by its words ignoring case */
+  sentenceCount: number;
 }
 
 interface SongLyrics {
@@ -57,17 +59,18 @@ export function countWordOccurrences(
   songs: SongLyrics[],
   isIgnored: (word: string, language: string) => boolean = () => false
 ): WordFrequency[] {
-  const entries = new Map<string, { language: string; count: number; songs: Set<number>; spellings: Map<string, { count: number; midLine: number }> }>();
+  const entries = new Map<string, { language: string; count: number; songs: Set<number>; sentences: Set<string>; spellings: Map<string, { count: number; midLine: number }> }>();
 
   songs.forEach((song, songIndex) => {
     const songLanguage = song.originalLanguages?.[0] || 'unknown';
     // By name, so a song saved as "fr" and one saved as "French" count together
     const language = getLanguageNameFromCode(songLanguage) ?? songLanguage;
     // A line's first word is capitalized whatever it is, e.g. "Des" in "Des bijoux de chez Chanel"
-    const tokens = song.originalLyrics.split('\n').flatMap((line) =>
-      splitLyricTokens(line).filter((token) => token.trim()).map((token, index) => ({ token, startsLine: index === 0 }))
-    );
-    for (const { token, startsLine } of tokens) {
+    const tokens = song.originalLyrics.split('\n').flatMap((line) => {
+      const sentence = splitLyricTokens(line).map(cleanToken).filter(isLyricWord).join(' ').toLowerCase();
+      return splitLyricTokens(line).filter((token) => token.trim()).map((token, index) => ({ token, startsLine: index === 0, sentence }));
+    });
+    for (const { token, startsLine, sentence } of tokens) {
       const cleaned = cleanToken(token);
       const word = getFullWord(cleaned, song.originalLanguages) ?? withoutTrailingApostrophes(cleaned);
       if (!isLyricWord(word)) continue;
@@ -75,11 +78,12 @@ export function countWordOccurrences(
       const key = `${language}\u0000${word.toLowerCase()}`;
       let entry = entries.get(key);
       if (!entry) {
-        entry = { language, count: 0, songs: new Set(), spellings: new Map() };
+        entry = { language, count: 0, songs: new Set(), sentences: new Set(), spellings: new Map() };
         entries.set(key, entry);
       }
       entry.count++;
       entry.songs.add(songIndex);
+      if (sentence) entry.sentences.add(sentence);
       const spelling = entry.spellings.get(word) ?? { count: 0, midLine: 0 };
       spelling.count++;
       if (!startsLine) spelling.midLine++;
@@ -94,6 +98,7 @@ export function countWordOccurrences(
       language: e.language,
       count: e.count,
       songCount: e.songs.size,
+      sentenceCount: e.sentences.size,
     }))
     .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
 }

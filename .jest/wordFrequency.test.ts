@@ -9,20 +9,20 @@ describe('countWordOccurrences', () => {
 
   it('sorts words by occurrences', () => {
     const result = countWordOccurrences(songs);
-    expect(result[0]).toEqual({ word: 'liebe', language: 'German', count: 4, songCount: 2 });
+    expect(result[0]).toEqual({ word: 'liebe', language: 'German', count: 4, songCount: 2, sentenceCount: expect.any(Number) });
     expect(result.slice(1, 3).map((w) => w.word)).toEqual(['dich', 'Ich']);
   });
 
   it('groups words case-insensitively and keeps the most common spelling', () => {
     const result = countWordOccurrences([{ originalLyrics: 'Ich ich Ich', originalLanguages: ['German'] }]);
-    expect(result).toEqual([{ word: 'Ich', language: 'German', count: 3, songCount: 1 }]);
+    expect(result).toEqual([{ word: 'Ich', language: 'German', count: 3, songCount: 1, sentenceCount: expect.any(Number) }]);
   });
 
   it("spells a word as it's written within a line rather than at a line's start", () => {
     const result = countWordOccurrences([
       { originalLyrics: 'Des bijoux\nDes fleurs\nun peu des deux', originalLanguages: ['French'] },
     ]);
-    expect(result[0]).toEqual({ word: 'des', language: 'French', count: 3, songCount: 1 });
+    expect(result[0]).toEqual({ word: 'des', language: 'French', count: 3, songCount: 1, sentenceCount: expect.any(Number) });
   });
 
   it('counts the number of songs a word appears in', () => {
@@ -30,7 +30,7 @@ describe('countWordOccurrences', () => {
       { originalLyrics: 'Herz Herz', originalLanguages: ['German'] },
       { originalLyrics: 'Herz', originalLanguages: ['German'] },
     ]);
-    expect(result).toEqual([{ word: 'Herz', language: 'German', count: 3, songCount: 2 }]);
+    expect(result).toEqual([{ word: 'Herz', language: 'German', count: 3, songCount: 2, sentenceCount: expect.any(Number) }]);
   });
 
   it('keeps languages separate and skips numbers and punctuation', () => {
@@ -94,7 +94,7 @@ describe('countWordOccurrences languages', () => {
       { originalLyrics: 'bonjour', originalLanguages: ['fr'] },
       { originalLyrics: 'Bonjour', originalLanguages: ['French'] },
     ]);
-    expect(result).toEqual([{ word: 'bonjour', language: 'French', count: 2, songCount: 2 }]);
+    expect(result).toEqual([{ word: 'bonjour', language: 'French', count: 2, songCount: 2, sentenceCount: expect.any(Number) }]);
   });
 });
 
@@ -104,5 +104,15 @@ describe('countKnownWords onUnknown', () => {
     const unknown: string[] = [];
     countKnownWords('Ich liebe dich,\nich liebe dich nicht! tout à fait 二人', (w) => known.has(w.toLowerCase()), undefined, (w) => unknown.push(w));
     expect(unknown).toEqual(['dich', 'dich', 'nicht', '二', '人']);
+  });
+});
+
+describe('countWordOccurrences sentences', () => {
+  it('counts a repeated line (a chorus) once, ignoring case and punctuation', () => {
+    const [liebe] = countWordOccurrences([
+      { originalLyrics: 'Ich liebe dich\nich liebe dich!\nDu bist meine Liebe', originalLanguages: ['German'] },
+    ]).filter((w) => w.word === 'liebe');
+    expect(liebe.count).toBe(3);
+    expect(liebe.sentenceCount).toBe(2);
   });
 });

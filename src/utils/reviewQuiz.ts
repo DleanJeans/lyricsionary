@@ -109,6 +109,38 @@ export function otherSongLines(entry: WordEntry, songs: ReviewSong[]): IndexedLi
   return found;
 }
 
+/**
+ * How common the word is in the songs: the distinct sentences it's in and the songs they're from.
+ * A sentence sung again (a chorus) counts once, however many times or in how many songs it comes,
+ * matched by its text ignoring case and punctuation. The lines it was saved from count too.
+ */
+export function wordFrequency(entry: WordEntry, songs: ReviewSong[]): { lines: number; songs: number } {
+  const key = (line: string) => lineWords(line).join(' ').toLowerCase();
+  const lines = new Set<string>();
+  const inSongs = new Set<string>();
+  for (const context of entry.contexts ?? []) {
+    if (context.context?.trim() && findWordInLine(context.context, entry.word)) {
+      lines.add(key(context.context));
+      if (context.songId) inSongs.add(context.songId);
+    }
+  }
+  const first = entry.language && !isCjkWord(entry.word) ? lineWords(entry.word)[0]?.toLowerCase() : undefined;
+  if (first && songs.length) {
+    for (const spot of lineIndex(songs).get(languageKey(entry.language))?.get(first) ?? []) {
+      if (!findWordInLine(spot.line, entry.word)) continue;
+      lines.add(key(spot.line));
+      inSongs.add(spot.song.id);
+    }
+  }
+  return { lines: lines.size, songs: inSongs.size };
+}
+
+/** Words in more distinct sentences and songs rank higher; steps of doubling, so waiting longest still breaks ties */
+export function frequencyTier(entry: WordEntry, songs: ReviewSong[]): number {
+  const { lines, songs: n } = wordFrequency(entry, songs);
+  return Math.floor(Math.log2(1 + lines + 2 * n));
+}
+
 /** One of the items, picked at random; no random number is taken when there's only one */
 const pickOne = <T,>(items: T[], random: () => number): T =>
   items.length === 1 ? items[0] : items[Math.min(items.length - 1, Math.floor(random() * items.length))];
@@ -203,8 +235,8 @@ export function rebuildReviewQuiz(item: ReviewItem, words: WordEntry[], random =
 export const canReview = (entry: WordEntry) => !!quizKindFor(entry.masteryLevel) && !!answerFor(entry, pickContext(entry));
 
 /**
- * A quiz for each word that's due (isDue), tricky ones (isTricky) first, then the ones not quizzed
- * for longest. Each word is asked the way asked least so far among the ones it has (reviewWays), so
+ * A quiz for each word that's due (isDue), tricky ones (isTricky) first, then the ones in more
+ * distinct sentences and songs (frequencyTier), then the ones not quizzed for longest. Each word is asked the way asked least so far among the ones it has (reviewWays), so
  * every way comes up about as often; `counts` keeps how often each was. A word whose quiz can't be
  * made, e.g. one with no meaning or too few other saved words in its language, is left out.
  */
@@ -218,9 +250,11 @@ export function buildReviewItems(
   const items: ReviewItem[] = [];
   // Tricky words first, then the ones not quizzed for longest
   const now = Date.now();
+  const tier = new Map(dueWords.map((w) => [w.id, frequencyTier(w, songs)]));
   const ordered = [...dueWords].sort(
     (a, b) =>
       Number(isTricky(b.quiz, now)) - Number(isTricky(a.quiz, now)) ||
+      tier.get(b.id)! - tier.get(a.id)! ||
       (a.quiz?.lastAnsweredAt ?? 0) - (b.quiz?.lastAnsweredAt ?? 0)
   );
   for (const entry of ordered) {

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View, Text as RNText } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
-import { isWordIgnored, useStore } from '../store/useStore';
+import { isIpaKept, isWordIgnored, useStore } from '../store/useStore';
 import {
   buildKnownGermanWords,
   getCompoundParts,
@@ -57,8 +57,10 @@ export default function NewWordCard({
   const autoPlayAudio = useStore((s) => s.autoPlayAudio);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
+  const toggleKeepIpa = useStore((s) => s.toggleKeepIpa);
   const language = originalLanguages?.[0] || 'unknown';
   const isIgnored = isWordIgnored(ignoredWords, word, language);
+  const ipaKept = isIgnored && isIpaKept(ignoredWords, word, language);
   const wiktionary = useWiktionaryPronunciation(word, originalLanguages?.[0]);
 
   const words = useStore((s) => s.words);
@@ -154,6 +156,17 @@ export default function NewWordCard({
               hitSlop={4}
             >
               <Ionicons name="cut-outline" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+          {isIgnored && (
+            <TouchableOpacity
+              accessibilityLabel={ipaKept ? 'Stop keeping IPA' : 'Keep IPA'}
+              accessibilityState={{ selected: ipaKept }}
+              style={styles.toolButton}
+              onPress={() => toggleKeepIpa(word, language)}
+              hitSlop={4}
+            >
+              <Ionicons name="language-outline" size={20} color={ipaKept ? Colors.primary : Colors.textSecondary} />
             </TouchableOpacity>
           )}
           <TouchableOpacity

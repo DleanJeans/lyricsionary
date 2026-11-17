@@ -29,7 +29,7 @@ import PronunciationAudio from '../components/PronunciationAudio';
 import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
 import { isSameLanguage } from '../constants/languages';
-import { isWordIgnored, useStore } from '../store/useStore';
+import { isIpaKept, isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
 import { pickDefinition } from '../utils/definitionHighlight';
 import { getGermanExpandedForm } from '../utils/wordTransform';
@@ -76,6 +76,7 @@ export default function WordLookupScreen() {
   const deleteWord = useStore((s) => s.deleteWord);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
+  const toggleKeepIpa = useStore((s) => s.toggleKeepIpa);
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
@@ -1041,6 +1042,21 @@ export default function WordLookupScreen() {
                   color={Colors.text}
                 />
                 <Text style={styles.menuText}>{isWordIgnored(ignoredWords, existingWord?.word ?? displayWord, existingWord?.language ?? language) ? 'Unignore' : 'Ignore'}</Text>
+              </TouchableOpacity>
+            )}
+            {!!displayWord && isWordIgnored(ignoredWords, existingWord?.word ?? displayWord, existingWord?.language ?? language) && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  void toggleKeepIpa(existingWord?.word ?? displayWord, existingWord?.language ?? language);
+                }}
+                accessibilityRole="menuitem"
+              >
+                <Ionicons name="language-outline" size={18} color={Colors.text} />
+                <Text style={styles.menuText}>
+                  {isIpaKept(ignoredWords, existingWord?.word ?? displayWord, existingWord?.language ?? language) ? 'Stop keeping IPA' : 'Keep IPA'}
+                </Text>
               </TouchableOpacity>
             )}
             {existingWord && (

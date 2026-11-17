@@ -23,6 +23,8 @@ const REVIEW_REMINDER_KEY = '@lyricsionary_review_reminder';
 export interface IgnoredWord {
   word: string;
   language: string;
+  // Still shows (and fetches) its IPA above the word in Learn, e.g. city names
+  keepIpa?: boolean;
 }
 
 // Automatic lyrics + translation flow started from the now playing notification
@@ -34,6 +36,9 @@ export interface AutoFetch {
 
 export const isWordIgnored = (ignoredWords: IgnoredWord[], word: string, language: string) =>
   ignoredWords.some((w) => w.word === word.toLowerCase() && w.language === language);
+
+export const isIpaKept = (ignoredWords: IgnoredWord[], word: string, language: string) =>
+  ignoredWords.some((w) => w.keepIpa && w.word === word.toLowerCase() && w.language === language);
 
 // isWordIgnored for checking many words, e.g. every word of every song, with one lookup each
 export function makeIgnoredWordChecker(ignoredWords: IgnoredWord[]): (word: string, language: string) => boolean {
@@ -166,6 +171,7 @@ interface AppState {
   // Ignore list actions
   loadIgnoredWords: () => Promise<void>;
   toggleIgnoredWord: (word: string, language: string) => Promise<void>;
+  toggleKeepIpa: (word: string, language: string) => Promise<void>;
 
   // Compound word actions
   loadCompoundSplits: () => Promise<void>;
@@ -600,6 +606,15 @@ export const useStore = create<AppState>((set, get) => ({
     const ignoredWords = isWordIgnored(current, lower, language)
       ? current.filter((w) => !(w.word === lower && w.language === language))
       : [...current, { word: lower, language }];
+    set({ ignoredWords });
+    await persist(IGNORED_WORDS_KEY, () => JSON.stringify(ignoredWords));
+  },
+
+  toggleKeepIpa: async (word, language) => {
+    const lower = word.toLowerCase();
+    const ignoredWords = get().ignoredWords.map((w) =>
+      w.word === lower && w.language === language ? { ...w, keepIpa: !w.keepIpa } : w
+    );
     set({ ignoredWords });
     await persist(IGNORED_WORDS_KEY, () => JSON.stringify(ignoredWords));
   },

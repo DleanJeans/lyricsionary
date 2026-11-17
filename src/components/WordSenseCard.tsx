@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, TextInput } from './Text'
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { emojisByCategory } from 'rn-emoji-keyboard';
 import { Colors } from '../constants/theme';
 import SongContextBlock from './SongContextBlock';
@@ -115,8 +116,22 @@ export default function WordSenseCard({
     isRemoved && styles.containerRemoved,
   ];
 
+  const navigation = useNavigation<any>();
+  // Tapping the title opens the song in Learn, at this card's line
+  const openSong =
+    song?.id && songTitle && !isRemoved
+      ? () =>
+          navigation.navigate('Learn', {
+            songId: song.id,
+            ...(context.trim() ? { focus: { word, line: context, occurrence } } : {}),
+          })
+      : undefined;
+  const Header: any = openSong ? TouchableOpacity : View;
   const header = (
-    <View style={styles.header}>
+    <Header
+      style={styles.header}
+      {...(openSong ? { onPress: openSong, accessibilityRole: 'button', accessibilityLabel: `Open ${songTitle} in Learn` } : {})}
+    >
       <Ionicons name="musical-notes" size={14} color={songTitle ? Colors.primaryLight : Colors.textMuted} />
       <View style={styles.headerSong}>
         {songTitle ? (
@@ -128,6 +143,7 @@ export default function WordSenseCard({
           <Text style={styles.headerArtist} numberOfLines={1}>Not from a song</Text>
         )}
       </View>
+      {openSong ? <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} /> : null}
       {isNew && !isRemoved && (
         <View style={styles.newTag}>
           <Text style={styles.newTagText}>new</Text>
@@ -143,7 +159,7 @@ export default function WordSenseCard({
           <Ionicons name="close" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
       )}
-    </View>
+    </Header>
   );
 
   if (!open) {

@@ -71,6 +71,7 @@ export default function LearnScreen() {
   const words = useStore((s) => s.words);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
   const deleteWord = useStore((s) => s.deleteWord);
+  const setWordsLevel = useStore((s) => s.setWordsLevel);
   const restoreWord = useStore((s) => s.restoreWord);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
@@ -583,6 +584,67 @@ export default function LearnScreen() {
     }
   };
 
+  // Mark mode: tapping or dragging across words picks them, to mark them all Known at once. Picked by
+  // the word in lower case, so each of its occurrences shows picked
+  const [markMode, setMarkMode] = useState(false);
+  const [marked, setMarked] = useState<Map<string, { word: string; line: string; lineIndex: number; occurrence: number }>>(new Map());
+  const [markedToast, setMarkedToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!markedToast) return;
+    const timer = setTimeout(() => setMarkedToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [markedToast]);
+  const pickWord = (word: string, line: string, lineIndex: number, occurrence: number, toggle: boolean) => {
+    const cleaned = isSplitPhrase(word) ? word : cleanLyricWord(word);
+    if (!cleaned || !isTappableLyric(cleaned) || isIgnoredWord(cleaned, song?.originalLanguages?.[0] || 'unknown')) return;
+    const key = cleaned.toLowerCase();
+    setMarked((prev) => {
+      if (prev.has(key) && !toggle) return prev;
+      const next = new Map(prev);
+      if (prev.has(key)) next.delete(key);
+      else next.set(key, { word: cleaned, line, lineIndex, occurrence });
+      return next;
+    });
+  };
+  const exitMarkMode = () => {
+    setMarkMode(false);
+    setMarked(new Map());
+  };
+  const startMarkMode = () => {
+    setSelectedWord(null);
+    setMarkMode(true);
+  };
+  // Saves the words not saved yet as Known and moves the saved ones up to it
+  const markPickedKnown = async () => {
+    const language = song?.originalLanguages?.[0];
+    if (!song || !language || marked.size === 0) return;
+    const picked = [...marked.values()];
+    exitMarkMode();
+    const ids = new Set<string>();
+    const adds: Promise<void>[] = [];
+    for (const item of picked) {
+      const saved = findSavedEntry(item.word);
+      if (saved) {
+        ids.add(saved.id);
+        continue;
+      }
+      const cached = getPreloadedWord(language, item.word);
+      const definition = cached?.definitions?.[0];
+      adds.push(addOrUpdateWord(item.word, language, cached?.ipa || undefined, [{
+        context: item.line,
+        definition: definition?.text,
+        partOfSpeech: definition ? normalizePartOfSpeech(definition.partOfSpeech) : undefined,
+        songId: song.id,
+        songName: song.songName,
+        fromSong: true,
+        occurrence: item.occurrence,
+      }], 'Known'));
+    }
+    await Promise.all(adds);
+    if (ids.size) await setWordsLevel([...ids], 'Known');
+    setMarkedToast(`Marked ${picked.length} ${picked.length === 1 ? 'word' : 'words'} Known`);
+  };
+
   // The word the last tap saved as new, which a longer Chinese or Japanese word grown from it replaces
   const autoSavedWordRef = useRef<string | null>(null);
 
@@ -591,6 +653,10 @@ export default function LearnScreen() {
   const handleWordPress = (word: string, line: string, lineIndex: number, occurrence: number, single?: { word: string; occurrence: number }) => {
     if (single && word.toLowerCase() === selectedWord?.toLowerCase() && lineIndex === selectedLineIndex && occurrence === selectedOccurrence) {
       handleWordPress(single.word, line, lineIndex, single.occurrence);
+      return;
+    }
+    if (markMode) {
+      pickWord(single?.word ?? word, line, lineIndex, single?.occurrence ?? occurrence, true);
       return;
     }
     const cleaned = isSplitPhrase(word) ? word : cleanLyricWord(word);
@@ -743,7 +809,9 @@ export default function LearnScreen() {
         if (dragStartRef.current < 0) return;
         const range = dragTo(event.x, event.y) ?? draggedPhrase(textWords, dragStartRef.current, dragStartRef.current);
         if (range.from === range.to) handleWordPress(textWords[range.from], text, lineIndex, occurrenceMap[range.from] || 1);
-        else if (isTappableLyric(range.word)) {
+        else if (markMode) {
+          for (let j = range.from; j <= range.to; j++) pickWord(textWords[j], text, lineIndex, occurrenceMap[j] || 1, false);
+        } else if (isTappableLyric(range.word)) {
           const words = textWords.slice(range.from, range.to + 1).map(cleanLyricWord).filter(Boolean);
           const start = tokenEnds[range.from] - textWords[range.from].length;
           selectPhrase(range.word, text, lineIndex, tokenEnds[range.to], { words, start });
@@ -992,7 +1060,8 @@ export default function LearnScreen() {
             removeStressMarks(cleanedWord.toLowerCase()) === removeStressMarks(wordEntry.word.toLowerCase())
             ? addStressMark(edgePunctuation.core, stressIpa)
             : edgePunctuation.core;
-          const wordColor = isSelected || isDragged(i)
+          const isMarked = markMode && !!cleanedWord && marked.has(cleanedWord.toLowerCase());
+          const wordColor = isSelected || isDragged(i) || isMarked
             ? Colors.primary
             : isIgnored
               ? Colors.textMuted
@@ -1094,7 +1163,7 @@ export default function LearnScreen() {
                     {word.slice(0, compoundStart)}
                     {compoundParts.map((part, pi) => {
                       const partEntry = compoundEntries?.[pi];
-                      const partColor = isSelected || isDragged(i)
+                      const partColor = isSelected || isDragged(i) || isMarked
                         ? Colors.primary
                         : highlightNewWords
                         ? (partEntry ? Colors.textMuted : Colors.text)
@@ -1150,7 +1219,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1937,6 +2006,26 @@ export default function LearnScreen() {
     setSelectedWord(null);
     setLineByLine(next);
   };
+  const markBar = (
+    <View style={styles.markBar}>
+      <TouchableOpacity onPress={exitMarkMode} style={styles.markClose} accessibilityRole="button" accessibilityLabel="Stop picking words">
+        <Ionicons name="close" size={22} color={Colors.textSecondary} />
+      </TouchableOpacity>
+      <Text style={styles.markCount}>
+        {marked.size === 0 ? 'Tap or drag across words' : `${marked.size} ${marked.size === 1 ? 'word' : 'words'} picked`}
+      </Text>
+      <TouchableOpacity
+        onPress={() => void markPickedKnown()}
+        disabled={marked.size === 0}
+        style={[styles.markButton, marked.size === 0 && { opacity: 0.4 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Mark picked words Known"
+      >
+        <Ionicons name="checkmark-done" size={18} color="#fff" />
+        <Text style={styles.markButtonText}>Mark Known</Text>
+      </TouchableOpacity>
+    </View>
+  );
   const actionBar = (
     <LearnActionBar
       fontSize={storedFontSize}
@@ -2037,6 +2126,16 @@ export default function LearnScreen() {
           />
         </View>
         <View style={styles.headerRight}>
+          {!quizMode && !lyricQuiz && (
+            <TouchableOpacity
+              style={[styles.headerBtn, markMode && { backgroundColor: Colors.primary }]}
+              onPress={markMode ? exitMarkMode : startMarkMode}
+              accessibilityRole="button"
+              accessibilityLabel={markMode ? 'Stop picking words' : 'Pick words to mark Known'}
+            >
+              <Ionicons name="checkmark-done-outline" size={22} color={markMode ? '#fff' : Colors.primary} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.headerBtn}
             onPress={() => setShowDropdown(true)}
@@ -2109,7 +2208,7 @@ export default function LearnScreen() {
         /* ── Wide: left lyrics panel + right word/controls panel ── */
         <View style={styles.wideMain}>
           <View style={styles.wideLeft}>
-            {actionBar}
+            {markMode ? markBar : actionBar}
             {lyricsView}
           </View>
           <View style={styles.wideRightDivider} />
@@ -2125,7 +2224,7 @@ export default function LearnScreen() {
       ) : (
         /* ── Narrow: stacked ── */
         <View style={styles.narrowMain}>
-          {actionBar}
+          {markMode ? markBar : actionBar}
           {lyricsView}
           {/* The word opens in a sheet sliding over the bottom of the lyrics, so nothing above them moves */}
           {wordPanel && (
@@ -2139,6 +2238,11 @@ export default function LearnScreen() {
               {wordPanel}
             </WordSheet>
           )}
+        </View>
+      )}
+      {markedToast && (
+        <View style={styles.toastStack} pointerEvents="box-none">
+          <Toast message={markedToast} />
         </View>
       )}
       {removedWord && (
@@ -2293,6 +2397,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  markBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.surface,
+  },
+  markClose: { padding: 6 },
+  markCount: { flex: 1, color: Colors.textSecondary, fontSize: 14 },
+  markButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+  },
+  markButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   headerBtn: {
     padding: 8,
     backgroundColor: Colors.surface,

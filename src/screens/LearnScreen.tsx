@@ -58,9 +58,9 @@ import {
 } from '../utils/splitPhrases';
 
 const PREVIEW_MAX_WORDS = 8;
-// Words looked up together in a batch while preloading, and the pause after each batch so Wiktionary isn't hammered
+// Words looked up together while preloading, and the delay before the next one starts, so each one's spinner pops up in turn and Wiktionary isn't hammered
 const PRELOAD_BATCH = 5;
-const PRELOAD_PAUSE_MS = 250;
+const PRELOAD_STAGGER_MS = 150;
 
 export default function LearnScreen() {
   const navigation = useNavigation<any>();
@@ -1372,6 +1372,7 @@ export default function LearnScreen() {
   // five at a time in reading order, each once; saved, ignored and number words are left out
   const preloadQueueRef = useRef<{ key: string; word: string; lines: number[]; translation?: string }[]>([]);
   const preloadActiveRef = useRef(0);
+  const preloadPumpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const preloadRequestedRef = useRef(new Set<string>());
   const preloadDirtyRef = useRef(new Set<number>());
   const preloadFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1381,6 +1382,7 @@ export default function LearnScreen() {
     return () => {
       preloadAliveRef.current = false;
       if (preloadFlushRef.current) clearTimeout(preloadFlushRef.current);
+      if (preloadPumpTimerRef.current) clearTimeout(preloadPumpTimerRef.current);
     };
   }, []);
   const preloadSongLanguage = song?.originalLanguages?.[0];
@@ -1424,18 +1426,8 @@ export default function LearnScreen() {
         }
       }
     }
-    // What's on screen now goes first, ahead of words queued for lines scrolled away from, which stop loading
-    for (const old of preloadQueueRef.current) {
-      if (candidates.has(old.key)) continue;
-      preloadPendingRef.current.delete(old.key);
-      old.lines.forEach((i) => preloadDirtyRef.current.add(i));
-    }
+    // What's on screen now goes first, ahead of words queued for lines scrolled away from
     preloadQueueRef.current = [...candidates.values()];
-    for (const job of preloadQueueRef.current) {
-      if (preloadPendingRef.current.has(job.key)) continue;
-      preloadPendingRef.current.add(job.key);
-      job.lines.forEach((i) => preloadDirtyRef.current.add(i));
-    }
     const flush = () => {
       preloadFlushRef.current = null;
       if (!preloadAliveRef.current || preloadDirtyRef.current.size === 0) return;
@@ -1487,33 +1479,41 @@ export default function LearnScreen() {
       }
       return firstFound ?? { ipa: '' };
     };
-    // One batch of words at a time, in reading order; the next starts a moment after the last finishes
+    const flushSoon = (delay: number) => {
+      if (!preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, delay);
+    };
+    // Up to five words are looked up at once, in reading order, each starting a moment after the one before: a word's
+    // spinner pops up as its lookup starts, and turns into its IPA when it's done
     const pump = () => {
-      if (!preloadAliveRef.current || preloadActiveRef.current > 0) return;
-      const batch: { key: string; word: string; lines: number[]; translation?: string }[] = [];
-      while (batch.length < PRELOAD_BATCH && preloadQueueRef.current.length) {
-        const job = preloadQueueRef.current.shift()!;
-        if (preloadRequestedRef.current.has(job.key)) continue;
-        preloadRequestedRef.current.add(job.key);
-        batch.push(job);
+      if (!preloadAliveRef.current || preloadPumpTimerRef.current) return;
+      if (preloadActiveRef.current >= PRELOAD_BATCH) return;
+      let job: { key: string; word: string; lines: number[]; translation?: string } | undefined;
+      while (!job && preloadQueueRef.current.length) {
+        const next = preloadQueueRef.current.shift()!;
+        if (!preloadRequestedRef.current.has(next.key)) job = next;
       }
-      if (!batch.length) return;
-      preloadActiveRef.current = 1;
-      Promise.all(batch.map((job) => lookUp(job.word, job.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech, language, definitions }) => {
+      if (!job) return;
+      const started = job;
+      preloadRequestedRef.current.add(started.key);
+      preloadActiveRef.current++;
+      preloadPendingRef.current.add(started.key);
+      started.lines.forEach((i) => preloadDirtyRef.current.add(i));
+      flushSoon(20);
+      lookUp(started.word, started.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech, language, definitions }) => {
         // A failed or empty lookup is left empty, and not asked again this session
-        setPreloadedWord(job.key, { ipa, definition, partOfSpeech, language, definitions });
-        preloadPendingRef.current.delete(job.key);
+        setPreloadedWord(started.key, { ipa, definition, partOfSpeech, language, definitions });
+        preloadPendingRef.current.delete(started.key);
+        preloadActiveRef.current--;
         // The spinner goes even when there's no IPA
-        job.lines.forEach((i) => preloadDirtyRef.current.add(i));
-        if (!ipa) return;
-        lines.forEach((l, i) => { if (!job.lines.includes(i) && l.original.includes(job.word)) preloadDirtyRef.current.add(i); });
-      }))).then(() => {
-        if (preloadDirtyRef.current.size && !preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, 100);
-        setTimeout(() => {
-          preloadActiveRef.current = 0;
-          pump();
-        }, PRELOAD_PAUSE_MS);
+        started.lines.forEach((i) => preloadDirtyRef.current.add(i));
+        if (ipa) lines.forEach((l, i) => { if (!started.lines.includes(i) && l.original.includes(started.word)) preloadDirtyRef.current.add(i); });
+        flushSoon(60);
+        pump();
       });
+      preloadPumpTimerRef.current = setTimeout(() => {
+        preloadPumpTimerRef.current = null;
+        pump();
+      }, PRELOAD_STAGGER_MS);
     };
     pump();
     // Unsaved words, ignored words and settings are read when the lines come into view or any of them changes

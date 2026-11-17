@@ -39,6 +39,7 @@ import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import { getScrapeGoogleIpaJS, getScrapeGoogleNumberJS } from '../utils/scrapeGoogleIpaJS';
 import { findSavedWord, hasCapitals } from '../utils/wordForms';
 import MergeForms from '../components/MergeForms';
+import UnsavedContextCards from '../components/UnsavedContextCards';
 import WordFrequency from '../components/WordFrequency';
 import AnswerHistory from '../components/AnswerHistory';
 import { addIpa } from '../utils/ipaList';
@@ -991,6 +992,33 @@ export default function WordLookupScreen() {
             onRemoveWordSense={removeWordSense}
             onUndoRemove={undoRemoveWordSense}
           />
+
+          {existingWord && (
+            <UnsavedContextCards
+              word={existingWord.word}
+              language={existingWord.language}
+              savedContexts={wordSenses}
+              onSave={(saved) => {
+                setUndoData(null);
+                setWordSenses(prev => [
+                  ...prev,
+                  {
+                    uid: mkUid(),
+                    context: saved.line,
+                    emoji: '',
+                    ipa: '',
+                    definition: prev.find(b => b.definition.trim())?.definition ?? '',
+                    songId: saved.songId,
+                    songName: saved.songName,
+                    translation: saved.translation,
+                    fromSong: true,
+                    occurrence: 1,
+                    isNew: true,
+                  },
+                ]);
+              }}
+            />
+          )}
 
           <TouchableOpacity style={styles.addContextButton} onPress={addWordSense} accessibilityRole="button">
             <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />

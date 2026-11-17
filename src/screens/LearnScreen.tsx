@@ -242,6 +242,7 @@ export default function LearnScreen() {
     [lyricQuiz, wordEntryIndex, answeredGaps]
   );
 
+  const filledTranslationsKey = song?.translations.filter(t => t.lyrics.trim()).map(t => t.language).join('|') ?? '';
   // Initialize selected languages when song changes
   useEffect(() => {
     if (!song) {
@@ -252,13 +253,14 @@ export default function LearnScreen() {
 
     // A language selection belongs to the current song. Reset it when the
     // route changes so the previous song's translations are not carried over.
-    const availableLanguages = song.translations.map(t => t.language);
+    // A translation still waiting for DeepL has no lyrics yet: it's selected, and translations turned on, once it fills in
+    const availableLanguages = song.translations.filter(t => t.lyrics.trim()).map(t => t.language);
     setLocalSelectedLanguages(availableLanguages);
     setSelectedTranslationLanguages(availableLanguages);
     // Unselecting every language on the previous song turned translations off
     if (availableLanguages.length > 0 && !useStore.getState().showTranslations) toggleTranslations();
     setUnblurredTranslations(new Set());
-  }, [song?.id, setSelectedTranslationLanguages]);
+  }, [song?.id, filledTranslationsKey, setSelectedTranslationLanguages]);
 
   // Helper function to normalize text for comparison (remove punctuation, compare words only)
   const normalizeText = (text: string): string => {

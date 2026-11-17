@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
+import { CommonActions, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -266,13 +266,20 @@ export default function WebScreen() {
         // Clear DeepL state
         resetDeeplTranslation();
 
-        // Navigate back to editor with complete translation
-        navigation.navigate('Editor', {
+        const scraped = {
           scrapedLyrics: translation,
           scrapedSourceUrl: currentUrl,
           scrapedPageTitle: data.title ?? '',
           scrapedTargetTab: scrapeTargetTab,
-        });
+        };
+        // In the automatic flow the user is reading the song in Learn: hand the translation to the Editor without leaving
+        const editorRoute = navigation.getState()?.routes.find((r: any) => r.name === 'Editor');
+        if (useStore.getState().autoFetch?.step === 'translating' && editorRoute) {
+          navigation.dispatch({ ...CommonActions.setParams(scraped), source: editorRoute.key });
+        } else {
+          // Navigate back to editor with complete translation
+          navigation.navigate('Editor', scraped);
+        }
       }
       if (data.type === 'error') {
         setToast(data.message || 'Failed to scrape lyrics');

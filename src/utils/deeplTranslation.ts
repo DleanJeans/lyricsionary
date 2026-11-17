@@ -101,3 +101,15 @@ export function remapTranslation(translatedText: string, lineMap: number[]): str
   });
   return remappedLines.join('\n');
 }
+
+/**
+ * Replaces em dashes in a DeepL translation with ", ", tidying the spaces
+ * around them ("word — word" becomes "word, word").
+ */
+export function replaceEmDashes(text: string): string {
+  return text
+    .replace(/[ \t]*—[ \t]*/g, ', ')
+    .replace(/,[ \t]*,/g, ',')
+    .replace(/^,[ \t]*|,[ \t]*$/gm, '')
+    .replace(/,[ \t]*([.!?;:])/g, '$1');
+}

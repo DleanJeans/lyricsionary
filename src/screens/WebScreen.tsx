@@ -22,7 +22,7 @@ import { isMostlyLatin, isRomanized } from '../constants/languages';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import { useStore } from '../store/useStore';
 import { cleanGeniusLyrics } from '../utils/cleanLyrics';
-import { joinChunks, remapTranslation } from '../utils/deeplTranslation';
+import { joinChunks, remapTranslation, replaceEmDashes } from '../utils/deeplTranslation';
 import { detectLyricsJS } from '../utils/detectLyricsJS';
 import { detectTranslationJS } from '../utils/detectTranslationJS';
 import { followLyricsLinkJS } from '../utils/followLyricsLinkJS';
@@ -228,7 +228,7 @@ export default function WebScreen() {
         });
       }
       if (data.type === 'translation' && data.text) {
-        let translation = data.text.trim();
+        let translation = replaceEmDashes(data.text.trim());
 
         // Handle multi-chunk translation workflow
         if (deeplChunks && deeplChunks.length > 1) {

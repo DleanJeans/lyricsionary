@@ -255,6 +255,15 @@ export default function EditorScreen() {
       setAutoFetch(scrapedTranslations.length ? null : { ...currentAutoFetch, step: 'translation' });
     } else if (currentAutoFetch?.step === 'translating' && targetTab > 0) {
       setAutoFetch(null);
+      // The song was saved when its lyrics came in: fill the translation into it
+      const saved = editSongId ? useStore.getState().songs.find((s) => s.id === editSongId) : undefined;
+      if (saved?.translations[targetTab - 1]) {
+        const filled = saved.translations.map((t, i) => (i === targetTab - 1
+          ? { ...t, lyrics: normalizeApostrophes(scraped), ...(url ? { sourceUrl: url, sourceUrlTitle: title || undefined } : {}) }
+          : t));
+        void updateSong(saved.id, { translations: filled });
+        setOriginalState((prev) => (prev ? { ...prev, translations: filled.map((t) => ({ ...t })) } : prev));
+      }
     }
     navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedLanguageCode: undefined, scrapedTranslations: undefined });
   }, [route.params?.scrapedLyrics]);
@@ -500,18 +509,43 @@ export default function EditorScreen() {
     navigation.navigate('Web');
   }, [route.params?.autoFetchSong]);
 
-  // Once lyrics arrive, add a translation tab and send the lyrics to DeepL
+  // Once lyrics arrive, save the song right away so it can be opened in Learn, then add a translation tab
+  // and send the lyrics to DeepL. The translation is saved into the song when it comes back
   useEffect(() => {
     if (autoFetch?.step !== 'translation' || !originalLyrics) return;
     const language = pickTranslationLanguage(songs, originalLanguages);
+    const existingIndex = language ? translations.findIndex((t) => t.language === language) : -1;
+    const tab = (existingIndex >= 0 ? existingIndex : translations.length) + 1;
+    const withTab = language && existingIndex < 0 ? [...translations, { language, lyrics: '' }] : translations;
+    if (language && existingIndex < 0) {
+      setTranslations(withTab);
+    }
+    // Saved with the empty translation tab, so Learn already has its language selected when the translation fills in
+    if (!editSongId) {
+      const sourceUrl = (pendingSourceUrls[0] ?? songSourceUrl).trim() || undefined;
+      const sourceUrlTitle = sourceUrl ? (pendingPageTitles[0] || undefined) : undefined;
+      skipMatchingRef.current = true;
+      void saveSong(
+        songName.trim(),
+        artistName.trim(),
+        normalizeApostrophes(originalLyrics),
+        originalLanguages,
+        withTab.map((t, i) => ({
+          ...t,
+          lyrics: normalizeApostrophes(t.lyrics),
+          sourceUrl: pendingSourceUrls[i + 1] ?? t.sourceUrl,
+          sourceUrlTitle: pendingSourceUrls[i + 1] !== undefined ? (pendingPageTitles[i + 1] || undefined) : t.sourceUrlTitle,
+        })),
+        sourceUrl,
+        sourceUrlTitle,
+      ).then((song) => {
+        setEditSongId(song.id);
+        navigation.setParams({ songId: song.id });
+      });
+    }
     if (!language) {
       setAutoFetch(null);
       return;
-    }
-    const existingIndex = translations.findIndex((t) => t.language === language);
-    const tab = (existingIndex >= 0 ? existingIndex : translations.length) + 1;
-    if (existingIndex < 0) {
-      setTranslations((prev) => [...prev, { language, lyrics: '' }]);
     }
     setActiveTab(tab);
     setScrapeTargetTab(tab);

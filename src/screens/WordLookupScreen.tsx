@@ -140,6 +140,8 @@ export default function WordLookupScreen() {
   ]);
   const [emojiPickerIndex, setEmojiPickerIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Ignoring a saved word deletes it too, so it asks first
+  const [ignoreOnDelete, setIgnoreOnDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [undoData, setUndoData] = useState<{ block: WordSenseData; index: number } | null>(null);
@@ -593,8 +595,12 @@ export default function WordLookupScreen() {
     const existing = findExistingWord();
     if (existing) {
       await deleteWord(existing.id);
+      if (ignoreOnDelete && !isWordIgnored(useStore.getState().ignoredWords, existing.word, existing.language)) {
+        await toggleIgnoredWord(existing.word, existing.language);
+      }
     }
     setIsDeleting(false);
+    setIgnoreOnDelete(false);
     setShowDeleteConfirm(false);
     handleCancel();
   };
@@ -1026,12 +1032,15 @@ export default function WordLookupScreen() {
               <Ionicons name="copy-outline" size={18} color={Colors.text} />
               <Text style={styles.menuText}>Copy word</Text>
             </TouchableOpacity>
-            {!existingWord && !!displayWord && (
+            {!!displayWord && (
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setMenuOpen(false);
-                  void toggleIgnoredWord(displayWord, language);
+                  if (existingWord) {
+                    setIgnoreOnDelete(true);
+                    setShowDeleteConfirm(true);
+                  } else void toggleIgnoredWord(displayWord, language);
                 }}
                 accessibilityRole="menuitem"
               >
@@ -1048,6 +1057,7 @@ export default function WordLookupScreen() {
                 style={styles.menuItem}
                 onPress={() => {
                   setMenuOpen(false);
+                  setIgnoreOnDelete(false);
                   setShowDeleteConfirm(true);
                 }}
                 accessibilityRole="menuitem"
@@ -1094,12 +1104,14 @@ export default function WordLookupScreen() {
       />
       <ConfirmDialog
         visible={showDeleteConfirm}
-        title="Delete Word"
-        message={`Are you sure you want to delete "${displayWord}"? This cannot be undone.`}
-        confirmText="Delete"
+        title={ignoreOnDelete ? 'Ignore Word' : 'Delete Word'}
+        message={ignoreOnDelete
+          ? `Ignore "${displayWord}"? This deletes the saved word and stops it from showing up in Learn. This cannot be undone.`
+          : `Are you sure you want to delete "${displayWord}"? This cannot be undone.`}
+        confirmText={ignoreOnDelete ? 'Ignore' : 'Delete'}
         cancelText="Cancel"
         onConfirm={handleDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
+        onCancel={() => { setShowDeleteConfirm(false); setIgnoreOnDelete(false); }}
         destructive
         loading={isDeleting}
       />

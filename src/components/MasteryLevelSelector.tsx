@@ -9,7 +9,7 @@ interface MasteryLevelSelectorProps {
   /** None for a word not saved yet */
   value?: MasteryLevel;
   onChange: (value: MasteryLevel) => void;
-  /** Adds a button after the levels that unsaves the word, e.g. one saved by an accidental tap */
+  /** Adds a full-width Delete button below the levels that unsaves the word, e.g. one saved by an accidental tap */
   onRemove?: () => void;
 }
 
@@ -60,7 +60,12 @@ function MasteryOption({ level, active, onPress }: MasteryOptionProps) {
       accessibilityLabel={level.label + ' mastery level'}
       accessibilityState={{ selected: active }}
     >
-      <Text style={[styles.buttonText, active && styles.buttonTextActive]} numberOfLines={1}>
+      <Text
+        style={[styles.buttonText, active && styles.buttonTextActive]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+      >
         {level.label}
       </Text>
     </Pressable>
@@ -70,14 +75,16 @@ function MasteryOption({ level, active, onPress }: MasteryOptionProps) {
 export default function MasteryLevelSelector({ value, onChange, onRemove }: MasteryLevelSelectorProps) {
   return (
     <View style={styles.selector}>
-      {levels.map((level) => (
-        <MasteryOption
-          key={level.value}
-          level={level}
-          active={value === level.value}
-          onPress={() => onChange(level.value)}
-        />
-      ))}
+      <View style={styles.levels}>
+        {levels.map((level) => (
+          <MasteryOption
+            key={level.value}
+            level={level}
+            active={value === level.value}
+            onPress={() => onChange(level.value)}
+          />
+        ))}
+      </View>
       {onRemove && (
         <Pressable
           style={({ pressed }) => [styles.removeButton, pressed && styles.buttonPressed]}
@@ -86,6 +93,7 @@ export default function MasteryLevelSelector({ value, onChange, onRemove }: Mast
           accessibilityLabel="Remove word"
         >
           <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+          <Text style={styles.removeText}>Delete</Text>
         </Pressable>
       )}
     </View>
@@ -94,24 +102,28 @@ export default function MasteryLevelSelector({ value, onChange, onRemove }: Mast
 
 const styles = StyleSheet.create({
   selector: {
+    gap: 8,
+  },
+  levels: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
   button: {
-    // Grows from the label's width, so a long level like Recognized gets more room instead of breaking
-    flexGrow: 1,
+    // The four levels share the row equally
+    flex: 1,
     backgroundColor: Colors.surface,
     borderRadius: 8,
     minHeight: 44,
     paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
   },
   removeButton: {
+    flexDirection: 'row',
+    gap: 8,
     minHeight: 44,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -121,6 +133,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
+  removeText: {
+    color: Colors.danger,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   buttonPressed: {
     opacity: 0.72,
   },
@@ -129,7 +146,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: Colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   buttonTextActive: {

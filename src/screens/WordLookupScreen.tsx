@@ -917,6 +917,21 @@ export default function WordLookupScreen() {
             </TouchableOpacity>
           )}
 
+          {!existingWord && displayWord !== displayWord.toLowerCase() && (
+            <TouchableOpacity
+              onPress={() => {
+                filledLookupRef.current = undefined;
+                setDisplayWord(displayWord.toLowerCase());
+              }}
+              style={styles.lowercaseButton}
+              accessibilityRole="button"
+              accessibilityLabel="Lowercase word"
+            >
+              <Ionicons name="text-outline" size={16} color={Colors.primaryLight} />
+              <Text style={styles.lowercaseText}>Lowercase “{displayWord}”</Text>
+            </TouchableOpacity>
+          )}
+
           {existingWord && (
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Forms</Text>

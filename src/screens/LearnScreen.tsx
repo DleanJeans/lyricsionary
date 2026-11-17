@@ -597,7 +597,7 @@ export default function LearnScreen() {
   }, [markedToast]);
   const pickWord = (word: string, line: string, lineIndex: number, occurrence: number, toggle: boolean) => {
     const cleaned = isSplitPhrase(word) ? word : cleanLyricWord(word);
-    if (!cleaned || !isTappableLyric(cleaned) || isIgnoredWord(cleaned, song?.originalLanguages?.[0] || 'unknown')) return;
+    if (!cleaned || !isTappableLyric(cleaned)) return;
     const key = cleaned.toLowerCase();
     setMarked((prev) => {
       if (prev.has(key) && !toggle) return prev;
@@ -624,6 +624,8 @@ export default function LearnScreen() {
     const ids = new Set<string>();
     const adds: Promise<void>[] = [];
     for (const item of picked) {
+      // A word marked Known is no longer ignored
+      if (isIgnoredWord(item.word, language)) void toggleIgnoredWord(item.word, language);
       const saved = findSavedEntry(item.word);
       if (saved) {
         ids.add(saved.id);
@@ -649,8 +651,8 @@ export default function LearnScreen() {
   // Ignores the picked words that aren't saved; saved ones are left as they are
   const ignorePicked = async () => {
     const language = song?.originalLanguages?.[0] || 'unknown';
-    const picked = [...marked.values()].filter((item) => !findSavedEntry(item.word));
-    const skipped = marked.size - picked.length;
+    const picked = [...marked.values()].filter((item) => !findSavedEntry(item.word) && !isIgnoredWord(item.word, language));
+    const skipped = [...marked.values()].filter((item) => findSavedEntry(item.word)).length;
     if (marked.size === 0) return;
     exitMarkMode();
     for (const item of picked) await toggleIgnoredWord(item.word, language);
@@ -891,6 +893,7 @@ export default function LearnScreen() {
               }
             }
 
+            const isElisionIgnored = isIgnoredWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
             const partEntries = elisionParts.map(part =>
               part ? findWordEntry(part) ?? null : null
             );
@@ -945,6 +948,8 @@ export default function LearnScreen() {
                     const isPartMarked = markMode && !!cleanedWord && marked.has(cleanedWord.toLowerCase());
                     const partColor = isPartSelected || isDragged(i) || isPartMarked
                       ? Colors.primary
+                      : isElisionIgnored
+                      ? Colors.textMuted
                       : highlightNewWords
                       ? (partEntry ? Colors.textMuted : Colors.text)
                       : (showMasteryLevelColors && partEntry?.masteryLevel)
@@ -2044,8 +2049,8 @@ export default function LearnScreen() {
       <TouchableOpacity onPress={exitMarkMode} style={styles.markClose} accessibilityRole="button" accessibilityLabel="Stop picking words">
         <Ionicons name="close" size={22} color={Colors.textSecondary} />
       </TouchableOpacity>
-      <Text style={styles.markCount}>
-        {marked.size === 0 ? 'Tap or drag across words' : `${marked.size} ${marked.size === 1 ? 'word' : 'words'} picked`}
+      <Text style={styles.markCount} numberOfLines={1}>
+        {marked.size === 0 ? 'Pick words' : `${marked.size} picked`}
       </Text>
       <TouchableOpacity
         onPress={() => void ignorePicked()}

@@ -37,6 +37,8 @@ interface WordQuizProps {
   typed?: boolean;
   /** Shows the word's recordings once answered; off where they already show, e.g. in a listening quiz */
   audio?: boolean;
+  /** Called before a word in the songs-and-sentences list opens its page, e.g. to close the dialog the quiz is in */
+  onLookUpWord?: () => void;
 }
 
 /**
@@ -46,7 +48,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, audio: showAudio = true }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, audio: showAudio = true, onLookUpWord }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -239,7 +241,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
           <Text style={styles.giveUpText}>I don't remember</Text>
         </TouchableOpacity>
       )}
-      {answered && <WordFrequency entry={current} />}
+      {answered && <WordFrequency entry={current} onLookUpWord={onLookUpWord} />}
       {answered && !practice && <LevelTrack from={unanswered} entry={current} />}
     </View>
   );

@@ -127,6 +127,7 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
                 isWide={isWide}
                 practice={isRetry}
                 lookUpRef={lookUpRef}
+                onCloseReview={onClose}
                 onLookUp={(entry, line, songId, songName) => {
                   onClose();
                   openWordLookup({ word: entry.word, wordId: entry.id, songId, songName, lyricsLine: line ?? undefined, source: 'Words' });
@@ -171,10 +172,13 @@ function ReviewQuestion({
   practice,
   lookUpRef,
   onLookUp,
+  onCloseReview,
 }: {
   // Filled with what the Look up button beside Next opens
   lookUpRef: React.MutableRefObject<(() => void) | null>;
   onLookUp: (entry: ReviewItem['entry'], line?: string | null, songId?: string, songName?: string) => void;
+  /** Closes the review, before a word in the sentences list opens its page */
+  onCloseReview: () => void;
   item: ReviewItem;
   answered: boolean;
   onAnswered: (correct: boolean) => void;
@@ -292,6 +296,7 @@ function ReviewQuestion({
         practice={practice}
         typed={!!ipa && kind === 'lyric'}
         audio={!listen}
+        onLookUpWord={onCloseReview}
       />
       {listen && !answered && <SwitchQuizButton onPress={() => setNoAudio(true)} />}
       {answered && !practice && unsaved && showLine && (

@@ -114,25 +114,42 @@ export function otherSongLines(entry: WordEntry, songs: ReviewSong[]): IndexedLi
  * A sentence sung again (a chorus) counts once, however many times or in how many songs it comes,
  * matched by its text ignoring case and punctuation. The lines it was saved from count too.
  */
-export function wordFrequency(entry: WordEntry, songs: ReviewSong[]): { lines: number; songs: number } {
+export interface WordSentence {
+  line: string;
+  /** The songs the sentence is sung in; the first is shown */
+  songs: { id: string; name: string; artist?: string; song?: ReviewSong; translation?: string }[];
+}
+
+/** The distinct sentences the word is in (see wordFrequency), each with the songs it's in */
+export function wordSentences(entry: Pick<WordEntry, 'word' | 'language' | 'contexts'>, songs: ReviewSong[]): WordSentence[] {
   const key = (line: string) => lineWords(line).join(' ').toLowerCase();
-  const lines = new Set<string>();
-  const inSongs = new Set<string>();
+  const found = new Map<string, WordSentence>();
+  const add = (line: string, id: string, name: string, song?: ReviewSong, artist?: string, saved?: string) => {
+    const k = key(line);
+    let sentence = found.get(k);
+    if (!sentence) found.set(k, (sentence = { line, songs: [] }));
+    if (id && sentence.songs.some((x) => x.id === id)) return;
+    const translation = saved?.trim() || (song?.originalLyrics && song.translations ? lineTranslation(song as Song, line) ?? undefined : undefined);
+    sentence.songs.push({ id, name, artist: artist ?? song?.artistName, song, translation });
+  };
   for (const context of entry.contexts ?? []) {
     if (context.context?.trim() && findWordInLine(context.context, entry.word)) {
-      lines.add(key(context.context));
-      if (context.songId) inSongs.add(context.songId);
+      const song = context.songId ? songs.find((x) => x.id === context.songId) : undefined;
+      add(context.context.trim(), context.songId ?? '', song?.songName || context.songName || 'Untitled', song, undefined, context.translation);
     }
   }
   const first = entry.language && !isCjkWord(entry.word) ? lineWords(entry.word)[0]?.toLowerCase() : undefined;
   if (first && songs.length) {
     for (const spot of lineIndex(songs).get(languageKey(entry.language))?.get(first) ?? []) {
-      if (!findWordInLine(spot.line, entry.word)) continue;
-      lines.add(key(spot.line));
-      inSongs.add(spot.song.id);
+      if (findWordInLine(spot.line, entry.word)) add(spot.line, spot.song.id, spot.song.songName || 'Untitled', spot.song);
     }
   }
-  return { lines: lines.size, songs: inSongs.size };
+  return [...found.values()];
+}
+
+export function wordFrequency(entry: WordEntry, songs: ReviewSong[]): { lines: number; songs: number } {
+  const sentences = wordSentences(entry, songs);
+  return { lines: sentences.length, songs: new Set(sentences.flatMap((x) => x.songs.map((y) => y.id).filter(Boolean))).size };
 }
 
 /** Words in more distinct sentences and songs rank higher; steps of doubling, so waiting longest still breaks ties */

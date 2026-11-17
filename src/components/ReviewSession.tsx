@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
@@ -44,6 +44,7 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
   const items = [...firstTries, ...retries];
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
+  const lookUpRef = useRef<(() => void) | null>(null);
   const isRetry = index >= firstTries.length;
   // A first try's quiz is built again when it's shown, so a word answered right earlier today, also
   // in this session, isn't one of its wrong options. A retry keeps the options it was missed with.
@@ -125,6 +126,7 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
                 onAnswered={onAnswered}
                 isWide={isWide}
                 practice={isRetry}
+                lookUpRef={lookUpRef}
                 onLookUp={(entry, line, songId, songName) => {
                   onClose();
                   openWordLookup({ word: entry.word, wordId: entry.id, songId, songName, lyricsLine: line ?? undefined, source: 'Words' });
@@ -133,14 +135,27 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
             )}
           </ScrollView>
           {session && !finished && answered && (
-            <TouchableOpacity
-              style={[styles.button, styles.nextButton]}
-              onPress={() => setIndex((i) => i + 1)}
-              accessibilityRole="button"
-              accessibilityLabel={index + 1 < items.length ? 'Next word' : 'See results'}
-            >
-              <Text style={styles.buttonText}>{index + 1 < items.length ? 'Next' : 'Finish'}</Text>
-            </TouchableOpacity>
+            <View style={styles.actions}>
+              {!isRetry && (
+                <TouchableOpacity
+                  style={[styles.button, styles.outlineButton]}
+                  onPress={() => lookUpRef.current?.()}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Look up ${item.entry.word} to edit it`}
+                >
+                  <Ionicons name="search" size={16} color={Colors.primary} />
+                  <Text style={styles.outlineText}>Look up</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.button, styles.nextButton]}
+                onPress={() => setIndex((i) => i + 1)}
+                accessibilityRole="button"
+                accessibilityLabel={index + 1 < items.length ? 'Next word' : 'See results'}
+              >
+                <Text style={styles.buttonText}>{index + 1 < items.length ? 'Next' : 'Finish'}</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -154,8 +169,11 @@ function ReviewQuestion({
   onAnswered,
   isWide,
   practice,
+  lookUpRef,
   onLookUp,
 }: {
+  // Filled with what the Look up button beside Next opens
+  lookUpRef: React.MutableRefObject<(() => void) | null>;
   onLookUp: (entry: ReviewItem['entry'], line?: string | null, songId?: string, songName?: string) => void;
   item: ReviewItem;
   answered: boolean;
@@ -182,6 +200,7 @@ function ReviewQuestion({
     : null;
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const [savedLine, setSavedLine] = useState(false);
+  lookUpRef.current = () => onLookUp(entry, line, songId, songName);
   // Saves the other song's line as one of the word's contexts, with the meaning it was asked for
   const saveLine = () => {
     if (!unsaved || !line) return;
@@ -288,18 +307,6 @@ function ReviewQuestion({
           <Text style={[styles.lookUpText, savedLine && { color: Colors.success }]}>
             {savedLine ? `Saved this line to ${entry.word}` : `Save this line to ${entry.word}`}
           </Text>
-        </TouchableOpacity>
-      )}
-      {answered && !practice && (
-        <TouchableOpacity
-          onPress={() => onLookUp(entry, line, songId, songName)}
-          hitSlop={8}
-          style={styles.lookUp}
-          accessibilityRole="button"
-          accessibilityLabel="Look up word"
-        >
-          <Ionicons name="search" size={14} color={Colors.primary} />
-          <Text style={styles.lookUpText}>Look up {entry.word} to edit it</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -421,9 +428,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
   },
+  actions: { flexDirection: 'row', alignSelf: 'stretch', gap: 10 },
   nextButton: {
-    alignSelf: 'stretch',
+    flex: 1,
   },
+  outlineButton: {
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingHorizontal: 16,
+  },
+  outlineText: { fontSize: 15, fontWeight: '700', color: Colors.primary },
   buttonText: {
     fontSize: 15,
     fontWeight: '700',

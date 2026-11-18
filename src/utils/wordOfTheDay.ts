@@ -73,3 +73,12 @@ export function lineTranslation(song: Song, line: string): string | null {
     });
   return translated.some(Boolean) ? translated.filter(Boolean).join('\n') : null;
 }
+
+/**
+ * A saved context's translation: what the song's translation says about its line now (so editing
+ * the translation in the Editor shows up), else the copy saved with the context
+ */
+export function contextTranslation(song: Song | undefined, line: string | undefined, saved?: string): string | undefined {
+  const fresh = song?.originalLyrics && song.translations && line ? lineTranslation(song, line) : null;
+  return fresh || saved?.trim() || undefined;
+}

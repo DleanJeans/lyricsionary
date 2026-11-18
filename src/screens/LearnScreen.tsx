@@ -24,6 +24,7 @@ import { findWordIndex, type WordRect } from '../components/SelectableTranslatio
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
+import { contextTranslation } from '../utils/wordOfTheDay';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { cleanLyricWord, isLyricWord, isTappableLyric, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
 import { findDefinitionHighlight, pickDefinition, withWordForms } from '../utils/definitionHighlight';
@@ -1864,7 +1865,7 @@ export default function LearnScreen() {
         </React.Fragment>
       );
     });
-    const hint = (elsewhere ? otherContext!.translation : shownTranslationLine) || sense?.answer;
+    const hint = (elsewhere ? contextTranslation(useStore.getState().songs.find((s) => s.id === otherContext!.songId), otherContext!.context, otherContext!.translation) : shownTranslationLine) || sense?.answer;
     return (
       <View style={[styles.wordCardContainer]}>
         <View style={[styles.gapCard, isWide && styles.gapCardWide]}>
@@ -1906,7 +1907,7 @@ export default function LearnScreen() {
             <LineDrill
               key={`drill-${selectedLineIndex}-${elsewhere}`}
               line={quizLine}
-              hint={(elsewhere ? otherContext!.translation : shownTranslationLine) || undefined}
+              hint={(elsewhere ? contextTranslation(useStore.getState().songs.find((s) => s.id === otherContext!.songId), otherContext!.context, otherContext!.translation) : shownTranslationLine) || undefined}
             />
           ) : (
             <>

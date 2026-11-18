@@ -5,7 +5,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import type { Song, WordContext, WordEntry } from '../types';
-import { highlightWord, lineTranslation } from '../utils/wordOfTheDay';
+import { highlightWord, contextTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
 
 /**
@@ -66,7 +66,7 @@ export default function AlsoInSongs({
           const line = context.context;
           const highlight = highlightWord(line, [item.word, ...(item.forms ?? [])], context.occurrence);
           // The translation saved with the word, or else the song's translation of the line
-          const translation = hideTranslations ? null : context.translation?.trim() || lineTranslation(song, line);
+          const translation = hideTranslations ? null : contextTranslation(song, line, context.translation) ?? null;
           return (
             <TouchableOpacity
               key={context.songId}

@@ -30,6 +30,7 @@ import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
 import { isSameLanguage } from '../constants/languages';
 import { isIpaKept, isWordIgnored, useStore } from '../store/useStore';
+import { contextTranslation } from '../utils/wordOfTheDay';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
 import { pickDefinition } from '../utils/definitionHighlight';
 import { isGermanLanguage } from '../utils/compoundWords';
@@ -211,7 +212,7 @@ export default function WordLookupScreen() {
             occurrence: c.occurrence || 1,
             fromSong: c.fromSong ?? false,
             // A word saved before its line was translated gets the translation Learn has now
-            translation: c.translation || (c.songId === songId && c.context === lyricsLine ? translationLine : undefined),
+            translation: contextTranslation(useStore.getState().songs.find((song) => song.id === c.songId), c.context, c.translation || (c.songId === songId && c.context === lyricsLine ? translationLine : undefined)),
             partOfSpeech: c.partOfSpeech,
             definitionAt: c.definitionAt,
           });

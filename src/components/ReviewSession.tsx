@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore';
 import { pickReviewItems, rebuildReviewQuiz, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
 import { formatIpa } from '../utils/ipaDisplay';
-import { lineTranslation } from '../utils/wordOfTheDay';
+import { contextTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
 import { openWordLookup } from '../navigation/navigationRef';
 import PronunciationAudio from './PronunciationAudio';
@@ -200,7 +200,7 @@ function ReviewQuestion({
   const artistName = unsaved ? unsaved.artistName : song?.artistName;
   // The translation saved with the word, or else the song's translation of the line
   const translation = line
-    ? (unsaved ? unsaved.translation : context?.translation?.trim()) || (song ? lineTranslation(song, line) : null)
+    ? unsaved ? unsaved.translation || contextTranslation(song, line) : contextTranslation(song, line, context?.translation)
     : null;
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const [savedLine, setSavedLine] = useState(false);

@@ -2,7 +2,7 @@ import { languageKey } from '../constants/languages';
 import type { Song, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
 import { isCjkWord } from './cjkWords';
-import { lineTranslation } from './wordOfTheDay';
+import { contextTranslation, lineTranslation } from './wordOfTheDay';
 import { firstIpa } from './ipaList';
 import { buildLyricQuiz, buildMeaningQuiz, isDue, isTricky, Quiz, QuizKind, quizKindFor, type QuizTarget } from './wordQuiz';
 
@@ -129,7 +129,7 @@ export function wordSentences(entry: Pick<WordEntry, 'word' | 'language' | 'cont
     let sentence = found.get(k);
     if (!sentence) found.set(k, (sentence = { line, songs: [] }));
     if (id && sentence.songs.some((x) => x.id === id)) return;
-    const translation = saved?.trim() || (song?.originalLyrics && song.translations ? lineTranslation(song as Song, line) ?? undefined : undefined);
+    const translation = contextTranslation(song as Song | undefined, line, saved);
     sentence.songs.push({ id, name, artist: artist ?? song?.artistName, song, translation });
   };
   for (const context of entry.contexts ?? []) {

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { Colors } from '../constants/theme';
 import type { SpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
@@ -45,6 +45,27 @@ function TogglePill({ icon, label, on, onPress, accent }: { icon: keyof typeof I
       <Ionicons name={icon} size={14} color={on ? '#000' : Colors.text} />
       <Text style={[styles.pillText, on && { color: '#000' }]}>{label}</Text>
     </TouchableOpacity>
+  );
+}
+
+/** A bar that glides to each new progress instead of jumping, and snaps when the line changes or goes back */
+function LineProgress({ value, line, playing }: { value: number; line: number | null; playing: boolean }) {
+  const anim = useRef(new Animated.Value(value)).current;
+  const prev = useRef({ value, line });
+  useEffect(() => {
+    const before = prev.current;
+    prev.current = { value, line };
+    anim.stopAnimation();
+    if (line !== before.line || value < before.value || !playing) {
+      anim.setValue(value);
+      return;
+    }
+    Animated.timing(anim, { toValue: value, duration: 450, easing: Easing.linear, useNativeDriver: false }).start();
+  }, [value, line, playing, anim]);
+  return (
+    <View style={styles.track}>
+      <Animated.View style={[styles.trackFill, { width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
+    </View>
   );
 }
 
@@ -168,9 +189,7 @@ export default function SpotifyBar({
               </TouchableOpacity>
             )}
           </View>
-          <View style={styles.track}>
-            <View style={[styles.trackFill, { width: `${Math.round(sync.lineProgress * 100)}%` }]} />
-          </View>
+          <LineProgress value={sync.lineProgress} line={sync.currentLine} playing={sync.isPlaying} />
           {!collapsed && (
             <>
           <View style={styles.transport}>

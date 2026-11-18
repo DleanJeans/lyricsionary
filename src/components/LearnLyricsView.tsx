@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { isRomanized } from '../constants/languages';
+import { getFlagForLanguage, isRomanized } from '../constants/languages';
 import { Colors } from '../constants/theme';
 import { Text } from './Text';
 import { findDefinitionHighlights } from '../utils/definitionHighlight';
@@ -72,8 +72,8 @@ interface LearnLyricsViewProps {
 
 function TranslationLine({
   text,
-  label,
   icon,
+  flag,
   fontSize,
   isBlurred,
   onPress,
@@ -81,8 +81,9 @@ function TranslationLine({
   highlightOccurrence,
 }: {
   text: string;
-  label?: string;
+  /** Shown at the start of the line with several translations: the site's icon, else the language's flag */
   icon?: string | null;
+  flag?: string;
   fontSize: number;
   isBlurred: boolean;
   onPress: () => void;
@@ -99,14 +100,13 @@ function TranslationLine({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={isBlurred ? 0.7 : 1}
-      style={[styles.translationContainer, isBlurred && styles.blurredContainer]}
+      style={[styles.translationContainer, styles.translationRow, isBlurred && styles.blurredContainer]}
     >
-      {!!label && !isBlurred && (
-        <View style={styles.translationLabelRow}>
-          {!!icon && <Image source={{ uri: icon }} style={styles.translationIcon} />}
-          <Text style={[styles.translationLabel, { fontSize: Math.max(10, fontSize - 8) }]}>{label}</Text>
-        </View>
-      )}
+      {!isBlurred && (icon ? (
+        <Image source={{ uri: icon }} style={styles.translationIcon} />
+      ) : flag ? (
+        <Text style={[styles.translationFlag, { fontSize: fontSize - 4 }]}>{flag}</Text>
+      ) : null)}
       <Text
         style={[
           styles.translationLine,
@@ -167,6 +167,8 @@ export function LearnLyricsLine({
     shown.some((translation) => !isRomanized(translation.language) && translation.text.trim())) ||
     lineIndex === dictationLineIndex;
   const note = getLineNote(lineNotes, line.original);
+  // With several translations on, each starts with its site's icon or its language's flag
+  const several = shown.filter((translation) => !isRomanized(translation.language) && translation.text.trim()).length > 1;
   return (
     <View style={styles.lineBlock}>
       {hidden ? (
@@ -194,8 +196,8 @@ export function LearnLyricsLine({
             <TranslationLine
               key={translationIndex}
               text={translation.text}
-              label={translation.label}
-              icon={translation.icon}
+              icon={several ? translation.icon : undefined}
+              flag={several ? getFlagForLanguage(translation.language) : undefined}
               fontSize={fontSize}
               isBlurred={!reverse && blurTranslations && !unblurredTranslations.has(translationKey)}
               onPress={() => onTranslationPress(lineIndex, translationIndex)}
@@ -577,9 +579,10 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   translationIcon: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    marginTop: 4,
   },
   translationLabel: {
     color: Colors.textSecondary,
@@ -587,8 +590,17 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   translationLine: {
+    flexShrink: 1,
     color: Colors.primaryLight,
     marginTop: 2,
+  },
+  translationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  translationFlag: {
+    marginTop: 1,
   },
   translationContainer: {
     alignSelf: 'flex-start',

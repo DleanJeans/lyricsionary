@@ -11,9 +11,10 @@ export function shortMeaning(text: string, max = MAX_LENGTH): string {
   return `${(space > 6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-/** The meaning picked for the word in this line, else the first one saved */
-export function meaningAbove(entry: WordEntry, ctx?: WordContext | null): string {
-  const text = ctx?.definition
+/** The meaning picked (or the one that fits the line's translation, when given) for the word in this line, else the first one saved */
+export function meaningAbove(entry: WordEntry, ctx?: WordContext | null, fitting?: string | null): string {
+  const text = fitting
+    || ctx?.definition
     || entry.contexts.find((c) => c.definition)?.definition
     || entry.definitions?.[0]?.text
     || '';

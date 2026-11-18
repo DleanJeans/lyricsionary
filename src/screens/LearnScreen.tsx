@@ -25,7 +25,7 @@ import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { RootTabParamList, WordContext, WordEntry } from '../types';
 import { cleanLyricWord, isLyricWord, isTappableLyric, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
-import { pickDefinition, withWordForms } from '../utils/definitionHighlight';
+import { findDefinitionHighlight, pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
 import { meaningAbove } from '../utils/meaningDisplay';
@@ -44,7 +44,7 @@ import SpotifyBar from '../components/SpotifyBar';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
-import { clippedFormIpa, getWiktionaryDefinitions, getWiktionaryPronunciation } from '../utils/wiktionary';
+import { clippedFormIpa, getWiktionaryDefinitions, getWiktionaryPronunciation, peekWiktionaryDefinitions } from '../utils/wiktionary';
 import { germanFullForms, getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
@@ -766,6 +766,52 @@ export default function LearnScreen() {
   const [preloadedLines, setPreloadedLines] = useState<Record<number, number>>({});
   const [visibleRange, setVisibleRange] = useState<{ from: number; to: number } | null>(null);
 
+  // The meaning above a saved word that fits the line's translation, when the saved one isn't in it,
+  // e.g. auch saved as "even" in "I think you are, too" shows "too", like Look Up fills it in.
+  // Uses the saved meanings and Wiktionary's, once read; null keeps the saved one
+  const fittingMeaning = (entry: WordEntry, ctx: { definition?: string } | null, lineIndex: number): string | null => {
+    const translation = lines[lineIndex]?.translations
+      .filter((tl) => !isRomanized(tl.language) && tl.text)
+      .map((tl) => tl.text)
+      .join(' / ');
+    if (!translation) return null;
+    const saved = ctx?.definition || entry.contexts.find((c) => c.definition)?.definition;
+    if (saved && findDefinitionHighlight(translation, [saved])) return null;
+    const wiktionary = peekWiktionaryDefinitions(entry.word, entry.language) ?? [];
+    const candidates = [
+      ...entry.contexts.filter((c) => c.definition).map((c) => ({ text: c.definition!, partOfSpeech: c.partOfSpeech ?? '' })),
+      ...(entry.definitions ?? []).map((d) => ({ text: d.text, partOfSpeech: '' })),
+      ...wiktionary,
+    ] as Parameters<typeof pickDefinition>[0];
+    const unique = new Set(candidates.map((d) => d.text));
+    if (unique.size < 2) return null;
+    const picked = pickDefinition(candidates, translation);
+    return picked && picked !== saved ? picked : null;
+  };
+
+  // Saved words in view have their Wiktionary meanings read, so the line's translation can pick the one it's about
+  const fittingRequestedRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!showMeaning || !visibleRange) return;
+    for (let li = visibleRange.from; li <= visibleRange.to; li++) {
+      const line = lines[li];
+      if (!line || !line.translations.some((tl) => tl.text)) continue;
+      for (const token of splitLyricTokens(line.original)) {
+        const word = cleanLyricWord(token);
+        const entry = word ? findSavedEntry(word) : undefined;
+        if (!entry) continue;
+        const key = `${entry.language}\u0000${entry.word}`;
+        if (fittingRequestedRef.current.has(key) || peekWiktionaryDefinitions(entry.word, entry.language)) continue;
+        fittingRequestedRef.current.add(key);
+        getWiktionaryDefinitions(entry.word, entry.language).then((defs) => {
+          if (!defs?.length || !preloadAliveRef.current) return;
+          setPreloadedLines((prev) => Object.fromEntries(Object.keys(prev).concat(lines.map((_, i) => String(i))).map((i) => [i, (prev[+i] ?? 0) + 1])));
+        }).catch(() => {});
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showMeaning, visibleRange, lines]);
+
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
     // CJK scripts do not separate words with spaces, so each CJK character is a selectable token, joined
     // back into a word when the characters are a saved word, or the word being selected, e.g. 二人
@@ -928,7 +974,7 @@ export default function LearnScreen() {
             const shouldShowEmoji = showEmoji && mainEntry && !quiet && effectiveEmoji &&
               effectiveEmoji !== getFlagForLanguage(mainEntry.language);
 
-            const meaningText = showMeaning && mainEntry && !quiet ? meaningAbove(mainEntry, ctx) : '';
+            const meaningText = showMeaning && mainEntry && !quiet ? meaningAbove(mainEntry, ctx, fittingMeaning(mainEntry, ctx, lineIndex)) : '';
 
             return (
               <View key={i} onLayout={onWordLayout(i)} style={{ alignItems: 'center' }}>
@@ -1164,7 +1210,7 @@ export default function LearnScreen() {
             loadingWords.has(loadingWordKey(cleanedWord, lineIndex, occurrenceMap[i] || 1)) ||
             (showIpa && !wordEntry && (!isIgnored || ipaKept) && !split && !isPhrase &&
               preloadPendingRef.current.has(preloadKey(song?.originalLanguages?.[0], cleanedWord))));
-          const meaningText = showMeaning && wordEntry && !quiet ? meaningAbove(wordEntry, wordCtx) : '';
+          const meaningText = showMeaning && wordEntry && !quiet ? meaningAbove(wordEntry, wordCtx, fittingMeaning(wordEntry, wordCtx, lineIndex)) : '';
           const hasAnnotation = !!shouldShowEmoji || !!displayContent || !!meaningText || isLoadingWord;
           const keepAnnotationSpace = hasAnnotation || !isCjkWord(word);
 
@@ -1263,7 +1309,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, isIpaKeptWord, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, isIpaKeptWord, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked, lines]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA

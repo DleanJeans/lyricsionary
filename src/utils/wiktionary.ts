@@ -419,6 +419,11 @@ export function seedWiktionaryDefinitions(word: string, language: string, defini
   if (definitions.length > 0) definitionResults.set(definitionKey(word, language), definitions);
 }
 
+/** The definitions already read for a word this session, without asking Wiktionary */
+export function peekWiktionaryDefinitions(word: string, language: string): WiktionaryDefinition[] | undefined {
+  return definitionResults.get(definitionKey(word, language));
+}
+
 export async function getWiktionaryDefinitions(word: string, language: string): Promise<WiktionaryDefinition[] | null> {
   const known = definitionResults.get(definitionKey(word, language));
   if (known) return known;

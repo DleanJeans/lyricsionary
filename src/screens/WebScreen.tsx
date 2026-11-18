@@ -28,6 +28,7 @@ import { detectTranslationJS } from '../utils/detectTranslationJS';
 import { followLyricsLinkJS } from '../utils/followLyricsLinkJS';
 import { GeniusVersion, mergeGeniusVersions, splitGeniusVersions, translationLanguageOf } from '../utils/geniusVersions';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
+import { normalizeApostrophes } from '../utils/normalizeApostrophes';
 import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
 import { scrapeTranslationJS } from '../utils/scrapeTranslationJS';
@@ -274,6 +275,18 @@ export default function WebScreen() {
           scrapedPageTitle: data.title ?? '',
           scrapedTargetTab: scrapeTargetTab,
         };
+        // The song saved in the automatic flow gets its translation right here, so Learn shows it as it arrives
+        const auto = useStore.getState().autoFetch;
+        if (auto?.step === 'translating' && auto.songId && scrapeTargetTab > 0) {
+          const { songs, updateSong } = useStore.getState();
+          const saved = songs.find((s) => s.id === auto.songId);
+          if (saved?.translations[scrapeTargetTab - 1]) {
+            const filled = saved.translations.map((t, i) => (i === scrapeTargetTab - 1
+              ? { ...t, lyrics: normalizeApostrophes(translation), sourceUrl: currentUrl, sourceUrlTitle: data.title || undefined }
+              : t));
+            void updateSong(saved.id, { translations: filled });
+          }
+        }
         // In the automatic flow the user is reading the song in Learn: hand the translation to the Editor without leaving
         const editorRoute = navigation.getState()?.routes.find((r: any) => r.name === 'Editor');
         if (useStore.getState().autoFetch?.step === 'translating' && editorRoute) {

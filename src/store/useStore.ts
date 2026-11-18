@@ -32,6 +32,8 @@ export interface AutoFetch {
   songName: string;
   artistName: string;
   step: 'lyrics' | 'translation' | 'translating';
+  /** The song saved when its lyrics arrived, which the translation is filled into */
+  songId?: string;
 }
 
 export const isWordIgnored = (ignoredWords: IgnoredWord[], word: string, language: string) =>

@@ -541,6 +541,8 @@ export default function EditorScreen() {
       ).then((song) => {
         setEditSongId(song.id);
         navigation.setParams({ songId: song.id });
+        const current = useStore.getState().autoFetch;
+        if (current) setAutoFetch({ ...current, songId: song.id });
         // DeepL keeps running in the Web screen while the song opens in Learn
         navigation.navigate('Learn', { songId: song.id });
       });

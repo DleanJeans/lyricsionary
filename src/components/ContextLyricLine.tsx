@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from './Text';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
-import { useStore } from '../store/useStore';
+import { makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { cleanLyricWord, isTappableLyric, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
 import { groupCjkTokens, groupSpacedWords } from '../utils/cjkWords';
 import { songWordIndex } from '../utils/lyricGaps';
@@ -46,6 +46,8 @@ export default function ContextLyricLine({
   const showMasteryLevelColors = useStore((s) => s.showMasteryLevelColors);
   const quietKnownWords = useStore((s) => s.quietKnownWords);
   const wideWordSpacing = useStore((s) => s.wideWordSpacing);
+  const ignoredWords = useStore((s) => s.ignoredWords);
+  const isIgnored = useMemo(() => makeIgnoredWordChecker(ignoredWords), [ignoredWords]);
   const index = useMemo(() => songWordIndex(words, languages), [words, languages]);
   // The IPA preloaded for words not saved is read from the cache, which is read from storage once
   const [, setCacheLoaded] = useState(false);
@@ -103,6 +105,8 @@ export default function ContextLyricLine({
           : '';
         const color = isCurrent
           ? Colors.primary
+          : !entry && !!cleaned && !!language && isIgnored(cleaned, language)
+            ? Colors.textMuted
           : showMasteryLevelColors && entry?.masteryLevel
             ? getMasteryLevelColor(entry.masteryLevel)
             : Colors.text;

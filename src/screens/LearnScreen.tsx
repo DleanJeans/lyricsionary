@@ -56,7 +56,8 @@ import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
 import { findSavedWord, formIpa, spellingsOf } from '../utils/wordForms';
 import { firstIpa } from '../utils/ipaList';
-import { translationNames } from '../utils/translationNames';
+import { getFaviconUrl } from '../utils/getFaviconUrl';
+import { learnOriginal, originalVersionName, translationNames } from '../utils/translationNames';
 import { hasPreloadedIpa, loadPreloadedIpa, preloadedIpaKey as preloadKey, getPreloadedIpa, getPreloadedWord, setPreloadedWord, type PreloadedWord } from '../utils/preloadedIpa';
 import {
   findSplitPhrases, germanSeparableVerb, isSplitPhrase, joinLineWords, phraseLookupWords, phraseOccurrenceAt, splitPhraseParts,
@@ -74,6 +75,7 @@ export default function LearnScreen() {
   useBackToQuit();
   const songs = useStore((s) => s.songs);
   const words = useStore((s) => s.words);
+  const updateSong = useStore((s) => s.updateSong);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
   const deleteWord = useStore((s) => s.deleteWord);
   const setWordsLevel = useStore((s) => s.setWordsLevel);
@@ -330,8 +332,10 @@ export default function LearnScreen() {
 
     // Use setTimeout to defer computation to next tick, allowing UI to render first
     const timer = setTimeout(() => {
-      const originalLines = song.originalLyrics.split('\n');
-      const translationLines = song.translations.map((t) => t.lyrics.split('\n'));
+      // Another original's lines may not match the translations', which stay with the main one
+      const shownOriginal = learnOriginal(song);
+      const originalLines = shownOriginal.lyrics.split('\n');
+      const translationLines = song.translations.map((t) => (shownOriginal.aligned ? t.lyrics.split('\n') : []));
       const names = translationNames(song.translations);
       // A song in Cyrillic, Greek, Korean, Hindi or Arabic without a Romanized version gets one made here
       const romanizeLanguage = song.translations.some((t) => isRomanized(t.language))
@@ -341,6 +345,7 @@ export default function LearnScreen() {
         const originalNormalized = normalizeText(line);
         const translations = translationLines.map((tl, ti) => {
           const translationText = tl[i] || '';
+          if (!shownOriginal.aligned) return { language: song.translations[ti].language, key: names[ti].key, label: names[ti].duplicated ? names[ti].name : undefined, icon: names[ti].icon, text: '', show: false };
           const translationNormalized = normalizeText(translationText);
           // Only include translation if it's different from original (word-wise comparison)
           const isDifferent = originalNormalized !== translationNormalized;
@@ -2334,6 +2339,14 @@ export default function LearnScreen() {
           selectedLanguages={localSelectedLanguages}
           onLanguagesChange={handleLanguageChange}
           availableTranslations={translationNames(song.translations)}
+          originals={(song.extraOriginals ?? []).filter((e) => e.lyrics.trim()).length > 0
+            ? [{ id: '', name: 'Main', icon: null }, ...(song.extraOriginals ?? []).flatMap((e, i) => (e.lyrics.trim()
+                ? [{ id: e.id, name: originalVersionName(e, i), icon: getFaviconUrl(e.sourceUrl ?? '') }]
+                : []))]
+            : []}
+          originalId={learnOriginal(song).extraIndex < 0 ? '' : song.learnOriginalId ?? ''}
+          originalsMisaligned={!learnOriginal(song).aligned}
+          onOriginalChange={(id) => { void updateSong(song.id, { learnOriginalId: id || undefined }); }}
           showIpa={showIpa}
           onShowIpaChange={setShowIpa}
           showIpaBrackets={showIpaBrackets}
@@ -2344,7 +2357,7 @@ export default function LearnScreen() {
           onShowMeaningChange={setShowMeaning}
           showSections={showSections}
           onToggleShowSections={toggleShowSections}
-          onCopySections={() => Clipboard.setStringAsync(formatSongSections(song.originalLyrics.split('\n')))}
+          onCopySections={() => Clipboard.setStringAsync(formatSongSections(learnOriginal(song).lyrics.split('\n')))}
           blurTranslations={blurTranslations}
           onToggleBlur={toggleBlurTranslations}
           reverseLyrics={reverseLyrics}

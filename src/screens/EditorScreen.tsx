@@ -11,7 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Text } from '../components/Text';
-import { translationNames } from '../utils/translationNames';
+import { originalVersionName, translationNames } from '../utils/translationNames';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store/useStore';
@@ -29,7 +29,7 @@ import {
   getCurrentlyPlayingMedia,
 } from '../services/mediaNotification';
 import { useBackToQuit } from '../hooks/useBackToQuit';
-import { Translation } from '../types';
+import { ExtraOriginal, Translation } from '../types';
 import FabBubble from '../components/FabBubble';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { deduplicateLines, splitIntoChunks } from '../utils/deeplTranslation';
@@ -79,6 +79,9 @@ export default function EditorScreen() {
   const [songSourceUrl, setSongSourceUrl] = useState('');
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [activeTab, setActiveTab] = useState(0);
+  // Other versions of the original, e.g. from another site; `version` is the one the Original tab shows (0 is the main one)
+  const [extraOriginals, setExtraOriginals] = useState<ExtraOriginal[]>([]);
+  const [version, setVersion] = useState(0);
   const [showSourceUrl, setShowSourceUrl] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].name);
@@ -116,6 +119,7 @@ export default function EditorScreen() {
     songSourceUrl: string;
     songSourceUrlTitle: string;
     translations: Translation[];
+    extraOriginals: ExtraOriginal[];
   } | null>(null);
 
   useEffect(() => {
@@ -126,11 +130,16 @@ export default function EditorScreen() {
       setOriginalLanguages(editSong.originalLanguages ?? []);
       setSongSourceUrl(editSong.sourceUrl ?? '');
       setTranslations(editSong.translations.map((t) => ({ ...t })));
+      setExtraOriginals((editSong.extraOriginals ?? []).map((e) => ({ ...e })));
+      setVersion(0);
       setPendingSourceUrls({});
       const titles: Record<number, string> = {};
       if (editSong.sourceUrlTitle) titles[0] = editSong.sourceUrlTitle;
       editSong.translations.forEach((t, i) => {
         if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
+      });
+      (editSong.extraOriginals ?? []).forEach((e, i) => {
+        if (e.sourceUrlTitle) titles[-(i + 1)] = e.sourceUrlTitle;
       });
       setPendingPageTitles(titles);
       // Save original state for Reset functionality
@@ -142,6 +151,7 @@ export default function EditorScreen() {
         songSourceUrl: editSong.sourceUrl ?? '',
         songSourceUrlTitle: editSong.sourceUrlTitle ?? '',
         translations: editSong.translations.map((t) => ({ ...t })),
+        extraOriginals: (editSong.extraOriginals ?? []).map((e) => ({ ...e })),
       });
       // Set metadata to not editing when loading an existing song
       setIsEditingMetadata(false);
@@ -201,7 +211,10 @@ export default function EditorScreen() {
     const languageCode = route.params?.scrapedLanguageCode as string | undefined;
     const fillLines = route.params?.scrapedFillLines as number[] | undefined;
 
-    if (targetTab === 0) {
+    if (targetTab === 0 && version > 0) {
+      // Another version of the original: the page's lyrics go into it, with no language or translations
+      setExtraOriginals((prev) => prev.map((e, i) => (i === version - 1 ? { ...e, lyrics: scraped } : e)));
+    } else if (targetTab === 0) {
       setOriginalLyrics(scraped);
       // Auto-fill language only for original lyrics (tab 0) and when language is detected
       if (languageCode) {
@@ -242,14 +255,15 @@ export default function EditorScreen() {
       navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedFillLines: undefined });
       return;
     }
-    if (url) setPendingSourceUrls((prev) => ({ ...prev, [targetTab]: url }));
-    if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
+    const sourceKey = targetTab === 0 ? -version : targetTab;
+    if (url) setPendingSourceUrls((prev) => ({ ...prev, [sourceKey]: url }));
+    if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [sourceKey]: title }));
 
     // Translations that came with the original (LyricsTranslate, Musixmatch, Letras, Genius's other versions) fill in
     // their languages' tabs, adding them if needed
     const scrapedTranslations = ((route.params?.scrapedTranslations ?? []) as { language: string; lyrics: string; url?: string; title?: string }[])
       .map((t) => ({ ...t, language: findTranslationLanguageName(t.language ?? '') }))
-      .filter((t): t is typeof t & { language: string } => targetTab === 0 && !!t.lyrics && !!t.language);
+      .filter((t): t is typeof t & { language: string } => targetTab === 0 && version === 0 && !!t.lyrics && !!t.language);
     if (scrapedTranslations.length) {
       const languages = translations.map((t) => t.language);
       scrapedTranslations.forEach((t) => {
@@ -296,7 +310,7 @@ export default function EditorScreen() {
 
   // Web reads a page's lyrics in on its own only into a tab that's still empty
   const setEditorFilledTabs = useStore((s) => s.setEditorFilledTabs);
-  const filledTabsKey = [originalLyrics, ...translations.map((t) => t.lyrics)]
+  const filledTabsKey = [version > 0 ? extraOriginals[version - 1]?.lyrics ?? '' : originalLyrics, ...translations.map((t) => t.lyrics)]
     .flatMap((lyrics, tab) => (lyrics.trim() ? [tab] : []))
     .join(',');
   useEffect(() => {
@@ -314,12 +328,17 @@ export default function EditorScreen() {
     JSON.stringify(originalLanguages) !== JSON.stringify(originalState.originalLanguages) ||
     songSourceUrl !== originalState.songSourceUrl ||
     (pendingPageTitles[0] ?? '') !== originalState.songSourceUrlTitle ||
-    JSON.stringify(translations) !== JSON.stringify(originalState.translations)
+    JSON.stringify(translations) !== JSON.stringify(originalState.translations) ||
+    JSON.stringify(extraOriginals) !== JSON.stringify(originalState.extraOriginals)
   ) : false;
 
-  const currentLyrics = activeTab === 0 ? originalLyrics : translations[activeTab - 1]?.lyrics ?? '';
+  const currentLyrics = activeTab === 0
+    ? (version > 0 ? extraOriginals[version - 1]?.lyrics ?? '' : originalLyrics)
+    : translations[activeTab - 1]?.lyrics ?? '';
   const setCurrentLyrics = (text: string) => {
-    if (activeTab === 0) {
+    if (activeTab === 0 && version > 0) {
+      setExtraOriginals((prev) => prev.map((e, i) => (i === version - 1 ? { ...e, lyrics: text } : e)));
+    } else if (activeTab === 0) {
       setOriginalLyrics(text);
     } else {
       const updated = [...translations];
@@ -328,8 +347,12 @@ export default function EditorScreen() {
     }
   };
 
-  const currentSourceUrl = pendingSourceUrls[activeTab] ?? (activeTab === 0 ? songSourceUrl : translations[activeTab - 1]?.sourceUrl ?? '');
-  const pageTitle = pendingPageTitles[activeTab] ?? '';
+  // Pending links are kept by tab; an extra original's by minus its number
+  const sourceKey = activeTab === 0 ? -version : activeTab;
+  const currentSourceUrl = pendingSourceUrls[sourceKey] ?? (activeTab === 0
+    ? (version > 0 ? extraOriginals[version - 1]?.sourceUrl ?? '' : songSourceUrl)
+    : translations[activeTab - 1]?.sourceUrl ?? '');
+  const pageTitle = pendingPageTitles[sourceKey] ?? '';
 
   const handlePaste = async () => {
     const text = await Clipboard.getStringAsync();
@@ -340,6 +363,7 @@ export default function EditorScreen() {
     sourceUrl: string | undefined;
     sourceUrlTitle: string | undefined;
     translations: Translation[];
+    extraOriginals: ExtraOriginal[];
   };
 
   // #region Save Logic
@@ -380,7 +404,19 @@ export default function EditorScreen() {
         sourceUrlTitle: hasPendingUrl ? (pendingPageTitles[i + 1] || undefined) : t.sourceUrlTitle,
       };
     });
-    return { sourceUrl, sourceUrlTitle, translations: resolvedTranslations };
+    const resolvedExtras = extraOriginals
+      .filter((e) => e.lyrics.trim())
+      .map((e) => {
+        const index = extraOriginals.indexOf(e);
+        const pending = pendingSourceUrls[-(index + 1)];
+        return {
+          ...e,
+          lyrics: normalizeApostrophes(e.lyrics),
+          sourceUrl: pending !== undefined ? pending.trim() || undefined : e.sourceUrl,
+          sourceUrlTitle: pending !== undefined ? pendingPageTitles[-(index + 1)] || undefined : e.sourceUrlTitle,
+        };
+      });
+    return { sourceUrl, sourceUrlTitle, translations: resolvedTranslations, extraOriginals: resolvedExtras };
   };
 
   const handleUpdatingSavedSong = async (resolved: ResolvedSourceData) => {
@@ -401,12 +437,16 @@ export default function EditorScreen() {
       sourceUrl: resolved.sourceUrl,
       sourceUrlTitle: resolved.sourceUrlTitle,
       translations: normalizedTranslations,
+      extraOriginals: resolved.extraOriginals.length ? resolved.extraOriginals : undefined,
+      learnOriginalId: resolved.extraOriginals.some((e) => e.id === editSong.learnOriginalId) ? editSong.learnOriginalId : undefined,
     });
     setCurrentSongId(editSong.id);
 
     // Update the editor state with normalized lyrics
     setOriginalLyrics(normalizedOriginalLyrics);
     setTranslations(normalizedTranslations);
+    setExtraOriginals(resolved.extraOriginals);
+    if (version > resolved.extraOriginals.length) setVersion(0);
 
     setOriginalState({
       songName: songName.trim(),
@@ -416,12 +456,16 @@ export default function EditorScreen() {
       songSourceUrl: resolved.sourceUrl ?? '',
       songSourceUrlTitle: resolved.sourceUrlTitle ?? '',
       translations: normalizedTranslations.map((t) => ({ ...t })),
+      extraOriginals: resolved.extraOriginals.map((e) => ({ ...e })),
     });
     setPendingSourceUrls({});
     const titles: Record<number, string> = {};
     if (resolved.sourceUrlTitle) titles[0] = resolved.sourceUrlTitle;
     normalizedTranslations.forEach((t, i) => {
       if (t.sourceUrlTitle) titles[i + 1] = t.sourceUrlTitle;
+    });
+    resolved.extraOriginals.forEach((e, i) => {
+      if (e.sourceUrlTitle) titles[-(i + 1)] = e.sourceUrlTitle;
     });
     setPendingPageTitles(titles);
   };
@@ -437,6 +481,7 @@ export default function EditorScreen() {
     }));
 
     const song = await saveSong(songName.trim(), artistName.trim(), normalizedOriginalLyrics, originalLanguages, normalizedTranslations, resolved.sourceUrl, resolved.sourceUrlTitle);
+    if (resolved.extraOriginals.length) await updateSong(song.id, { extraOriginals: resolved.extraOriginals });
     setCurrentSongId(song.id);
     setEditSongId(song.id);
     navigation.setParams({ songId: song.id });
@@ -452,6 +497,8 @@ export default function EditorScreen() {
     setOriginalLanguages([]);
     setSongSourceUrl('');
     setTranslations([]);
+    setExtraOriginals([]);
+    setVersion(0);
     setActiveTab(0);
     setPendingSourceUrls({});
     setPendingPageTitles({});
@@ -469,10 +516,15 @@ export default function EditorScreen() {
       setOriginalLanguages([...originalState.originalLanguages]);
       setSongSourceUrl(originalState.songSourceUrl);
       setTranslations(originalState.translations.map((t) => ({ ...t })));
+      setExtraOriginals(originalState.extraOriginals.map((e) => ({ ...e })));
+      setVersion(0);
       setActiveTab(0);
       setPendingSourceUrls({});
       setPendingPageTitles(
-        originalState.songSourceUrlTitle ? { 0: originalState.songSourceUrlTitle } : {}
+        Object.fromEntries([
+          ...(originalState.songSourceUrlTitle ? [[0, originalState.songSourceUrlTitle]] : []),
+          ...originalState.extraOriginals.flatMap((e, i) => (e.sourceUrlTitle ? [[-(i + 1), e.sourceUrlTitle]] : [])),
+        ])
       );
     }
   };
@@ -892,6 +944,56 @@ export default function EditorScreen() {
           <Text style={styles.addTabText}>Add Translation</Text>
         </TouchableOpacity>
       </ScrollView>
+      {activeTab === 0 && (extraOriginals.length > 0 || !!originalLyrics.trim()) && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.versionRow} contentContainerStyle={styles.versionRowContent}>
+          {[null, ...extraOriginals].map((extra, k) => {
+            const url = k === 0 ? pendingSourceUrls[0] ?? songSourceUrl : pendingSourceUrls[-k] ?? extra?.sourceUrl ?? '';
+            const name = k === 0 ? 'Main' : originalVersionName({ label: extra?.label, sourceUrl: url }, k - 1);
+            return (
+              <TouchableOpacity
+                key={k === 0 ? 'main' : extra!.id}
+                style={[styles.versionChip, version === k && styles.versionChipActive]}
+                onPress={() => { setVersion(k); setShowSourceUrl(true); }}
+                accessibilityRole="button"
+                accessibilityLabel={`Show original version ${name}`}
+              >
+                {getFaviconUrl(url) ? (
+                  <Image source={{ uri: getFaviconUrl(url)! }} style={styles.tabFavicon} />
+                ) : (
+                  <Ionicons name="musical-notes-outline" size={14} color={version === k ? Colors.white : Colors.textSecondary} />
+                )}
+                <Text style={[styles.versionChipText, version === k && styles.tabTextActive]}>{name}</Text>
+                {version === k && k > 0 && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setExtraOriginals((prev) => prev.filter((_, i) => i !== k - 1));
+                      setPendingSourceUrls((prev) => Object.fromEntries(Object.entries(prev).filter(([key]) => Number(key) >= 0)));
+                      setVersion(0);
+                    }}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove original version ${name}`}
+                  >
+                    <Ionicons name="close" size={14} color={Colors.white} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity
+            style={styles.versionChip}
+            onPress={() => {
+              setExtraOriginals((prev) => [...prev, { id: Date.now().toString(36), lyrics: '' }]);
+              setVersion(extraOriginals.length + 1);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Add another original"
+          >
+            <Ionicons name="add" size={14} color={Colors.primary} />
+            <Text style={[styles.versionChipText, { color: Colors.primary }]}>Add original</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
       {(translations.length > 0 && activeTab > 0 || currentLyrics.length > 0) && (
         <View style={styles.togglesRow}>
           {translations.length > 0 && activeTab > 0 && (
@@ -1229,6 +1331,32 @@ const styles = StyleSheet.create({
   deleteButton: {
     position: 'absolute',
     right: 10,
+  },
+  versionRow: {
+    flexGrow: 0,
+    marginTop: 8,
+  },
+  versionRowContent: {
+    gap: 8,
+    paddingHorizontal: 2,
+  },
+  versionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  versionChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  versionChipText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
   },
   tabFavicon: {
     width: 14,

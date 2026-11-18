@@ -42,3 +42,20 @@ export function siteName(url?: string): string | null {
   const main = parts.length > 2 && parts[parts.length - 2].length <= 3 ? parts[parts.length - 3] : parts[parts.length - 2] ?? parts[0];
   return main ? main[0].toUpperCase() + main.slice(1) : null;
 }
+
+/** What an original version is called in the Editor and Learn Settings */
+export function originalVersionName(version: { label?: string; sourceUrl?: string }, index: number): string {
+  return version.label?.trim() || siteName(version.sourceUrl) || `Original ${index + 2}`;
+}
+
+/** The original Learn shows: the song's chosen extra, else the main one, and whether translations still line up with it */
+export function learnOriginal(song: {
+  originalLyrics: string;
+  extraOriginals?: { id: string; label?: string; lyrics: string; sourceUrl?: string }[];
+  learnOriginalId?: string;
+}): { lyrics: string; aligned: boolean; extraIndex: number } {
+  const extraIndex = song.extraOriginals?.findIndex((e) => e.id === song.learnOriginalId && e.lyrics.trim()) ?? -1;
+  if (extraIndex < 0) return { lyrics: song.originalLyrics, aligned: true, extraIndex: -1 };
+  const lyrics = song.extraOriginals![extraIndex].lyrics;
+  return { lyrics, aligned: lyrics.split('\n').length === song.originalLyrics.split('\n').length, extraIndex };
+}

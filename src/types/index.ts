@@ -11,6 +11,10 @@ export interface Song {
   sourceUrl?: string;
   sourceUrlTitle?: string;
   translations: Translation[];
+  /** Other versions of the original lyrics, e.g. from another site. `originalLyrics` stays the main one */
+  extraOriginals?: ExtraOriginal[];
+  /** Which original Learn shows: an extra's id, or the main one when unset */
+  learnOriginalId?: string;
   createdAt: number;
   updatedAt: number;
   lastOpenedAt?: number;
@@ -19,6 +23,15 @@ export interface Song {
   lineNotes?: Record<string, string>;
   /** Hidden from the Songs list, with its words kept */
   archivedAt?: number;
+}
+
+export interface ExtraOriginal {
+  id: string;
+  /** Names the version, e.g. "Genius"; the site's name when unset */
+  label?: string;
+  lyrics: string;
+  sourceUrl?: string;
+  sourceUrlTitle?: string;
 }
 
 export interface Translation {

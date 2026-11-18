@@ -15,6 +15,12 @@ interface LearnSettingsMenuProps {
   selectedLanguages: string[];
   onLanguagesChange: (languages: string[]) => void;
   availableTranslations: TranslationName[];
+  /** The song's versions of the original lyrics, when it has more than one; '' is the main one */
+  originals: { id: string; name: string; icon: string | null }[];
+  originalId: string;
+  /** The chosen original has a different number of lines, so translations are hidden */
+  originalsMisaligned: boolean;
+  onOriginalChange: (id: string) => void;
   showIpa: boolean;
   onShowIpaChange: (show: boolean) => void;
   showIpaBrackets: boolean;
@@ -144,6 +150,10 @@ export default function LearnSettingsMenu({
   selectedLanguages,
   onLanguagesChange,
   availableTranslations,
+  originals,
+  originalId,
+  originalsMisaligned,
+  onOriginalChange,
   showIpa,
   onShowIpaChange,
   showIpaBrackets,
@@ -274,6 +284,28 @@ export default function LearnSettingsMenu({
                 />
               )}
             </View>
+
+            {originals.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Original</Text>
+                <View style={styles.chips}>
+                  {originals.map((o) => (
+                    <Chip
+                      key={o.id || 'main'}
+                      label={o.name}
+                      icon={o.icon ? <Image source={{ uri: o.icon }} style={{ width: 16, height: 16, borderRadius: 3 }} /> : <Ionicons name="musical-notes-outline" size={18} color={chipIconColor(originalId === o.id)} />}
+                      selected={originalId === o.id}
+                      onPress={() => onOriginalChange(o.id)}
+                    />
+                  ))}
+                </View>
+                {originalsMisaligned && (
+                  <Text style={{ color: Colors.textSecondary, fontSize: 13, marginTop: 6 }}>
+                    This version has a different number of lines than the main one, so translations are hidden.
+                  </Text>
+                )}
+              </>
+            )}
 
             {languagesToShow.length > 0 && (
               <>

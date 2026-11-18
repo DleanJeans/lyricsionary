@@ -133,6 +133,8 @@ export default function WordLookupScreen() {
   // The Google tab searches "<word> <language> IPA" for a word Wiktionary has no IPA for, and reads it
   const [ipaSearch, setIpaSearch] = useState(false);
   const ipaSearchRef = useRef(false);
+  // The Google lookup gives up after a while, so the spinner in the Pronunciation field stops too
+  const [ipaSearchGaveUp, setIpaSearchGaveUp] = useState(false);
   ipaSearchRef.current = ipaSearch;
   const [definitionSuggestions, setDefinitionSuggestions] = useState<WiktionaryDefinition[]>([]);
 
@@ -630,6 +632,7 @@ export default function WordLookupScreen() {
 
   const searchGoogleForIpa = () => {
     if (!displayWord) return;
+    setIpaSearchGaveUp(false);
     ipaSearchRef.current = true;
     setIpaSearch(true);
     setScrapedIpaResults([]);
@@ -645,6 +648,13 @@ export default function WordLookupScreen() {
 
   // A guess for a word the page has no IPA for, e.g. fang's /faŋ/ from fangen /ˈfaŋən/
   const derivedIpa = wiktionaryPronunciation.derivedFrom && !cardIpa ? wiktionaryPronunciation.ipa : [];
+  const searchingGoogleIpa = ipaSearch && lookupSource === 'google' && !ipaSearchGaveUp
+    && scrapedIpaResults.length === 0 && !pronunciation.trim();
+  useEffect(() => {
+    if (!searchingGoogleIpa) return;
+    const timer = setTimeout(() => setIpaSearchGaveUp(true), 25000);
+    return () => clearTimeout(timer);
+  }, [searchingGoogleIpa]);
   const pageIpa = lookupSource === 'wiktionary' || ipaSearch || numberWord ? scrapedIpaResults : [];
   const ipaOptions = cardIpa ?? (pageIpa.length > 0 ? pageIpa : derivedIpa);
   // Fill in an empty pronunciation with the guess, as the page's own IPA would be
@@ -868,13 +878,22 @@ export default function WordLookupScreen() {
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Pronunciation</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={pronunciation}
-              onChangeText={setPronunciation}
-              placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
-              placeholderTextColor={Colors.textMuted}
-            />
+            <View>
+              <TextInput
+                style={[styles.fieldInput, searchingGoogleIpa && { paddingRight: 44 }]}
+                value={pronunciation}
+                onChangeText={setPronunciation}
+                placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
+                placeholderTextColor={Colors.textMuted}
+              />
+              {searchingGoogleIpa && (
+                <ActivityIndicator
+                  size="small"
+                  color={Colors.primary}
+                  style={{ position: 'absolute', right: 14, top: 0, bottom: 0 }}
+                />
+              )}
+            </View>
             {!numberWord && wiktionaryHasNoIpa && !pronunciation.trim() && !(ipaSearch && lookupSource === 'google') && (
               <TouchableOpacity
                 style={styles.ipaSearchButton}

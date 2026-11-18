@@ -2215,6 +2215,7 @@ export default function LearnScreen() {
         onTranslationPress={handleTranslationPress}
         highlightLineIndex={selectedLineIndex}
         highlightDefinitions={selectedDefinitions}
+        highlightOccurrence={selectedWordEntry ? selectedOccurrence : undefined}
         showSections={showSections}
         onVisibleRange={setVisibleRange}
         preloadedLines={preloadedLines}

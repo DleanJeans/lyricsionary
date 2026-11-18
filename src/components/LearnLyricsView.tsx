@@ -32,6 +32,8 @@ interface LearnLyricsViewProps {
   highlightLineIndex?: number | null;
   // One list of definitions per word to highlight, best first
   highlightDefinitions?: string[][];
+  // Which occurrence of the word in its line is selected (1-based), to highlight the same one in the translation
+  highlightOccurrence?: number;
   // Box and label the song's sections, like the verses and chorus
   showSections?: boolean;
   /** Translations show and each original line is blurred until tapped, to recall it from the meaning */
@@ -69,17 +71,19 @@ function TranslationLine({
   isBlurred,
   onPress,
   highlightDefinitions,
+  highlightOccurrence,
 }: {
   text: string;
   fontSize: number;
   isBlurred: boolean;
   onPress: () => void;
   highlightDefinitions?: string[][];
+  highlightOccurrence?: number;
 }) {
   if (!text) return null;
 
   const highlights = !isBlurred && highlightDefinitions?.length
-    ? findDefinitionHighlights(text, highlightDefinitions)
+    ? findDefinitionHighlights(text, highlightDefinitions, highlightOccurrence)
     : null;
 
   return (
@@ -127,6 +131,7 @@ export function LearnLyricsLine({
   onTranslationPress,
   highlightLineIndex,
   highlightDefinitions,
+  highlightOccurrence,
   reverse = false,
   revealedOriginals,
   onRevealOriginal,
@@ -178,6 +183,7 @@ export function LearnLyricsLine({
               isBlurred={!reverse && blurTranslations && !unblurredTranslations.has(translationKey)}
               onPress={() => onTranslationPress(lineIndex, translationIndex)}
               highlightDefinitions={lineIndex === highlightLineIndex ? highlightDefinitions : undefined}
+              highlightOccurrence={lineIndex === highlightLineIndex ? highlightOccurrence : undefined}
             />
           );
         })}
@@ -204,6 +210,9 @@ function sameLine(prev: LineProps, next: LineProps): boolean {
     switch (key) {
       case 'highlightLineIndex':
         if ((prev.highlightLineIndex === i) !== (next.highlightLineIndex === i)) return false;
+        break;
+      case 'highlightOccurrence':
+        if (next.highlightLineIndex === i && prev.highlightOccurrence !== next.highlightOccurrence) return false;
         break;
       case 'highlightDefinitions':
         if (next.highlightLineIndex === i && JSON.stringify(prev.highlightDefinitions) !== JSON.stringify(next.highlightDefinitions)) return false;

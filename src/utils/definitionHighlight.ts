@@ -79,13 +79,26 @@ function findSplitPhrase(haystack: string, needle: string): Array<[number, numbe
 
 // Finds the first definition that appears in the translation as whole words, as the ranges to
 // highlight: one for a phrase in one piece, or one per word when other words split it up.
-export function findDefinitionHighlight(text: string, definitions: string[]): Array<[number, number]> | null {
+// With `occurrence` (1-based), the one in the same place as the tapped word's, e.g. the second "the" for
+// the second "die" of a line; the first when the translation has fewer.
+export function findDefinitionHighlight(text: string, definitions: string[], occurrence = 1): Array<[number, number]> | null {
   const haystack = normalize(text);
   for (const definition of definitions) {
     for (const candidate of candidatesOf(definition)) {
       const needle = normalize(candidate);
       const range = findWhole(haystack, needle);
-      if (range) return [range];
+      if (range) {
+        if (occurrence > 1) {
+          let found = range;
+          let count = 1;
+          for (let next = findWhole(haystack, needle, found[0] + 1); next && count < occurrence; next = findWhole(haystack, needle, found[0] + 1)) {
+            found = next;
+            count++;
+          }
+          if (count === occurrence) return [found];
+        }
+        return [range];
+      }
     }
   }
   for (const definition of definitions) {
@@ -108,9 +121,9 @@ export function findDefinitionHighlightAt(text: string, definition: string, at: 
 // Highlights for several words at once, like the parts of a split compound: each word's first
 // matching definition, with overlaps merged and ranges only spaces apart joined into one,
 // e.g. Liebe "love" + Brief "letter" -> one highlight over "love letter".
-export function findDefinitionHighlights(text: string, definitionGroups: string[][]): Array<[number, number]> | null {
+export function findDefinitionHighlights(text: string, definitionGroups: string[][], occurrence = 1): Array<[number, number]> | null {
   const ranges = definitionGroups
-    .flatMap((definitions) => findDefinitionHighlight(text, definitions) ?? [])
+    .flatMap((definitions) => findDefinitionHighlight(text, definitions, occurrence) ?? [])
     .sort((a, b) => a[0] - b[0]);
   const merged: Array<[number, number]> = [];
   for (const [start, end] of ranges) {

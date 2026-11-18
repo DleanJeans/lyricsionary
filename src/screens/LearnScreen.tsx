@@ -15,7 +15,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
 import WordCard from '../components/WordCard';
-import FoldAway, { useSwipeFold } from '../components/FoldAway';
+import FoldAway, { useSwipe } from '../components/FoldAway';
 import WordQuiz from '../components/WordQuiz';
 import { getFlagForLanguage, isRomanized, isRtlLanguage, isSameLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
@@ -2123,7 +2123,13 @@ export default function LearnScreen() {
   };
   // Swipe the chip row up to fold it away under the title, swipe the title down to bring it back
   const [actionBarCollapsed, setActionBarCollapsed] = usePersistedState('@lyricsionary_learn_actionbar_collapsed', false, (v): v is boolean => typeof v === 'boolean');
-  const headerSwipe = useSwipeFold(actionBarCollapsed, setActionBarCollapsed);
+  const [spotifyBarHidden, setSpotifyBarHidden] = usePersistedState('@lyricsionary_spotify_bar_hidden', false, (v): v is boolean => typeof v === 'boolean');
+  // Swiping down brings back the nearest hidden bar: the chip row, then the Spotify bar
+  const revealMore = () => {
+    if (actionBarCollapsed) setActionBarCollapsed(false);
+    else if (spotifyBarHidden) setSpotifyBarHidden(false);
+  };
+  const headerSwipe = useSwipe(() => {}, revealMore);
   const markBar = (
     <View style={styles.markBar}>
       <TouchableOpacity onPress={exitMarkMode} style={styles.markClose} accessibilityRole="button" accessibilityLabel="Stop picking words">
@@ -2155,7 +2161,7 @@ export default function LearnScreen() {
     </View>
   );
   const actionBar = (
-    <FoldAway collapsed={actionBarCollapsed} onCollapsedChange={setActionBarCollapsed}>
+    <FoldAway collapsed={actionBarCollapsed} onSwipeUp={() => setActionBarCollapsed(true)} onSwipeDown={revealMore}>
     <LearnActionBar
       fontSize={storedFontSize}
       lineCount={lineCount}
@@ -2183,6 +2189,8 @@ export default function LearnScreen() {
     <>
       {spotifyConnected && (
         <SpotifyBar
+          hidden={spotifyBarHidden}
+          onHiddenChange={setSpotifyBarHidden}
           hideStatus={noSyncHidden && spotify.timings === 'none'}
           sync={spotify}
           selectedLineIndex={selectedLineIndex}

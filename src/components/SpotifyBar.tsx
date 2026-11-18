@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
+import FoldAway, { useSwipe } from './FoldAway';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { Colors } from '../constants/theme';
 import type { SpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
@@ -70,7 +71,7 @@ function LineProgress({ value, line, playing }: { value: number; line: number | 
 }
 
 /** Spotify controls above the lyrics in Learn: play the song, then replay, step and play by line */
-export default function SpotifyBar({
+function SpotifyBarBody({
   sync,
   selectedLineIndex,
   follow,
@@ -78,6 +79,7 @@ export default function SpotifyBar({
   onDictation,
   onDismiss,
   hideStatus,
+  onHide,
 }: {
   sync: SpotifyLyricsSync;
   /** The line of the tapped word, to play from */
@@ -90,6 +92,8 @@ export default function SpotifyBar({
   onDismiss?: () => void;
   /** Leaves out the status once it was closed, keeping the Play button */
   hideStatus?: boolean;
+  /** A second swipe up, on the already folded bar, slides the whole bar away */
+  onHide: () => void;
 }) {
   // Folds the controls away to just the header, remembered across launches
   const [collapsed, setCollapsed] = usePersistedState('@lyricsionary_spotify_bar_collapsed', false, (v): v is boolean => typeof v === 'boolean');
@@ -99,19 +103,11 @@ export default function SpotifyBar({
   useEffect(() => {
     Animated.timing(open, { toValue: collapsed ? 0 : 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [collapsed, open]);
-  // Swipe up on the bar to hide the controls, swipe down to show them again
-  const swipeState = useRef({ collapsed, setCollapsed });
-  swipeState.current = { collapsed, setCollapsed };
-  const swipe = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > 12 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
-      onPanResponderRelease: (_e, g) => {
-        const { collapsed: isCollapsed, setCollapsed: set } = swipeState.current;
-        if (g.dy < -20 && !isCollapsed) set(true);
-        else if (g.dy > 20 && isCollapsed) set(false);
-      },
-    })
-  ).current;
+  // Swipe up folds the controls, again slides the bar away; swipe down unfolds them
+  const swipe = useSwipe(
+    () => (collapsed ? onHide() : setCollapsed(true)),
+    () => collapsed && setCollapsed(false)
+  );
   // Line, dictation and loop only work once Spotify plays this song
   const canPlaySelected = sync.isThisSong && selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
   // Loops the tapped word's line, or else the one playing
@@ -252,6 +248,20 @@ export default function SpotifyBar({
         </View>
       )}
     </View>
+  );
+}
+
+export default function SpotifyBar({
+  hidden,
+  onHiddenChange,
+  ...props
+}: Omit<React.ComponentProps<typeof SpotifyBarBody>, 'onHide'> & { hidden: boolean; onHiddenChange: (hidden: boolean) => void }) {
+  // Only the whole-song controls slide away; the Play and Queue states always stay
+  const away = hidden && props.sync.timings === 'ready' && props.sync.isThisSong;
+  return (
+    <FoldAway collapsed={away}>
+      <SpotifyBarBody {...props} onHide={() => onHiddenChange(true)} />
+    </FoldAway>
   );
 }
 

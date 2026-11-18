@@ -6,6 +6,7 @@ import { useStore } from '../store/useStore';
 import { shownDefinition } from '../utils/partOfSpeech';
 import { localDay } from '../utils/wordQuiz';
 import { highlightWord, lineTranslation, wordOfTheDay } from '../utils/wordOfTheDay';
+import SelectableTranslation from './SelectableTranslation';
 import { Text } from './Text';
 
 /** One saved word a day in the sidebar, with its meaning and line; tapping opens its song at that line */
@@ -53,7 +54,12 @@ export default function WordOfTheDay({ onOpen }: { onOpen: (songId: string, focu
               line
             )}
           </Text>
-          {translation ? <Text style={styles.translation} numberOfLines={2}>{translation}</Text> : null}
+          {translation ? (
+            // Highlights the meaning shown above; taps pass through to the card
+            <View pointerEvents="none">
+              <SelectableTranslation translation={translation} onSelect={() => {}} value={definition} style={styles.translation} />
+            </View>
+          ) : null}
           <Text style={styles.song} numberOfLines={1}>{song!.songName}</Text>
         </>
       )}

@@ -245,7 +245,8 @@ export default function LyricsEditor({
       setStructural({ kind: 'split', index: lastIndex, original: lines[i], parts });
       setFocusTarget({
         lineIndex: lastIndex,
-        cursorPos: parts[parts.length - 1].length,
+        // One Enter keeps the caret before the text that moved down; a multi-line paste ends after the pasted text
+        cursorPos: parts.length === 2 ? 0 : parts[parts.length - 1].length,
       });
       setLineGenerations(prev => ({ ...prev, [i]: (prev[i] || 0) + 1 }));
       return;

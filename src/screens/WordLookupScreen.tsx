@@ -999,6 +999,7 @@ export default function WordLookupScreen() {
               word={existingWord.word}
               language={existingWord.language}
               savedContexts={wordSenses}
+              suggestions={definitionSuggestions}
               onSave={(saved) => {
                 setUndoData(null);
                 setWordSenses(prev => [
@@ -1008,7 +1009,7 @@ export default function WordLookupScreen() {
                     context: saved.line,
                     emoji: '',
                     ipa: '',
-                    definition: prev.find(b => b.definition.trim())?.definition ?? '',
+                    definition: saved.definition || prev.find(b => b.definition.trim())?.definition || '',
                     songId: saved.songId,
                     songName: saved.songName,
                     translation: saved.translation,

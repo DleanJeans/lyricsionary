@@ -5,7 +5,10 @@ import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import type { Song, WordContext, WordEntry } from '../types';
 import { otherSongLines } from '../utils/reviewQuiz';
+import { pickDefinition } from '../utils/definitionHighlight';
+import type { WiktionaryDefinition } from '../utils/wiktionary';
 import { lineTranslation } from '../utils/wordOfTheDay';
+import SelectableTranslation from './SelectableTranslation';
 import ContextLyricLine from './ContextLyricLine';
 import { Text } from './Text';
 
@@ -14,6 +17,7 @@ export interface UnsavedLine {
   songId: string;
   songName: string;
   translation?: string;
+  definition?: string;
 }
 
 /**
@@ -24,12 +28,15 @@ export default function UnsavedContextCards({
   word,
   language,
   savedContexts,
+  suggestions = [],
   onSave,
 }: {
   word: string;
   language: string;
   /** What's saved or being edited as the word's contexts, whose songs and lines are left out */
-  savedContexts: Pick<WordContext, 'context' | 'songId'>[];
+  savedContexts: Pick<WordContext, 'context' | 'songId' | 'definition' | 'partOfSpeech'>[];
+  /** Wiktionary's meanings for the word, to guess which one each translation is using */
+  suggestions?: WiktionaryDefinition[];
   onSave: (line: UnsavedLine) => void;
 }) {
   const songs = useStore((s) => s.songs);
@@ -44,6 +51,15 @@ export default function UnsavedContextCards({
       {lines.map(({ song, line }) => {
         const full = song as Song;
         const translation = (full.originalLyrics && full.translations ? lineTranslation(full, line) : null) ?? undefined;
+        const guess = translation
+          ? pickDefinition(
+              [
+                ...savedContexts.filter((c) => c.definition).map((c) => ({ text: c.definition!, partOfSpeech: c.partOfSpeech ?? '' })),
+                ...suggestions,
+              ] as WiktionaryDefinition[],
+              translation
+            )
+          : null;
         const name = full.songName || 'Untitled';
         return (
           <View key={`${song.id}:${line}`} style={styles.card}>
@@ -55,11 +71,16 @@ export default function UnsavedContextCards({
             </View>
             <View style={styles.body}>
               <ContextLyricLine line={line} word={word} languages={full.originalLanguages} />
-              {translation ? <Text style={styles.translation}>{translation}</Text> : null}
+              {translation ? (
+                // Highlights the meaning that fits, even when it's only a guess; not tappable until saved
+                <View pointerEvents="none">
+                  <SelectableTranslation translation={translation} onSelect={() => {}} value={guess ?? undefined} style={styles.translation} />
+                </View>
+              ) : null}
             </View>
             <TouchableOpacity
               style={styles.save}
-              onPress={() => onSave({ line, songId: song.id, songName: name, translation })}
+              onPress={() => onSave({ line, songId: song.id, songName: name, translation, definition: guess ?? undefined })}
               accessibilityRole="button"
               accessibilityLabel="Save this sentence"
             >

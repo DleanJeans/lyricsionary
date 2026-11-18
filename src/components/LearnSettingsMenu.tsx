@@ -80,9 +80,13 @@ function SamplePreview({
         {SAMPLE_WORDS.map((word) => (
           <View key={word.text} style={styles.sampleWord}>
             <View style={styles.sampleAnnotations}>
-              {showMeaning && <Text style={styles.sampleAnnotation}>{word.meaning}</Text>}
               {showEmoji && !!word.emoji && <Text style={styles.sampleAnnotation}>{word.emoji}</Text>}
-              {showIpa && <Text style={styles.sampleAnnotation}>{formatIpa(word.ipa, showIpaBrackets)}</Text>}
+              {(showMeaning || showIpa) && (
+                <View style={{ alignItems: 'center' }}>
+                  {showMeaning && <Text style={styles.sampleAnnotation}>{word.meaning}</Text>}
+                  {showIpa && <Text style={styles.sampleAnnotation}>{formatIpa(word.ipa, showIpaBrackets)}</Text>}
+                </View>
+              )}
             </View>
             <Text style={{ fontSize: 18, color: showMasteryLevelColors ? word.color : Colors.text }}>
               {word.text}

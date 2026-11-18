@@ -979,20 +979,24 @@ export default function LearnScreen() {
             return (
               <View key={i} onLayout={onWordLayout(i)} style={{ alignItems: 'center' }}>
                 <View style={styles.annotationSpace}>
-                  {!!meaningText && (
-                    <Text style={styles.wordAnnotation}>
-                      {meaningText}
-                    </Text>
-                  )}
                   {shouldShowEmoji && (
                     <Text style={styles.wordAnnotation}>
                       {effectiveEmoji}
                     </Text>
                   )}
-                  {displayContent && (
-                    <Text style={styles.wordAnnotation}>
-                      {displayContent}
-                    </Text>
+                  {(!!meaningText || !!displayContent) && (
+                    <View style={styles.annotationStack}>
+                      {!!meaningText && (
+                        <Text style={styles.wordAnnotation}>
+                          {meaningText}
+                        </Text>
+                      )}
+                      {!!displayContent && (
+                        <Text style={styles.wordAnnotation}>
+                          {displayContent}
+                        </Text>
+                      )}
+                    </View>
                   )}
                 </View>
                 <Text style={{ fontSize, lineHeight: fontSize * 1.6, color: Colors.text }}>
@@ -1218,20 +1222,24 @@ export default function LearnScreen() {
             <View key={i} onLayout={onWordLayout(i)} style={{ alignItems: 'center' }}>
               {keepAnnotationSpace && (
                 <View style={styles.annotationSpace}>
-                  {!!meaningText && (
-                    <Text style={styles.wordAnnotation}>
-                      {meaningText}
-                    </Text>
-                  )}
                   {shouldShowEmoji && (
                     <Text style={styles.wordAnnotation}>
                       {effectiveEmoji}
                     </Text>
                   )}
-                  {displayContent && (
-                    <Text style={styles.wordAnnotation}>
-                      {displayContent}
-                    </Text>
+                  {(!!meaningText || !!displayContent) && (
+                    <View style={styles.annotationStack}>
+                      {!!meaningText && (
+                        <Text style={styles.wordAnnotation}>
+                          {meaningText}
+                        </Text>
+                      )}
+                      {!!displayContent && (
+                        <Text style={styles.wordAnnotation}>
+                          {displayContent}
+                        </Text>
+                      )}
+                    </View>
                   )}
                   {isLoadingWord && (
                     <ActivityIndicator size={10} color={Colors.textSecondary} accessibilityLabel="Loading IPA" />
@@ -2587,6 +2595,9 @@ const styles = StyleSheet.create({
     marginBottom: -6,
     flexDirection: 'row',
     gap: 4,
+  },
+  annotationStack: {
+    alignItems: 'center',
   },
   wordAnnotation: {
     fontSize: 10,

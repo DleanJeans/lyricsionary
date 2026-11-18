@@ -23,6 +23,8 @@ function TabNavigator() {
       // The app opens on Songs (behind the review that starts it, when words are due)
       initialRouteName="Songs"
       screenOptions={{ headerShown: false }}
+      // Tabs stay attached behind the one shown, so DeepL's page in Web keeps running while Learn is open
+      detachInactiveScreens={false}
     >
       <Tab.Screen name="Editor" component={EditorScreen} />
       <Tab.Screen name="Web" component={WebScreen} />

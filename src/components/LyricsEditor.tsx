@@ -44,6 +44,8 @@ interface LyricsEditorProps {
   revealLine?: { index: number; key: string; focus?: boolean } | null;
   /** Another line was focused, so the opened line no longer needs to stand out */
   onLeaveRevealedLine?: () => void;
+  /** Picking lines instead of editing: tapping a line ticks it */
+  selection?: { selected: Set<number>; onToggle: (index: number) => void } | null;
 }
 
 export default function LyricsEditor({
@@ -54,6 +56,7 @@ export default function LyricsEditor({
   onFocus,
   revealLine,
   onLeaveRevealedLine,
+  selection,
 }: LyricsEditorProps) {
   const lines = lyrics.split('\n');
   const hasReference = !!referenceLines && referenceLines.length > 0;
@@ -273,7 +276,14 @@ export default function LyricsEditor({
   };
 
   const renderLineNumber = (i: number) =>
-    showLineNumbers && (
+    selection ? (
+      <Ionicons
+        name={selection.selected.has(i) ? 'checkbox' : 'square-outline'}
+        size={20}
+        color={selection.selected.has(i) ? Colors.primary : Colors.textMuted}
+        style={styles.selectBox}
+      />
+    ) : showLineNumbers && (
       <Pressable onPress={() => inputRefs.current[i]?.focus()}>
         <Text style={[styles.lineNumber, (syncTargetSet.has(i) || revealLine?.index === i) && styles.lineNumberSynced]}>{i + 1}</Text>
       </Pressable>
@@ -292,6 +302,8 @@ export default function LyricsEditor({
       blurOnSubmit={false}
       scrollEnabled={false}
       onFocus={() => handleLineFocus(i)}
+      editable={!selection}
+      pointerEvents={selection ? 'none' : 'auto'}
     />
   );
 
@@ -319,6 +331,23 @@ export default function LyricsEditor({
     );
 
   const renderLine = (i: number) => {
+    const row = renderLineRow(i);
+    if (!selection) return row;
+    return (
+      <Pressable
+        key={`sel-${i}`}
+        onPress={() => selection.onToggle(i)}
+        style={selection.selected.has(i) ? styles.selectedLine : undefined}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: selection.selected.has(i) }}
+        accessibilityLabel={`Line ${i + 1}`}
+      >
+        <View pointerEvents="none">{row}</View>
+      </Pressable>
+    );
+  };
+
+  const renderLineRow = (i: number) => {
     const line = i < lines.length ? lines[i] : '';
     const lineKey = `${i}-${lineGenerations[i] || 0}`;
     const revealed = revealLine?.index === i;
@@ -419,6 +448,15 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginRight: 8,
     marginTop: 4,
+  },
+  selectBox: {
+    width: 28,
+    marginRight: 8,
+    marginTop: 2,
+    textAlign: 'right',
+  },
+  selectedLine: {
+    backgroundColor: 'rgba(108, 92, 231, 0.18)',
   },
   lineNumberSynced: {
     color: Colors.primaryLight,

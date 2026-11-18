@@ -287,6 +287,9 @@ export default function WebScreen() {
           translation = remapTranslation(translation, deeplLineMap);
         }
 
+        // Only some lines were sent: they fill just those lines of the tab
+        const fillLines = useStore.getState().deeplFillLines;
+
         // Clear DeepL state
         resetDeeplTranslation();
 
@@ -295,10 +298,11 @@ export default function WebScreen() {
           scrapedSourceUrl: currentUrl,
           scrapedPageTitle: data.title ?? '',
           scrapedTargetTab: scrapeTargetTab,
+          ...(fillLines ? { scrapedFillLines: fillLines } : {}),
         };
         // The song saved in the automatic flow gets its translation right here, so Learn shows it as it arrives
         const auto = useStore.getState().autoFetch;
-        if (auto?.step === 'translating' && auto.songId && scrapeTargetTab > 0) {
+        if (!fillLines && auto?.step === 'translating' && auto.songId && scrapeTargetTab > 0) {
           const { songs, updateSong } = useStore.getState();
           const saved = songs.find((s) => s.id === auto.songId);
           if (saved?.translations[scrapeTargetTab - 1]) {

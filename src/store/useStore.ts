@@ -65,6 +65,7 @@ interface AppState {
   scrapeTargetLanguage: string | null;  // The target translation tab's language, null for the original
   editorFilledTabs: number[];  // The Editor's tabs with lyrics (0 the original), which Web doesn't fill on its own
   deeplLineMap: number[] | null;  // Stores line mapping for DeepL translation
+  deeplFillLines: number[] | null;  // When only some lines are translated: the original line each translated line fills
   deeplChunks: string[] | null;  // Stores chunks for multi-chunk DeepL translation
   deeplCurrentChunk: number;  // Current chunk index being translated
   deeplTranslatedChunks: string[];  // Stores translated chunks
@@ -109,6 +110,7 @@ interface AppState {
   setScrapeTargetTab: (tab: number, language?: string | null) => void;
   setEditorFilledTabs: (tabs: number[]) => void;
   setDeeplLineMap: (lineMap: number[] | null) => void;
+  setDeeplFillLines: (lines: number[] | null) => void;
   setDeeplChunks: (chunks: string[] | null) => void;
   setDeeplCurrentChunk: (index: number) => void;
   addDeeplTranslatedChunk: (translation: string) => void;
@@ -205,6 +207,7 @@ export const useStore = create<AppState>((set, get) => ({
   scrapeTargetLanguage: null,
   editorFilledTabs: [],
   deeplLineMap: null,
+  deeplFillLines: null,
   deeplChunks: null,
   deeplCurrentChunk: 0,
   deeplTranslatedChunks: [],
@@ -316,6 +319,7 @@ export const useStore = create<AppState>((set, get) => ({
   setScrapeTargetTab: (tab, language = null) => set({ scrapeTargetTab: tab, scrapeTargetLanguage: language }),
   setEditorFilledTabs: (tabs) => set({ editorFilledTabs: tabs }),
   setDeeplLineMap: (lineMap) => set({ deeplLineMap: lineMap }),
+  setDeeplFillLines: (lines) => set({ deeplFillLines: lines }),
   setDeeplChunks: (chunks) => set({ deeplChunks: chunks }),
   setDeeplCurrentChunk: (index) => set({ deeplCurrentChunk: index }),
   addDeeplTranslatedChunk: (translation) => set((state) => ({
@@ -326,6 +330,7 @@ export const useStore = create<AppState>((set, get) => ({
     deeplCurrentChunk: 0,
     deeplTranslatedChunks: [],
     deeplLineMap: null,
+    deeplFillLines: null,
   }),
 
   setAutoFetch: (autoFetch) => set({ autoFetch }),

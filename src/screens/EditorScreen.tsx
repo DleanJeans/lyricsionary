@@ -59,6 +59,7 @@ export default function EditorScreen() {
   const matchedSongsCount = useStore((s) => s.matchedSongsCount);
   const setDeeplLineMap = useStore((s) => s.setDeeplLineMap);
   const setDeeplChunks = useStore((s) => s.setDeeplChunks);
+  const setDeeplFillLines = useStore((s) => s.setDeeplFillLines);
   const resetDeeplTranslation = useStore((s) => s.resetDeeplTranslation);
   const autoFetch = useStore((s) => s.autoFetch);
   const setAutoFetch = useStore((s) => s.setAutoFetch);
@@ -198,6 +199,7 @@ export default function EditorScreen() {
     const url = route.params?.scrapedSourceUrl as string | undefined;
     const title = route.params?.scrapedPageTitle as string | undefined;
     const languageCode = route.params?.scrapedLanguageCode as string | undefined;
+    const fillLines = route.params?.scrapedFillLines as number[] | undefined;
 
     if (targetTab === 0) {
       setOriginalLyrics(scraped);
@@ -212,12 +214,33 @@ export default function EditorScreen() {
           });
         }
       }
+    } else if (fillLines?.length) {
+      // Only the selected lines were translated: they go into their lines and the rest stay as they were
+      const translated = scraped.split('\n');
+      setTranslations((prev) => {
+        const updated = [...prev];
+        const current = updated[targetTab - 1];
+        if (!current) return prev;
+        const lines = current.lyrics.split('\n');
+        const total = originalLyrics.split('\n').length;
+        while (lines.length < total) lines.push('');
+        fillLines.forEach((lineIndex, k) => {
+          if (translated[k] !== undefined) lines[lineIndex] = translated[k];
+        });
+        updated[targetTab - 1] = { ...current, lyrics: lines.join('\n') };
+        return updated;
+      });
     } else {
       setTranslations((prev) => {
         const updated = [...prev];
         if (updated[targetTab - 1]) updated[targetTab - 1] = { ...updated[targetTab - 1], lyrics: scraped };
         return updated;
       });
+    }
+    if (fillLines?.length) {
+      setActiveTab(targetTab);
+      navigation.setParams({ scrapedLyrics: undefined, scrapedSourceUrl: undefined, scrapedPageTitle: undefined, scrapedTargetTab: undefined, scrapedFillLines: undefined });
+      return;
     }
     if (url) setPendingSourceUrls((prev) => ({ ...prev, [targetTab]: url }));
     if (title !== undefined) setPendingPageTitles((prev) => ({ ...prev, [targetTab]: title }));
@@ -471,6 +494,44 @@ export default function EditorScreen() {
     const query = encodeURIComponent(`${songName} ${artistName} ${romanizedTab ? 'romanized ' : ''}lyrics`);
     setWebUrl(`${GOOGLE_SEARCH_URL}&q=${query}`);
     navigation.navigate('Web');
+  };
+
+  // Picking some lines of the original to translate with DeepL into the open translation tab
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedLines, setSelectedLines] = useState<Set<number>>(new Set());
+  const originalLineList = originalLyrics.split('\n');
+  const translationLineList = (translations[activeTab - 1]?.lyrics ?? '').split('\n');
+  useEffect(() => {
+    setSelectMode(false);
+    setSelectedLines(new Set());
+  }, [activeTab, editSongId]);
+  const toggleLine = (index: number) => setSelectedLines((prev) => {
+    const next = new Set(prev);
+    if (next.has(index)) next.delete(index); else next.add(index);
+    return next;
+  });
+  // Lines with something to translate: the original has text
+  const translatable = (i: number) => !!originalLineList[i]?.trim();
+  const selectEmpty = () => setSelectedLines(new Set(
+    originalLineList.map((_, i) => i).filter((i) => translatable(i) && !translationLineList[i]?.trim())));
+  const selectAll = () => setSelectedLines(new Set(originalLineList.map((_, i) => i).filter(translatable)));
+  const translateSelected = () => {
+    const indices = [...selectedLines].filter(translatable).sort((a, b) => a - b);
+    if (indices.length === 0) {
+      Alert.alert('Nothing to translate', 'The selected lines are blank in the original.');
+      return;
+    }
+    resetDeeplTranslation();
+    // Same dedupe and chunking as the whole song, over just these lines
+    const { deduplicated, lineMap } = deduplicateLines(indices.map((i) => originalLineList[i]).join('\n'));
+    const chunks = splitIntoChunks(deduplicated);
+    setDeeplChunks(chunks);
+    setDeeplLineMap(lineMap);
+    setDeeplFillLines(indices);
+    setSelectMode(false);
+    setSelectedLines(new Set());
+    setWebUrl(DEEPL_URL);
+    navigation.navigate('Web', { pasteIntoDeepL: chunks[0] });
   };
 
   const handleGetTranslation = () => {
@@ -844,7 +905,21 @@ export default function EditorScreen() {
               </Text>
             </TouchableOpacity>
           )}
-          
+          {activeTab > 0 && !!originalLyrics.trim() && !isRomanized(translations[activeTab - 1]?.language ?? '') && (
+            <TouchableOpacity
+              style={[styles.toggle, selectMode && styles.toggleActive]}
+              onPress={() => {
+                setSelectMode(!selectMode);
+                setSelectedLines(new Set());
+                if (!selectMode) setIsShowingOriginal(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Select lines to translate"
+            >
+              <Ionicons name="checkmark-done" size={18} color={selectMode ? Colors.white : Colors.primary} />
+              <Text style={[styles.toggleText, selectMode && styles.toggleTextActive]}>Select lines</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
       {showSourceUrl && !!currentSourceUrl && (
@@ -873,7 +948,7 @@ export default function EditorScreen() {
     </View>
   );
 
-  const bilingualReferenceLines = isShowingOriginal && activeTab > 0
+  const bilingualReferenceLines = (isShowingOriginal || selectMode) && activeTab > 0
     ? originalLyrics.split('\n')
     : undefined;
 
@@ -892,8 +967,34 @@ export default function EditorScreen() {
             focus: openedLine.focus && activeTab === 0,
           } : null}
           onLeaveRevealedLine={() => setOpenedLine(null)}
+          selection={selectMode ? { selected: selectedLines, onToggle: toggleLine } : null}
         />
       </View>
+    </View>
+  );
+
+  const selectBar = (
+    <View style={styles.selectBar}>
+      <Text style={styles.selectCount}>{selectedLines.size} selected</Text>
+      <View style={styles.selectChips}>
+        <TouchableOpacity style={styles.selectChip} onPress={selectEmpty}>
+          <Text style={styles.selectChipText}>Empty</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.selectChip} onPress={selectAll}>
+          <Text style={styles.selectChipText}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.selectChip} onPress={() => setSelectedLines(new Set())}>
+          <Text style={styles.selectChipText}>None</Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity
+        style={[styles.selectTranslate, selectedLines.size === 0 && styles.disabled]}
+        disabled={selectedLines.size === 0}
+        onPress={translateSelected}
+      >
+        <Ionicons name="language" size={18} color={Colors.white} />
+        <Text style={styles.searchButtonText}>Translate with DeepL</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -909,7 +1010,7 @@ export default function EditorScreen() {
         <View style={styles.narrowLayout}>
           {infoPanel}
           {lyricsPanel}
-          <EditorActionButtons
+          {selectMode ? selectBar : <EditorActionButtons
             showPasteAction={!currentLyrics.trim()}
             isEditMode={isEditMode}
             hasChanges={hasChanges}
@@ -919,7 +1020,7 @@ export default function EditorScreen() {
             onSave={handleSave}
             onReset={handleReset}
             onClear={handleClear}
-          />
+          />}
         </View>
       )}
 
@@ -1190,6 +1291,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',
+  },
+  selectBar: {
+    paddingVertical: 10,
+    gap: 8,
+  },
+  selectCount: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+  },
+  selectChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  selectChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  selectChipText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  selectTranslate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
   },
   togglesRow: {
     flexDirection: 'row',

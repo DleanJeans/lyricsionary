@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { findSavedWord, hasSpelling, mergeWordEntries, splitForm } from '../src/utils/wordForms';
+import { findSavedWord, formIpa, hasSpelling, mergeWordEntries, splitForm } from '../src/utils/wordForms';
 import { songWordIndex, gapWord } from '../src/utils/lyricGaps';
 
 const entry = (over: Partial<WordEntry>): WordEntry => ({
@@ -91,5 +91,27 @@ describe('splitForm', () => {
     expect(kept.masteryLevel).toBe('Recalled');
     expect(split).toMatchObject({ id: 'new', word: 'voulez', language: 'French', masteryLevel: 'Seen', savedAt: 5 });
     expect(split.contexts.map((c) => c.context)).toEqual(['Vous voulez, hein']);
+  });
+});
+
+describe('form IPA', () => {
+  const veux = entry({ word: 'veux', pronunciation: '/vø/', contexts: [{ context: 'Je veux' }] });
+  const voulez = entry({ word: 'voulez', pronunciation: '/vule/', contexts: [{ context: 'Vous voulez' }] });
+  const merged = mergeWordEntries(veux, voulez);
+
+  it('keeps the merged form its own IPA and the saved word its own', () => {
+    expect(merged.pronunciation).toBe('/vø/');
+    expect(formIpa(merged, 'Voulez')).toBe('/vule/');
+    expect(formIpa(merged, 'veux')).toBeUndefined();
+  });
+
+  it('gives it back when the form is split out', () => {
+    const [kept, split] = splitForm(merged, 'voulez', 'new', 5);
+    expect(split.pronunciation).toBe('/vule/');
+    expect(kept.formIpas).toBeUndefined();
+  });
+
+  it('keeps nothing extra when the IPAs match', () => {
+    expect(mergeWordEntries(veux, entry({ word: 'vœux', pronunciation: '/vø/' })).formIpas).toBeUndefined();
   });
 });

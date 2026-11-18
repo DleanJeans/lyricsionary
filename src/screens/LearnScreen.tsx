@@ -52,7 +52,7 @@ import LemmaMergeHint from '../components/LemmaMergeHint';
 import WordSheet from '../components/WordSheet';
 import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
-import { findSavedWord, spellingsOf } from '../utils/wordForms';
+import { findSavedWord, formIpa, spellingsOf } from '../utils/wordForms';
 import { firstIpa } from '../utils/ipaList';
 import { hasPreloadedIpa, loadPreloadedIpa, preloadedIpaKey as preloadKey, getPreloadedIpa, getPreloadedWord, setPreloadedWord, type PreloadedWord } from '../utils/preloadedIpa';
 import {
@@ -916,7 +916,7 @@ export default function LearnScreen() {
             const quiet = quietKnownWords && mainEntry?.masteryLevel === 'Known';
             let displayContent = '';
             if (showIpa && mainEntry && !quiet) {
-              const ipaValue = ctx?.ipa || mainEntry.pronunciation;
+              const ipaValue = formIpa(mainEntry, cleanedWord) || ctx?.ipa || mainEntry.pronunciation;
               if (ipaValue) {
                 displayContent = formatIpa(ipaValue, showIpaBrackets);
               }
@@ -1016,11 +1016,11 @@ export default function LearnScreen() {
             const ownQuiet = quietKnownWords && ownEntry?.masteryLevel === 'Known' && !isActiveOccurrence;
             if (ownEntry && !ownQuiet) {
               const ownCtx = findWordContext(ownEntry, text, wordOccurrences[i] || 1);
-              const ownIpa = ownCtx?.ipa || ownEntry.pronunciation;
+              const ownIpa = formIpa(ownEntry, ownWord) || ownCtx?.ipa || ownEntry.pronunciation;
               if (ownIpa) displayContent = formatIpa(ownIpa, showIpaBrackets);
             }
           } else if (showIpa && wordEntry && !quiet) {
-            const ipaValue = wordCtx?.ipa || wordEntry.pronunciation;
+            const ipaValue = formIpa(wordEntry, cleanedWord) || wordCtx?.ipa || wordEntry.pronunciation;
             if (ipaValue) {
               displayContent = formatIpa(ipaValue, showIpaBrackets);
             }
@@ -1093,7 +1093,7 @@ export default function LearnScreen() {
 
           const edgePunctuation = splitEdgePunctuation(word);
           // A saved Russian or Ukrainian word shows its stress from its IPA, e.g. любо́вь
-          const stressIpa = firstIpa(wordCtx?.ipa || wordEntry?.pronunciation);
+          const stressIpa = firstIpa((wordEntry && formIpa(wordEntry, cleanedWord)) || wordCtx?.ipa || wordEntry?.pronunciation);
           const stressedWord = isStressSong && showIpa && stressIpa && wordEntry &&
             removeStressMarks(cleanedWord.toLowerCase()) === removeStressMarks(wordEntry.word.toLowerCase())
             ? addStressMark(edgePunctuation.core, stressIpa)
@@ -1117,7 +1117,7 @@ export default function LearnScreen() {
               const ownWord = cleanLyricWord(pw);
               const ownEntry = ownWord ? findSavedEntry(ownWord) ?? null : null;
               if (!ownEntry || (quietKnownWords && ownEntry.masteryLevel === 'Known' && !isActiveOccurrence)) return '';
-              const ownIpa = findWordContext(ownEntry, text)?.ipa || ownEntry.pronunciation;
+              const ownIpa = formIpa(ownEntry, ownWord) || findWordContext(ownEntry, text)?.ipa || ownEntry.pronunciation;
               return ownIpa ? formatIpa(ownIpa, showIpaBrackets) : '';
             });
             if (ownIpas.some(Boolean)) {

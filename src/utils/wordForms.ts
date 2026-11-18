@@ -14,6 +14,15 @@ export const hasSpelling = (entry: WordEntry, word: string | undefined): boolean
   return spellingsOf(entry).some((spelling) => spelling.toLowerCase() === lower);
 };
 
+/** The IPA a merged form keeps of its own, e.g. voulez for vouloir; none for the saved spelling itself */
+export const formIpa = (entry: WordEntry, spelling: string | undefined): string | undefined => {
+  if (!spelling || !entry.formIpas) return undefined;
+  const lower = spelling.toLowerCase();
+  if (entry.word.toLowerCase() === lower) return undefined;
+  const key = Object.keys(entry.formIpas).find((k) => k.toLowerCase() === lower);
+  return key ? entry.formIpas[key] || undefined : undefined;
+};
+
 /** The saved word in a language that a word is, as saved or as a merged form; the saved spelling wins */
 export const findSavedWord = (words: WordEntry[], word: string | undefined, language: string): WordEntry | undefined => {
   if (!word) return undefined;
@@ -64,11 +73,18 @@ export function mergeWordEntries(keep: WordEntry, from: WordEntry): WordEntry {
   const forms = [...new Set([...(keep.forms ?? []), ...spellingsOf(from)])].filter(
     (form) => form.toLowerCase() !== keep.word.toLowerCase()
   );
+  // Each merged word's own IPA stays with its spelling instead of being dropped for the kept word's
+  const formIpas: Record<string, string> = { ...(from.formIpas ?? {}), ...(keep.formIpas ?? {}) };
+  if (from.pronunciation?.trim() && from.pronunciation.trim() !== keep.pronunciation?.trim()) {
+    formIpas[from.word] = from.pronunciation.trim();
+  }
+  for (const key of Object.keys(formIpas)) if (key.toLowerCase() === keep.word.toLowerCase()) delete formIpas[key];
   const notes = [keep.note, from.note].filter(Boolean);
   return {
     ...keep,
     contexts,
     forms,
+    formIpas: Object.keys(formIpas).length ? formIpas : undefined,
     pronunciation: keep.pronunciation || from.pronunciation,
     emoji: keep.emoji ?? from.emoji,
     note: notes.length ? [...new Set(notes)].join('\n') : undefined,
@@ -95,11 +111,17 @@ export function splitForm(entry: WordEntry, form: string, id: string, now: numbe
     contexts: entry.contexts.filter((c) => !hasForm(c)),
   };
   if (kept.forms!.length === 0) delete kept.forms;
+  const ownIpa = formIpa(entry, form);
+  if (entry.formIpas) {
+    const rest = Object.fromEntries(Object.entries(entry.formIpas).filter(([k]) => k.toLowerCase() !== form.toLowerCase()));
+    if (Object.keys(rest).length) kept.formIpas = rest;
+    else delete kept.formIpas;
+  }
   const split: WordEntry = {
     id,
     word: form,
     language: entry.language,
-    pronunciation: '',
+    pronunciation: ownIpa ?? '',
     contexts: moved,
     lastLookedUp: now,
     savedAt: now,
@@ -124,6 +146,7 @@ export const lowercaseEntry = (entry: WordEntry): WordEntry => ({
   ...entry,
   word: entry.word.toLowerCase(),
   forms: entry.forms?.map((f) => f.toLowerCase()),
+  formIpas: entry.formIpas && Object.fromEntries(Object.entries(entry.formIpas).map(([k, v]) => [k.toLowerCase(), v])),
   contexts: entry.contexts.map((c) => (c.definition ? { ...c, definition: lowerFirst(c.definition) } : c)),
   definitions: entry.definitions?.map((d) => ({ ...d, text: lowerFirst(d.text) })),
 });

@@ -94,6 +94,8 @@ export interface WordEntry {
   history?: WordEvent[];
   /** Other spellings merged into this word, e.g. veux and voulez for vouloir */
   forms?: string[];
+  /** The IPA each merged form had of its own, by spelling, e.g. voulez: /vule/ for vouloir */
+  formIpas?: Record<string, string>;
   /** The user's own note, e.g. a mnemonic or a grammar tip */
   note?: string;
   definitions?: { text: string; songId?: string; songName?: string; lyricsLine?: string }[];

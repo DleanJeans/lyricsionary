@@ -55,6 +55,7 @@ import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
 import { findSavedWord, formIpa, spellingsOf } from '../utils/wordForms';
 import { firstIpa } from '../utils/ipaList';
+import { translationNames } from '../utils/translationNames';
 import { hasPreloadedIpa, loadPreloadedIpa, preloadedIpaKey as preloadKey, getPreloadedIpa, getPreloadedWord, setPreloadedWord, type PreloadedWord } from '../utils/preloadedIpa';
 import {
   findSplitPhrases, germanSeparableVerb, isSplitPhrase, joinLineWords, phraseLookupWords, phraseOccurrenceAt, splitPhraseParts,
@@ -246,7 +247,7 @@ export default function LearnScreen() {
     [lyricQuiz, wordEntryIndex, answeredGaps]
   );
 
-  const filledTranslationsKey = song?.translations.filter(t => t.lyrics.trim()).map(t => t.language).join('|') ?? '';
+  const filledTranslationsKey = song ? translationNames(song.translations).filter((_, i) => song.translations[i].lyrics.trim()).map(t => t.key).join('|') : '';
   // Initialize selected languages when song changes
   useEffect(() => {
     if (!song) {
@@ -258,7 +259,7 @@ export default function LearnScreen() {
     // A language selection belongs to the current song. Reset it when the
     // route changes so the previous song's translations are not carried over.
     // A translation still waiting for DeepL has no lyrics yet: it's selected, and translations turned on, once it fills in
-    const availableLanguages = song.translations.filter(t => t.lyrics.trim()).map(t => t.language);
+    const availableLanguages = translationNames(song.translations).filter((_, i) => song.translations[i].lyrics.trim()).map(t => t.key);
     setLocalSelectedLanguages(availableLanguages);
     setSelectedTranslationLanguages(availableLanguages);
     // Unselecting every language on the previous song turned translations off
@@ -323,6 +324,7 @@ export default function LearnScreen() {
     const timer = setTimeout(() => {
       const originalLines = song.originalLyrics.split('\n');
       const translationLines = song.translations.map((t) => t.lyrics.split('\n'));
+      const names = translationNames(song.translations);
       // A song in Cyrillic, Greek, Korean, Hindi or Arabic without a Romanized version gets one made here
       const romanizeLanguage = song.translations.some((t) => isRomanized(t.language))
         ? null
@@ -336,6 +338,8 @@ export default function LearnScreen() {
           const isDifferent = originalNormalized !== translationNormalized;
           return {
             language: song.translations[ti].language,
+            key: names[ti].key,
+            label: names[ti].duplicated ? names[ti].name : undefined,
             text: translationText,
             show: isDifferent,
           };
@@ -468,7 +472,7 @@ export default function LearnScreen() {
     const line = lines[lineIndex];
     if (!line?.original.trim()) return;
     const translations = line.translations
-      .filter((t) => localSelectedLanguages.includes(t.language) && t.text.trim())
+      .filter((t) => localSelectedLanguages.includes(t.key) && t.text.trim())
       .map((t) => t.text.trim());
     void Clipboard.setStringAsync([line.original.trim(), ...translations].join('\n'));
     setCopiedLine(true);
@@ -1345,7 +1349,7 @@ export default function LearnScreen() {
   const translationLineOf = (languages?: string[]) =>
     selectedLineIndex !== null && lines[selectedLineIndex]
       ? lines[selectedLineIndex].translations
-          .filter((tl) => tl.show && !isRomanized(tl.language) && (!languages || languages.includes(tl.language)))
+          .filter((tl) => tl.show && !isRomanized(tl.language) && (!languages || languages.includes(tl.key)))
           .map((tl) => tl.text)
           .join(' / ')
       : undefined;
@@ -1786,7 +1790,7 @@ export default function LearnScreen() {
   // The selected line's translations, as LearnLyricsView keys them
   const selectedLineTranslationCount =
     selectedLineIndex !== null && lines[selectedLineIndex]
-      ? lines[selectedLineIndex].translations.filter((tl) => tl.show && !isRomanized(tl.language) && localSelectedLanguages.includes(tl.language)).length
+      ? lines[selectedLineIndex].translations.filter((tl) => tl.show && !isRomanized(tl.language) && localSelectedLanguages.includes(tl.key)).length
       : 0;
   // The quiz would give itself away when the line's translation is, or was, readable
   const selectedTranslationSeen =
@@ -2309,7 +2313,7 @@ export default function LearnScreen() {
           onEdit={() => navigation.navigate('Editor', { songId: song.id })}
           selectedLanguages={localSelectedLanguages}
           onLanguagesChange={handleLanguageChange}
-          availableLanguages={song.translations.map(t => t.language)}
+          availableTranslations={translationNames(song.translations)}
           showIpa={showIpa}
           onShowIpaChange={setShowIpa}
           showIpaBrackets={showIpaBrackets}

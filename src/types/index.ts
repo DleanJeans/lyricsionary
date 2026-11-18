@@ -23,6 +23,8 @@ export interface Song {
 
 export interface Translation {
   language: string;
+  /** Tells apart several translations in one language, e.g. "Genius" and "DeepL" */
+  label?: string;
   lyrics: string;
   sourceUrl?: string;
   sourceUrlTitle?: string;

@@ -122,7 +122,7 @@ export default function LineQuizMode({
   const line = lines[lineIndex]?.original ?? '';
   const translation =
     lines[lineIndex]?.translations.find(
-      (t) => t.show && t.text.trim() && !isRomanized(t.language) && translationLanguages.includes(t.language)
+      (t) => t.show && t.text.trim() && !isRomanized(t.language) && translationLanguages.includes(t.key)
     )?.text.trim() || undefined;
   const position = contentLines.indexOf(lineIndex) + 1;
 

@@ -13,6 +13,10 @@ export interface LearnLine {
   original: string;
   translations: {
     language: string;
+    /** Selects the translation: its language, or "English 2" for a second one in a language */
+    key: string;
+    /** Set when the language has several translations, to tell them apart */
+    label?: string;
     text: string;
     show: boolean;
   }[];
@@ -67,6 +71,7 @@ interface LearnLyricsViewProps {
 
 function TranslationLine({
   text,
+  label,
   fontSize,
   isBlurred,
   onPress,
@@ -74,6 +79,7 @@ function TranslationLine({
   highlightOccurrence,
 }: {
   text: string;
+  label?: string;
   fontSize: number;
   isBlurred: boolean;
   onPress: () => void;
@@ -92,6 +98,9 @@ function TranslationLine({
       activeOpacity={isBlurred ? 0.7 : 1}
       style={[styles.translationContainer, isBlurred && styles.blurredContainer]}
     >
+      {!!label && !isBlurred && (
+        <Text style={[styles.translationLabel, { fontSize: Math.max(10, fontSize - 8) }]}>{label}</Text>
+      )}
       <Text
         style={[
           styles.translationLine,
@@ -142,7 +151,7 @@ export function LearnLyricsLine({
   lineIndex: number;
 }) {
   const shown = showTranslations
-    ? line.translations.filter((translation) => translation.show && selectedLanguages.includes(translation.language))
+    ? line.translations.filter((translation) => translation.show && selectedLanguages.includes(translation.key))
     : [];
   // The romanized line reads the original out, so it sits right under it and is never blurred
   const romanized = shown.find((translation) => isRomanized(translation.language))?.text ||
@@ -179,6 +188,7 @@ export function LearnLyricsLine({
             <TranslationLine
               key={translationIndex}
               text={translation.text}
+              label={translation.label}
               fontSize={fontSize}
               isBlurred={!reverse && blurTranslations && !unblurredTranslations.has(translationKey)}
               onPress={() => onTranslationPress(lineIndex, translationIndex)}
@@ -552,6 +562,11 @@ const styles = StyleSheet.create({
   romanizedLine: {
     color: Colors.textSecondary,
     fontStyle: 'italic',
+  },
+  translationLabel: {
+    color: Colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: 1,
   },
   translationLine: {
     color: Colors.primaryLight,

@@ -7,8 +7,11 @@ import {
   Alert,
   Image,
   Platform,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { Text } from '../components/Text';
+import { translationNames } from '../utils/translationNames';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store/useStore';
@@ -557,12 +560,18 @@ export default function EditorScreen() {
     startTranslation(originalLyrics);
   }, [autoFetch?.step, originalLyrics]);
 
+  const tabNames = translationNames(translations);
+  const [renameTab, setRenameTab] = useState<number | null>(null);
+  const [renameText, setRenameText] = useState('');
+  const saveRename = () => {
+    if (renameTab === null) return;
+    const label = renameText.trim() || undefined;
+    setTranslations((prev) => prev.map((t, i) => (i === renameTab - 1 ? { ...t, label } : t)));
+    setRenameTab(null);
+  };
+
   const handleAddTranslation = () => {
-    const alreadyAdded = translations.some((t) => t.language === selectedLanguage);
-    if (alreadyAdded) {
-      Alert.alert('Duplicate', `${selectedLanguage} translation already exists.`);
-      return;
-    }
+    // A second translation in a language is fine, to compare translations from different sites
     setTranslations([...translations, { language: selectedLanguage, lyrics: '' }]);
     setActiveTab(translations.length + 1);
     setShowAddDialog(false);
@@ -735,7 +744,7 @@ export default function EditorScreen() {
         </TouchableOpacity>
         {translations.map((t, i) => (
           <TouchableOpacity
-            key={t.language}
+            key={i}
             style={[styles.tab, activeTab === i + 1 && styles.tabActive]}
             onPress={() => {
               if (activeTab === i + 1) {
@@ -753,16 +762,27 @@ export default function EditorScreen() {
               styles.tabText,
               activeTab === i + 1 && styles.tabTextActive
             ]}>
-              {t.language}
+              {tabNames[i]?.name ?? t.language}
             </Text>
+            {activeTab === i + 1 && (
+              <TouchableOpacity
+                style={styles.tabPencil}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={`Rename the ${tabNames[i]?.name ?? t.language} translation`}
+                onPress={() => { setRenameText(t.label ?? ''); setRenameTab(i + 1); }}
+              >
+                <Ionicons name="pencil" size={13} color={Colors.white} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.deleteButton}
               accessibilityRole="button"
-              accessibilityLabel={`Remove ${t.language} translation`}
+              accessibilityLabel={`Remove ${tabNames[i]?.name ?? t.language} translation`}
               onPress={() => {
                 Alert.alert(
                   'Delete Translation',
-                  `Are you sure you want to delete the ${t.language} translation?`,
+                  `Are you sure you want to delete the ${tabNames[i]?.name ?? t.language} translation?`,
                   [
                     { text: 'Cancel', style: 'cancel' },
                     {
@@ -903,6 +923,32 @@ export default function EditorScreen() {
         </View>
       )}
 
+      <Modal visible={renameTab !== null} transparent animationType="fade" onRequestClose={() => setRenameTab(null)}>
+        <View style={styles.renameOverlay}>
+          <View style={styles.renameBox}>
+            <Text style={styles.renameTitle}>Name this translation</Text>
+            <TextInput
+              style={styles.renameInput}
+              value={renameText}
+              onChangeText={setRenameText}
+              placeholder={renameTab !== null ? translations[renameTab - 1]?.language : ''}
+              placeholderTextColor={Colors.textSecondary}
+              autoFocus
+              maxLength={30}
+              onSubmitEditing={saveRename}
+            />
+            <View style={styles.renameButtons}>
+              <TouchableOpacity style={styles.renameButton} onPress={() => setRenameTab(null)}>
+                <Text style={styles.renameCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.renameButton} onPress={saveRename}>
+                <Text style={styles.renameSave}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <AddTranslationModal
         visible={showAddDialog}
         languages={translationLanguagesFor(originalLanguages)}
@@ -1033,6 +1079,51 @@ const styles = StyleSheet.create({
   },
   originalTab: {
     paddingRight: 16,
+  },
+  tabPencil: {
+    marginRight: 2,
+  },
+  renameOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  renameBox: {
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 18,
+    gap: 12,
+  },
+  renameTitle: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  renameInput: {
+    color: Colors.white,
+    fontSize: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.textSecondary,
+    paddingVertical: 6,
+  },
+  renameButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  renameButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  renameCancel: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+  },
+  renameSave: {
+    color: Colors.primaryLight,
+    fontSize: 15,
+    fontWeight: '600',
   },
   deleteButton: {
     position: 'absolute',

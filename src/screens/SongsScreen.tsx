@@ -474,9 +474,9 @@ export default function SongsScreen() {
                   </Text>
                 ))}
                 {item.translations.length > 0 && <Text style={styles.flagArrow}>→</Text>}
-                {item.translations.map((t) => (
-                  <Text key={t.language} style={styles.flag}>
-                    {getFlagForLanguage(t.language)}
+                {[...new Set(item.translations.map((t) => t.language))].map((language) => (
+                  <Text key={language} style={styles.flag}>
+                    {getFlagForLanguage(language)}
                   </Text>
                 ))}
               </View>

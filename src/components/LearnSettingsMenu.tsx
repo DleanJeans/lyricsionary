@@ -6,6 +6,7 @@ import { Colors } from '../constants/theme';
 import { formatIpa } from '../utils/ipaDisplay';
 import { LearnLyricsLine, type LearnLine } from './LearnLyricsView';
 import { Text } from './Text';
+import type { TranslationName } from '../utils/translationNames';
 
 interface LearnSettingsMenuProps {
   visible: boolean;
@@ -13,7 +14,7 @@ interface LearnSettingsMenuProps {
   onEdit: () => void;
   selectedLanguages: string[];
   onLanguagesChange: (languages: string[]) => void;
-  availableLanguages: string[];
+  availableTranslations: TranslationName[];
   showIpa: boolean;
   onShowIpaChange: (show: boolean) => void;
   showIpaBrackets: boolean;
@@ -140,7 +141,7 @@ export default function LearnSettingsMenu({
   onEdit,
   selectedLanguages,
   onLanguagesChange,
-  availableLanguages,
+  availableTranslations,
   showIpa,
   onShowIpaChange,
   showIpaBrackets,
@@ -174,9 +175,13 @@ export default function LearnSettingsMenu({
   showTranslations,
   renderPressableText,
 }: LearnSettingsMenuProps) {
-  const languagesToShow = [ROMANIZED, ...LANGUAGES].filter((lang) =>
-    availableLanguages.includes(lang.name)
-  );
+  // A chip for each translation, the Romanized one first; a second one in a language is "English 2" or its label
+  const languagesToShow = [...availableTranslations]
+    .sort((a, b) => Number(b.language === ROMANIZED.name) - Number(a.language === ROMANIZED.name))
+    .flatMap((t) => {
+      const lang = [ROMANIZED, ...LANGUAGES].find((l) => l.name === t.language);
+      return lang ? [{ ...lang, key: t.key, label: t.name }] : [];
+    });
 
   const toggleLanguage = (langName: string) => {
     if (selectedLanguages.includes(langName)) {
@@ -272,11 +277,11 @@ export default function LearnSettingsMenu({
                 <View style={styles.chips}>
                   {languagesToShow.map((lang) => (
                     <Chip
-                      key={lang.code}
-                      label={lang.name}
+                      key={lang.key}
+                      label={lang.label}
                       icon={<Text style={styles.flag}>{lang.flag}</Text>}
-                      selected={selectedLanguages.includes(lang.name)}
-                      onPress={() => toggleLanguage(lang.name)}
+                      selected={selectedLanguages.includes(lang.key)}
+                      onPress={() => toggleLanguage(lang.key)}
                     />
                   ))}
                 </View>

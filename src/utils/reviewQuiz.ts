@@ -169,7 +169,8 @@ const pickOne = <T,>(items: T[], random: () => number): T =>
 function pickLine(
   entry: WordEntry,
   songs: ReviewSong[],
-  random: () => number
+  random: () => number,
+  words: WordEntry[] = []
 ): { context: WordContext; song?: undefined } | { context?: undefined; song: ReviewSong; line: string } | null {
   const bySong = new Map<string, ({ context: WordContext } | { song: ReviewSong; line: string })[]>();
   const add = (key: string, choice: { context: WordContext } | { song: ReviewSong; line: string }) => {
@@ -182,7 +183,15 @@ function pickLine(
       add(context.songId ?? `context ${i}`, { context });
     }
   });
-  for (const spot of otherSongLines(entry, songs)) add(spot.song.id, spot);
+  // A line where the word is part of a saved phrase (nach in "riech nach") isn't asked, as the phrase's
+  // meaning isn't the word's own
+  const phrases = words.filter(
+    (w) => w.id !== entry.id && w.language === entry.language && lineWords(w.word).length > 1 && lineWords(w.word).some((x) => x.toLowerCase() === lineWords(entry.word)[0]?.toLowerCase())
+  );
+  for (const spot of otherSongLines(entry, songs)) {
+    if (phrases.some((p) => findWordInLine(spot.line, p.word))) continue;
+    add(spot.song.id, spot);
+  }
   if (!bySong.size) return null;
   const choice = pickOne(pickOne([...bySong.values()], random), random);
   return 'context' in choice ? { context: choice.context } : { song: choice.song, line: choice.line };
@@ -279,7 +288,7 @@ export function buildReviewItems(
     if (!kind) continue;
     // The line is one of the word's saved ones or another song's it wasn't saved from; that one asks
     // for the meaning saved first
-    const picked = pickLine(entry, songs, random);
+    const picked = pickLine(entry, songs, random, words);
     const context = picked?.context ?? pickContext(entry);
     const answer = answerFor(entry, context);
     if (!answer) continue;

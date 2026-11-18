@@ -8,7 +8,7 @@ import type { Quiz } from '../utils/wordQuiz';
 import { formatIpa } from '../utils/ipaDisplay';
 import { contextTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
-import { openWordLookup } from '../navigation/navigationRef';
+import { openSongAtLine, openWordLookup } from '../navigation/navigationRef';
 import PronunciationAudio from './PronunciationAudio';
 import SwitchQuizButton from './SwitchQuizButton';
 import WordQuiz from './WordQuiz';
@@ -260,10 +260,25 @@ function ReviewQuestion({
         </Text>
       )}
       {showLine && songName ? (
-        <Text style={styles.songName}>
-          {artistName ? `${songName} · ${artistName}` : songName}
-          {unsaved && !savedLine ? ' · not saved here yet' : ''}
-        </Text>
+        <View style={styles.songRow}>
+          <Text style={[styles.songName, { flexShrink: 1 }]}>
+            {artistName ? `${songName} · ${artistName}` : songName}
+            {unsaved && !savedLine ? ' · not saved here yet' : ''}
+          </Text>
+          {songId && line ? (
+            <TouchableOpacity
+              hitSlop={10}
+              onPress={() => {
+                onCloseReview();
+                openSongAtLine(songId, { word: entry.word, line, occurrence: context?.occurrence });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${songName} at this line`}
+            >
+              <Ionicons name="open-outline" size={18} color={Colors.primaryLight} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       ) : null}
       {listen && <PronunciationAudio audio={entry.audio ?? []} autoPlay={!answered} />}
       {ipa && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
@@ -319,6 +334,7 @@ function ReviewQuestion({
 }
 
 const styles = StyleSheet.create({
+  songRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   lookUp: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
   lookUpText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
   overlay: {

@@ -11,3 +11,11 @@ export function openWordLookup(params: NonNullable<RootTabParamList['WordLookup'
   if (navigationRef.getRootState()?.routeNames.includes('Tabs')) nav.navigate('Tabs', { screen: 'WordLookup', params });
   else nav.navigate('WordLookup', params);
 }
+
+/** Opens a song in Learn at one of its lines, from anywhere */
+export function openSongAtLine(songId: string, focus: { word?: string; line: string; occurrence?: number }) {
+  if (!navigationRef.isReady()) return;
+  const nav = navigationRef as any;
+  if (navigationRef.getRootState()?.routeNames.includes('Tabs')) nav.navigate('Tabs', { screen: 'Learn', params: { songId, focus } });
+  else nav.navigate('Learn', { songId, focus });
+}

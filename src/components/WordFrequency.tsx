@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
-import { openWordLookup } from '../navigation/navigationRef';
+import { openSongAtLine, openWordLookup } from '../navigation/navigationRef';
 import { useStore } from '../store/useStore';
 import type { WordEntry } from '../types';
 import { findSavedWord } from '../utils/wordForms';
@@ -54,6 +54,20 @@ export default function WordFrequency({ entry, onLookUpWord }: { entry: Entry; o
                       <Ionicons name="musical-notes" size={14} color={Colors.primaryLight} />
                       <Text style={styles.songName} numberOfLines={1}>{main.name}</Text>
                       {main.artist ? <Text style={styles.artist} numberOfLines={1}>· {main.artist}</Text> : null}
+                      {main.id ? (
+                        <TouchableOpacity
+                          hitSlop={8}
+                          onPress={() => {
+                            setOpen(false);
+                            onLookUpWord?.();
+                            openSongAtLine(main.id, { word: entry.word, line: sentence.line });
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Open ${main.name} at this line`}
+                        >
+                          <Ionicons name="open-outline" size={18} color={Colors.primaryLight} />
+                        </TouchableOpacity>
+                      ) : null}
                       {sentence.songs.length > 1 ? <Text style={styles.more}>+{sentence.songs.length - 1} more</Text> : null}
                     </View>
                     <View style={styles.body}>

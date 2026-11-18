@@ -180,6 +180,7 @@ export default function WordLookupScreen() {
       const lookup = [wordId, displayWord, songId, lyricsLine, routeOccurrence, source].join('\u0000');
       const isNewLookup = filledLookupRef.current !== lookup;
       filledLookupRef.current = lookup;
+      if (isNewLookup) setUndoData(null);
       const existingWord = findExistingWord();
       // Picking another language for the same word keeps it and what's been typed, unless the word
       // is saved in that language, whose details then fill in

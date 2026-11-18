@@ -142,7 +142,7 @@ export function countKnownWords(
         continue;
       }
       for (const word of lyricWords(token)) {
-        if (isKnown(withoutTrailingApostrophes(word))) count++;
+        if (isKnown(withoutTrailingApostrophes(word)) || isKnown(word)) count++;
         else onUnknown?.(withoutTrailingApostrophes(word));
       }
       continue;
@@ -156,7 +156,8 @@ export function countKnownWords(
     }
     const word = withoutTrailingApostrophes(cleaned);
     const full = getFullWord(cleaned, languages);
-    if (isKnown(word) || (full && isKnown(full))) count++;
+    // A word saved or ignored with its apostrophe, e.g. wünsch', is known too (Learn shows it as saved)
+    if (isKnown(word) || (cleaned !== word && isKnown(cleaned)) || (full && isKnown(full))) count++;
     else onUnknown?.(word);
   }
   return count;

@@ -320,14 +320,18 @@ function fetchDefinitionResponse(title: string): Promise<unknown> {
  */
 async function getDefinitionsForTitle(title: string, language: string, depth: number): Promise<WiktionaryDefinition[]> {
   const entry = parseEntry(await fetchDefinitionResponse(title), language);
-  const sources: WiktionaryDefinition[][] = [entry.glosses];
+  const lemmaLists: WiktionaryDefinition[][] = [];
   if (depth < MAX_LEMMA_DEPTH) {
     for (const lemma of entry.lemmasWithoutGloss.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
-      // A base form is secondary to the page's own senses, so it can't crowd them out, e.g. reichen's
-      // "suffice" and "be enough" next to the adjective reich's many meanings
-      sources.push((await getDefinitionsForTitle(lemma, language, depth + 1)).slice(0, MAX_LEMMA_SUGGESTIONS));
+      lemmaLists.push(await getDefinitionsForTitle(lemma, language, depth + 1));
     }
   }
+  // Base forms are secondary to the page's own senses, so they can't crowd them out, e.g. reichen's
+  // "suffice" and "be enough" next to the adjective reich's meanings; a base form that is the only source
+  // (reicht -> reichen) keeps everything
+  const sources = entry.glosses.length > 0 || lemmaLists.filter((list) => list.length > 0).length > 1
+    ? [entry.glosses, ...lemmaLists.map((list) => list.slice(0, MAX_LEMMA_SUGGESTIONS))]
+    : [entry.glosses, ...lemmaLists];
   const suggestions = mergeSuggestions(sources.filter((list) => list.length > 0));
   return suggestions.length > 0 ? suggestions : entry.definitions.slice(0, MAX_DEFINITIONS);
 }

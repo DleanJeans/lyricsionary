@@ -382,6 +382,11 @@ describe('a verb with many senses next to a form of an adjective', () => {
     }) as unknown as typeof fetch;
     const texts = (await getWiktionaryDefinitions('reichen', 'German'))?.map((d) => d.text) ?? [];
     expect(texts).toEqual(expect.arrayContaining(['to suffice', 'to be enough', 'to do', 'rich', 'wealthy']));
+    pages.reicht = {
+      de: [section('German', 'Verb', ['<span class="form-of-definition use-with-mention">inflection of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/reichen#German" title="reichen">reichen</a></i></span>:</span><ol><li>third-person singular present</li></ol>'])],
+    };
+    const viaForm = (await getWiktionaryDefinitions('reicht', 'German'))?.map((d) => d.text) ?? [];
+    expect(viaForm).toEqual(expect.arrayContaining(['to suffice', 'to be enough', 'to do']));
   });
 });
 

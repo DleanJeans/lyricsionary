@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import React from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Image, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import VersionInfo from '../components/VersionInfo';
@@ -9,6 +9,60 @@ import DataTransfer from '../components/DataTransfer';
 import { Colors } from '../constants/theme';
 import { SIDE_NAV_WIDTH, WIDE_BREAKPOINT } from '../hooks/useLayout';
 import Constants from 'expo-constants';
+import { useStore } from '../store/useStore';
+
+// The Web tab's icon: the current site's favicon (the globe when it has none), with a spinning ring
+// around it while DeepL translates
+function WebTabIcon({ focused, size }: { focused: boolean; size: number }) {
+  const site = useStore((s) => s.webSite);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [site.favicon]);
+  const spin = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!site.translating) return;
+    spin.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(spin, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [site.translating, spin]);
+
+  if (!site.favicon || failed) {
+    return (
+      <Ionicons
+        name={focused ? 'globe' : 'globe-outline'}
+        size={size}
+        color={focused ? Colors.primary : Colors.textMuted}
+      />
+    );
+  }
+  const ring = size + 8;
+  return (
+    <View style={{ width: ring, height: ring, alignItems: 'center', justifyContent: 'center' }}>
+      <Image
+        source={{ uri: site.favicon }}
+        onError={() => setFailed(true)}
+        style={{ width: size - 4, height: size - 4, borderRadius: 4, opacity: focused ? 1 : 0.6 }}
+      />
+      {site.translating && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            width: ring,
+            height: ring,
+            borderRadius: ring / 2,
+            borderWidth: 2,
+            borderColor: `${Colors.primary}33`,
+            borderTopColor: Colors.primary,
+            transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
+          }}
+        />
+      )}
+    </View>
+  );
+}
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -108,11 +162,15 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                 selected: focused,
               }}
             >
-              <Ionicons
-                name={focused ? meta.iconFocused : meta.icon}
-                size={20}
-                color={focused ? Colors.primary : Colors.textMuted}
-              />
+              {route.name === 'Web' ? (
+                <WebTabIcon focused={focused} size={20} />
+              ) : (
+                <Ionicons
+                  name={focused ? meta.iconFocused : meta.icon}
+                  size={20}
+                  color={focused ? Colors.primary : Colors.textMuted}
+                />
+              )}
               <Text
                 style={[
                   styles.sideLabel,
@@ -170,11 +228,15 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               selected: focused,
             }}
           >
-            <Ionicons
-              name={focused ? meta.iconFocused : meta.icon}
-              size={22}
-              color={focused ? Colors.primary : Colors.textMuted}
-            />
+            {route.name === 'Web' ? (
+              <WebTabIcon focused={focused} size={22} />
+            ) : (
+              <Ionicons
+                name={focused ? meta.iconFocused : meta.icon}
+                size={22}
+                color={focused ? Colors.primary : Colors.textMuted}
+              />
+            )}
             <Text
               style={[
                 styles.bottomLabel,

@@ -29,6 +29,16 @@ import { followLyricsLinkJS } from '../utils/followLyricsLinkJS';
 import { GeniusVersion, mergeGeniusVersions, splitGeniusVersions, translationLanguageOf } from '../utils/geniusVersions';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { normalizeApostrophes } from '../utils/normalizeApostrophes';
+const faviconJS = `(function () {
+  try {
+    // Prefer a raster icon: Android's Image can't draw SVG
+    var link = document.querySelector('link[rel="apple-touch-icon"]') ||
+      document.querySelector('link[rel~="icon"]:not([href$=".svg"]):not([type="image/svg+xml"])') ||
+      document.querySelector('link[rel~="icon"]');
+    var href = link && link.href ? link.href : location.origin + '/favicon.ico';
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'favicon', href: href }));
+  } catch (e) {}
+})(); true;`;
 import { pasteIntoDeepLJS } from '../utils/pasteIntoDeepLJS';
 import { scrapeLyricsJS } from '../utils/scrapeLyricsJS';
 import { scrapeTranslationJS } from '../utils/scrapeTranslationJS';
@@ -51,6 +61,7 @@ export default function WebScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
   const insets = useSafeAreaInsets();
+  const setWebSite = useStore((s) => s.setWebSite);
   const webViewRef = useRef<WebView>(null);
   const [currentUrl, setCurrentUrl] = useState(webUrl);
   const [addressText, setAddressText] = useState(webUrl);
@@ -75,6 +86,11 @@ export default function WebScreen() {
   // A Genius song's versions while some still need their page opened, e.g. to get past the captcha
   const geniusImport = useRef<GeniusVersion[] | null>(null);
 
+  // The Web tab's icon shows this page's favicon, with a ring around DeepL's while it translates
+  useEffect(() => {
+    setWebSite({ url: currentUrl, translating: currentUrl.includes('deepl.com') && waitingForTranslation });
+  }, [currentUrl, waitingForTranslation, setWebSite]);
+
   useEffect(() => {
     if (!toast) return;
     const timeout = setTimeout(() => setToast(null), 3000);
@@ -82,6 +98,7 @@ export default function WebScreen() {
   }, [toast]);
 
   const injectDetectionScripts = (url: string) => {
+    webViewRef.current?.injectJavaScript(faviconJS);
     injectLyricsDetectedScript();
     injectDeepLScripts(url);
   };
@@ -191,6 +208,10 @@ export default function WebScreen() {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'debug') {
         console.log('[WebView]', typeof data.log === 'object' ? JSON.stringify(data.log) : data.log);
+        return;
+      }
+      if (data.type === 'favicon') {
+        setWebSite({ favicon: typeof data.href === 'string' && data.href ? data.href : null });
         return;
       }
       if (data.type === 'lyricsDetected') {
@@ -518,6 +539,7 @@ export default function WebScreen() {
           }
         }}
         onLoadStart={() => {
+          setWebSite({ favicon: null });
           setLoading(true);
           setShowFab(false);
           setLyricsSites([]);

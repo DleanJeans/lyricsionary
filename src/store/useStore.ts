@@ -60,6 +60,7 @@ interface AppState {
   compoundSplits: Record<string, string[]>;  // Manual compound word splits, keyed by lowercase word
   currentSongId: string | null;
   webUrl: string;
+  webSite: { url: string; favicon: string | null; translating: boolean };  // What the Web tab's page is, for the tab icon
   scrapeTargetTab: number;
   scrapeTargetLanguage: string | null;  // The target translation tab's language, null for the original
   editorFilledTabs: number[];  // The Editor's tabs with lyrics (0 the original), which Web doesn't fill on its own
@@ -104,6 +105,7 @@ interface AppState {
 
   // Web actions
   setWebUrl: (url: string) => void;
+  setWebSite: (site: Partial<AppState['webSite']>) => void;
   setScrapeTargetTab: (tab: number, language?: string | null) => void;
   setEditorFilledTabs: (tabs: number[]) => void;
   setDeeplLineMap: (lineMap: number[] | null) => void;
@@ -198,6 +200,7 @@ export const useStore = create<AppState>((set, get) => ({
   compoundSplits: {},
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
+  webSite: { url: GOOGLE_SEARCH_URL, favicon: null, translating: false },
   scrapeTargetTab: 0,
   scrapeTargetLanguage: null,
   editorFilledTabs: [],
@@ -305,6 +308,11 @@ export const useStore = create<AppState>((set, get) => ({
   setIsLoadingSong: (isLoading) => set({ isLoadingSong: isLoading }),
 
   setWebUrl: (url) => set({ webUrl: url }),
+  setWebSite: (site) => set((state) => {
+    const next = { ...state.webSite, ...site };
+    const same = next.url === state.webSite.url && next.favicon === state.webSite.favicon && next.translating === state.webSite.translating;
+    return same ? state : { webSite: next };
+  }),
   setScrapeTargetTab: (tab, language = null) => set({ scrapeTargetTab: tab, scrapeTargetLanguage: language }),
   setEditorFilledTabs: (tabs) => set({ editorFilledTabs: tabs }),
   setDeeplLineMap: (lineMap) => set({ deeplLineMap: lineMap }),

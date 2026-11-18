@@ -9,6 +9,7 @@ import VersionInfo from '../components/VersionInfo';
 import DataTransfer from '../components/DataTransfer';
 import BackupNudge from '../components/BackupNudge';
 import ProgressStats from '../components/ProgressStats';
+import UsageTime from '../components/UsageTime';
 import WordOfTheDay from '../components/WordOfTheDay';
 import SpotifyConnect from '../components/SpotifyConnect';
 import Constants from 'expo-constants';
@@ -17,7 +18,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
   const insets = useSafeAreaInsets();
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 20) }]}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 20), paddingBottom: 20 + insets.bottom }]}>
         {/* Logo */}
         <View style={styles.logoRow}>
           <Ionicons name="musical-notes" size={26} color={Colors.primary} />
@@ -27,6 +28,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
         <View style={styles.divider} />
 
         <ProgressStats />
+        <UsageTime />
         <BackupNudge />
         <WordOfTheDay
           onOpen={(songId, focus) => {

@@ -11,6 +11,8 @@ const DEVICE_ONLY_KEYS = [
   '@lyricsionary_spotify_pending',
   // When this install last exported, for the sidebar's nudge to back up
   '@lyricsionary_last_backup',
+  // Time spent in the app is counted per install
+  '@lyricsionary_usage_time',
 ];
 const LAST_BACKUP_KEY = '@lyricsionary_last_backup';
 const BACKUP_NUDGE_DAYS = 7;

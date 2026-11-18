@@ -19,6 +19,7 @@ import { useIsWide } from './src/hooks/useLayout';
 import { navigationRef } from './src/navigation/navigationRef';
 import ReviewSession from './src/components/ReviewSession';
 import { buildLaunchReview, type ReviewItem } from './src/utils/reviewQuiz';
+import { useUsageTracker } from './src/services/usageTime';
 import { flushWrites } from './src/services/storageWrites';
 import { applyOtaResume, reloadForUpdate, takeOtaResume } from './src/utils/otaResume';
 
@@ -67,6 +68,7 @@ export default function App() {
   // Opening the app starts a review of 10 due words from the songs opened last
   const [launchReview, setLaunchReview] = useState<ReviewItem[] | null>(null);
   const isWide = useIsWide();
+  useUsageTracker();
   const [otaResume, setOtaResume] = useState<{ songId: string; screen: string } | null>(null);
   useEffect(() => {
     if (!navigationReady || !otaResume) return;

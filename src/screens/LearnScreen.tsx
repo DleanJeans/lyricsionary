@@ -113,11 +113,6 @@ export default function LearnScreen() {
   const isGermanSong = isGermanLanguage(song?.originalLanguages);
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
   const isIgnoredWord = useMemo(() => makeIgnoredWordChecker(ignoredWords), [ignoredWords]);
-  // Ignored words that still show their IPA, e.g. city names
-  const isIpaKeptWord = useMemo(() => {
-    const keys = new Set(ignoredWords.filter((w) => w.keepIpa).map((w) => `${w.language}\u0000${w.word}`));
-    return (word: string, language: string) => keys.has(`${language}\u0000${word.toLowerCase()}`);
-  }, [ignoredWords]);
   const wordEntryIndex = useMemo(() => songWordIndex(words, song?.originalLanguages), [song?.originalLanguages, words]);
   // Saved phrases whose words sit apart in a line, e.g. hört … auf for aufhören
   const savedSplitPhrases = useMemo(
@@ -1083,7 +1078,8 @@ export default function LearnScreen() {
             effectiveEmoji !== getFlagForLanguage(wordEntry.language);
 
           const isIgnored = !!cleanedWord && isIgnoredWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
-          const ipaKept = isIgnored && isIpaKeptWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
+          // Ignored words show their IPA too, so the lyrics read the same all through
+          const ipaKept = isIgnored;
 
           const compoundParts = !wordEntry && !isIgnored && isGermanSong && cleanedWord && !isPhrase
             ? getCompoundParts(cleanedWord, compoundSplits, knownGermanWords)
@@ -1317,7 +1313,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, isIpaKeptWord, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked, lines]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked, lines]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1577,7 +1573,7 @@ export default function LearnScreen() {
         if (!word || !isLyricWord(word) || /\p{N}/u.test(word) || word.includes(' ') || isCjkWord(word)) continue;
         // Elided words, e.g. l'essence, show their parts' IPA instead
         if ((hasFrenchLanguage || hasItalianLanguage) && hasContractedPrefix(word)) continue;
-        if (findSavedEntry(word) || (isIgnoredWord(word, language) && !isIpaKeptWord(word, language))) continue;
+        if (findSavedEntry(word)) continue;
         const key = preloadKey(language, word);
         if (hasPreloadedIpa(key) || preloadRequestedRef.current.has(key)) continue;
         const known = candidates.get(key);
@@ -1685,7 +1681,7 @@ export default function LearnScreen() {
     pump();
     // Unsaved words, ignored words and settings are read when the lines come into view or any of them changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preloadCacheLoaded, visibleRange, lines, showIpa, preloadSongLanguage, ignoredWords, words, isIpaKeptWord]);
+  }, [preloadCacheLoaded, visibleRange, lines, showIpa, preloadSongLanguage, ignoredWords, words]);
 
   // A saved word tapped without any IPA, e.g. saved before IPA was fetched, gets it from Wiktionary
   // (including IPA put together from its etymology or inflected form). Only an empty IPA is filled

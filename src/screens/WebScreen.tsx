@@ -285,6 +285,19 @@ export default function WebScreen() {
               ? { ...t, lyrics: normalizeApostrophes(translation), sourceUrl: currentUrl, sourceUrlTitle: data.title || undefined }
               : t));
             void updateSong(saved.id, { translations: filled });
+            // Words tapped while DeepL ran were saved without their line's translation: add it to them
+            const translated = normalizeApostrophes(translation).split('\n');
+            const originalLines = saved.originalLyrics.split('\n');
+            const { words, updateWordEntry } = useStore.getState();
+            for (const entry of words) {
+              if (!entry.contexts?.some((c) => c.songId === saved.id && !c.translation && c.context)) continue;
+              const contexts = entry.contexts.map((c) => {
+                if (c.songId !== saved.id || c.translation || !c.context) return c;
+                const line = translated[originalLines.indexOf(c.context)]?.trim();
+                return line ? { ...c, translation: line } : c;
+              });
+              void updateWordEntry(entry.id, { contexts });
+            }
           }
         }
         // In the automatic flow the user is reading the song in Learn: hand the translation to the Editor without leaving

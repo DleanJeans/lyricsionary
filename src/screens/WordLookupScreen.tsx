@@ -208,7 +208,8 @@ export default function WordLookupScreen() {
             songName: c.songName,
             occurrence: c.occurrence || 1,
             fromSong: c.fromSong ?? false,
-            translation: c.translation,
+            // A word saved before its line was translated gets the translation Learn has now
+            translation: c.translation || (c.songId === songId && c.context === lyricsLine ? translationLine : undefined),
             partOfSpeech: c.partOfSpeech,
             definitionAt: c.definitionAt,
           });

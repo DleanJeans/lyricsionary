@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { emojisByCategory } from 'rn-emoji-keyboard';
 import { Colors } from '../constants/theme';
+import MarqueeRow from './MarqueeRow';
 import SongContextBlock from './SongContextBlock';
 import LineNote from './LineNote';
 import type { Song } from '../types';
@@ -133,16 +134,16 @@ export default function WordSenseCard({
       {...(openSong ? { onPress: openSong, accessibilityRole: 'button', accessibilityLabel: `Open ${songTitle} in Learn` } : {})}
     >
       <Ionicons name="musical-notes" size={14} color={songTitle ? Colors.primaryLight : Colors.textMuted} />
-      <View style={styles.headerSong}>
+      <MarqueeRow>
         {songTitle ? (
           <>
-            <Text style={styles.headerTitle} numberOfLines={1}>{songTitle}</Text>
-            {songArtist ? <Text style={styles.headerArtist} numberOfLines={1}>· {songArtist}</Text> : null}
+            <Text style={styles.headerTitle}>{songTitle}</Text>
+            {songArtist ? <Text style={styles.headerArtist}>· {songArtist}</Text> : null}
           </>
         ) : (
-          <Text style={styles.headerArtist} numberOfLines={1}>Not from a song</Text>
+          <Text style={styles.headerArtist}>Not from a song</Text>
         )}
-      </View>
+      </MarqueeRow>
       {openSong ? <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} /> : null}
       {isNew && !isRemoved && (
         <View style={styles.newTag}>

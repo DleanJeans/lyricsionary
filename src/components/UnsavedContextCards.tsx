@@ -8,6 +8,7 @@ import { otherSongLines } from '../utils/reviewQuiz';
 import { pickDefinition } from '../utils/definitionHighlight';
 import type { WiktionaryDefinition } from '../utils/wiktionary';
 import { lineTranslation } from '../utils/wordOfTheDay';
+import MarqueeRow from './MarqueeRow';
 import SelectableTranslation from './SelectableTranslation';
 import ContextLyricLine from './ContextLyricLine';
 import { Text } from './Text';
@@ -65,8 +66,10 @@ export default function UnsavedContextCards({
           <View key={`${song.id}:${line}`} style={styles.card}>
             <View style={styles.header}>
               <Ionicons name="musical-notes" size={14} color={Colors.primaryLight} />
-              <Text style={styles.title} numberOfLines={1}>{name}</Text>
-              {full.artistName ? <Text style={styles.artist} numberOfLines={1}>· {full.artistName}</Text> : null}
+              <MarqueeRow>
+                <Text style={styles.title}>{name}</Text>
+                {full.artistName ? <Text style={styles.artist}>· {full.artistName}</Text> : null}
+              </MarqueeRow>
               <Text style={styles.tag}>Unsaved</Text>
             </View>
             <View style={styles.body}>
@@ -106,8 +109,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(37, 37, 61, 0.35)' },
-  title: { flexShrink: 1, fontSize: 13, fontWeight: '600', color: Colors.text },
-  artist: { flexShrink: 1, fontSize: 13, color: Colors.textSecondary },
+  title: { fontSize: 13, fontWeight: '600', color: Colors.text },
+  artist: { fontSize: 13, color: Colors.textSecondary },
   tag: { marginLeft: 'auto', fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase', color: Colors.textMuted },
   body: { paddingHorizontal: 12, paddingTop: 10, gap: 4, opacity: 0.85 },
   translation: { fontSize: 14, fontStyle: 'italic', color: Colors.textSecondary },

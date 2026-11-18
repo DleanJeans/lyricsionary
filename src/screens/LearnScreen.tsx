@@ -248,6 +248,12 @@ export default function LearnScreen() {
     [lyricQuiz, wordEntryIndex, answeredGaps]
   );
 
+  // The translations turned off in Learn Settings stay off in every song and after a restart
+  const [hiddenTranslations, setHiddenTranslations] = usePersistedState<string[]>(
+    '@lyricsionary_hidden_translations',
+    [],
+    (v): v is string[] => Array.isArray(v) && v.every((k) => typeof k === 'string')
+  );
   const filledTranslationsKey = song ? translationNames(song.translations).filter((_, i) => song.translations[i].lyrics.trim()).map(t => t.key).join('|') : '';
   // Initialize selected languages when song changes
   useEffect(() => {
@@ -261,12 +267,13 @@ export default function LearnScreen() {
     // route changes so the previous song's translations are not carried over.
     // A translation still waiting for DeepL has no lyrics yet: it's selected, and translations turned on, once it fills in
     const availableLanguages = translationNames(song.translations).filter((_, i) => song.translations[i].lyrics.trim()).map(t => t.key);
-    setLocalSelectedLanguages(availableLanguages);
-    setSelectedTranslationLanguages(availableLanguages);
+    const selected = availableLanguages.filter((key) => !hiddenTranslations.includes(key));
+    setLocalSelectedLanguages(selected);
+    setSelectedTranslationLanguages(selected);
     // Unselecting every language on the previous song turned translations off
-    if (availableLanguages.length > 0 && !useStore.getState().showTranslations) toggleTranslations();
+    if (selected.length > 0 && !useStore.getState().showTranslations) toggleTranslations();
     setUnblurredTranslations(new Set());
-  }, [song?.id, filledTranslationsKey, setSelectedTranslationLanguages]);
+  }, [song?.id, filledTranslationsKey, hiddenTranslations, setSelectedTranslationLanguages]);
 
   // Helper function to normalize text for comparison (remove punctuation, compare words only)
   const normalizeText = (text: string): string => {
@@ -584,6 +591,15 @@ export default function LearnScreen() {
 
   const handleLanguageChange = (languages: string[]) => {
     setLocalSelectedLanguages(languages);
+    // Remember what was turned off or on among this song's translations
+    const available = song ? translationNames(song.translations).map((t) => t.key) : [];
+    const hidden = [
+      ...hiddenTranslations.filter((key) => !languages.includes(key)),
+      ...available.filter((key) => !languages.includes(key) && !hiddenTranslations.includes(key)),
+    ];
+    if (hidden.length !== hiddenTranslations.length || hidden.some((key) => !hiddenTranslations.includes(key))) {
+      setHiddenTranslations(hidden);
+    }
     if (languages.length === 0) {
       // If no languages selected, turn off translations
       if (showTranslations) {

@@ -32,7 +32,8 @@ import { isSameLanguage } from '../constants/languages';
 import { isIpaKept, isWordIgnored, useStore } from '../store/useStore';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
 import { pickDefinition } from '../utils/definitionHighlight';
-import { getGermanExpandedForm } from '../utils/wordTransform';
+import { isGermanLanguage } from '../utils/compoundWords';
+import { germanFullForms, getGermanExpandedForm } from '../utils/wordTransform';
 import { emojiData } from '../utils/emojiData';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
@@ -298,6 +299,17 @@ export default function WordLookupScreen() {
       if (definitions.length > 0) {
         setDefinitionSuggestions(definitions);
         return;
+      }
+      // A German word with its ending dropped, e.g. lieg for liege, suggests its full form's meanings
+      if (isGermanLanguage([language])) {
+        for (const candidate of germanFullForms(wiktionaryWord)) {
+          const full = await getWiktionaryDefinitions(candidate, language);
+          if (cancelled) return;
+          if (full && full.length > 0) {
+            setDefinitionSuggestions(full);
+            return;
+          }
+        }
       }
       const existing = findExistingWord();
       // A saved word with no IPA and no meaning, e.g. a French word saved as German in a German and French

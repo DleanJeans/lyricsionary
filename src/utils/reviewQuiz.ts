@@ -169,8 +169,7 @@ const pickOne = <T,>(items: T[], random: () => number): T =>
 function pickLine(
   entry: WordEntry,
   songs: ReviewSong[],
-  random: () => number,
-  words: WordEntry[] = []
+  random: () => number
 ): { context: WordContext; song?: undefined } | { context?: undefined; song: ReviewSong; line: string } | null {
   const bySong = new Map<string, ({ context: WordContext } | { song: ReviewSong; line: string })[]>();
   const add = (key: string, choice: { context: WordContext } | { song: ReviewSong; line: string }) => {
@@ -183,14 +182,20 @@ function pickLine(
       add(context.songId ?? `context ${i}`, { context });
     }
   });
-  // A line where the word is part of a saved phrase (nach in "riech nach") isn't asked, as the phrase's
-  // meaning isn't the word's own
-  const phrases = words.filter(
-    (w) => w.id !== entry.id && w.language === entry.language && lineWords(w.word).length > 1 && lineWords(w.word).some((x) => x.toLowerCase() === lineWords(entry.word)[0]?.toLowerCase())
-  );
+  // Another song's line whose translation shows none of the word's saved meanings (nach meaning "past"
+  // in a line that's about smelling smoke, as in "riech nach") isn't asked, as that meaning would be wrong
+  const meanings = (entry.contexts ?? [])
+    .flatMap((c) => (c.definition ?? '').toLowerCase().split(/[,;/()]+/))
+    .map((m) => m.replace(/^\s*(to|a|an|the)\s+/, '').trim())
+    .filter((m) => m.length > 1);
+  const fits = (song: ReviewSong, line: string) => {
+    const translation = song.originalLyrics && song.translations ? lineTranslation(song as Song, line) : null;
+    if (!translation || !meanings.length) return true;
+    const lower = translation.toLowerCase();
+    return meanings.some((m) => lower.includes(m));
+  };
   for (const spot of otherSongLines(entry, songs)) {
-    if (phrases.some((p) => findWordInLine(spot.line, p.word))) continue;
-    add(spot.song.id, spot);
+    if (fits(spot.song, spot.line)) add(spot.song.id, spot);
   }
   if (!bySong.size) return null;
   const choice = pickOne(pickOne([...bySong.values()], random), random);
@@ -288,7 +293,7 @@ export function buildReviewItems(
     if (!kind) continue;
     // The line is one of the word's saved ones or another song's it wasn't saved from; that one asks
     // for the meaning saved first
-    const picked = pickLine(entry, songs, random, words);
+    const picked = pickLine(entry, songs, random);
     const context = picked?.context ?? pickContext(entry);
     const answer = answerFor(entry, context);
     if (!answer) continue;

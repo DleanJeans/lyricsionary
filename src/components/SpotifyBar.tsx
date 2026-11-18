@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { Colors } from '../constants/theme';
 import type { SpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { Text } from './Text';
@@ -69,6 +70,8 @@ export default function SpotifyBar({
   /** Leaves out the status once it was closed, keeping the Play button */
   hideStatus?: boolean;
 }) {
+  // Folds the controls away to just the header, remembered across launches
+  const [collapsed, setCollapsed] = usePersistedState('@lyricsionary_spotify_bar_collapsed', false, (v): v is boolean => typeof v === 'boolean');
   // Line, dictation and loop only work once Spotify plays this song
   const canPlaySelected = sync.isThisSong && selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
   // Loops the tapped word's line, or else the one playing
@@ -139,15 +142,37 @@ export default function SpotifyBar({
       {sync.timings === 'ready' && sync.isThisSong && (
         <View style={styles.full}>
           <View style={styles.headRow}>
-            <Ionicons name="musical-note" size={14} color={SPOTIFY_GREEN} />
-            <Text style={[styles.headText, { flex: 1 }]} numberOfLines={1}>
-              {sync.currentLine !== null ? `Line ${sync.currentLine + 1} of ${sync.times.length}` : 'Between lines'}
-            </Text>
-            <Text style={styles.headState}>{looping ? `Looping ×${sync.loopCount}` : sync.isPlaying ? 'Playing' : 'Paused'}</Text>
+            <TouchableOpacity
+              style={styles.headTouch}
+              onPress={() => setCollapsed(!collapsed)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={collapsed ? 'Show the Spotify controls' : 'Hide the Spotify controls'}
+            >
+              <Ionicons name="musical-note" size={14} color={SPOTIFY_GREEN} />
+              <Text style={[styles.headText, { flex: 1 }]} numberOfLines={1}>
+                {sync.currentLine !== null ? `Line ${sync.currentLine + 1} of ${sync.times.length}` : 'Between lines'}
+              </Text>
+              <Text style={styles.headState}>{looping ? `Looping ×${sync.loopCount}` : sync.isPlaying ? 'Playing' : 'Paused'}</Text>
+              <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={16} color={Colors.textSecondary} />
+            </TouchableOpacity>
+            {collapsed && (
+              <TouchableOpacity
+                style={styles.miniPlay}
+                onPress={() => void sync.togglePlay()}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={sync.isPlaying ? 'Pause' : 'Play'}
+              >
+                <Ionicons name={sync.isPlaying ? 'pause' : 'play'} size={14} color="#000" />
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.track}>
             <View style={[styles.trackFill, { width: `${Math.round(sync.lineProgress * 100)}%` }]} />
           </View>
+          {!collapsed && (
+            <>
           <View style={styles.transport}>
             <LabeledButton icon="play-skip-back" label="Prev line" onPress={() => void sync.stepLine(-1)} />
             <LabeledButton icon="refresh" label="Restart line" onPress={() => void sync.replayLine()} disabled={sync.currentLine === null} />
@@ -174,6 +199,8 @@ export default function SpotifyBar({
             {canPlaySelected && <TogglePill icon="play" label="Play line" onPress={() => void sync.seekToLine(selectedLineIndex!)} accent />}
             {canPlaySelected && onDictation && <TogglePill icon="create-outline" label="Dictate" onPress={() => onDictation(selectedLineIndex!)} accent />}
           </View>
+            </>
+          )}
         </View>
       )}
     </View>
@@ -215,7 +242,9 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   full: { flex: 1, gap: 10, paddingVertical: 4 },
-  headRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headTouch: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  miniPlay: { width: 26, height: 26, borderRadius: 13, backgroundColor: SPOTIFY_GREEN, alignItems: 'center', justifyContent: 'center' },
   headText: { fontSize: 12, fontWeight: '700', color: Colors.text },
   headState: { fontSize: 12, color: Colors.textSecondary },
   track: { height: 4, borderRadius: 2, backgroundColor: Colors.surfaceLight, overflow: 'hidden' },

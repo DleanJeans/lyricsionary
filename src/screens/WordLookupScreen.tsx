@@ -413,7 +413,9 @@ export default function WordLookupScreen() {
         // A shortened word without its own page (e.g. "hab'n") shows its full form's page (e.g. "haben")
         if (exists === false) {
           const expanded = getGermanExpandedForm(displayWord, languageRef.current);
-          const candidates = expanded ? [...new Set([expanded.toLowerCase(), expanded])] : [];
+          // A German word with its ending dropped and no apostrophe, e.g. lieg, shows its full form's page (liege)
+          const dropped = !expanded && isGermanLanguage([languageRef.current]) ? germanFullForms(displayWord) : [];
+          const candidates = expanded ? [...new Set([expanded.toLowerCase(), expanded])] : dropped;
           for (const candidate of candidates) {
             if (await hasWiktionaryEntry(candidate)) {
               if (!cancelled) {

@@ -2615,6 +2615,8 @@ const styles = StyleSheet.create({
   },
   annotationStack: {
     alignItems: 'center',
+    // A little room each side, so a meaning wider than its word doesn't touch the next word's
+    paddingHorizontal: 3,
   },
   wordAnnotation: {
     fontSize: 10,

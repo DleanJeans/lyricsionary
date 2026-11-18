@@ -20,6 +20,7 @@ import { navigationRef } from './src/navigation/navigationRef';
 import ReviewSession from './src/components/ReviewSession';
 import { buildLaunchReview, type ReviewItem } from './src/utils/reviewQuiz';
 import { flushWrites } from './src/services/storageWrites';
+import { applyOtaResume, reloadForUpdate, takeOtaResume } from './src/utils/otaResume';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -66,6 +67,12 @@ export default function App() {
   // Opening the app starts a review of 10 due words from the songs opened last
   const [launchReview, setLaunchReview] = useState<ReviewItem[] | null>(null);
   const isWide = useIsWide();
+  const [otaResume, setOtaResume] = useState<{ songId: string; screen: string } | null>(null);
+  useEffect(() => {
+    if (!navigationReady || !otaResume) return;
+    applyOtaResume(otaResume);
+    setOtaResume(null);
+  }, [navigationReady, otaResume]);
 
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({
@@ -84,7 +91,7 @@ export default function App() {
           const update = await Updates.checkForUpdateAsync();
           if (update.isAvailable) {
             await Updates.fetchUpdateAsync();
-            await Updates.reloadAsync();
+            await reloadForUpdate();
           }
         }
       } catch (error) {
@@ -97,8 +104,13 @@ export default function App() {
       await Promise.all([loadSongs(), loadWords(), loadIgnoredWords(), loadCompoundSplits(), loadLearnSettings(), loadActivity()]);
       if (!mounted) return;
       const { songs, words } = useStore.getState();
-      const review = buildLaunchReview(songs, words);
-      if (review.length) setLaunchReview(review);
+      // After an update reload the app comes back to the song that was open, instead of a launch review
+      const resume = await takeOtaResume();
+      if (resume) setOtaResume(resume);
+      else {
+        const review = buildLaunchReview(songs, words);
+        if (review.length) setLaunchReview(review);
+      }
       setDataLoaded(true);
       await checkForUpdates();
     }

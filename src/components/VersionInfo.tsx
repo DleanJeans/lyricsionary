@@ -1,3 +1,4 @@
+import { reloadForUpdate } from '../utils/otaResume';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -55,7 +56,7 @@ export default function VersionInfo() {
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
         await Updates.fetchUpdateAsync();
-        await Updates.reloadAsync();
+        await reloadForUpdate();
       } else {
         Alert.alert(
           'No Updates',

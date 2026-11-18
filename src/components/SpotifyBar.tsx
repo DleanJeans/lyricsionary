@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { Colors } from '../constants/theme';
 import type { SpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
@@ -93,6 +93,25 @@ export default function SpotifyBar({
 }) {
   // Folds the controls away to just the header, remembered across launches
   const [collapsed, setCollapsed] = usePersistedState('@lyricsionary_spotify_bar_collapsed', false, (v): v is boolean => typeof v === 'boolean');
+  // 1 with the controls out, 0 folded under the header: they slide and fade with it
+  const open = useRef(new Animated.Value(1)).current;
+  const [controlsHeight, setControlsHeight] = React.useState<number | null>(null);
+  useEffect(() => {
+    Animated.timing(open, { toValue: collapsed ? 0 : 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [collapsed, open]);
+  // Swipe up on the bar to hide the controls, swipe down to show them again
+  const swipeState = useRef({ collapsed, setCollapsed });
+  swipeState.current = { collapsed, setCollapsed };
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > 12 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
+      onPanResponderRelease: (_e, g) => {
+        const { collapsed: isCollapsed, setCollapsed: set } = swipeState.current;
+        if (g.dy < -20 && !isCollapsed) set(true);
+        else if (g.dy > 20 && isCollapsed) set(false);
+      },
+    })
+  ).current;
   // Line, dictation and loop only work once Spotify plays this song
   const canPlaySelected = sync.isThisSong && selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
   // Loops the tapped word's line, or else the one playing
@@ -161,7 +180,7 @@ export default function SpotifyBar({
         </TouchableOpacity>
       )}
       {sync.timings === 'ready' && sync.isThisSong && (
-        <View style={styles.full}>
+        <View style={styles.full} {...swipe.panHandlers}>
           <View style={styles.headRow}>
             <TouchableOpacity
               style={styles.headTouch}
@@ -190,8 +209,18 @@ export default function SpotifyBar({
             )}
           </View>
           <LineProgress value={sync.lineProgress} line={sync.currentLine} playing={sync.isPlaying} />
-          {!collapsed && (
-            <>
+          <Animated.View
+            style={{
+              overflow: 'hidden',
+              opacity: open,
+              height: controlsHeight === null ? undefined : open.interpolate({ inputRange: [0, 1], outputRange: [0, controlsHeight] }),
+            }}
+            pointerEvents={collapsed ? 'none' : 'auto'}
+          >
+            <View
+              style={[styles.controlsBody, controlsHeight !== null && styles.controlsMeasured]}
+              onLayout={(e) => setControlsHeight(e.nativeEvent.layout.height)}
+            >
           <View style={styles.transport}>
             <LabeledButton icon="play-skip-back" label="Prev line" onPress={() => void sync.stepLine(-1)} />
             <LabeledButton icon="refresh" label="Restart line" onPress={() => void sync.replayLine()} disabled={sync.currentLine === null} />
@@ -218,8 +247,8 @@ export default function SpotifyBar({
             {canPlaySelected && <TogglePill icon="play" label="Play line" onPress={() => void sync.seekToLine(selectedLineIndex!)} accent />}
             {canPlaySelected && onDictation && <TogglePill icon="create-outline" label="Dictate" onPress={() => onDictation(selectedLineIndex!)} accent />}
           </View>
-            </>
-          )}
+            </View>
+          </Animated.View>
         </View>
       )}
     </View>
@@ -260,13 +289,15 @@ const styles = StyleSheet.create({
   control: {
     padding: 2,
   },
-  full: { flex: 1, gap: 10, paddingVertical: 4 },
+  full: { flex: 1, paddingVertical: 4 },
+  controlsBody: { gap: 10, paddingTop: 10 },
+  controlsMeasured: { position: 'absolute', left: 0, right: 0, top: 0 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headTouch: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   miniPlay: { width: 26, height: 26, borderRadius: 13, backgroundColor: SPOTIFY_GREEN, alignItems: 'center', justifyContent: 'center' },
   headText: { fontSize: 12, fontWeight: '700', color: Colors.text },
   headState: { fontSize: 12, color: Colors.textSecondary },
-  track: { height: 4, borderRadius: 2, backgroundColor: Colors.surfaceLight, overflow: 'hidden' },
+  track: { marginTop: 10, height: 4, borderRadius: 2, backgroundColor: Colors.surfaceLight, overflow: 'hidden' },
   trackFill: { height: 4, backgroundColor: SPOTIFY_GREEN },
   transport: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 22 },
   labeled: { alignItems: 'center', gap: 2, minWidth: 56 },

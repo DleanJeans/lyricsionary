@@ -1,3 +1,5 @@
+import { getFaviconUrl } from './getFaviconUrl';
+
 // A song can have several translations in one language (e.g. English from Genius and from DeepL).
 // The first of a language is keyed by the language, the next ones by "English 2", "English 3"...
 // A translation's label, when set, is the name shown for it.
@@ -7,6 +9,8 @@ export interface TranslationName {
   /** What the translation is called: its label, or the key */
   name: string;
   language: string;
+  /** The site's icon, when it's one of several translations */
+  icon: string | null;
   /** The language has more than one translation in the song */
   duplicated: boolean;
 }
@@ -26,7 +30,7 @@ export function translationNames(translations: { language: string; label?: strin
     // Two from one site stay apart
     if (used.has(name)) name = `${name} ${n}`;
     used.add(name);
-    return { key, name, language: t.language, duplicated };
+    return { key, name, language: t.language, duplicated, icon: duplicated ? getFaviconUrl(t.sourceUrl ?? '') : null };
   });
 }
 

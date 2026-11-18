@@ -37,6 +37,7 @@ interface WordSenseCardProps {
   occurrence?: number;
   onOccurrenceChange?: (value: number) => void;
   translation?: string;
+  translationIcons?: (string | null)[];
   fromSong?: boolean;
   songName?: string;
   artistName?: string;
@@ -77,6 +78,7 @@ export default function WordSenseCard({
   occurrence = 1,
   onOccurrenceChange,
   translation,
+  translationIcons,
   fromSong = false,
   songName,
   artistName,
@@ -174,7 +176,7 @@ export default function WordSenseCard({
           accessibilityLabel={`Edit context: ${shown || context}`}
         >
           {fromSong && context ? (
-            <SongContextBlock context={context} word={word} occurrence={occurrence} translation={translation} showSongName={false} languages={lineLanguages} />
+            <SongContextBlock context={context} word={word} occurrence={occurrence} translation={translation} translationIcons={translationIcons} showSongName={false} languages={lineLanguages} />
           ) : (
             <>
               {context ? <Text style={styles.foldedContext}>{context}</Text> : null}
@@ -215,6 +217,7 @@ export default function WordSenseCard({
               songName={songName}
               artistName={artistName}
               translation={translation}
+              translationIcons={translationIcons}
               showSongName={false}
               languages={lineLanguages}
               onWordPress={isRemoved || !onWordPress ? undefined : (tapped, tappedOccurrence) => onWordPress(tapped, tappedOccurrence, song?.id)}

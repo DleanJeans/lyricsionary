@@ -341,6 +341,7 @@ export default function LearnScreen() {
             language: song.translations[ti].language,
             key: names[ti].key,
             label: names[ti].duplicated ? names[ti].name : undefined,
+            icon: names[ti].icon,
             text: translationText,
             show: isDifferent,
           };

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, type ReactNode } from 'react';
-import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LANGUAGES, ROMANIZED } from '../constants/languages';
 import { Colors } from '../constants/theme';
 import { formatIpa } from '../utils/ipaDisplay';
@@ -180,7 +180,7 @@ export default function LearnSettingsMenu({
     .sort((a, b) => Number(b.language === ROMANIZED.name) - Number(a.language === ROMANIZED.name))
     .flatMap((t) => {
       const lang = [ROMANIZED, ...LANGUAGES].find((l) => l.name === t.language);
-      return lang ? [{ ...lang, key: t.key, label: t.name }] : [];
+      return lang ? [{ ...lang, key: t.key, label: t.name, icon: t.icon }] : [];
     });
 
   const toggleLanguage = (langName: string) => {
@@ -279,7 +279,7 @@ export default function LearnSettingsMenu({
                     <Chip
                       key={lang.key}
                       label={lang.label}
-                      icon={<Text style={styles.flag}>{lang.flag}</Text>}
+                      icon={<><Text style={styles.flag}>{lang.flag}</Text>{!!lang.icon && <Image source={{ uri: lang.icon }} style={{ width: 16, height: 16, borderRadius: 3 }} />}</>}
                       selected={selectedLanguages.includes(lang.key)}
                       onPress={() => toggleLanguage(lang.key)}
                     />

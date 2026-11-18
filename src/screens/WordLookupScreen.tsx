@@ -30,7 +30,7 @@ import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
 import { isSameLanguage } from '../constants/languages';
 import { isIpaKept, isWordIgnored, useStore } from '../store/useStore';
-import { contextTranslation } from '../utils/wordOfTheDay';
+import { contextTranslationLines } from '../utils/wordOfTheDay';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
 import { pickDefinition } from '../utils/definitionHighlight';
 import { isGermanLanguage } from '../utils/compoundWords';
@@ -69,6 +69,11 @@ export default function WordLookupScreen() {
   const route = useRoute<WordLookupRouteProp>();
   const isFocused = useIsFocused();
   const { word, wordId, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence, ipa: routeIpa } = route.params || {};
+  // A line's translation with each translation on its own line, and the icons of their sites
+  const senseTranslation = (sId: string | undefined, context: string | undefined, fallback?: string) => {
+    const found = contextTranslationLines(useStore.getState().songs.find((song) => song.id === sId), context, fallback);
+    return { translation: found?.text, translationIcons: found?.icons };
+  };
   const insets = useSafeAreaInsets();
 
   const words = useStore((s) => s.words);
@@ -212,7 +217,7 @@ export default function WordLookupScreen() {
             occurrence: c.occurrence || 1,
             fromSong: c.fromSong ?? false,
             // A word saved before its line was translated gets the translation Learn has now
-            translation: contextTranslation(useStore.getState().songs.find((song) => song.id === c.songId), c.context, c.translation || (c.songId === songId && c.context === lyricsLine ? translationLine : undefined)),
+            ...senseTranslation(c.songId, c.context, c.translation || (c.songId === songId && c.context === lyricsLine ? translationLine : undefined)),
             partOfSpeech: c.partOfSpeech,
             definitionAt: c.definitionAt,
           });
@@ -230,7 +235,7 @@ export default function WordLookupScreen() {
               definition: '',
               songId,
               songName,
-              translation: translationLine,
+              ...senseTranslation(songId, lyricsLine, translationLine),
               fromSong: true,
               occurrence: routeOccurrence || 1,
               isNew: true,
@@ -242,13 +247,13 @@ export default function WordLookupScreen() {
             setWordSenses(existingBlocks);
           }
         } else {
-          setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
+          setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, ...senseTranslation(songId, lyricsLine, translationLine), fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
         }
       } else {
         setPronunciation(cardIpa?.[0] ?? '');
         setMasteryLevel('Seen');
         setNote('');
-        setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, translation: translationLine, fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
+        setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, ...senseTranslation(songId, lyricsLine, translationLine), fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
         if (originalLanguages && originalLanguages.length > 0) {
           setLanguage(originalLanguages[0]);
         } else {

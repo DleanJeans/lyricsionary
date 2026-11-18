@@ -14,6 +14,7 @@ export interface WordSenseData {
   songId?: string;
   songName?: string;
   translation?: string;
+  translationIcons?: (string | null)[];
   fromSong?: boolean;
   occurrence?: number;
   // Where the definition was picked in the translation
@@ -141,6 +142,7 @@ export default function WordSenseList({
                 word={displayWord}
                 occurrence={item.block.occurrence}
                 translation={item.block.translation}
+                translationIcons={item.block.translationIcons}
                 fromSong={item.block.fromSong}
                 songName={songName}
                 artistName={artistName}
@@ -182,6 +184,7 @@ export default function WordSenseList({
                   : undefined
               }
               translation={block.translation}
+              translationIcons={block.translationIcons}
               fromSong={block.fromSong}
               songName={songName}
               artistName={artistName}

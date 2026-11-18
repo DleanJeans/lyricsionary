@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
 import SelectableTranslation from './SelectableTranslation';
@@ -15,6 +15,8 @@ interface SongContextBlockProps {
   songName?: string;
   artistName?: string;
   translation?: string;
+  /** The site icon of each line of the translation, when it has several translations */
+  translationIcons?: (string | null)[];
   showSongName?: boolean;
   onTranslationSelect?: (text: string, at: number) => void;
   selectedTranslation?: string;
@@ -33,6 +35,7 @@ export default function SongContextBlock({
   songName,
   artistName,
   translation,
+  translationIcons,
   showSongName = true,
   onTranslationSelect,
   selectedTranslation,
@@ -110,19 +113,37 @@ export default function SongContextBlock({
           </TouchableOpacity>
         ) : null}
       </View>
-      {translation && onTranslationSelect ? (
-        <View style={styles.translationSelectable}>
-          <SelectableTranslation
-            translation={translation}
-            onSelect={onTranslationSelect}
-            value={selectedTranslation}
-            valueAt={selectedTranslationAt}
-            style={styles.translationText}
-          />
-        </View>
-      ) : translation ? (
-        <Text style={styles.translationText}>{translation}</Text>
-      ) : null}
+      {translation ? (() => {
+        // Each translation on its own line, with its site's icon at the start
+        const rows = translation.split('\n');
+        let offset = 0;
+        return rows.map((row, i) => {
+          const start = offset;
+          offset += row.length + 1;
+          const icon = translationIcons?.[i];
+          const inRow = selectedTranslationAt === undefined || (selectedTranslationAt >= start && selectedTranslationAt <= start + row.length);
+          return (
+            <View key={i} style={styles.translationRow}>
+              {icon ? <Image source={{ uri: icon }} style={styles.translationIcon} /> : null}
+              <View style={styles.translationRowText}>
+                {onTranslationSelect ? (
+                  <View style={styles.translationSelectable}>
+                    <SelectableTranslation
+                      translation={row}
+                      onSelect={(text, at) => onTranslationSelect(text, at + start)}
+                      value={inRow ? selectedTranslation : undefined}
+                      valueAt={selectedTranslationAt !== undefined ? selectedTranslationAt - start : undefined}
+                      style={styles.translationText}
+                    />
+                  </View>
+                ) : (
+                  <Text style={styles.translationText}>{row}</Text>
+                )}
+              </View>
+            </View>
+          );
+        });
+      })() : null}
     </View>
   );
 }
@@ -172,6 +193,20 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontStyle: 'italic',
     marginTop: 2,
+  },
+  translationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  translationIcon: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    marginTop: 4,
+  },
+  translationRowText: {
+    flex: 1,
   },
   translationSelectable: {
     marginTop: 2,

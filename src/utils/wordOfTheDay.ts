@@ -1,6 +1,7 @@
 import { isRomanized } from '../constants/languages';
 import type { Song, WordContext, WordEntry } from '../types';
 import { findWordOccurrences } from './wordOccurrences';
+import { getFaviconUrl } from './getFaviconUrl';
 
 /** A small string hash, so each day lands on the same word all day */
 function hash(text: string): number {
@@ -72,6 +73,42 @@ export function lineTranslation(song: Song, line: string): string | null {
         .join(' / ');
     });
   return translated.some(Boolean) ? translated.filter(Boolean).join('\n') : null;
+}
+
+/**
+ * Like lineTranslation, with each translation of each line on its own line. With several translations
+ * each line carries its site's icon, to tell them apart
+ */
+export function lineTranslationLines(song: Song, line: string): { text: string; icons: (string | null)[] } | null {
+  const originalLines = song.originalLyrics.split('\n').map((l) => l.trim());
+  const translations = song.translations.filter((t) => !isRomanized(t.language));
+  if (!translations.length) return null;
+  const rows = translations.map((t) => t.lyrics.split('\n'));
+  const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const out: { text: string; icon: string | null }[] = [];
+  line.split('\n').map((l) => l.trim()).filter(Boolean).forEach((contextLine) => {
+    const index = originalLines.findIndex((l) => same(l, contextLine));
+    if (index < 0) return;
+    rows.forEach((lines, ti) => {
+      const text = lines[index]?.trim() ?? '';
+      if (text && !same(text, contextLine)) {
+        out.push({ text, icon: translations.length > 1 ? getFaviconUrl(translations[ti].sourceUrl ?? '') : null });
+      }
+    });
+  });
+  return out.length ? { text: out.map((o) => o.text).join('\n'), icons: out.map((o) => o.icon) } : null;
+}
+
+/** contextTranslation, one translation per line, with the icons of their sites */
+export function contextTranslationLines(
+  song: Song | undefined,
+  line: string | undefined,
+  saved?: string
+): { text: string; icons: (string | null)[] } | undefined {
+  const fresh = song?.originalLyrics && song.translations && line ? lineTranslationLines(song, line) : null;
+  if (fresh) return fresh;
+  const text = saved?.trim();
+  return text ? { text, icons: [] } : undefined;
 }
 
 /**

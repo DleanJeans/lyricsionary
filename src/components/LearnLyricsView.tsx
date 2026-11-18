@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { isRomanized } from '../constants/languages';
 import { Colors } from '../constants/theme';
 import { Text } from './Text';
@@ -17,6 +17,7 @@ export interface LearnLine {
     key: string;
     /** Set when the language has several translations, to tell them apart */
     label?: string;
+    icon?: string | null;
     text: string;
     show: boolean;
   }[];
@@ -72,6 +73,7 @@ interface LearnLyricsViewProps {
 function TranslationLine({
   text,
   label,
+  icon,
   fontSize,
   isBlurred,
   onPress,
@@ -80,6 +82,7 @@ function TranslationLine({
 }: {
   text: string;
   label?: string;
+  icon?: string | null;
   fontSize: number;
   isBlurred: boolean;
   onPress: () => void;
@@ -99,7 +102,10 @@ function TranslationLine({
       style={[styles.translationContainer, isBlurred && styles.blurredContainer]}
     >
       {!!label && !isBlurred && (
-        <Text style={[styles.translationLabel, { fontSize: Math.max(10, fontSize - 8) }]}>{label}</Text>
+        <View style={styles.translationLabelRow}>
+          {!!icon && <Image source={{ uri: icon }} style={styles.translationIcon} />}
+          <Text style={[styles.translationLabel, { fontSize: Math.max(10, fontSize - 8) }]}>{label}</Text>
+        </View>
       )}
       <Text
         style={[
@@ -189,6 +195,7 @@ export function LearnLyricsLine({
               key={translationIndex}
               text={translation.text}
               label={translation.label}
+              icon={translation.icon}
               fontSize={fontSize}
               isBlurred={!reverse && blurTranslations && !unblurredTranslations.has(translationKey)}
               onPress={() => onTranslationPress(lineIndex, translationIndex)}
@@ -562,6 +569,17 @@ const styles = StyleSheet.create({
   romanizedLine: {
     color: Colors.textSecondary,
     fontStyle: 'italic',
+  },
+  translationLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 1,
+  },
+  translationIcon: {
+    width: 12,
+    height: 12,
+    borderRadius: 2,
   },
   translationLabel: {
     color: Colors.textSecondary,

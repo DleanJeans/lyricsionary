@@ -15,6 +15,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import SongMetadataHeader from '../components/SongMetadataHeader';
 import { Text } from '../components/Text';
 import WordCard from '../components/WordCard';
+import FoldAway, { useSwipeFold } from '../components/FoldAway';
 import WordQuiz from '../components/WordQuiz';
 import { getFlagForLanguage, isRomanized, isRtlLanguage, isSameLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
@@ -2120,6 +2121,9 @@ export default function LearnScreen() {
     setSelectedWord(null);
     setLineByLine(next);
   };
+  // Swipe the chip row up to fold it away under the title, swipe the title down to bring it back
+  const [actionBarCollapsed, setActionBarCollapsed] = usePersistedState('@lyricsionary_learn_actionbar_collapsed', false, (v): v is boolean => typeof v === 'boolean');
+  const headerSwipe = useSwipeFold(actionBarCollapsed, setActionBarCollapsed);
   const markBar = (
     <View style={styles.markBar}>
       <TouchableOpacity onPress={exitMarkMode} style={styles.markClose} accessibilityRole="button" accessibilityLabel="Stop picking words">
@@ -2151,6 +2155,7 @@ export default function LearnScreen() {
     </View>
   );
   const actionBar = (
+    <FoldAway collapsed={actionBarCollapsed} onCollapsedChange={setActionBarCollapsed}>
     <LearnActionBar
       fontSize={storedFontSize}
       lineCount={lineCount}
@@ -2171,6 +2176,7 @@ export default function LearnScreen() {
         setScrollToLine({ index: nextLine, key: Date.now() });
       } : undefined}
     />
+    </FoldAway>
   );
 
   const lyricsView = (
@@ -2242,7 +2248,7 @@ export default function LearnScreen() {
 
   return (
     <ScreenWrapper noPadding>
-      <View style={styles.header}>
+      <View style={styles.header} {...headerSwipe.panHandlers}>
         <View style={styles.headerLeft}>
           <SongMetadataHeader
             songName={song.songName}

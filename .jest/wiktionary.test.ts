@@ -348,6 +348,43 @@ describe('a word with several etymologies', () => {
   });
 });
 
+describe('a verb with many senses next to a form of an adjective', () => {
+  const a = (w: string) => `<a rel="mw:WikiLink" href="/wiki/${w}" title="${w}">${w}</a>`;
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('keeps reichen\'s suffice and enough (real response)', async () => {
+    const pages: Record<string, unknown> = {
+      reichen: {
+        de: [
+          section('German', 'Verb', [
+            `to ${a('reach')} (extend a certain distance)`,
+            `to ${a('pass')}, to ${a('hand')}, to ${a('serve')}, to put within reach`,
+            `to ${a('suffice')}, to be ${a('enough')}, to ${a('do')} (for a certain purpose)`,
+          ]),
+          section('German', 'Adjective', [
+            '<span class="form-of-definition use-with-mention">inflection of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a rel="mw:WikiLink" href="/wiki/reich#German" title="reich">reich</a></i></span>:</span><ol><li><span class="form-of-definition use-with-mention">strong dative plural</span></li></ol>',
+          ]),
+        ],
+      },
+      reich: {
+        de: [
+          section('German', 'Adjective', [a('rich'), a('wealthy'), 'abundant', 'plentiful', 'copious']),
+          section('German', 'Noun', ['empire', 'realm', 'kingdom']),
+        ],
+      },
+    };
+    globalThis.fetch = jest.fn(async (url: string) => {
+      const page = pages[decodeURIComponent(url.split('/').pop() ?? '')];
+      return { ok: !!page, status: page ? 200 : 404, json: async () => page };
+    }) as unknown as typeof fetch;
+    const texts = (await getWiktionaryDefinitions('reichen', 'German'))?.map((d) => d.text) ?? [];
+    expect(texts).toEqual(expect.arrayContaining(['to suffice', 'to be enough', 'to do', 'rich', 'wealthy']));
+  });
+});
+
 describe('soundAlikeForms', () => {
   it('drops a French silent ending', () => {
     expect(soundAlikeForms('rires', 'French')).toEqual(['rire']);

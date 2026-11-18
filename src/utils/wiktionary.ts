@@ -66,7 +66,9 @@ export function getWiktionaryLanguage(language: string): string {
 }
 
 const DEFINITION_API_URL = 'https://en.wiktionary.org/api/rest_v1/page/definition/';
-const MAX_DEFINITIONS = 8;
+// Room for every sense of a verb like reichen (reach, pass, hand, serve, suffice, ...) next to its other etymologies'
+const MAX_DEFINITIONS = 12;
+const MAX_LEMMA_SUGGESTIONS = 4;
 // Base forms to look up for an inflected word, e.g. both verbs a participle could come from
 const MAX_LEMMAS = 2;
 // Forms of forms, e.g. the feminine vidée of the participle vidé of vider
@@ -321,7 +323,9 @@ async function getDefinitionsForTitle(title: string, language: string, depth: nu
   const sources: WiktionaryDefinition[][] = [entry.glosses];
   if (depth < MAX_LEMMA_DEPTH) {
     for (const lemma of entry.lemmasWithoutGloss.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
-      sources.push(await getDefinitionsForTitle(lemma, language, depth + 1));
+      // A base form is secondary to the page's own senses, so it can't crowd them out, e.g. reichen's
+      // "suffice" and "be enough" next to the adjective reich's many meanings
+      sources.push((await getDefinitionsForTitle(lemma, language, depth + 1)).slice(0, MAX_LEMMA_SUGGESTIONS));
     }
   }
   const suggestions = mergeSuggestions(sources.filter((list) => list.length > 0));

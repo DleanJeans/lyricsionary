@@ -22,6 +22,31 @@ function ControlButton({ icon, label, onPress, disabled }: { icon: keyof typeof 
   );
 }
 
+function LabeledButton({ icon, label, onPress, disabled }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <TouchableOpacity style={[styles.labeled, disabled && styles.controlDisabled]} onPress={onPress} disabled={disabled} hitSlop={6} accessibilityRole="button" accessibilityLabel={label}>
+      <Ionicons name={icon} size={20} color={Colors.text} />
+      <Text style={styles.caption}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function TogglePill({ icon, label, on, onPress, accent }: { icon: keyof typeof Ionicons.glyphMap; label: string; on?: boolean; onPress: () => void; accent?: boolean }) {
+  return (
+    <TouchableOpacity
+      style={[styles.pill, on && styles.pillOn, accent && styles.pillAccent]}
+      onPress={onPress}
+      hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={on === undefined ? undefined : { selected: on }}
+    >
+      <Ionicons name={icon} size={14} color={on ? '#000' : Colors.text} />
+      <Text style={[styles.pillText, on && { color: '#000' }]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 /** Spotify controls above the lyrics in Learn: play the song, then replay, step and play by line */
 export default function SpotifyBar({
   sync,
@@ -68,7 +93,7 @@ export default function SpotifyBar({
           : null);
   return (
     <View style={styles.container}>
-      <Ionicons name="musical-note" size={16} color={SPOTIFY_GREEN} />
+      {!(sync.timings === 'ready' && sync.isThisSong) && <Ionicons name="musical-note" size={16} color={SPOTIFY_GREEN} />}
       {status ? (
         <Text style={styles.status} numberOfLines={1}>
           {status}
@@ -111,45 +136,44 @@ export default function SpotifyBar({
           <Ionicons name="close" size={16} color={Colors.textMuted} />
         </TouchableOpacity>
       )}
-      {sync.timings === 'ready' && (
-        <View style={[styles.controls, !status && styles.controlsFull]}>
-          {canPlaySelected && (
+      {sync.timings === 'ready' && sync.isThisSong && (
+        <View style={styles.full}>
+          <View style={styles.headRow}>
+            <Ionicons name="musical-note" size={14} color={SPOTIFY_GREEN} />
+            <Text style={[styles.headText, { flex: 1 }]} numberOfLines={1}>
+              {sync.currentLine !== null ? `Line ${sync.currentLine + 1} of ${sync.times.length}` : 'Between lines'}
+            </Text>
+            <Text style={styles.headState}>{looping ? `Looping ×${sync.loopCount}` : sync.isPlaying ? 'Playing' : 'Paused'}</Text>
+          </View>
+          <View style={styles.track}>
+            <View style={[styles.trackFill, { width: `${Math.round(sync.lineProgress * 100)}%` }]} />
+          </View>
+          <View style={styles.transport}>
+            <LabeledButton icon="play-skip-back" label="Prev line" onPress={() => void sync.stepLine(-1)} />
+            <LabeledButton icon="refresh" label="Restart line" onPress={() => void sync.replayLine()} disabled={sync.currentLine === null} />
             <TouchableOpacity
-              style={styles.fromLine}
-              onPress={() => void sync.seekToLine(selectedLineIndex!)}
+              style={styles.big}
+              onPress={() => void sync.togglePlay()}
               accessibilityRole="button"
-              accessibilityLabel="Play from the selected line"
+              accessibilityLabel={sync.isPlaying ? 'Pause' : 'Play'}
             >
-              <Ionicons name="play" size={14} color={Colors.white} />
-              <Text style={styles.fromLineText}>Line</Text>
+              <Ionicons name={sync.isPlaying ? 'pause' : 'play'} size={24} color="#000" />
             </TouchableOpacity>
-          )}
-          {canPlaySelected && onDictation && (
-            <ControlButton icon="create-outline" label="Write the line from listening" onPress={() => onDictation(selectedLineIndex!)} />
-          )}
-          {(looping || lineToLoop !== null) && (
-            <TouchableOpacity
-              style={[styles.loop, looping && styles.loopOn]}
-              onPress={() => sync.toggleLoop(lineToLoop)}
-              hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel={looping ? 'Stop looping the line' : 'Loop the line'}
-            >
-              <Ionicons name="repeat" size={18} color={looping ? Colors.white : Colors.text} />
-              {looping && sync.loopCount > 0 && <Text style={styles.loopCount}>{sync.loopCount}</Text>}
-            </TouchableOpacity>
-          )}
-          {sync.isThisSong && (
-            <>
-              <ControlButton icon="play-skip-back" label="Previous line" onPress={() => void sync.stepLine(-1)} />
-              <ControlButton icon="refresh" label="Replay the line" onPress={() => void sync.replayLine()} disabled={sync.currentLine === null} />
-              <ControlButton icon={sync.isPlaying ? 'pause' : 'play'} label={sync.isPlaying ? 'Pause' : 'Play'} onPress={() => void sync.togglePlay()} />
-              <ControlButton icon="play-skip-forward" label="Next line" onPress={() => void sync.stepLine(1)} />
-              <TouchableOpacity onPress={onToggleFollow} hitSlop={6} accessibilityRole="button" accessibilityLabel={follow ? 'Stop following the song' : 'Follow the song'}>
-                <Ionicons name={follow ? 'locate' : 'locate-outline'} size={20} color={follow ? SPOTIFY_GREEN : Colors.textSecondary} />
-              </TouchableOpacity>
-            </>
-          )}
+            <LabeledButton icon="play-skip-forward" label="Next line" onPress={() => void sync.stepLine(1)} />
+          </View>
+          <View style={styles.toggles}>
+            {(looping || lineToLoop !== null) && (
+              <TogglePill
+                icon="repeat"
+                label={looping && sync.loopCount > 0 ? `Loop line · ${sync.loopCount}` : 'Loop line'}
+                on={looping}
+                onPress={() => sync.toggleLoop(lineToLoop)}
+              />
+            )}
+            <TogglePill icon={follow ? 'locate' : 'locate-outline'} label="Auto-scroll" on={follow} onPress={onToggleFollow} />
+            {canPlaySelected && <TogglePill icon="play" label="Play line" onPress={() => void sync.seekToLine(selectedLineIndex!)} accent />}
+            {canPlaySelected && onDictation && <TogglePill icon="create-outline" label="Dictate" onPress={() => onDictation(selectedLineIndex!)} accent />}
+          </View>
         </View>
       )}
     </View>
@@ -190,6 +214,21 @@ const styles = StyleSheet.create({
   control: {
     padding: 2,
   },
+  full: { flex: 1, gap: 10, paddingVertical: 4 },
+  headRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headText: { fontSize: 12, fontWeight: '700', color: Colors.text },
+  headState: { fontSize: 12, color: Colors.textSecondary },
+  track: { height: 4, borderRadius: 2, backgroundColor: Colors.surfaceLight, overflow: 'hidden' },
+  trackFill: { height: 4, backgroundColor: SPOTIFY_GREEN },
+  transport: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 22 },
+  labeled: { alignItems: 'center', gap: 2, minWidth: 56 },
+  caption: { fontSize: 10, color: Colors.textSecondary },
+  big: { width: 44, height: 44, borderRadius: 22, backgroundColor: SPOTIFY_GREEN, alignItems: 'center', justifyContent: 'center' },
+  toggles: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: Colors.border },
+  pillOn: { backgroundColor: SPOTIFY_GREEN, borderColor: SPOTIFY_GREEN },
+  pillAccent: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  pillText: { fontSize: 12, fontWeight: '700', color: Colors.text },
   controlDisabled: {
     opacity: 0.4,
   },

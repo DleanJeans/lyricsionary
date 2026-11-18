@@ -32,6 +32,8 @@ export interface SpotifyLyricsSync {
   /** When each line starts, null for lines without a time */
   times: (number | null)[];
   currentLine: number | null;
+  /** How far through the current line the song is, 0 to 1 */
+  lineProgress: number;
   error: string | null;
   clearError: () => void;
   seekToLine: (lineIndex: number) => Promise<void>;
@@ -114,6 +116,9 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
 
   const progress = playback ? playback.progressMs + (playback.isPlaying ? Math.max(0, now - playback.readAt) : 0) : 0;
   const currentLine = isThisSong && times.length ? lineAtTime(times, progress) : null;
+  const lineStart = currentLine !== null ? times[currentLine] : null;
+  const lineEnd = currentLine !== null ? lineEndTime(times, currentLine, playback?.durationMs) : null;
+  const lineProgress = lineStart != null && lineEnd !== null && lineEnd > lineStart ? Math.min(1, Math.max(0, (progress - lineStart) / (lineEnd - lineStart))) : 0;
 
   // Looping a line: back to its start whenever it ends, so it can be sung along to
   const [loopLine, setLoopLine] = useState<number | null>(null);
@@ -237,6 +242,7 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
     timings: lrc === undefined ? 'loading' : lrc && times.some((t) => t !== null) ? 'ready' : 'none',
     times,
     currentLine,
+    lineProgress,
     error,
     clearError: () => setError(null),
     seekToLine,

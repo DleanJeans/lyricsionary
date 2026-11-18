@@ -621,7 +621,7 @@ export default function EditorScreen() {
     startTranslation(originalLyrics);
   }, [autoFetch?.step, originalLyrics]);
 
-  const tabNames = translationNames(translations);
+  const tabNames = translationNames(translations.map((t, i) => ({ ...t, sourceUrl: pendingSourceUrls[i + 1] ?? t.sourceUrl })));
   const [renameTab, setRenameTab] = useState<number | null>(null);
   const [renameText, setRenameText] = useState('');
   const saveRename = () => {

@@ -1,0 +1,26 @@
+name: iOS feasibility
+
+on:
+  push:
+    branches: [claude/project-thread-wv2m6l]
+
+jobs:
+  ios-sim-build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: CI=1 npx expo prebuild --platform ios --clean
+      - run: cd ios && pod install
+      - name: Build for simulator
+        run: |
+          cd ios
+          ws=$(ls -d *.xcworkspace | head -1); scheme="${ws%.xcworkspace}"
+          xcodebuild -workspace "$ws" -scheme "$scheme" -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -n 200
+          exit ${PIPESTATUS[0]}

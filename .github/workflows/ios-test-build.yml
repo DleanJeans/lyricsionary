@@ -1,0 +1,39 @@
+name: iOS test build
+
+# Feasibility check: builds an unsigned iOS simulator app on a GitHub macOS runner.
+# Needs no Apple Developer account. Run it from the Actions tab.
+on:
+  workflow_dispatch:
+
+jobs:
+  ios-simulator:
+    name: Build iOS simulator app
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: DleanJeans/expo-workflows/.github/actions/pnpm-expo@main
+        with:
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build simulator app
+        run: eas build --platform ios --profile ios-simulator --local --non-interactive --output ./lyricsionary-ios-simulator.tar.gz
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: lyricsionary-ios-simulator
+          path: ./lyricsionary-ios-simulator.tar.gz
+
+      - name: Notify
+        if: ${{ always() }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          OK: ${{ job.status == 'success' }}
+        run: |
+          [[ -z "$NTFY_TOPIC" ]] && exit 0
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [[ "$OK" == "true" ]]; then title="lyricsionary: iOS simulator build ready"; else title="lyricsionary: iOS simulator build FAILED"; fi
+          curl -fsS -H "Title: $title" -H "Click: $run_url" -d "iOS test build" "https://ntfy.sh/$NTFY_TOPIC" || true

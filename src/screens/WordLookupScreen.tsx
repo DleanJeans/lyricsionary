@@ -20,7 +20,7 @@ import PullUpSheet from '../components/PullUpSheet';
 import LanguageSelect from '../components/LanguageSelect';
 import { Text, TextInput } from '../components/Text';
 import { WebView } from '../components/WebView';
-import { getWiktionaryDefinitions, getWiktionaryLanguage, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
+import { getChineseSeeTarget, getWiktionaryDefinitions, getWiktionaryLanguage, hasWiktionaryEntry, type WiktionaryDefinition } from '../utils/wiktionary';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { findPartOfSpeech } from '../utils/partOfSpeech';
 import WordTransformButtons from '../components/WordTransformButtons';
@@ -432,6 +432,17 @@ export default function WordLookupScreen() {
               }
               return;
             }
+          }
+        }
+        // A simplified Chinese word's page only points to its traditional form (财 -> 財), so open that page
+        if (exists) {
+          const traditional = await getChineseSeeTarget(displayWord, languageRef.current);
+          if (traditional && traditional !== displayWord && (await hasWiktionaryEntry(traditional))) {
+            if (!cancelled) {
+              setWiktionaryRedirect({ from: displayWord, to: traditional });
+              setLookupSource('wiktionary');
+            }
+            return;
           }
         }
         if (cancelled) return;

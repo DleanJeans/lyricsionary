@@ -1,4 +1,4 @@
-import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, affixIpaFromWord, endingIpa, stemIpa, parseEtymologyParts, parseIpa } from '../src/utils/wiktionary';
+import { getLanguageSection, getWiktionaryPronunciation, joinIpa, parseAudio, affixIpaFromWord, endingIpa, stemIpa, parseEtymologyParts, parseIpa, parseChineseSeeTarget } from '../src/utils/wiktionary';
 import amour from './fixtures/wiktionary/parse-amour.json';
 import corazon from './fixtures/wiktionary/parse-corazón.json';
 import immer from './fixtures/wiktionary/parse-immer.json';
@@ -325,5 +325,29 @@ describe('getWiktionaryPronunciation through an affix’s etymology', () => {
       audio: [],
       derivedFrom: ['scheiß-', 'kalt'],
     });
+  });
+});
+
+describe('parseChineseSeeTarget', () => {
+  const box = (body: string) =>
+    `<div class="mw-heading mw-heading2"><h2 id="Chinese">Chinese</h2></div>${body}`;
+
+  it('follows the box of a simplified character to its traditional form', () => {
+    const html = box(
+      '<div class="NavFrame"><div class="NavHead">For pronunciation and definitions of <span class="Hani">财</span> – see ' +
+        '<span class="Hani"><a href="/wiki/%E8%B2%A1" title="財">財</a></span> (“<a href="/wiki/wealth">wealth</a>”).</div>' +
+        '<div class="NavContent">(<i>This character is the simplified form of <a href="/wiki/%E8%B2%A1" title="財">財</a></i>).</div></div>',
+    );
+    expect(parseChineseSeeTarget(html)).toBe('財');
+  });
+
+  it('follows a simplified compound', () => {
+    const html = box('<p>For pronunciation and definitions of 开始 &#8211; see <a title="開始" href="/wiki/x">開始</a>.</p>');
+    expect(parseChineseSeeTarget(html)).toBe('開始');
+  });
+
+  it('leaves pages with their own definitions alone', () => {
+    expect(parseChineseSeeTarget(box('<ol><li>wealth</li></ol>'))).toBeUndefined();
+    expect(parseChineseSeeTarget('<div class="mw-heading mw-heading2"><h2 id="German">German</h2></div>see <a title="x">x</a>')).toBeUndefined();
   });
 });

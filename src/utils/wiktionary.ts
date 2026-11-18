@@ -58,6 +58,9 @@ const WIKTIONARY_LANGUAGES: Record<string, string> = {
   croatian: 'Serbo-Croatian',
   bosnian: 'Serbo-Croatian',
   norwegian: 'Norwegian Bokmål',
+  // Cantonese and Mandarin words are in the Chinese section too
+  cantonese: 'Chinese',
+  mandarin: 'Chinese',
 };
 
 /** The name of a language's section on Wiktionary, e.g. "Serbo-Croatian" for Croatian */
@@ -320,6 +323,11 @@ function fetchDefinitionResponse(title: string): Promise<unknown> {
  */
 async function getDefinitionsForTitle(title: string, language: string, depth: number): Promise<WiktionaryDefinition[]> {
   const entry = parseEntry(await fetchDefinitionResponse(title), language);
+  // A simplified Chinese word's page only points to its traditional form, e.g. 财 -> 財
+  if (depth < MAX_LEMMA_DEPTH && isChinese(language) && !entry.glosses.length && !entry.definitions.length && !entry.lemmas.length) {
+    const target = await getChineseSeeTarget(title, language);
+    if (target && target !== title) return getDefinitionsForTitle(target, language, depth + 1);
+  }
   const lemmaLists: WiktionaryDefinition[][] = [];
   if (depth < MAX_LEMMA_DEPTH) {
     for (const lemma of entry.lemmasWithoutGloss.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
@@ -445,6 +453,11 @@ async function fetchWiktionaryDefinitions(word: string, language: string): Promi
       const definitions = await getDefinitionsForTitle(title, language, 0);
       if (definitions.length > 0) return definitions;
     }
+    // A Chinese word with no page of its own, e.g. a compound of simplified characters, means what its traditional spelling does
+    for (const title of await chineseTraditionalSpellings(word, language)) {
+      const definitions = await getDefinitionsForTitle(title, language, 1);
+      if (definitions.length > 0) return definitions;
+    }
     // A German ge- past participle without a page of its own means what its verb does, e.g. gewartet
     const lemma = await findGermanParticipleLemma(word, language);
     if (lemma) return getDefinitionsForTitle(lemma, language, 1);
@@ -458,6 +471,60 @@ async function fetchWiktionaryDefinitions(word: string, language: string): Promi
     console.warn(`Wiktionary definitions failed for "${word}":`, error);
     return null;
   }
+}
+
+function isChinese(language: string): boolean {
+  return getWiktionaryLanguage(language) === 'Chinese';
+}
+
+/**
+ * The page a simplified Chinese entry sends readers to, from its Chinese section's box "For
+ * pronunciation and definitions of 财 – see 財 (“wealth”). (This character is the simplified form of 財)".
+ */
+export function parseChineseSeeTarget(html: string): string | undefined {
+  const section = getLanguageSection(html, 'Chinese');
+  if (!section) return undefined;
+  const titleOf = (anchors: string) => {
+    for (const [, attributes] of anchors.matchAll(/<a\b([^>]*)>/gi)) {
+      const title = attributes.match(/\btitle="([^"]+)"/)?.[1];
+      if (title && !/^(Appendix|Wiktionary|Category|Special|Template):/.test(title)) {
+        return stripDefinitionHtml(title).replace(/\s*\(page does not exist\)$/, '') || undefined;
+      }
+    }
+    return undefined;
+  };
+  const dash = '(?:–|—|-|&#8211;|&#8212;|&ndash;|&mdash;)';
+  const see = section.match(new RegExp(`definitions\\s+of\\b[\\s\\S]{0,800}?${dash}\\s*see\\b([\\s\\S]{0,800})`, 'i'));
+  if (see) {
+    const target = titleOf(see[1]);
+    if (target) return target;
+  }
+  const simplified = section.match(/(?:simplified|traditional)\s+form\s+of\b([\s\S]{0,400})/i);
+  return simplified ? titleOf(simplified[1]) : undefined;
+}
+
+/** The traditional page a simplified Chinese word's page points to, or undefined when it has its own entry */
+export async function getChineseSeeTarget(word: string, language: string): Promise<string | undefined> {
+  if (!isChinese(language)) return undefined;
+  try {
+    const html = await fetchPageHtml(word);
+    return html ? parseChineseSeeTarget(html) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Traditional spellings to try for a Chinese word with no page, each character swapped for the
+ * one its own page points to, e.g. 财富 -> 財富
+ */
+async function chineseTraditionalSpellings(word: string, language: string): Promise<string[]> {
+  const chars = [...word];
+  if (!isChinese(language) || chars.length < 2) return [];
+  const mapped = await Promise.all(chars.map(async (char) => (await getChineseSeeTarget(char, language)) ?? char));
+  // Only single characters count, a character can point to several
+  const spelling = mapped.every((m) => [...m].length === 1) ? mapped.join('') : '';
+  return spelling && spelling !== word ? [spelling] : [];
 }
 
 const PARSE_API_URL =
@@ -1070,6 +1137,14 @@ export async function getWiktionaryPronunciation(word: string, language: string,
   const pronunciation = found?.pronunciation ?? { ipa: [], audio: [] };
   const section = found && getLanguageSection(found.html, language);
   if (pronunciation.ipa.length > 0) return pronunciation;
+  // A simplified Chinese word's page sends readers to the traditional one for its pronunciation, e.g. 财 -> 財
+  if (found && followed < 2 && isChinese(language)) {
+    const target = parseChineseSeeTarget(found.html);
+    if (target && target !== word) {
+      const traditional = await getWiktionaryPronunciation(target, language, followed + 1);
+      if (traditional) return traditional;
+    }
+  }
   try {
     // A ge- past participle, e.g. gewartet from warten, aufgehört from aufhören, with or without a page
     const participle = await getParticipleIpa(word, section, language);

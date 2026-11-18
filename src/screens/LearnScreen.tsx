@@ -1757,6 +1757,8 @@ export default function LearnScreen() {
   const definitionsOf = (entry: WordEntry, line: string, occurrence?: number): string[] =>
     withWordForms(
       [
+        // The meaning shown above the word, e.g. "too" when auch is saved as "even"
+        selectedLineIndex !== null ? fittingMeaning(entry, findWordContext(entry, line, occurrence) ?? null, selectedLineIndex) : null,
         findWordContext(entry, line, occurrence)?.definition,
         ...(entry.definitions ?? []).map((d) => d.text),
       ].filter((d): d is string => !!d?.trim())

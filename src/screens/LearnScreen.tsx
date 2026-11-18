@@ -450,6 +450,8 @@ export default function LearnScreen() {
   // Spotify: follows the song while it plays, highlighting and scrolling to its line, and seeks by line
   const spotifyConnected = useStore((s) => s.spotifyConnected);
   const wideWordSpacing = useStore((s) => s.wideWordSpacing);
+  const annotationGap = useStore((s) => s.annotationGap);
+  const cycleAnnotationGap = useStore((s) => s.cycleAnnotationGap);
   const highlightNewWords = useStore((s) => s.highlightNewWords);
   const toggleHighlightNewWords = useStore((s) => s.toggleHighlightNewWords);
   const quietKnownWords = useStore((s) => s.quietKnownWords);
@@ -1003,7 +1005,7 @@ export default function LearnScreen() {
                     </Text>
                   )}
                   {(!!meaningText || !!displayContent) && (
-                    <View style={styles.annotationStack}>
+                    <View style={[styles.annotationStack, { paddingHorizontal: annotationGap }]}>
                       {!!meaningText && (
                         <Text style={styles.wordAnnotation}>
                           {meaningText}
@@ -1247,7 +1249,7 @@ export default function LearnScreen() {
                     </Text>
                   )}
                   {(!!meaningText || !!displayContent) && (
-                    <View style={styles.annotationStack}>
+                    <View style={[styles.annotationStack, { paddingHorizontal: annotationGap }]}>
                       {!!meaningText && (
                         <Text style={styles.wordAnnotation}>
                           {meaningText}
@@ -1336,7 +1338,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked, lines]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, annotationGap, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked, lines]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -2348,6 +2350,8 @@ export default function LearnScreen() {
           reverseLyrics={reverseLyrics}
           onToggleReverseLyrics={toggleReverseLyrics}
           wideWordSpacing={wideWordSpacing}
+          annotationGap={annotationGap}
+          onCycleAnnotationGap={cycleAnnotationGap}
           onToggleWideWordSpacing={toggleWideWordSpacing}
           highlightNewWords={highlightNewWords}
           onToggleHighlightNewWords={toggleHighlightNewWords}
@@ -2631,8 +2635,6 @@ const styles = StyleSheet.create({
   },
   annotationStack: {
     alignItems: 'center',
-    // A little room each side, so a meaning wider than its word doesn't touch the next word's
-    paddingHorizontal: 3,
   },
   wordAnnotation: {
     fontSize: 10,

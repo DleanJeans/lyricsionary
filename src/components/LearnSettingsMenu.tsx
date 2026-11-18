@@ -28,6 +28,8 @@ interface LearnSettingsMenuProps {
   reverseLyrics: boolean;
   onToggleReverseLyrics: () => void;
   wideWordSpacing: boolean;
+  annotationGap: number;
+  onCycleAnnotationGap: () => void;
   onToggleWideWordSpacing: () => void;
   highlightNewWords: boolean;
   onToggleHighlightNewWords: () => void;
@@ -155,6 +157,8 @@ export default function LearnSettingsMenu({
   reverseLyrics,
   onToggleReverseLyrics,
   wideWordSpacing,
+  annotationGap,
+  onCycleAnnotationGap,
   onToggleWideWordSpacing,
   highlightNewWords,
   onToggleHighlightNewWords,
@@ -309,6 +313,13 @@ export default function LearnSettingsMenu({
                 icon={<Ionicons name="resize-outline" size={18} color={chipIconColor(wideWordSpacing)} />}
                 selected={wideWordSpacing}
                 onPress={onToggleWideWordSpacing}
+              />
+              {/* Room each side of the meaning and IPA above a word, so neighbors don't run together */}
+              <Chip
+                label={`Label gap ${annotationGap}`}
+                icon={<Ionicons name="swap-horizontal-outline" size={18} color={chipIconColor(annotationGap > 0)} />}
+                selected={annotationGap > 0}
+                onPress={onCycleAnnotationGap}
               />
               {/* Saved words dimmed and new ones bright, to see what's left to learn */}
               <Chip

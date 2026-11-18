@@ -50,7 +50,7 @@ export function makeIgnoredWordChecker(ignoredWords: IgnoredWord[]): (word: stri
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
 // current song's selected translation languages.
-const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showMeaning', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine', 'autoPlayAudio'] as const;
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showMeaning', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'annotationGap', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine', 'autoPlayAudio'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -83,6 +83,8 @@ interface AppState {
   reverseLyrics: boolean;
   /** More room between Learn's words, for easier tapping on a phone */
   wideWordSpacing: boolean;
+  /** Space in px on each side of the meaning, IPA and emoji above a word, so neighbors don't touch */
+  annotationGap: number;
   /** Learn dims saved words and shows the new ones bright, instead of level colors */
   highlightNewWords: boolean;
   /** Known words drop their IPA and emoji, which they no longer need */
@@ -129,6 +131,7 @@ interface AppState {
   setShowMeaning: (show: boolean) => void;
   toggleShowSections: () => void;
   toggleReverseLyrics: () => void;
+  cycleAnnotationGap: () => void;
   toggleWideWordSpacing: () => void;
   toggleHighlightNewWords: () => void;
   toggleQuietKnownWords: () => void;
@@ -223,6 +226,7 @@ export const useStore = create<AppState>((set, get) => ({
   showSections: true,
   reverseLyrics: false,
   wideWordSpacing: false,
+  annotationGap: 1.5,
   highlightNewWords: false,
   quietKnownWords: true,
   autoLineByLine: true,
@@ -356,6 +360,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   toggleReverseLyrics: () => setLearnSettings({ reverseLyrics: !get().reverseLyrics }),
 
+  cycleAnnotationGap: () => {
+    const steps = [0, 1.5, 3, 6];
+    const i = steps.indexOf(get().annotationGap);
+    setLearnSettings({ annotationGap: steps[(i + 1) % steps.length] });
+  },
   toggleWideWordSpacing: () => setLearnSettings({ wideWordSpacing: !get().wideWordSpacing }),
   toggleHighlightNewWords: () => setLearnSettings({ highlightNewWords: !get().highlightNewWords }),
   toggleQuietKnownWords: () => setLearnSettings({ quietKnownWords: !get().quietKnownWords }),

@@ -7,7 +7,7 @@ import { replaceEmDashes } from '../utils/deeplTranslation';
 import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordContext, WordEntry } from '../types';
 import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
-import { ActivityLog, addActivity, DayActivity } from '../utils/activity';
+import { ActivityLog, addActivity, DayActivity, moveField } from '../utils/activity';
 import { findSavedWord, lowercaseEntry, mergeWordEntries, splitForm } from '../utils/wordForms';
 import { isSameLanguage } from '../constants/languages';
 import { addWordEvent, levelChangeEvent } from '../utils/wordHistory';
@@ -508,7 +508,8 @@ export const useStore = create<AppState>((set, get) => ({
     const history = addWordEvent(before.history, { at: now, kind, correct, ...(changed ? { level: after.masteryLevel } : {}) });
     await get().updateWordEntry(id, { ...after, history });
     const levelUp = MASTERY_LEVELS.indexOf(after.masteryLevel) > MASTERY_LEVELS.indexOf(before.masteryLevel ?? 'Seen');
-    await get().recordActivity(levelUp ? { answers: 1, levelUps: 1 } : { answers: 1 });
+    const field = levelUp ? moveField(after.masteryLevel) : null;
+    await get().recordActivity(levelUp ? { answers: 1, levelUps: 1, ...(field ? { [field]: 1 } : {}) } : { answers: 1 });
     return before;
   },
 

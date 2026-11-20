@@ -1,3 +1,4 @@
+import type { MasteryLevel } from '../types';
 import { localDay } from './wordQuiz';
 
 /** What happened on a day, for the sidebar's progress card */
@@ -10,6 +11,10 @@ export interface DayActivity {
   levelUps?: number;
   /** Songs opened in Learn */
   opened?: number;
+  /** Words a quiz moved up to each level */
+  toRecognized?: number;
+  toRecalled?: number;
+  toKnown?: number;
 }
 
 /** Activity by local day, e.g. "2026-10-31" */
@@ -53,7 +58,7 @@ export function dayStreak(log: ActivityLog, now: number): number {
 
 /** Totals over the last 7 days, today included */
 export function weekTotals(log: ActivityLog, now: number): Required<DayActivity> {
-  const totals = { saved: 0, answers: 0, levelUps: 0, opened: 0 };
+  const totals = { saved: 0, answers: 0, levelUps: 0, opened: 0, toRecognized: 0, toRecalled: 0, toKnown: 0 };
   const noon = new Date(now);
   noon.setHours(12, 0, 0, 0);
   for (let i = 0; i < 7; i++) {
@@ -63,6 +68,9 @@ export function weekTotals(log: ActivityLog, now: number): Required<DayActivity>
     totals.answers += activity.answers ?? 0;
     totals.levelUps += activity.levelUps ?? 0;
     totals.opened += activity.opened ?? 0;
+    totals.toRecognized += activity.toRecognized ?? 0;
+    totals.toRecalled += activity.toRecalled ?? 0;
+    totals.toKnown += activity.toKnown ?? 0;
   }
   return totals;
 }
@@ -85,3 +93,7 @@ export function weekDays(log: ActivityLog, now: number): { day: string; label: s
     return { day, label: 'SMTWTFS'[new Date(time).getDay()], answers: log[day]?.answers ?? 0 };
   });
 }
+
+/** The activity field that counts words moved up to a level; Seen is counted by saved words */
+export const moveField = (level: MasteryLevel): 'toRecognized' | 'toRecalled' | 'toKnown' | null =>
+  level === 'Recognized' ? 'toRecognized' : level === 'Recalled' ? 'toRecalled' : level === 'Known' ? 'toKnown' : null;

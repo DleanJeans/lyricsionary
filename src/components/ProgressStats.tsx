@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Platform, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
-import { Colors } from '../constants/theme';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
+import { MASTERY_LEVELS, type MasteryLevel } from '../types';
 import { useStore } from '../store/useStore';
 import { allowReviewReminders } from '../services/reviewReminder';
 import { answersToday, DAILY_GOALS, dayStreak, nextDailyGoal, weekDays, weekTotals } from '../utils/activity';
@@ -53,6 +54,38 @@ function DailyGoal({ answers }: { answers: number }) {
   );
 }
 
+/** All saved words as one bar split by level, each level with its count and how many moved into it this week */
+function LevelBar({ counts, moved }: { counts: Record<MasteryLevel, number>; moved: Record<MasteryLevel, number> }) {
+  const total = MASTERY_LEVELS.reduce((sum, level) => sum + counts[level], 0);
+  if (!total) return null;
+  return (
+    <View
+      style={styles.levels}
+      accessible
+      accessibilityLabel={`${total} words: ${MASTERY_LEVELS.map((l) => `${counts[l]} ${l}, ${moved[l]} more this week`).join('; ')}`}
+    >
+      <View style={styles.levelsHeader}>
+        <Ionicons name="stats-chart" size={16} color={Colors.textSecondary} />
+        <Text style={styles.goalText}>{total} words, how they're moving</Text>
+      </View>
+      <View style={styles.levelBar}>
+        {MASTERY_LEVELS.filter((l) => counts[l] > 0).map((l) => (
+          <View key={l} style={{ flex: counts[l], backgroundColor: getMasteryLevelColor(l) }} />
+        ))}
+      </View>
+      <View style={styles.levelLegend}>
+        {MASTERY_LEVELS.map((l) => (
+          <View key={l} style={styles.levelItem}>
+            <Text style={styles.levelCount}>{counts[l]}</Text>
+            <Text style={styles.levelName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{l}</Text>
+            <Text style={[styles.levelMoved, !moved[l] && styles.levelMovedNone]}>{moved[l] ? `+${moved[l]} this week` : '-'}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const CHART_HEIGHT = 36;
 
 /** Quiz answers on each of the last 7 days, as bars, today last */
@@ -94,6 +127,13 @@ export default function ProgressStats() {
   const now = Date.now();
   const streak = dayStreak(activity, now);
   const week = weekTotals(activity, now);
+  const words = useStore((s) => s.words);
+  const counts = React.useMemo(() => {
+    const c: Record<MasteryLevel, number> = { Seen: 0, Recognized: 0, Recalled: 0, Known: 0 };
+    for (const w of words) c[w.masteryLevel ?? 'Seen']++;
+    return c;
+  }, [words]);
+  const moved: Record<MasteryLevel, number> = { Seen: week.saved, Recognized: week.toRecognized, Recalled: week.toRecalled, Known: week.toKnown };
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Your progress</Text>
@@ -102,6 +142,7 @@ export default function ProgressStats() {
         <Stat icon="bookmark" color={Colors.primaryLight} value={week.saved} label={'words saved\nthis week'} />
         <Stat icon="trending-up" color={Colors.success} value={week.levelUps} label="level ups this week" />
       </View>
+      <LevelBar counts={counts} moved={moved} />
       <DailyGoal answers={answersToday(activity, now)} />
       {week.answers > 0 && <WeekChart days={weekDays(activity, now)} />}
       {week.answers > 0 && (
@@ -206,6 +247,48 @@ const styles = StyleSheet.create({
   },
   goalFillDone: {
     backgroundColor: Colors.success,
+  },
+  levels: {
+    gap: 8,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surfaceLight,
+  },
+  levelsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  levelBar: {
+    flexDirection: 'row',
+    height: 12,
+    borderRadius: 6,
+    overflow: 'hidden',
+    gap: 2,
+  },
+  levelLegend: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  levelItem: {
+    flex: 1,
+    gap: 1,
+  },
+  levelCount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  levelName: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+  },
+  levelMoved: {
+    fontSize: 11,
+    color: Colors.success,
+  },
+  levelMovedNone: {
+    color: Colors.textMuted,
   },
   chart: {
     flexDirection: 'row',

@@ -6,6 +6,7 @@ import { listenForWord } from '../services/speechRecognition';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
+import { moveField } from '../utils/activity';
 import { checkTypedAnswer, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
 import { getFlagForLanguage } from '../constants/languages';
@@ -150,7 +151,8 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     setUndone(true);
     void updateWordEntry(entry.id, { masteryLevel: before.masteryLevel, quiz: before.quiz, history: before.history });
     // Undo is only offered for a level up
-    void recordActivity({ levelUps: -1 });
+    const field = moveField(current.masteryLevel ?? 'Seen');
+    void recordActivity({ levelUps: -1, ...(field ? { [field]: -1 } : {}) });
   };
 
 

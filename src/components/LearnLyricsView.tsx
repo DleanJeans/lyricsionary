@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   },
   lyricsContent: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 4,
     paddingBottom: 40,
   },
   foundLine: {

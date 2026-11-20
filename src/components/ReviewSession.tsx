@@ -3,7 +3,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
-import { pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
+import { MORE_REVIEW_SIZE, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
 import { formatIpa } from '../utils/ipaDisplay';
 import { contextTranslation } from '../utils/wordOfTheDay';
@@ -38,6 +38,17 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
   const [session, setSession] = useState<ReviewItem[] | null>(() =>
     dueItems.length <= REVIEW_SIZES[0] ? pickReviewItems(dueItems, dueItems.length) : null
   );
+  // Words from earlier sessions of this review, which "more" skips
+  const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
+  const remaining = dueItems.filter((d) => !doneIds.has(d.entry.id) && !session?.some((s) => s.entry.id === d.entry.id));
+  const startMore = () => {
+    const next = pickReviewItems(remaining, MORE_REVIEW_SIZE);
+    setDoneIds((prev) => new Set([...prev, ...(session ?? []).map((s) => s.entry.id)]));
+    setSession(next);
+    setRetries([]);
+    setIndex(0);
+    setAnswers([]);
+  };
   // Words answered wrong come back once at the end, for practice that isn't saved
   const [retries, setRetries] = useState<ReviewItem[]>([]);
   const firstTries = session ?? [];
@@ -114,8 +125,24 @@ export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessi
                     {`${answers.slice(firstTries.length).filter(Boolean).length} of ${retries.length} missed ${retries.length === 1 ? 'word' : 'words'} right the second time`}
                   </Text>
                 )}
-                <TouchableOpacity style={styles.button} onPress={onClose} accessibilityRole="button" accessibilityLabel="Done">
-                  <Text style={styles.buttonText}>Done</Text>
+                {remaining.length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.button, styles.moreButton]}
+                    onPress={startMore}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${Math.min(MORE_REVIEW_SIZE, remaining.length)} more`}
+                  >
+                    <Ionicons name="add" size={18} color={Colors.white} />
+                    <Text style={styles.buttonText}>{`${Math.min(MORE_REVIEW_SIZE, remaining.length)} more`}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={remaining.length > 0 ? [styles.button, styles.outlineButton] : styles.button}
+                  onPress={onClose}
+                  accessibilityRole="button"
+                  accessibilityLabel="Done"
+                >
+                  <Text style={remaining.length > 0 ? styles.outlineText : styles.buttonText}>Done</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -448,6 +475,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     alignItems: 'center',
+  },
+  moreButton: {
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'center',
   },
   sizes: {
     flexDirection: 'row',

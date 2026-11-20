@@ -385,7 +385,10 @@ export const dueWords = (words: WordEntry[], now: number, all: WordEntry[] = wor
 };
 
 /** Review session sizes to pick from when more words are due than the smallest */
-export const REVIEW_SIZES = [10, 20];
+export const REVIEW_SIZES = [5, 10, 20];
+
+/** How many words the Review done screen's "more" button adds */
+export const MORE_REVIEW_SIZE = REVIEW_SIZES[0];
 
 /**
  * The words for a session of `size`: the ones waiting longest (buildReviewItems' order), shuffled

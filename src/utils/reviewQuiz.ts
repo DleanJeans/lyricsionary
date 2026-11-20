@@ -406,6 +406,23 @@ export function pickReviewItems(items: ReviewItem[], size: number, random = Math
 /** How many words the review shown when the app opens asks */
 export const LAUNCH_REVIEW_SIZE = 10;
 
+/** Words in a session started from the song that's playing */
+export const SONG_REVIEW_SIZE = 8;
+
+/** The song's saved words that are due and can be asked */
+export const songDueWords = (songId: string, words: WordEntry[], now = Date.now()) =>
+  dueWords(
+    words.filter((w) => w.contexts?.some((c) => c.songId === songId)),
+    now,
+    words
+  ).filter(canReview);
+
+/** A review of the song's due words, the ones needing it most first, capped at SONG_REVIEW_SIZE */
+export function buildSongReview(songId: string, words: WordEntry[], songs: ReviewSong[], size = SONG_REVIEW_SIZE): ReviewItem[] {
+  const due = songDueWords(songId, words);
+  return due.length ? buildReviewItems(due, words, undefined, undefined, songs).slice(0, size) : [];
+}
+
 /** Songs opened within this long count as recent for the launch review */
 export const RECENT_SONG_MS = 7 * 24 * 60 * 60 * 1000;
 /** After a longer absence, this many songs opened before it count as recent */

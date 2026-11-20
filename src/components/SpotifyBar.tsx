@@ -79,6 +79,8 @@ function SpotifyBarBody({
   onDictation,
   onDismiss,
   hideStatus,
+  dueCount = 0,
+  onReview,
   onHide,
 }: {
   sync: SpotifyLyricsSync;
@@ -92,6 +94,9 @@ function SpotifyBarBody({
   onDismiss?: () => void;
   /** Leaves out the status once it was closed, keeping the Play button */
   hideStatus?: boolean;
+  /** The song's due words, to review from the bar while it plays */
+  dueCount?: number;
+  onReview?: () => void;
   /** A second swipe up, on the already folded bar, slides the whole bar away */
   onHide: () => void;
 }) {
@@ -130,6 +135,10 @@ function SpotifyBarBody({
             ? 'In your queue'
             : 'Not playing on Spotify'
           : null);
+  const reviewPill =
+    onReview && dueCount > 0 && sync.isThisSong ? (
+      <TogglePill icon="flash-outline" label={`Review ${dueCount} from this song`} onPress={onReview} accent />
+    ) : null;
   return (
     <View style={styles.container}>
       {!(sync.timings === 'ready' && sync.isThisSong) && <Ionicons name="musical-note" size={16} color={SPOTIFY_GREEN} />}
@@ -162,6 +171,7 @@ function SpotifyBarBody({
           <Text style={styles.fromLineText}>{sync.startingSong ? 'Starting...' : 'Play'}</Text>
         </TouchableOpacity>
       )}
+      {sync.timings !== 'ready' && reviewPill}
       {sync.timings !== 'ready' && sync.isThisSong && (
         <ControlButton icon={sync.isPlaying ? 'pause' : 'play'} label={sync.isPlaying ? 'Pause' : 'Play'} onPress={() => void sync.togglePlay()} />
       )}
@@ -241,6 +251,7 @@ function SpotifyBarBody({
             )}
             <TogglePill icon={follow ? 'locate' : 'locate-outline'} label="Auto-scroll" on={follow} onPress={onToggleFollow} />
             {canPlaySelected && <TogglePill icon="play" label="Play line" onPress={() => void sync.seekToLine(selectedLineIndex!)} accent />}
+            {reviewPill}
             {canPlaySelected && onDictation && <TogglePill icon="create-outline" label="Dictate" onPress={() => onDictation(selectedLineIndex!)} accent />}
           </View>
             </View>

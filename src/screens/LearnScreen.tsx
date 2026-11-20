@@ -39,7 +39,8 @@ import { getRomanceBaseWord } from '../utils/romanceClitics';
 import { addStressMark, isStressLanguage, removeStressMarks } from '../utils/russianStress';
 import { romanizeLine } from '../utils/romanize';
 import { buildLyricQuiz, buildMeaningQuiz, isTricky, quizKindFor } from '../utils/wordQuiz';
-import { lineWords } from '../utils/reviewQuiz';
+import { buildSongReview, lineWords, SONG_REVIEW_SIZE, songDueWords, type ReviewItem } from '../utils/reviewQuiz';
+import ReviewSession from '../components/ReviewSession';
 import LineDrill from '../components/LineDrill';
 import LineQuizMode from '../components/LineQuizMode';
 import SpotifyBar from '../components/SpotifyBar';
@@ -2144,6 +2145,9 @@ export default function LearnScreen() {
     setQuizMode({ startLine: start ?? contentLines[0] });
   };
 
+  // The song's due words, to review from the Spotify bar while it plays
+  const [songReview, setSongReview] = useState<ReviewItem[] | null>(null);
+  const songReviewCount = useMemo(() => (song ? Math.min(songDueWords(song.id, words).length, SONG_REVIEW_SIZE) : 0), [song, words]);
   const lineStep = lineByLine !== null ? contentLines.indexOf(lineByLine) : -1;
   const stepLine = (delta: number) => {
     const next = contentLines[lineStep + delta];
@@ -2225,6 +2229,11 @@ export default function LearnScreen() {
           onHiddenChange={setSpotifyBarHidden}
           hideStatus={noSyncHidden && spotify.timings === 'none'}
           sync={spotify}
+          dueCount={songReviewCount}
+          onReview={() => {
+            const items = buildSongReview(song.id, words, songs);
+            if (items.length) setSongReview(items);
+          }}
           selectedLineIndex={selectedLineIndex}
           follow={followSpotify}
           onToggleFollow={() => setFollowSpotify(!followSpotify)}
@@ -2423,6 +2432,7 @@ export default function LearnScreen() {
           )}
         </View>
       )}
+      {songReview && <ReviewSession dueItems={songReview} onClose={() => setSongReview(null)} isWide={isWide} />}
       {markedToast && (
         <View style={styles.toastStack} pointerEvents="box-none">
           <Toast message={markedToast} />

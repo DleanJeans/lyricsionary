@@ -18,7 +18,7 @@ import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 import { useIsWide } from './src/hooks/useLayout';
 import { navigationRef } from './src/navigation/navigationRef';
 import ReviewSession from './src/components/ReviewSession';
-import { buildLaunchReview, type ReviewItem } from './src/utils/reviewQuiz';
+import { buildLaunchReview, buildSongReview, type ReviewItem } from './src/utils/reviewQuiz';
 import { useUsageTracker } from './src/services/usageTime';
 import { flushWrites } from './src/services/storageWrites';
 import { applyOtaResume, reloadForUpdate, takeOtaResume } from './src/utils/otaResume';
@@ -136,6 +136,12 @@ export default function App() {
       if (saved) {
         setCurrentSongId(saved.id);
         trackSongOpen(saved.id);
+        // The notification's Review button starts a review of the song's due words
+        if (request.review) {
+          const { words, songs: all } = useStore.getState();
+          const items = buildSongReview(saved.id, words, all);
+          if (items.length) setLaunchReview(items);
+        }
       }
       const [screen, params] = saved ? ['Learn', undefined] : ['Editor', { autoFetchSong: request }];
       // On narrow screens the tabs are nested inside the drawer's "Tabs" screen

@@ -135,7 +135,11 @@ function getTextAfterFormOf(html: string): string | undefined {
   if (start < 0) return undefined;
   const after = html.slice(getSpanEnd(html, start));
   if (/<(?:ol|ul|li)\b/i.test(after)) return undefined;
-  const text = stripDefinitionHtml(after).replace(/^[\s:;,.]+|[\s.]+$/g, '');
+  let text = stripDefinitionHtml(after).replace(/^[\s:;,.]+|[\s.]+$/g, '');
+  // A bare parenthetical like "(only in subordinate clauses)" is a usage note, not a meaning; only a quoted one is
+  if (/^\([^()]*\)$/.test(text) && !/["“”]/.test(text)) return undefined;
+  // Likewise a usage note after the gloss, e.g. 'me (only in poetry)'
+  text = text.replace(/\s*\((?:only|chiefly|mostly|usually|especially|rare|dated|archaic|obsolete|colloquial|informal|literary|poetic|dialectal|regional|used|in)\b[^()]*\)\s*$/i, '');
   return unquote(text.replace(/^\(([^()]*)\)$/, '$1').trim()) || undefined;
 }
 

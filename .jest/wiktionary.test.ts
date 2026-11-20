@@ -162,6 +162,13 @@ describe('real Wiktionary responses', () => {
     expect(texts({ de: [section('German', 'Noun', [GEFUEHLE])] }, 'German')).toEqual(['feelings']);
   });
 
+  it('does not take a usage note in parentheses for the gloss', () => {
+    const auftritt =
+      '<span class="form-of-definition use-with-mention"><a href="/wiki/Appendix:Glossary#third_person">third-person singular</a> present of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a href="/wiki/auftreten#German" title="auftreten">auftreten</a></i></span></span> (only in subordinate clauses)';
+    expect(getFormOfGloss(auftritt)).toBeUndefined();
+    expect(getFormOfGloss(MICH.replace(/$/, ' (only in poetry)'))).toBe('me');
+  });
+
   it('reads the gloss after a form-of definition', () => {
     expect(getFormOfGloss(MICH)).toBe('me');
   });

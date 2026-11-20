@@ -58,6 +58,9 @@ const wiktionarySectionId = (language: string) => getWiktionaryLanguage(language
 // Google's AI overview usually gives the IPA for "<word> <language> IPA", e.g. "Herz German IPA"
 const googleIpaUrl = (word: string, language: string) =>
   `https://www.google.com/search?igu=1&q=${encodeURIComponent(`${word} ${language} IPA`)}`;
+// "<language> define <word>", so Google doesn't pick an unrelated meaning (e.g. a math one)
+const googleDefineUrl = (word: string, language: string) =>
+  `https://www.google.com/search?igu=1&q=${encodeURIComponent(`${language} define ${word}`)}`;
 // A number from the lyrics, e.g. 42 or 2024, which Wiktionary has no page on in the song's language
 const isNumberWord = (word: string) => /^\p{N}+(?:[.,]\p{N}+)*$/u.test(word);
 // Google's AI overview gives a number written out with its IPA, e.g. zweiundvierzig /ˈt͡svaɪ̯ʊntˌfiːɐ̯t͡sɪç/
@@ -392,7 +395,7 @@ export default function WordLookupScreen() {
     const open = (source: 'google' | 'wiktionary') => {
       const url = source === 'google'
         ? (isNumberWord(displayWord) ? googleNumberUrl(displayWord, languageRef.current)
-          : ipaSearchRef.current ? googleIpaUrl(displayWord, languageRef.current) : `https://www.google.com/search?igu=1&q=define+${encodeURIComponent(displayWord)}`)
+          : ipaSearchRef.current ? googleIpaUrl(displayWord, languageRef.current) : googleDefineUrl(displayWord, languageRef.current))
         : `${wiktionaryPageUrl(wiktionaryWord!)}#${wiktionarySectionId(languageRef.current)}`;
       setCurrentUrl(url);
       setScrapedIpaResults([]);

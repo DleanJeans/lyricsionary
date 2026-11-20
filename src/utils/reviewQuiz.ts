@@ -387,6 +387,25 @@ export const dueWords = (words: WordEntry[], now: number, all: WordEntry[] = wor
 /** Review session sizes to pick from when more words are due than the smallest */
 export const REVIEW_SIZES = [5, 10, 20];
 
+/** Share of a daily batch that can be old Seen words, like new cards a day */
+export const SEEN_BATCH_SHARE = 0.25;
+
+/**
+ * Today's batch of a daily goal, out of the due words' items (buildReviewItems' order): `left`
+ * words (the goal less today's answers). Recognized and Recalled words come first, then at most a
+ * quarter of the goal in Seen words, so a pile of old Seen words comes in a few a day. `rest` is
+ * every other due item, for more sessions after the batch.
+ */
+export function pickDailyBatch(items: ReviewItem[], goal: number, left: number): { batch: ReviewItem[]; rest: ReviewItem[] } {
+  const isSeen = (i: ReviewItem) => (i.entry.masteryLevel ?? 'Seen') === 'Seen';
+  const batch = items.filter((i) => !isSeen(i)).slice(0, Math.max(0, left));
+  const room = Math.max(0, left) - batch.length;
+  const seenCap = Math.min(room, Math.ceil(goal * SEEN_BATCH_SHARE));
+  batch.push(...items.filter(isSeen).slice(0, seenCap));
+  const inBatch = new Set(batch);
+  return { batch, rest: items.filter((i) => !inBatch.has(i)) };
+}
+
 /** How many words the Review done screen's "more" button adds */
 export const MORE_REVIEW_SIZE = REVIEW_SIZES[0];
 

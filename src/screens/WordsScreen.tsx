@@ -25,10 +25,12 @@ import IconButton from '../components/IconButton';
 import { countWordOccurrences, WordFrequency } from '../utils/wordFrequency';
 import { matchesSearch } from '../utils/search';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useDailyGoal } from '../hooks/useDailyGoal';
+import { answersToday } from '../utils/activity';
 import BulkEditBar from '../components/BulkEditBar';
 import ReviewSession from '../components/ReviewSession';
 import SongFilter from '../components/SongFilter';
-import { buildReviewItems, canReview, dueWords, ReviewItem } from '../utils/reviewQuiz';
+import { buildReviewItems, canReview, dueWords, MORE_REVIEW_SIZE, pickDailyBatch, ReviewItem } from '../utils/reviewQuiz';
 import { compareMostMissed, isTricky, nextDueAt } from '../utils/wordQuiz';
 import { useStoreWhileShown } from '../hooks/useStoreWhileShown';
 import { getPreloadedIpa, getPreloadedWord, loadPreloadedIpa } from '../utils/preloadedIpa';
@@ -118,7 +120,9 @@ export default function WordsScreen() {
   // Only words answered wrong lately
   const [trickyOnly, setTrickyOnly] = useState(false);
   const [thisWeekOnly, setThisWeekOnly] = useState(false);
-  const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
+  const [reviewing, setReviewing] = useState<{ items: ReviewItem[]; startSize?: number } | null>(null);
+  const [dailyGoal] = useDailyGoal();
+  const answeredToday = useStore((s) => answersToday(s.activity, Date.now()));
 
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
   const deleteTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -610,16 +614,21 @@ export default function WordsScreen() {
               />
               {!selecting && due.length > 0 && (
                 <TouchableOpacity
-                  style={styles.reviewButton}
+                  style={[styles.reviewButton, !!dailyGoal && answeredToday >= dailyGoal && styles.reviewButtonDone]}
                   onPress={() => {
                     const items = buildReviewItems(due, words, undefined, undefined, useStore.getState().songs);
-                    if (items.length) setReviewing(items);
+                    if (!items.length) return;
+                    if (!dailyGoal) return setReviewing({ items });
+                    // A daily batch first, then the rest of the due words for more sessions
+                    const left = dailyGoal - answeredToday;
+                    const { batch, rest } = pickDailyBatch(items, dailyGoal, left);
+                    setReviewing({ items: [...batch, ...rest], startSize: batch.length || Math.min(MORE_REVIEW_SIZE, rest.length) });
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel={`Review ${due.length} due ${due.length === 1 ? 'word' : 'words'}`}
+                  accessibilityLabel={dailyGoal ? `Review today's batch, ${Math.min(answeredToday, dailyGoal)} of ${dailyGoal} done` : `Review ${due.length} due ${due.length === 1 ? 'word' : 'words'}`}
                 >
-                  <Ionicons name="flash" size={15} color={Colors.white} />
-                  <Text style={styles.reviewButtonText}>{due.length}</Text>
+                  <Ionicons name={dailyGoal && answeredToday >= dailyGoal ? 'checkmark' : 'flash'} size={15} color={Colors.white} />
+                  <Text style={styles.reviewButtonText}>{dailyGoal ? `Today ${Math.min(answeredToday, dailyGoal)} of ${dailyGoal}` : due.length}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -644,7 +653,7 @@ export default function WordsScreen() {
           }}
         />
       )}
-      {reviewing && <ReviewSession dueItems={reviewing} onClose={() => setReviewing(null)} isWide={isWide} />}
+      {reviewing && <ReviewSession dueItems={reviewing.items} startSize={reviewing.startSize} onClose={() => setReviewing(null)} isWide={isWide} />}
       {listsFrequencies ? (
         searchedFrequencies.length === 0 ? (
           <EmptyState
@@ -832,6 +841,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
     backgroundColor: Colors.primary,
+  },
+  reviewButtonDone: {
+    backgroundColor: Colors.success,
   },
   reviewButtonText: {
     fontSize: 14,

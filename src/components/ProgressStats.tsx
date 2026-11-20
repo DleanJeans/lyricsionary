@@ -5,8 +5,8 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { MASTERY_LEVELS, type MasteryLevel } from '../types';
 import { useStore } from '../store/useStore';
 import { allowReviewReminders } from '../services/reviewReminder';
-import { answersToday, DAILY_GOALS, dayStreak, nextDailyGoal, weekDays, weekTotals } from '../utils/activity';
-import { usePersistedState } from '../hooks/usePersistedState';
+import { answersToday, dayStreak, nextDailyGoal, weekDays, weekTotals } from '../utils/activity';
+import { useDailyGoal } from '../hooks/useDailyGoal';
 import { REMINDER_HOUR, STREAK_SAVER_HOUR } from '../utils/reviewReminder';
 import { Text } from './Text';
 
@@ -25,11 +25,9 @@ function Stat({ icon, color, value, label }: { icon: keyof typeof Ionicons.glyph
   );
 }
 
-const isGoal = (value: unknown): value is number => typeof value === 'number' && DAILY_GOALS.includes(value);
-
 /** Today's quiz answers toward a goal of a few a day; tapping the goal changes it */
 function DailyGoal({ answers }: { answers: number }) {
-  const [goal, setGoal] = usePersistedState('@lyricsionary_daily_goal', 0, isGoal);
+  const [goal, setGoal] = useDailyGoal();
   const done = goal > 0 && answers >= goal;
   return (
     <TouchableOpacity

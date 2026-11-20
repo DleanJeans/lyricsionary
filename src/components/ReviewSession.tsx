@@ -18,6 +18,8 @@ interface ReviewSessionProps {
   dueItems: ReviewItem[];
   onClose: () => void;
   isWide?: boolean;
+  /** Starts a session of this many right away, without asking (a daily batch); the rest of dueItems is for more */
+  startSize?: number;
 }
 
 const GAP = '_____';
@@ -33,10 +35,14 @@ function reshuffle(quiz: Quiz): Quiz {
 }
 
 /** One quiz after another for every due word, then how many were right */
-export default function ReviewSession({ dueItems, onClose, isWide }: ReviewSessionProps) {
+export default function ReviewSession({ dueItems, onClose, isWide, startSize }: ReviewSessionProps) {
   // Asks how many first when more words are due than the smallest session
   const [session, setSession] = useState<ReviewItem[] | null>(() =>
-    dueItems.length <= REVIEW_SIZES[0] ? pickReviewItems(dueItems, dueItems.length) : null
+    startSize
+      ? pickReviewItems(dueItems, startSize)
+      : dueItems.length <= REVIEW_SIZES[0]
+        ? pickReviewItems(dueItems, dueItems.length)
+        : null
   );
   // Words from earlier sessions of this review, which "more" skips
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());

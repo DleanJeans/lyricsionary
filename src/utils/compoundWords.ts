@@ -13,6 +13,10 @@ export type KnownWords = ReadonlySet<string> | ReadonlyMap<string, string>;
 
 const MIN_PART_LENGTH = 3;
 
+// Prefixes that start words which aren't a plain join of two words, e.g. Einfluss is not ein + Fluss
+// (and neither are Anfang, Ausgang, Aufgabe), so a two-part split starting with one is left alone
+const DERIVING_PREFIXES = new Set(['ein', 'an', 'ab', 'auf', 'aus', 'bei', 'mit', 'nach', 'vor', 'zu', 'um', 'her', 'hin', 'weg', 'los']);
+
 // German linking elements (Fugenelemente) that can join compound parts, e.g. Liebe+s+brief
 const LINKING_ELEMENTS = ['es', 'en', 's', 'n', 'e'];
 
@@ -111,6 +115,7 @@ export function splitCompound(word: string, knownWords: KnownWords): CompoundPar
 
   const ends = best[0];
   if (!ends || ends.length < 2) return null;
+  if (ends.length === 2 && DERIVING_PREFIXES.has(lower.slice(0, ends[0]))) return null;
 
   let start = 0;
   const segments = ends.map((end) => {

@@ -37,6 +37,14 @@ describe('splitCompound', () => {
   });
 });
 
+describe('splitCompound with a prefix', () => {
+  it('does not split Einfluss into ein + fluss, but still splits longer compounds', () => {
+    const words = new Set(['ein', 'fluss', 'kauf', 'liste']);
+    expect(splitCompound('Einfluss', words)).toBeNull();
+    expect(splitCompound('Einkaufsliste', words)?.map((p) => p.text)).toEqual(['Ein', 'kaufs', 'liste']);
+  });
+});
+
 describe('parseManualSplit', () => {
   it('parses hyphens and spaces', () => {
     expect(parseManualSplit('Fernseher', 'Fern-seher')).toEqual(['Fern', 'seher']);

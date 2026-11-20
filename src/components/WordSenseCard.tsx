@@ -251,7 +251,6 @@ export default function WordSenseCard({
           )
         ) : null}
       </View>
-      {noteSong ? <LineNote key={context} song={noteSong} line={context} style={styles.lineNote} /> : null}
       <View style={styles.contextRow}>
         {suggestedEmoji ? (
           <TouchableOpacity
@@ -351,6 +350,7 @@ export default function WordSenseCard({
           </View>
         </View>
       ) : null}
+      {noteSong ? <LineNote key={context} song={noteSong} line={context} style={styles.lineNote} /> : null}
       {!isRemoved && definitionSuggestions && definitionSuggestions.some((s) => s.text !== definition) && (
         <Text style={styles.suggestionsLabel}>Wiktionary</Text>
       )}
@@ -496,12 +496,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
   },
-  lineNote: {
-    marginHorizontal: 0,
-    marginBottom: 0,
-    paddingVertical: 6,
-    backgroundColor: Colors.surfaceLight,
-  },
+  lineNote: {},
   foldedEmoji: {
     fontSize: 18,
   },

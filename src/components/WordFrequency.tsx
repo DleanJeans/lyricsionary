@@ -17,7 +17,7 @@ type Entry = Pick<WordEntry, 'word' | 'language' | 'contexts'>;
  * How many songs and distinct sentences the word or phrase is in (a repeated sentence, like a chorus,
  * counts once). Tapping it lists them with their translations, in Learn's colors, each word opening its page.
  */
-export default function WordFrequency({ entry, onLookUpWord }: { entry: Entry; onLookUpWord?: () => void }) {
+export default function WordFrequency({ entry, onLookUpWord, pill = false }: { entry: Entry; onLookUpWord?: () => void; /** A bordered pill, e.g. in a review's answer */ pill?: boolean }) {
   const songs = useStore((s) => s.songs);
   const [open, setOpen] = useState(false);
   // A modal can draw under the system navigation bar (3-button or gesture), so the list ends above it
@@ -26,11 +26,11 @@ export default function WordFrequency({ entry, onLookUpWord }: { entry: Entry; o
   const songCount = new Set(sentences.flatMap((x) => x.songs.map((y) => y.id).filter(Boolean))).size;
   if (!sentences.length) return null;
   const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
-  const label = `In ${plural(songCount, 'song')} · ${plural(sentences.length, 'sentence')}`;
+  const label = `${pill ? '' : 'In '}${plural(songCount, 'song')} · ${plural(sentences.length, 'sentence')}`;
 
   return (
     <>
-      <TouchableOpacity style={styles.row} onPress={() => setOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`${label}, show them`}>
+      <TouchableOpacity style={[styles.row, pill && styles.pill]} onPress={() => setOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`${label}, show them`}>
         <Ionicons name="stats-chart-outline" size={14} color={Colors.primary} />
         <Text style={styles.text}>{label}</Text>
         <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
@@ -108,6 +108,7 @@ export default function WordFrequency({ entry, onLookUpWord }: { entry: Entry; o
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  pill: { borderWidth: 1, borderColor: Colors.border, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6 },
   text: { fontSize: 13, fontWeight: '600', color: Colors.primary },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   sheet: { maxHeight: '85%', backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 14 },

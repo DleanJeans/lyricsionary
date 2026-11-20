@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Colors } from '../constants/theme';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MORE_REVIEW_SIZE, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
@@ -11,7 +11,8 @@ import { Text } from './Text';
 import { openSongAtLine, openWordLookup } from '../navigation/navigationRef';
 import PronunciationAudio from './PronunciationAudio';
 import SwitchQuizButton from './SwitchQuizButton';
-import WordQuiz from './WordQuiz';
+import WordQuiz, { AnswerAudio } from './WordQuiz';
+import type { WordEntry } from '../types';
 
 interface ReviewSessionProps {
   /** A quiz for each due word (buildReviewItems) */
@@ -240,6 +241,9 @@ function ReviewQuestion({
   // Saying a word is asked with its IPA, as there's no spelling to go by
   const speakIpa = speak && kind === 'meaning' ? reviewIpa(entry, context) : undefined;
   lookUpRef.current = () => onLookUp(entry, line, songId, songName);
+  // The word card's IPA and meaning once answered
+  const answerIpa = ipa ?? reviewIpa(entry, context);
+  const meaning = item.target?.answer ?? context?.definition ?? unsaved?.definition ?? (kind === 'meaning' ? item.quiz.options[item.quiz.answerIndex] : undefined);
   // Saves the other song's line as one of the word's contexts, with the meaning it was asked for
   const saveLine = () => {
     if (!unsaved || !line) return;
@@ -277,7 +281,7 @@ function ReviewQuestion({
   const showHint = !!shownHint && ((!listen && !ipa) || answered);
   return (
     <View style={styles.question}>
-      {showLine && (
+      {showLine && !answered && (
         <Text style={styles.line}>
           {lineWord && wordAt ? (
             <>
@@ -294,7 +298,7 @@ function ReviewQuestion({
           )}
         </Text>
       )}
-      {showLine && songName ? (
+      {showLine && songName && !answered ? (
         <View style={styles.songRow}>
           <Text style={[styles.songName, { flexShrink: 1 }]}>
             {artistName ? `${songName} · ${artistName}` : songName}
@@ -315,11 +319,11 @@ function ReviewQuestion({
           ) : null}
         </View>
       ) : null}
-      {listen && <PronunciationAudio audio={entry.audio ?? []} autoPlay={!answered} />}
+      {listen && !answered && <PronunciationAudio audio={entry.audio ?? []} autoPlay />}
       {speak && kind === 'meaning' && !answered && <PronunciationAudio audio={entry.audio ?? []} />}
-      {speakIpa && <Text style={styles.ipa}>{formatIpa(speakIpa, true)}</Text>}
-      {ipa && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
-      {showHint ? <Text style={styles.hint}>{shownHint}</Text> : null}
+      {speakIpa && !answered && <Text style={styles.ipa}>{formatIpa(speakIpa, true)}</Text>}
+      {ipa && !answered && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
+      {showHint && !answered ? <Text style={styles.hint}>{shownHint}</Text> : null}
       <WordQuiz
         entry={entry}
         kind={kind}
@@ -360,32 +364,104 @@ function ReviewQuestion({
         spoken={speak}
         audio={!listen}
         onLookUpWord={onCloseReview}
+        missedNote="Again at the end"
+        renderAnswered={(current) => (
+          <>
+            <AnsweredWordCard entry={current} ipa={answerIpa} meaning={meaning} />
+            {line ? (
+              <View style={styles.lineCard}>
+                <Text style={styles.cardLine}>
+                  {lineWord && wordAt ? (
+                    <>
+                      {line.slice(0, wordAt.start)}
+                      <Text style={[styles.cardLine, styles.lineWord, styles.lineAnswer]}>{lineWord}</Text>
+                      {line.slice(wordAt.end)}
+                    </>
+                  ) : (
+                    line
+                  )}
+                </Text>
+                {translation ? <Text style={styles.cardTranslation}>{translation}</Text> : null}
+                <View style={styles.songRow}>
+                  <Text style={[styles.songName, { flex: 1 }]} numberOfLines={2}>
+                    {songName ? (artistName ? `${songName} · ${artistName}` : songName) : ''}
+                  </Text>
+                  {!practice && unsaved && (
+                    <TouchableOpacity
+                      onPress={saveLine}
+                      disabled={savedLine}
+                      hitSlop={6}
+                      style={styles.iconButton}
+                      accessibilityRole="button"
+                      accessibilityLabel={savedLine ? `Saved this line to ${entry.word}` : `Save this line to ${entry.word}`}
+                    >
+                      <Ionicons name={savedLine ? 'checkmark-circle' : 'bookmark-outline'} size={15} color={savedLine ? Colors.success : Colors.primaryLight} />
+                      <Text style={[styles.iconButtonText, savedLine && { color: Colors.success }]}>{savedLine ? 'Saved' : 'Save'}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {songId ? (
+                    <TouchableOpacity
+                      hitSlop={6}
+                      style={styles.iconButton}
+                      onPress={() => {
+                        onCloseReview();
+                        openSongAtLine(songId, { word: entry.word, line, occurrence: context?.occurrence });
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open ${songName} at this line`}
+                    >
+                      <Ionicons name="open-outline" size={15} color={Colors.primaryLight} />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+          </>
+        )}
       />
       {listen && !answered && <SwitchQuizButton onPress={() => setNoAudio(true)} />}
       {speak && !answered && <SwitchQuizButton label="Can't use the mic? Try another quiz" onPress={() => setNoAudio(true)} />}
-      {answered && !practice && unsaved && showLine && (
-        <TouchableOpacity
-          onPress={saveLine}
-          disabled={savedLine}
-          hitSlop={8}
-          style={styles.lookUp}
-          accessibilityRole="button"
-          accessibilityLabel={savedLine ? 'Line saved' : 'Save this line'}
-        >
-          <Ionicons name={savedLine ? 'checkmark-circle' : 'bookmark-outline'} size={14} color={savedLine ? Colors.success : Colors.primary} />
-          <Text style={[styles.lookUpText, savedLine && { color: Colors.success }]}>
-            {savedLine ? `Saved this line to ${entry.word}` : `Save this line to ${entry.word}`}
-          </Text>
-        </TouchableOpacity>
-      )}
+    </View>
+  );
+}
+
+/** The word once answered: its level, recordings, IPA and meaning */
+function AnsweredWordCard({ entry, ipa, meaning }: { entry: WordEntry; ipa?: string; meaning?: string }) {
+  const level = entry.masteryLevel ?? 'Seen';
+  return (
+    <View style={styles.wordCard}>
+      <View style={styles.wordCardTop}>
+        <View style={[styles.levelChip, { backgroundColor: getMasteryLevelColor(level) }]}>
+          <Text style={styles.levelChipText}>{level.toUpperCase()}</Text>
+        </View>
+        <View style={{ marginLeft: 'auto' }}>
+          <AnswerAudio entry={entry} collapsed />
+        </View>
+      </View>
+      <View style={styles.wordRow}>
+        <Text style={styles.cardWord}>{entry.word}</Text>
+        {ipa ? <Text style={styles.cardIpa}>{formatIpa(ipa, true)}</Text> : null}
+      </View>
+      {meaning ? <Text style={styles.cardMeaning}>{meaning}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wordCard: { backgroundColor: Colors.surfaceLight, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 12, gap: 6 },
+  wordCardTop: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 26 },
+  levelChip: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  levelChipText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4, color: Colors.background },
+  wordRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 10 },
+  cardWord: { fontSize: 24, fontWeight: '700', color: Colors.text },
+  cardIpa: { fontSize: 15, color: Colors.textSecondary },
+  cardMeaning: { fontSize: 15, color: Colors.text },
+  lineCard: { backgroundColor: Colors.background, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12, gap: 6 },
+  cardLine: { fontSize: 16, color: Colors.text, lineHeight: 22 },
+  cardTranslation: { fontSize: 13, color: Colors.textSecondary, fontStyle: 'italic' },
+  iconButton: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: Colors.border, borderRadius: 9, paddingHorizontal: 8, height: 30, justifyContent: 'center', minWidth: 30 },
+  iconButtonText: { fontSize: 12, fontWeight: '600', color: Colors.primaryLight },
   songRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  lookUp: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
-  lookUpText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',

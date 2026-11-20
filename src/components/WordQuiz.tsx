@@ -43,6 +43,13 @@ interface WordQuizProps {
   audio?: boolean;
   /** Called before a word in the songs-and-sentences list opens its page, e.g. to close the dialog the quiz is in */
   onLookUpWord?: () => void;
+  /**
+   * Once answered, shows a one-line verdict in place of the prompt, answer and result, then what this
+   * returns (e.g. the word and line cards), then the songs-and-sentences pill and the level track
+   */
+  renderAnswered?: (current: WordEntry) => ReactNode;
+  /** Said on the verdict of a wrong answer, e.g. "Again at the end" when a review asks it once more */
+  missedNote?: string;
 }
 
 /**
@@ -52,7 +59,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, audio: showAudio = true, onLookUpWord }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -155,6 +162,64 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     void recordActivity({ levelUps: -1, ...(field ? { [field]: -1 } : {}) });
   };
 
+
+  if (answered && renderAnswered) {
+    const levelDown = !!levelUp && MASTERY_LEVELS.indexOf(levelUp) < MASTERY_LEVELS.indexOf(unanswered.masteryLevel ?? 'Seen');
+    // What was picked, typed or said, struck through when it was wrong
+    const given = typed ? typedText.trim() : quiz.options[chosen ?? -1];
+    const answer = typed ? entry.word : quiz.options[quiz.answerIndex];
+    return (
+      <View style={styles.answeredContainer}>
+        <View style={[styles.verdict, correct ? styles.verdictRight : styles.verdictWrong]}>
+          <Ionicons name={correct ? 'checkmark-circle-outline' : 'close-circle-outline'} size={20} color={correct ? Colors.success : Colors.danger} />
+          <Text style={styles.verdictText}>
+            {typedResult === 'accents' ? (
+              <>
+                Mind the accents: <Text style={[styles.verdictText, styles.levelText]}>{answer}</Text>
+              </>
+            ) : correct ? (
+              <>
+                Right, <Text style={[styles.verdictText, styles.levelText]}>{answer}</Text>
+              </>
+            ) : (
+              <>
+                {given ? (
+                  <>
+                    <Text style={[styles.verdictText, styles.verdictGiven]}>{given}</Text>
+                    {'  '}it's{' '}
+                  </>
+                ) : (
+                  "It's "
+                )}
+                <Text style={[styles.verdictText, styles.levelText]}>{answer}</Text>
+              </>
+            )}
+          </Text>
+          {levelUp ? (
+            <View style={styles.verdictSide}>
+              <Ionicons name={levelDown ? 'arrow-down' : 'arrow-up'} size={13} color={getMasteryLevelColor(levelUp)} />
+              <Text style={[styles.verdictNote, { color: getMasteryLevelColor(levelUp) }]}>{levelUp}</Text>
+              {before && (
+                <TouchableOpacity onPress={undo} hitSlop={8} accessibilityRole="button" accessibilityLabel="Undo level change">
+                  <Text style={styles.undoText}>Undo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : !correct && missedNote && !practice ? (
+            <View style={styles.verdictSide}>
+              <Ionicons name="refresh" size={13} color={Colors.textSecondary} />
+              <Text style={styles.verdictNote}>{missedNote}</Text>
+            </View>
+          ) : null}
+        </View>
+        {renderAnswered(current)}
+        <View style={{ alignItems: 'flex-start' }}>
+          <WordFrequency entry={current} onLookUpWord={onLookUpWord} pill />
+        </View>
+        {!practice && <LevelTrack from={unanswered} entry={current} />}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -290,13 +355,14 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
 }
 
 /** The word's recordings after an answer, to hear how it sounds. Fetched once for a word saved without any. */
-function AnswerAudio({ entry }: { entry: WordEntry }) {
+export function AnswerAudio({ entry, collapsed = false }: { entry: WordEntry; collapsed?: boolean }) {
   const setWordAudio = useStore((s) => s.setWordAudio);
   const wiktionary = useWiktionaryPronunciation(entry.word, entry.language, { savedAudio: entry.audio, needsIpa: false });
   useEffect(() => {
     if (!entry.audio && wiktionary.loaded) void setWordAudio(entry.id, wiktionary.audio);
   }, [entry.id, entry.audio, wiktionary.loaded, wiktionary.audio, setWordAudio]);
   if (wiktionary.audio.length === 0) return null;
+  if (collapsed) return <PronunciationAudio audio={wiktionary.audio} short compact collapsed />;
   return (
     <View style={{ alignItems: 'flex-start' }}>
       <PronunciationAudio audio={wiktionary.audio} short />
@@ -398,6 +464,46 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 12,
     gap: 8,
+  },
+  answeredContainer: {
+    gap: 10,
+  },
+  verdict: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  verdictRight: {
+    backgroundColor: 'rgba(0, 184, 148, 0.1)',
+    borderColor: 'rgba(0, 184, 148, 0.35)',
+  },
+  verdictWrong: {
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    borderColor: 'rgba(255, 107, 107, 0.35)',
+  },
+  verdictText: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  verdictGiven: {
+    color: Colors.danger,
+    textDecorationLine: 'line-through',
+  },
+  verdictSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
+  verdictNote: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textSecondary,
   },
   promptRow: {
     flexDirection: 'row',

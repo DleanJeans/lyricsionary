@@ -15,10 +15,13 @@ interface Props {
   autoPlay?: boolean;
   /** Short accent codes, e.g. "AT" for Austria, with the full name shown while it plays or for a moment when held */
   short?: boolean;
+  /** Only the first recording, with a button that shows the others */
+  collapsed?: boolean;
 }
 
 /** Buttons that play the word's Wiktionary pronunciation recordings, labeled by accent */
-export default function PronunciationAudio({ audio, compact = false, autoPlay = false, short = false }: Props) {
+export default function PronunciationAudio({ audio, compact = false, autoPlay = false, short = false, collapsed = false }: Props) {
+  const [expanded, setExpanded] = useState(false);
   const playerRef = useRef<AudioPlayerHandle>(null);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
 
@@ -49,7 +52,7 @@ export default function PronunciationAudio({ audio, compact = false, autoPlay = 
 
   return (
     <View style={[styles.row, compact && styles.rowCompact]}>
-      {audio.map((item, index) => {
+      {(collapsed && !expanded ? audio.slice(0, 1) : audio).map((item, index) => {
         const playing = playingUrl === item.url;
         return (
           <TouchableOpacity
@@ -81,6 +84,17 @@ export default function PronunciationAudio({ audio, compact = false, autoPlay = 
           </TouchableOpacity>
         );
       })}
+      {collapsed && audio.length > 1 && (
+        <TouchableOpacity
+          style={[styles.button, compact && styles.buttonCompact, styles.moreButton]}
+          onPress={() => setExpanded((open) => !open)}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? 'Show fewer recordings' : `Show ${audio.length - 1} more recordings`}
+        >
+          <Ionicons name={expanded ? 'chevron-back' : 'chevron-down'} size={14} color={Colors.primaryLight} />
+        </TouchableOpacity>
+      )}
       <AudioPlayer
         ref={playerRef}
         onFinished={(url) => setPlayingUrl((current) => (current === url ? null : current))}
@@ -119,6 +133,10 @@ const styles = StyleSheet.create({
     paddingRight: 9,
     paddingVertical: 3,
     borderWidth: 0,
+  },
+  moreButton: {
+    paddingLeft: 6,
+    paddingRight: 6,
   },
   buttonPlaying: {
     backgroundColor: Colors.primary,

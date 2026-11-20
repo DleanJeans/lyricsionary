@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { withAbbreviationNote } from '../utils/abbreviationNote';
 import { RouteProp, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -364,6 +365,7 @@ export default function WordLookupScreen() {
         const picked = pickDefinition(definitionSuggestions, sense.translation);
         if (!picked) return sense;
         changed = true;
+        setNote((current) => withAbbreviationNote(current, picked));
         return { ...sense, definition: picked };
       });
       return changed ? next : prev;
@@ -500,6 +502,7 @@ export default function WordLookupScreen() {
   // `at` is where a definition was picked in the line's translation
   const updateWordSense = (index: number, field: keyof WordSenseData, value: string | number, at?: number) => {
     setUndoData(null);
+    if (field === 'definition') setNote((current) => withAbbreviationNote(current, String(value)));
     setWordSenses(prev => prev.map((b, i) => {
       if (i !== index) return b;
       if (field !== 'definition') return { ...b, [field]: value };
@@ -521,6 +524,7 @@ export default function WordLookupScreen() {
   // A meaning picked with "+ Use" on the Wiktionary page goes in the first context without one, else a new context
   const takeWiktionaryDefinition = (definition: string) => {
     setUndoData(null);
+    setNote((current) => withAbbreviationNote(current, definition));
     setWordSenses(prev => {
       const index = prev.findIndex(b => !b.definition.trim());
       if (index >= 0) {

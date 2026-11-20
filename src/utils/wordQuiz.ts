@@ -19,8 +19,8 @@ export interface QuizStats {
 }
 
 export const QUIZ_RULES = {
-  /** Meaning quiz answers in a row, any day, to go from Seen to Recognized */
-  toRecognized: 3,
+  /** Meaning quiz answers in a row, any day, to go from Seen to Recognized (was 3) */
+  toRecognized: 2,
   /** Lyric quiz answers in a row, each on another day, to go from Recognized to Recalled */
   toRecalled: 3,
   /** Days a Recalled word goes without a quiz before a correct answer makes it Known */

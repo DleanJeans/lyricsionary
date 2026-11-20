@@ -63,6 +63,13 @@ describe('parseDefinitions', () => {
 });
 
 describe('getShortGlosses', () => {
+  it('drops a generic "of a person" tail but keeps real phrases', () => {
+    expect(getShortGlosses('leg of a person')).toEqual(['leg']);
+    expect(getShortGlosses('leg of a person or animal')).toEqual(['leg']);
+    expect(getShortGlosses('leg of lamb')).toEqual(['leg of lamb']);
+    expect(getShortGlosses('hand of the clock')).toEqual(['hand of the clock']);
+  });
+
   it('drops bracketed glosses and parentheticals', () => {
     expect(getShortGlosses('<a>always</a> <span class="gloss-brac">(</span><span class="gloss-content">at all times, without exception</span><span class="gloss-brac">)</span>')).toEqual(['always']);
     expect(getShortGlosses('always (at all times, without exception)')).toEqual(['always']);

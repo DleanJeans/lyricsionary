@@ -210,6 +210,9 @@ export function getShortGlosses(html: string): string[] {
   return splitShortGlosses(text);
 }
 
+// "leg of a person" says what kind of leg, it isn't another word for it: "of" plus a generic owner
+const GENERIC_OWNER_TAIL = /\s+of\s+(?:a|an|the|any)?\s*(?:person|people|human|humans|man|woman|animal|animals|someone|somebody|something|one|thing|things|individual)(?:\s+or\s+(?:a|an|the)?\s*(?:person|animal|human|thing))?$/i;
+
 /** "always, ever; very often" -> ["always", "ever", "very often"]; parts of a long explanation are dropped */
 function splitShortGlosses(text: string): string[] {
   const isShort = (part: string) => part.split(/\s+/).length <= MAX_GLOSS_WORDS;
@@ -220,7 +223,7 @@ function splitShortGlosses(text: string): string[] {
     const parts = segment
       .split(/,|\s+\/\s+/)
       // Each meaning can be quoted on its own, e.g. '"good", "nice"'
-      .map((part) => unquote(part.trim().replace(/\.$/, '')))
+      .map((part) => unquote(part.trim().replace(/\.$/, '').replace(GENERIC_OWNER_TAIL, '')))
       .filter(Boolean);
     return parts.every(isShort) ? parts : [];
   });

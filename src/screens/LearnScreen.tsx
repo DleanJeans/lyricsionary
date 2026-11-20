@@ -474,6 +474,9 @@ export default function LearnScreen() {
     (v): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string')
   );
   const noSyncHidden = !!song && noSyncHiddenSongs.includes(song.id);
+  // Closing the "Playing, no synced lyrics" note hides the whole bar for this song until the app restarts
+  const [playingNoteClosed, setPlayingNoteClosed] = useState<string[]>([]);
+  const barGone = !!song && noSyncHidden && spotify.timings === 'none' && spotify.isThisSong && playingNoteClosed.includes(song.id);
   const nextLine = useNextLineToLearn(song, originalLines);
   const [followSpotify, setFollowSpotify] = usePersistedState('@lyricsionary_follow_spotify', true, (v): v is boolean => typeof v === 'boolean');
   // A long press on a line's word copies the line with its translations, to share it
@@ -2216,7 +2219,7 @@ export default function LearnScreen() {
 
   const lyricsView = (
     <>
-      {spotifyConnected && (
+      {spotifyConnected && !barGone && (
         <SpotifyBar
           hidden={spotifyBarHidden}
           onHiddenChange={setSpotifyBarHidden}
@@ -2231,7 +2234,7 @@ export default function LearnScreen() {
             void spotify.playLine(lineIndex);
           }}
           // Only "No synced lyrics" can be closed; "Not playing" holds the Play button
-          onDismiss={song && spotify.timings === 'none' ? () => setNoSyncHiddenSongs([...noSyncHiddenSongs, song.id]) : undefined}
+          onDismiss={song && spotify.timings === 'none' ? () => (noSyncHidden ? setPlayingNoteClosed([...playingNoteClosed, song.id]) : setNoSyncHiddenSongs([...noSyncHiddenSongs, song.id])) : undefined}
         />
       )}
       {quizMode ? (

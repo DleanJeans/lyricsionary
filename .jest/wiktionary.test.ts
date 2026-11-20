@@ -3,6 +3,7 @@ import {
   getFormOfLemma,
   getPlainFormOfLemma,
   getShortGlosses,
+  pluralizeGloss,
   getWiktionaryDefinitions,
   isMissingPage,
   parseDefinitions,
@@ -322,6 +323,32 @@ describe('inflected forms', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+describe('plural forms', () => {
+  it('suggests Beinen as legs from Bein = leg', async () => {
+    const pages: Record<string, unknown> = {
+      beinen: { de: [section('German', 'Noun', ['<span class="form-of-definition use-with-mention">inflection of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a href="/wiki/Bein#German" title="Bein">Bein</a></i></span>:</span><ol><li><span class="form-of-definition use-with-mention">dative plural</span></li></ol>'])] },
+      bein: { de: [section('German', 'Noun', ['leg of a person', 'bone'])] },
+    };
+    const fetchMock = jest.fn(async (url: string) => {
+      const page = pages[decodeURIComponent(url.split('/').pop() ?? '').toLowerCase()];
+      return { ok: !!page, status: page ? 200 : 404, json: async () => page };
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      expect((await getWiktionaryDefinitions('Beinen', 'German'))?.map((d) => d.text)).toEqual(['legs', 'bones']);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+  it('pluralizes noun glosses', () => {
+    expect(pluralizeGloss('leg')).toBe('legs');
+    expect(pluralizeGloss('party')).toBe('parties');
+    expect(pluralizeGloss('leg of lamb')).toBe('legs of lamb');
+    expect(pluralizeGloss('to ask')).toBe('to ask');
   });
 });
 

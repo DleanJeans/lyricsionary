@@ -241,6 +241,8 @@ export interface WiktionaryEntry {
    * e.g. wissen and weißen for weiß, alongside its adjective "white"
    */
   lemmasWithoutGloss: string[];
+  /** Base forms this word is a plural of, e.g. Bein for Beinen, so their meanings are suggested as plurals */
+  pluralLemmas?: string[];
 }
 
 /** The base form a form-of definition links to, e.g. fragen in 'inflection of <a>fragen</a>:' */
@@ -278,6 +280,9 @@ export function parseEntry(response: unknown, language: string): WiktionaryEntry
           // form's meanings are used; with one, the base form still says what word this is a form of
           if (lemma && !entry.lemmas.includes(lemma)) entry.lemmas.push(lemma);
           if (lemma && !formOfGloss && !entry.lemmasWithoutGloss.includes(lemma)) entry.lemmasWithoutGloss.push(lemma);
+          if (lemma && !formOfGloss && /\bplural\b/i.test(definition.replace(/<[^>]*>/g, ' ')) && partOfSpeech.toLowerCase() === 'noun') {
+            (entry.pluralLemmas ??= []).includes(lemma) || entry.pluralLemmas.push(lemma);
+          }
           continue;
         }
         // "zu-infinitive of umdrehen" says nothing about the meaning, so umdrehen's meanings are used
@@ -322,6 +327,26 @@ function fetchDefinitionResponse(title: string): Promise<unknown> {
   return request;
 }
 
+/** English plural of a noun gloss, e.g. leg -> legs, party -> parties, "leg of lamb" -> "legs of lamb" */
+export function pluralizeGloss(gloss: string): string {
+  const m = gloss.match(/^(.+?)((?:\s+(?:of|for|in|on|to|with)\s+.*)?)$/i);
+  const head = m ? m[1] : gloss;
+  const tail = m ? m[2] : '';
+  const words = head.split(/\s+/);
+  const w = words[words.length - 1];
+  if (!/^[a-z]+$/i.test(w) || /^to$/i.test(words[0]) || /s$/i.test(w) && !/(ss|us|is)$/i.test(w)) return gloss;
+  let plural: string;
+  if (/(s|x|z|ch|sh)$/i.test(w)) plural = w + 'es';
+  else if (/[^aeiou]y$/i.test(w)) plural = w.slice(0, -1) + 'ies';
+  else plural = w + 's';
+  words[words.length - 1] = plural;
+  return words.join(' ') + tail;
+}
+
+function pluralizeDefinition(d: WiktionaryDefinition): WiktionaryDefinition {
+  return d.partOfSpeech.toLowerCase() === 'noun' ? { ...d, text: pluralizeGloss(d.text) } : d;
+}
+
 /**
  * Suggestions for one page title: its short translations plus its base forms' wherever a form-of
  * definition has no meaning of its own (following chains like vidée -> vidé -> vider, each a form of the
@@ -338,7 +363,8 @@ async function getDefinitionsForTitle(title: string, language: string, depth: nu
   const lemmaLists: WiktionaryDefinition[][] = [];
   if (depth < MAX_LEMMA_DEPTH) {
     for (const lemma of entry.lemmasWithoutGloss.filter((l) => l !== title).slice(0, MAX_LEMMAS)) {
-      lemmaLists.push(await getDefinitionsForTitle(lemma, language, depth + 1));
+      const list = await getDefinitionsForTitle(lemma, language, depth + 1);
+      lemmaLists.push(entry.pluralLemmas?.includes(lemma) ? list.map(pluralizeDefinition) : list);
     }
   }
   // Base forms are secondary to the page's own senses, so they can't crowd them out, e.g. reichen's

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { ReactNode, useEffect, useLayoutEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { listenForWord } from '../services/speechRecognition';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
@@ -35,6 +36,8 @@ interface WordQuizProps {
   onAnsweredChange?: (answered: boolean) => void;
   /** Typed instead of picked whatever the word's level, e.g. spelling a word from its IPA */
   typed?: boolean;
+  /** Said out loud instead of picked: the speech recognizer listens and what it hears is checked like a typed answer */
+  spoken?: boolean;
   /** Shows the word's recordings once answered; off where they already show, e.g. in a listening quiz */
   audio?: boolean;
   /** Called before a word in the songs-and-sentences list opens its page, e.g. to close the dialog the quiz is in */
@@ -48,7 +51,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, audio: showAudio = true, onLookUpWord }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, audio: showAudio = true, onLookUpWord }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -67,8 +70,13 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const [predicted, setPredicted] = useState<WordEntry | null>(null);
   const [undone, setUndone] = useState(false);
   // A Recalled word is typed instead of picked
-  const [typed] = useState(() => typedProp || isTypedQuiz(entry.masteryLevel, kind));
+  const [typed] = useState(() => spoken || typedProp || isTypedQuiz(entry.masteryLevel, kind));
   const [typedText, setTypedText] = useState('');
+  const [listening, setListening] = useState(false);
+  // What the speech recognizer made of the last try, when it wasn't the word
+  const [speechNote, setSpeechNote] = useState<string | null>(null);
+  const stopListening = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopListening.current?.(), []);
   const [typedResult, setTypedResult] = useState<'right' | 'accents' | 'wrong' | null>(null);
   const stored = useStore((s) => s.words.find((w) => w.id === entry.id)) ?? entry;
   // Until the answer is saved, what it will save; after that (and on Undo) the saved word
@@ -107,9 +115,9 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex)) ?? null);
   };
 
-  const submitTyped = async (giveUp = false) => {
-    if (answered || (!giveUp && !typedText.trim())) return;
-    const result = giveUp ? 'wrong' : checkTypedAnswer(typedText, entry.word);
+  const submitTyped = async (giveUp = false, result?: 'right' | 'accents' | 'wrong') => {
+    if (answered || (!giveUp && !result && !typedText.trim())) return;
+    result = giveUp ? 'wrong' : result ?? checkTypedAnswer(typedText, entry.word);
     setTypedResult(result);
     const right = result !== 'wrong';
     onAnswered?.(right);
@@ -117,6 +125,24 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     predict(right);
     await afterPaint();
     setBefore((await recordQuizAnswer(entry.id, kind, right)) ?? null);
+  };
+
+  /** Listens for the word; a right try answers the quiz, a wrong one can be tried again */
+  const listen = () => {
+    if (answered || listening) return;
+    setSpeechNote(null);
+    setListening(true);
+    stopListening.current = listenForWord(entry.language, (outcome) => {
+      stopListening.current = null;
+      setListening(false);
+      if (outcome.type === 'denied') return setSpeechNote('Allow the microphone for Lyricsionary in Settings to say words.');
+      if (outcome.type === 'unavailable') return setSpeechNote("This phone can't recognize speech here. Try another quiz.");
+      if (outcome.type === 'nothing') return setSpeechNote("Didn't catch that. Tap the mic and try again.");
+      // Any of the recognizer's guesses counts, and accents can't be heard
+      const results = outcome.alternatives.map((heard) => checkTypedAnswer(heard, entry.word));
+      if (results.includes('right') || results.includes('accents')) void submitTyped(false, 'right');
+      else setSpeechNote(`Heard "${outcome.alternatives[0]}". Try again.`);
+    });
   };
 
   const undo = () => {
@@ -136,7 +162,21 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
         </Text>
         <Text style={[styles.prompt, styles.promptText]}>{prompt}</Text>
       </View>
-      {typed ? (
+      {spoken ? (
+        <View style={styles.speakBox}>
+          {!answered && (
+            <TouchableOpacity
+              style={[styles.micButton, listening && styles.micButtonOn]}
+              onPress={listening ? () => stopListening.current?.() : listen}
+              accessibilityRole="button"
+              accessibilityLabel={listening ? 'Stop listening' : 'Say the word'}
+            >
+              <Ionicons name={listening ? 'stop' : 'mic'} size={28} color={Colors.white} />
+            </TouchableOpacity>
+          )}
+          {!answered && <Text style={styles.speakHint}>{listening ? 'Listening…' : speechNote ?? 'Tap the mic and say it'}</Text>}
+        </View>
+      ) : typed ? (
         <View style={styles.typedRow}>
           <TextInput
             style={[
@@ -238,7 +278,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
       {answered && showAudio && <AnswerAudio entry={current} />}
       {typed && !answered && (
         <TouchableOpacity onPress={() => void submitTyped(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show the answer">
-          <Text style={styles.giveUpText}>I don't remember</Text>
+          <Text style={styles.giveUpText}>{spoken ? "I can't say it" : "I don't remember"}</Text>
         </TouchableOpacity>
       )}
       {answered && <WordFrequency entry={current} onLookUpWord={onLookUpWord} />}
@@ -470,6 +510,27 @@ const styles = StyleSheet.create({
   trackHint: {
     marginTop: 4,
     fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  speakBox: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  micButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+  },
+  micButtonOn: {
+    backgroundColor: Colors.danger,
+  },
+  speakHint: {
+    fontSize: 13,
     color: Colors.textSecondary,
     textAlign: 'center',
   },

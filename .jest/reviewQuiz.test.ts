@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { buildLaunchReview, buildReviewItems, dueWords, findWordInLine, lineWords, otherSongLines, pickReviewItems, rebuildReviewQuiz } from '../src/utils/reviewQuiz';
+import { buildLaunchReview, buildReviewItems, dueWords, findWordInLine, lineWords, otherSongLines, pickReviewItems, rebuildReviewQuiz, reviewWays } from '../src/utils/reviewQuiz';
 import { isDue } from '../src/utils/wordQuiz';
 
 const HOUR = 60 * 60 * 1000;
@@ -300,5 +300,13 @@ describe('lines from other songs', () => {
     const [item] = buildReviewItems([amour], [amour, ...others], () => 0.99, new Map(), [song('s1', 'Mon amour')]);
     expect(item.line).toBe('Mon amour');
     expect(item.unsaved).toBeUndefined();
+  });
+});
+
+describe('speaking quiz way', () => {
+  const has = { hasQuiz: true, hasLine: true, hasAudio: false, hasIpa: false };
+  it('is offered only where speech can be recognized', () => {
+    expect(reviewWays('meaning', has)).toEqual(['meaning']);
+    expect(reviewWays('lyric', { ...has, canSpeak: true })).toEqual(['lyric', 'speak']);
   });
 });

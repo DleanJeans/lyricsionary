@@ -3,6 +3,7 @@ import type { Song, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
 import { isCjkWord } from './cjkWords';
 import { contextTranslation, lineTranslation } from './wordOfTheDay';
+import { hasSpeechModule } from '../services/speechRecognition';
 import { firstIpa } from './ipaList';
 import { buildLyricQuiz, buildMeaningQuiz, isDue, isTricky, Quiz, QuizKind, quizKindFor, type QuizTarget } from './wordQuiz';
 
@@ -23,6 +24,8 @@ export interface ReviewItem {
    * word typed from it (spelling), a meaning quiz picks the word's meaning
    */
   ipa?: string;
+  /** Asked by saying the word out loud, which the speech recognizer checks */
+  speak?: boolean;
   /** How the word is asked (reviewWays) */
   way?: ReviewWay;
   /** What the quiz was built from, to build it again when it's shown (rebuildReviewQuiz) */
@@ -226,9 +229,9 @@ export const reviewIpa = (entry: WordEntry, context: WordContext | undefined): s
  * The ways a quiz can ask a word. A meaning quiz: from the word itself ('meaning'), its IPA alone
  * ('meaning-ipa') or its recording ('meaning-listen'). A lyric quiz: from the line's gap, or the
  * meaning when the line lacks the word ('lyric'), its recording ('lyric-listen') or typed from its
- * IPA alone ('lyric-ipa').
+ * IPA alone ('lyric-ipa'). Either can also be said out loud ('speak') where the device can recognize speech.
  */
-export type ReviewWay = 'meaning' | 'meaning-ipa' | 'meaning-listen' | 'lyric' | 'lyric-listen' | 'lyric-ipa';
+export type ReviewWay = 'meaning' | 'meaning-ipa' | 'meaning-listen' | 'lyric' | 'lyric-listen' | 'lyric-ipa' | 'speak';
 
 /**
  * The ways a word can be asked: IPA ones need its IPA, listening ones a recording, and the others a
@@ -236,13 +239,14 @@ export type ReviewWay = 'meaning' | 'meaning-ipa' | 'meaning-listen' | 'lyric' |
  */
 export function reviewWays(
   kind: QuizKind,
-  has: { hasQuiz: boolean; hasLine: boolean; hasAudio: boolean; hasIpa: boolean }
+  has: { hasQuiz: boolean; hasLine: boolean; hasAudio: boolean; hasIpa: boolean; canSpeak?: boolean }
 ): ReviewWay[] {
   const ways: ReviewWay[] = [];
   const listenOnly = kind === 'lyric' && !has.hasLine && has.hasAudio;
   if (has.hasQuiz && !listenOnly) ways.push(kind);
   if (has.hasQuiz && has.hasAudio) ways.push(`${kind}-listen`);
   if (has.hasIpa && (has.hasQuiz || kind === 'lyric')) ways.push(`${kind}-ipa`);
+  if (has.canSpeak) ways.push('speak');
   return ways;
 }
 
@@ -313,13 +317,14 @@ export function buildReviewItems(
     // the word has (reviewWays)
     const ipaText = reviewIpa(entry, context);
     const built = buildQuiz(kind, target, words, random, now);
-    const ways = reviewWays(kind, { hasQuiz: !!built, hasLine: !!wordAt, hasAudio: !!entry.audio?.length, hasIpa: !!ipaText });
+    const ways = reviewWays(kind, { hasQuiz: !!built, hasLine: !!wordAt, hasAudio: !!entry.audio?.length, hasIpa: !!ipaText, canSpeak: hasSpeechModule() && !!built });
     if (!ways.length) continue;
     const fewest = Math.min(...ways.map((w) => counts.get(w) ?? 0));
     const least = ways.filter((w) => (counts.get(w) ?? 0) === fewest);
     const way = least[Math.min(least.length - 1, Math.floor(random() * least.length))];
     counts.set(way, fewest + 1);
     const ipa = way.endsWith('ipa') ? ipaText : undefined;
+    const speak = way === 'speak';
     const listen = way.endsWith('listen');
     // Spelling is typed, so it needs no options, but other words make it one when there are enough
     const quiz = built ?? { options: [entry.word], answerIndex: 0 };
@@ -328,6 +333,7 @@ export function buildReviewItems(
     items.push({
       way,
       listen,
+      speak,
       ipa,
       entry,
       kind,

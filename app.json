@@ -54,6 +54,13 @@
         {
           "launchMode": "launcher"
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Lyricsionary listens to you say words in the speaking quiz.",
+          "speechRecognitionPermission": "Lyricsionary checks the words you say in the speaking quiz."
+        }
       ]
     ],
     "owner": "dleanjeans"

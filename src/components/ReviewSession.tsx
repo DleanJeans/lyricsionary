@@ -3,7 +3,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useStore } from '../store/useStore';
-import { pickReviewItems, rebuildReviewQuiz, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
+import { pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
 import { formatIpa } from '../utils/ipaDisplay';
 import { contextTranslation } from '../utils/wordOfTheDay';
@@ -188,9 +188,9 @@ function ReviewQuestion({
   // A listening quiz that can't be heard is asked without its recording instead
   const [noAudio, setNoAudio] = useState(false);
   const item: ReviewItem = noAudio
-    ? { ...askedItem, listen: false, ipa: undefined, way: askedItem.kind === 'meaning' ? 'meaning' : 'lyric' }
+    ? { ...askedItem, listen: false, speak: false, ipa: undefined, way: askedItem.kind === 'meaning' ? 'meaning' : 'lyric' }
     : askedItem;
-  const { entry, kind, line, wordAt, hint, listen, ipa, unsaved } = item;
+  const { entry, kind, line, wordAt, hint, listen, ipa, speak, unsaved } = item;
   const lineWord = line && wordAt ? line.slice(wordAt.start, wordAt.end) : null;
   // A line from another song the word wasn't saved from has no saved context
   const context = unsaved ? undefined : entry.contexts?.find((c) => c.context?.trim() === line);
@@ -204,6 +204,8 @@ function ReviewQuestion({
     : null;
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const [savedLine, setSavedLine] = useState(false);
+  // Saying a word is asked with its IPA, as there's no spelling to go by
+  const speakIpa = speak && kind === 'meaning' ? reviewIpa(entry, context) : undefined;
   lookUpRef.current = () => onLookUp(entry, line, songId, songName);
   // Saves the other song's line as one of the word's contexts, with the meaning it was asked for
   const saveLine = () => {
@@ -281,13 +283,25 @@ function ReviewQuestion({
         </View>
       ) : null}
       {listen && <PronunciationAudio audio={entry.audio ?? []} autoPlay={!answered} />}
+      {speak && kind === 'meaning' && !answered && <PronunciationAudio audio={entry.audio ?? []} />}
+      {speakIpa && <Text style={styles.ipa}>{formatIpa(speakIpa, true)}</Text>}
       {ipa && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
       {showHint ? <Text style={styles.hint}>{shownHint}</Text> : null}
       <WordQuiz
         entry={entry}
         kind={kind}
         prompt={
-          kind === 'meaning' && ipa && !answered ? (
+          speak ? (
+            kind === 'meaning' ? (
+              <>
+                Say <Text style={styles.quizWord}>{entry.word}</Text> out loud
+              </>
+            ) : lineWord ? (
+              'Say the word that goes in the gap'
+            ) : (
+              'Say the word that means this'
+            )
+          ) : kind === 'meaning' && ipa && !answered ? (
             'What does this word mean?'
           ) : kind === 'meaning' && listen && !answered ? (
             'What does the word you heard mean?'
@@ -310,10 +324,12 @@ function ReviewQuestion({
         isWide={isWide}
         practice={practice}
         typed={!!ipa && kind === 'lyric'}
+        spoken={speak}
         audio={!listen}
         onLookUpWord={onCloseReview}
       />
       {listen && !answered && <SwitchQuizButton onPress={() => setNoAudio(true)} />}
+      {speak && !answered && <SwitchQuizButton label="Can't use the mic? Try another quiz" onPress={() => setNoAudio(true)} />}
       {answered && !practice && unsaved && showLine && (
         <TouchableOpacity
           onPress={saveLine}

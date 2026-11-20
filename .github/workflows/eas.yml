@@ -39,6 +39,12 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
+      # The runner's default Java is too new for the native (CMake) builds; EAS builds use 17
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
       # Gradle installs CMake itself while other tasks run, which failed the worklets native build
       - name: Install CMake
         run: yes | sdkmanager --install "cmake;3.22.1"

@@ -39,6 +39,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
+      # Gradle installs CMake itself while other tasks run, which failed the worklets native build
+      - name: Install CMake
+        run: yes | sdkmanager --install "cmake;3.22.1"
+
       - name: Set build variables
         id: build-vars
         env:
@@ -49,7 +53,10 @@ jobs:
           echo "zip-filename=lyricsionary-dev-preview-$ts.zip" >> "$GITHUB_OUTPUT"
 
       - name: Build preview APK on this runner
-        run: eas build --platform android --profile preview --local --non-interactive --output ./${{ steps.build-vars.outputs.apk-filename }}
+        # Maven Central sometimes answers 429 to GitHub runners, so a failed build is tried once more
+        run: |
+          build() { eas build --platform android --profile preview --local --non-interactive --output ./${{ steps.build-vars.outputs.apk-filename }}; }
+          build || { echo "::warning::Preview build failed, trying once more"; sleep 60; build; }
 
       - name: Zip APK
         run: zip ./${{ steps.build-vars.outputs.zip-filename }} ./${{ steps.build-vars.outputs.apk-filename }}

@@ -325,6 +325,8 @@ function ReviewQuestion({
       {ipa && !answered && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
       {showHint && !answered ? <Text style={styles.hint}>{shownHint}</Text> : null}
       <WordQuiz
+        // Remounted for the swapped quiz, so how it's answered (typed or picked) is decided again
+        key={noAudio ? 'swapped' : 'asked'}
         entry={entry}
         kind={kind}
         prompt={

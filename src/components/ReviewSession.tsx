@@ -3,7 +3,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
-import { MORE_REVIEW_SIZE, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
+import { MORE_REVIEW_SIZE, pauseSpeakingQuizzes, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
 import { formatIpa } from '../utils/ipaDisplay';
 import { contextTranslation } from '../utils/wordOfTheDay';
@@ -422,7 +422,7 @@ function ReviewQuestion({
         )}
       />
       {listen && !answered && <SwitchQuizButton onPress={() => setNoAudio(true)} />}
-      {speak && !answered && <SwitchQuizButton label="Can't use the mic? Try another quiz" onPress={() => setNoAudio(true)} />}
+      {speak && !answered && <SwitchQuizButton label="Can't use the mic? Try another quiz" onPress={() => { pauseSpeakingQuizzes(); setNoAudio(true); }} />}
     </View>
   );
 }

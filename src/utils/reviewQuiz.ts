@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { languageKey } from '../constants/languages';
 import type { Song, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
@@ -231,6 +232,24 @@ export const reviewIpa = (entry: WordEntry, context: WordContext | undefined): s
  * meaning when the line lacks the word ('lyric'), its recording ('lyric-listen') or typed from its
  * IPA alone ('lyric-ipa'). Either can also be said out loud ('speak') where the device can recognize speech.
  */
+const SPEAK_PAUSE_KEY = '@lyricsionary_speak_paused_until';
+const SPEAK_PAUSE_MS = 10 * 60 * 1000;
+let speakPausedUntil = 0;
+AsyncStorage.getItem(SPEAK_PAUSE_KEY)
+  .then((v) => {
+    const t = Number(v);
+    if (t > speakPausedUntil) speakPausedUntil = t;
+  })
+  .catch(() => {});
+
+/** Stop asking speaking quizzes for 10 minutes, e.g. after "Can't use the mic?" is tapped. */
+export function pauseSpeakingQuizzes(): void {
+  speakPausedUntil = Date.now() + SPEAK_PAUSE_MS;
+  AsyncStorage.setItem(SPEAK_PAUSE_KEY, String(speakPausedUntil)).catch(() => {});
+}
+
+export const speakingPaused = () => Date.now() < speakPausedUntil;
+
 export type ReviewWay = 'meaning' | 'meaning-ipa' | 'meaning-listen' | 'lyric' | 'lyric-listen' | 'lyric-ipa' | 'speak';
 
 /**
@@ -317,7 +336,7 @@ export function buildReviewItems(
     // the word has (reviewWays)
     const ipaText = reviewIpa(entry, context);
     const built = buildQuiz(kind, target, words, random, now);
-    const ways = reviewWays(kind, { hasQuiz: !!built, hasLine: !!wordAt, hasAudio: !!entry.audio?.length, hasIpa: !!ipaText, canSpeak: hasSpeechModule() && !!built });
+    const ways = reviewWays(kind, { hasQuiz: !!built, hasLine: !!wordAt, hasAudio: !!entry.audio?.length, hasIpa: !!ipaText, canSpeak: hasSpeechModule() && !!built && !speakingPaused() });
     if (!ways.length) continue;
     const fewest = Math.min(...ways.map((w) => counts.get(w) ?? 0));
     const least = ways.filter((w) => (counts.get(w) ?? 0) === fewest);

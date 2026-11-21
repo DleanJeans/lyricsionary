@@ -119,7 +119,7 @@ export interface WordEntry {
 }
 
 export type RootTabParamList = {
-  Editor: { songId?: string } | undefined;
+  Editor: { songId?: string; lineIndex?: number; lineKey?: number; translationLanguage?: string } | undefined;
   Web: { url?: string } | undefined;
   /** fillIn: open the song with its saved words to recall as gaps */
   /** focus: select a word on a line, e.g. one opened from another song's word card */

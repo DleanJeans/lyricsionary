@@ -4,6 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { ActivityIndicator, I18nManager, LayoutChangeEvent, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Toast from '../components/Toast';
+import LineActionSheet from '../components/LineActionSheet';
 import LearnActionBar from '../components/LearnActionBar';
 import { useNextLineToLearn, useWordProgress } from '../hooks/useWordProgress';
 import LearnLyricsView, { type LearnLine } from '../components/LearnLyricsView';
@@ -487,8 +488,9 @@ export default function LearnScreen() {
     const timer = setTimeout(() => setCopiedLine(false), 2000);
     return () => clearTimeout(timer);
   }, [copiedLine]);
-  const copyLineRef = useRef<(lineIndex: number) => void>(() => {});
-  copyLineRef.current = (lineIndex) => {
+  // A held line offers copying and editing, instead of copying straight away
+  const [heldLine, setHeldLine] = useState<number | null>(null);
+  const copyLine = (lineIndex: number) => {
     const line = lines[lineIndex];
     if (!line?.original.trim()) return;
     const translations = line.translations
@@ -1058,7 +1060,7 @@ export default function LearnScreen() {
                         onPress={() => isElidedStart && !markMode
                           ? handleWordPress(part, text, lineIndex, startOccurrence)
                           : handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1)}
-                        onLongPress={() => copyLineRef.current(lineIndex)}
+                        onLongPress={() => setHeldLine(lineIndex)}
                         style={{
                           color: partColor,
                           fontWeight: isPartActiveOccurrence ? '700' : '400',
@@ -1223,7 +1225,7 @@ export default function LearnScreen() {
                       </View>
                       <Text
                         onPress={() => handleWordPress(word, text, lineIndex, occurrenceMap[i] || 1, single)}
-                        onLongPress={() => copyLineRef.current(lineIndex)}
+                        onLongPress={() => setHeldLine(lineIndex)}
                         style={{ fontSize, lineHeight: fontSize * 1.6, color: Colors.text }}
                       >
                         {pi === 0 && renderEdge(edgePunctuation.leading, wordColor, fontSize)}
@@ -1278,7 +1280,7 @@ export default function LearnScreen() {
               )}
               <Text
                 onPress={() => handleWordPress(split ? split.phrase : word, text, lineIndex, occurrenceMap[i] || 1, single)}
-                onLongPress={() => copyLineRef.current(lineIndex)}
+                onLongPress={() => setHeldLine(lineIndex)}
                 style={{
                   fontSize,
                   lineHeight: fontSize * 1.6,
@@ -2286,6 +2288,19 @@ export default function LearnScreen() {
         lineNotes={song.lineNotes}
         bottomInset={isWide ? 0 : sheetHeight}
       />
+      )}
+      {heldLine !== null && lines[heldLine] && (
+        <LineActionSheet
+          visible
+          line={lines[heldLine].original.trim()}
+          translationLanguages={lines[heldLine].translations
+            .filter((t) => localSelectedLanguages.includes(t.language) && t.text.trim())
+            .map((t) => t.language)}
+          onClose={() => setHeldLine(null)}
+          onCopy={() => copyLine(heldLine)}
+          onEditLine={() => navigation.navigate('Editor', { songId: song.id, lineIndex: heldLine, lineKey: Date.now() })}
+          onEditTranslation={(language) => navigation.navigate('Editor', { songId: song.id, lineIndex: heldLine, lineKey: Date.now(), translationLanguage: language })}
+        />
       )}
       {copiedLine && (
         <View style={styles.toastStack} pointerEvents="box-none">

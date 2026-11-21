@@ -100,7 +100,11 @@ export default function EditorScreen() {
     const lineIndex = route.params?.lineIndex as number | undefined;
     if (lineIndex === undefined || !paramSongId) return;
     setOpenedLine({ songId: paramSongId, index: lineIndex, key: Date.now(), focus: true });
-    setActiveTab(0);
+    // Held in Learn on a translation: open that language's tab
+    const language = route.params?.translationLanguage as string | undefined;
+    const tab = language ? (songs.find((x) => x.id === paramSongId)?.translations ?? []).findIndex((t) => t.language === language) + 1 : 0;
+    setActiveTab(tab);
+    navigation.setParams({ translationLanguage: undefined });
     // A translation tab shows the original line above its own
     setIsShowingOriginal(true);
     navigation.setParams({ lineIndex: undefined });

@@ -223,11 +223,11 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
 
   return (
     <View style={styles.container}>
-      <View style={styles.promptRow}>
+      <View style={[styles.promptRow, spoken && styles.promptRowCentered]}>
         <Text style={styles.flag} accessibilityLabel={`${entry.language} word`}>
           {getFlagForLanguage(entry.language)}
         </Text>
-        <Text style={[styles.prompt, styles.promptText]}>{prompt}</Text>
+        <Text style={[styles.prompt, spoken ? styles.promptTextCentered : styles.promptText]}>{prompt}</Text>
       </View>
       {spoken ? (
         <View style={styles.speakBox}>
@@ -509,6 +509,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 6,
+  },
+  promptRowCentered: {
+    justifyContent: 'center',
+  },
+  promptTextCentered: {
+    flexShrink: 1,
   },
   flag: {
     fontSize: 16,

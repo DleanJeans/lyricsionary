@@ -672,6 +672,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.white,
   },
+  giveUp: {
+    alignSelf: 'center',
+  },
   giveUpText: {
     fontSize: 13,
     color: Colors.textSecondary,

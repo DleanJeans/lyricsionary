@@ -1,17 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View, Text as RNText } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
 import { isIpaKept, isWordIgnored, useStore } from '../store/useStore';
-import {
-  buildKnownGermanWords,
-  getCompoundParts,
-  getSplitPositions,
-  isGermanLanguage,
-  splitAtPositions,
-} from '../utils/compoundWords';
+import { isGermanLanguage } from '../utils/compoundWords';
+import CompoundSplitEditor, { SplitButton, useCompoundSplit } from './CompoundSplitEditor';
 import { MasteryLevel } from '../types';
 import MasteryLevelBadge from './MasteryLevelBadge';
 import MasteryLevelSelector from './MasteryLevelSelector';
@@ -64,35 +59,12 @@ export default function NewWordCard({
   const wiktionary = useWiktionaryPronunciation(word, originalLanguages?.[0]);
 
   const words = useStore((s) => s.words);
-  const compoundSplits = useStore((s) => s.compoundSplits);
   // Saved while the card is open, e.g. at a level picked from its NEW badge
   const saved = findSavedWord(words, word, language);
-  const setCompoundSplit = useStore((s) => s.setCompoundSplit);
   const isGerman = isGermanLanguage(originalLanguages);
-  const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
-  const compoundParts = isGerman ? getCompoundParts(word, compoundSplits, knownGermanWords) : null;
-  const [isEditingSplit, setIsEditingSplit] = useState(false);
+  const split = useCompoundSplit(word, isGerman);
+  const compoundParts = split.parts;
   const [choosingLevel, setChoosingLevel] = useState(false);
-  // Character positions the word is cut at while editing, e.g. [6] for Liebes|brief
-  const [splitPositions, setSplitPositions] = useState<number[]>([]);
-  const letters = Array.from(word);
-  const splitPreview = splitAtPositions(word, splitPositions);
-
-  const startEditingSplit = () => {
-    setSplitPositions(compoundParts ? getSplitPositions(compoundParts.map((p) => p.text)) : []);
-    setIsEditingSplit(true);
-  };
-
-  const toggleSplitAt = (position: number) => {
-    setSplitPositions((positions) =>
-      positions.includes(position) ? positions.filter((p) => p !== position) : [...positions, position]
-    );
-  };
-
-  const saveSplit = () => {
-    setCompoundSplit(word, splitPreview.length > 1 ? splitPreview : null);
-    setIsEditingSplit(false);
-  };
 
   const handleLevel = (level: MasteryLevel) => {
     setChoosingLevel(false);
@@ -148,16 +120,7 @@ export default function NewWordCard({
           )}
         </View>
         <View style={styles.headerTools}>
-          {showSplit && !isEditingSplit && (
-            <TouchableOpacity
-              accessibilityLabel="Split Compound Word"
-              style={styles.toolButton}
-              onPress={startEditingSplit}
-              hitSlop={4}
-            >
-              <Ionicons name="cut-outline" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          )}
+          {showSplit && !split.editing && <SplitButton style={styles.toolButton} onPress={split.start} />}
           {isIgnored && (
             <TouchableOpacity
               accessibilityLabel={ipaKept ? 'Stop keeping IPA' : 'Keep IPA'}
@@ -195,7 +158,7 @@ export default function NewWordCard({
           )}
         </View>
       )}
-      {showSplit && compoundParts && !isEditingSplit && (
+      {showSplit && compoundParts && !split.editing && (
         <Text style={styles.compoundText}>{compoundParts.map((p) => p.text).join(' · ')}</Text>
       )}
 
@@ -216,49 +179,7 @@ export default function NewWordCard({
         </TouchableOpacity>
       </View>
 
-      {isEditingSplit && (
-        <View style={styles.splitEditor}>
-          <Text style={styles.splitHint}>Tap between letters to split the word</Text>
-          <View style={styles.letterRow}>
-            {letters.map((letter, i) => {
-              // Alternate colours so each part of the split stands out
-              const partIndex = splitPositions.filter((p) => p <= i).length;
-              return (
-                <React.Fragment key={i}>
-                  {i > 0 && (
-                    <TouchableOpacity
-                      accessibilityLabel={`Split before letter ${i + 1}`}
-                      style={styles.splitGap}
-                      hitSlop={{ top: 8, bottom: 8 }}
-                      onPress={() => toggleSplitAt(i)}
-                    >
-                      <View style={[styles.splitLine, splitPositions.includes(i) && styles.splitLineActive]} />
-                    </TouchableOpacity>
-                  )}
-                  <Text style={[styles.splitLetter, partIndex % 2 === 1 && styles.splitLetterAlt]}>{letter}</Text>
-                </React.Fragment>
-              );
-            })}
-          </View>
-          <View style={styles.splitActions}>
-            <Text style={styles.splitPreview}>
-              {splitPreview.length > 1 ? splitPreview.join(' + ') : 'Not split'}
-            </Text>
-            <TouchableOpacity
-              accessibilityLabel="Cancel Split"
-              style={[styles.chip, styles.chipSecondary]}
-              onPress={() => setIsEditingSplit(false)}
-            >
-              <Ionicons name="close" size={16} color={Colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity accessibilityLabel="Save Split" style={styles.chip} onPress={saveSplit}>
-              <Ionicons name="checkmark" size={16} color={Colors.primary} />
-              <Text style={styles.chipText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
+      {split.editing && <CompoundSplitEditor word={word} split={split} />}
 
       <WordTransformButtons
         word={word}
@@ -425,55 +346,5 @@ const styles = StyleSheet.create({
   },
   chipTextSecondary: {
     color: Colors.textSecondary,
-  },
-  splitEditor: {
-    marginTop: 12,
-    gap: 8,
-  },
-  splitHint: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-  },
-  letterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'stretch',
-  },
-  splitLetter: {
-    color: Colors.text,
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: '600',
-  },
-  splitLetterAlt: {
-    color: Colors.primary,
-  },
-  splitGap: {
-    width: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  splitLine: {
-    width: 1,
-    height: 20,
-    backgroundColor: Colors.textMuted,
-    opacity: 0.5,
-  },
-  splitLineActive: {
-    width: 3,
-    height: 30,
-    borderRadius: 2,
-    backgroundColor: Colors.primary,
-    opacity: 1,
-  },
-  splitActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  splitPreview: {
-    flex: 1,
-    color: Colors.textSecondary,
-    fontSize: 14,
   },
 });

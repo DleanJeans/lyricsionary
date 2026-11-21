@@ -13,7 +13,9 @@ import { splitIpas } from '../utils/ipaList';
 import { findSearchMatches } from '../utils/search';
 import { nextDueAt } from '../utils/wordQuiz';
 import { emojisByCategory } from 'rn-emoji-keyboard';
+import { isGermanLanguage } from '../utils/compoundWords';
 import AlsoInSongs from './AlsoInSongs';
+import CompoundSplitEditor, { SplitButton, useCompoundSplit } from './CompoundSplitEditor';
 import QuickNote from './QuickNote';
 import DueLabel from './DueLabel';
 import MasteryLevelBadge from './MasteryLevelBadge';
@@ -91,6 +93,8 @@ export default function WordCard({
   const [choosingLevel, setChoosingLevel] = useState(false);
   useEffect(() => setChoosingLevel(false), [item.id]);
   const swipeableRef = useRef<Swipeable>(null);
+  // Learn: a German word can be split into its parts by hand
+  const split = useCompoundSplit(item.word, showClose && isGermanLanguage([item.language]));
   // Only the Learn screen's card for the selected word, not every card in the Words list
   const wiktionary = useWiktionaryPronunciation(item.word, item.language, {
     enabled: showClose,
@@ -177,6 +181,9 @@ export default function WordCard({
                 {justSaved && <SavedPill />}
               </View>
               <View style={styles.headerTools}>
+                {showClose && isGermanLanguage([item.language]) && !split.editing && (
+                  <SplitButton style={styles.toolButton} onPress={split.start} />
+                )}
                 {onIgnore && (
                   <TouchableOpacity
                     onPress={() => onIgnore(item)}
@@ -216,6 +223,10 @@ export default function WordCard({
                 />
               </View>
             )}
+            {split.parts && !split.editing && (
+              <Text style={styles.compoundText}>{split.parts.map((p) => p.text).join(' · ')}</Text>
+            )}
+            {split.editing && <CompoundSplitEditor word={item.word} split={split} />}
             {!quizAnswered && <DueLabel entry={item} />}
             <QuickNote entry={item} />
             {quiz}
@@ -505,6 +516,11 @@ const styles = StyleSheet.create({
   },
   toolButton: {
     padding: 6,
+  },
+  compoundText: {
+    marginTop: 4,
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
   ipaRow: {
     flexDirection: 'row',

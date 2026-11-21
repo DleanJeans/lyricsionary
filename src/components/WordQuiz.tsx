@@ -344,7 +344,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
       )}
       {answered && showAudio && <AnswerAudio entry={current} />}
       {typed && !answered && (
-        <TouchableOpacity onPress={() => void submitTyped(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show the answer">
+        <TouchableOpacity style={styles.giveUp} onPress={() => void submitTyped(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show the answer">
           <Text style={styles.giveUpText}>{spoken ? "I can't say it" : "I don't remember"}</Text>
         </TouchableOpacity>
       )}

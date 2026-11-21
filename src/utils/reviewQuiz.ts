@@ -48,6 +48,17 @@ export const lineWords = (line: string) =>
 
 const isLetter = (char: string | undefined) => !!char && /[\p{L}\p{N}]/u.test(char);
 
+/**
+ * A short piece stuck to the end of the word before it with an apostrophe, like the n of Frau'n or
+ * the s of geht's, so it isn't a word on its own (unlike amour in l'amour, whose apostrophe follows the piece)
+ */
+function isClippedFragment(line: string, start: number, end: number): boolean {
+  if (end - start > 2 || !/['’]/.test(line[start - 1] ?? '')) return false;
+  let before = start - 1;
+  while (before > 0 && isLetter(line[before - 1])) before--;
+  return start - 1 - before >= 3;
+}
+
 /** Where the word is in the line, ignoring case, as a whole word unless it's written without spaces */
 export function findWordInLine(line: string, word: string): { start: number; end: number } | null {
   const lowerLine = line.toLowerCase();
@@ -55,7 +66,7 @@ export function findWordInLine(line: string, word: string): { start: number; end
   const wholeWord = !isCjkWord(word);
   for (let start = lowerLine.indexOf(lowerWord); start !== -1; start = lowerLine.indexOf(lowerWord, start + 1)) {
     const end = start + lowerWord.length;
-    if (!wholeWord || (!isLetter(line[start - 1]) && !isLetter(line[end]))) return { start, end };
+    if (!wholeWord || (!isLetter(line[start - 1]) && !isLetter(line[end]) && !isClippedFragment(line, start, end))) return { start, end };
   }
   return null;
 }
@@ -321,8 +332,10 @@ export function buildReviewItems(
     const answer = answerFor(entry, context);
     if (!answer) continue;
     const other = picked?.song;
-    const line = (other ? picked.line : context?.context?.trim()) || undefined;
+    let line = (other ? picked.line : context?.context?.trim()) || undefined;
     const wordAt = line ? findWordInLine(line, entry.word) ?? undefined : undefined;
+    // A clipped piece like the n of Frau'n isn't in its line as a word, so the line isn't shown for it
+    if (line && !wordAt && lineWords(entry.word).join('').length <= 2) line = undefined;
     const target: QuizTarget = {
       entry,
       answer,

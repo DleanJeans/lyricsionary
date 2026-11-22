@@ -7,7 +7,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import { moveField } from '../utils/activity';
-import { checkTypedAnswer, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
+import { checkTypedAnswer, mustCapitalize, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
 import { getFlagForLanguage } from '../constants/languages';
 import DueLabel from './DueLabel';
@@ -85,7 +85,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const [speechNote, setSpeechNote] = useState<string | null>(null);
   const stopListening = useRef<(() => void) | null>(null);
   useEffect(() => () => stopListening.current?.(), []);
-  const [typedResult, setTypedResult] = useState<'right' | 'accents' | 'wrong' | null>(null);
+  const [typedResult, setTypedResult] = useState<'right' | 'accents' | 'capital' | 'wrong' | null>(null);
   const stored = useStore((s) => s.words.find((w) => w.id === entry.id)) ?? entry;
   // Until the answer is saved, what it will save; after that (and on Undo) the saved word
   const current = predicted && !before && !undone ? predicted : stored;
@@ -123,11 +123,11 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex)) ?? null);
   };
 
-  const submitTyped = async (giveUp = false, result?: 'right' | 'accents' | 'wrong') => {
+  const submitTyped = async (giveUp = false, result?: 'right' | 'accents' | 'capital' | 'wrong') => {
     if (answered || (!giveUp && !result && !typedText.trim())) return;
-    result = giveUp ? 'wrong' : result ?? checkTypedAnswer(typedText, entry.word);
+    result = giveUp ? 'wrong' : result ?? checkTypedAnswer(typedText, entry.word, mustCapitalize(entry));
     setTypedResult(result);
-    const right = result !== 'wrong';
+    const right = result === 'right' || result === 'accents';
     onAnswered?.(right);
     if (practice) return;
     predict(right);
@@ -176,6 +176,10 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
             {typedResult === 'accents' ? (
               <>
                 Mind the accents: <Text style={[styles.verdictText, styles.levelText]}>{answer}</Text>
+              </>
+            ) : typedResult === 'capital' ? (
+              <>
+                Nouns start with a capital: <Text style={[styles.verdictText, styles.levelText]}>{answer}</Text>
               </>
             ) : correct ? (
               <>

@@ -409,13 +409,26 @@ const withoutAccents = (text: string) => text.normalize('NFD').replace(/\p{M}/gu
  * "corazon" for corazón), or wrong. Case and edge punctuation don't matter. Accents only fold in
  * Latin, Cyrillic and Greek words, since a kana's dakuten or a Hangul syllable isn't an accent.
  */
-export function checkTypedAnswer(typed: string, answer: string): 'right' | 'accents' | 'wrong' {
+export function checkTypedAnswer(typed: string, answer: string, mustCapitalize = false): 'right' | 'accents' | 'capital' | 'wrong' {
   const a = typedForm(typed);
   const b = typedForm(answer);
   if (!a) return 'wrong';
+  const close = a === b || (ACCENTED_SCRIPTS.test(b) && withoutAccents(a) === withoutAccents(b));
+  // A German noun is written with a capital, so a lowercase try is wrong even when the letters match
+  if (close && mustCapitalize) {
+    const first = typed.trim().replace(/^[^\p{L}\p{N}]+/u, '').charAt(0);
+    if (first !== first.toUpperCase() || first === first.toLowerCase()) return 'capital';
+  }
   if (a === b) return 'right';
-  if (ACCENTED_SCRIPTS.test(b) && withoutAccents(a) === withoutAccents(b)) return 'accents';
-  return 'wrong';
+  return close ? 'accents' : 'wrong';
+}
+
+/** Whether a typed answer must start with a capital: a German noun, or when its type is unknown a word saved capitalized */
+export function mustCapitalize(entry: { word: string; language: string; contexts: { partOfSpeech?: string }[] }): boolean {
+  if (!isGermanLanguage([entry.language])) return false;
+  const types = entry.contexts.map((c) => c.partOfSpeech).filter(Boolean);
+  if (types.length) return types.includes('noun');
+  return /^\p{Lu}/u.test(entry.word.trim());
 }
 
 /** A Recalled word's lyric quiz is typed, since picking it out of a few is what Recognized proved */

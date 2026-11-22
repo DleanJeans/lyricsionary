@@ -160,8 +160,12 @@ export function LearnLyricsLine({
     ? line.translations.filter((translation) => translation.show && selectedLanguages.includes(translation.key))
     : [];
   // The romanized line reads the original out, so it sits right under it and is never blurred
-  const romanized = shown.find((translation) => isRomanized(translation.language))?.text ||
+  const romanizedText = shown.find((translation) => isRomanized(translation.language))?.text ||
     (showTranslations ? line.romanized : undefined);
+  // A "romanization" that only repeats the original (a Latin-script song) says nothing, so it isn't shown
+  const romanized = romanizedText && romanizedText.trim().toLowerCase() !== line.original.trim().toLowerCase()
+    ? romanizedText
+    : undefined;
   // Reversed, a line with a translation to go from is hidden until tapped, its romanization with it
   const hidden = (reverse && !!line.original.trim() && !revealedOriginals?.has(lineIndex) &&
     shown.some((translation) => !isRomanized(translation.language) && translation.text.trim())) ||

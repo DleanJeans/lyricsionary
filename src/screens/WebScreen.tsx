@@ -25,7 +25,7 @@ import { cleanGeniusLyrics } from '../utils/cleanLyrics';
 import { joinChunks, remapTranslation, replaceEmDashes } from '../utils/deeplTranslation';
 import { detectLyricsJS } from '../utils/detectLyricsJS';
 import { detectTranslationJS } from '../utils/detectTranslationJS';
-import { followLyricsLinkJS } from '../utils/followLyricsLinkJS';
+import { findLyricsSitesJS } from '../utils/followLyricsLinkJS';
 import { GeniusVersion, mergeGeniusVersions, splitGeniusVersions, translationLanguageOf } from '../utils/geniusVersions';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { normalizeApostrophes } from '../utils/normalizeApostrophes';
@@ -157,14 +157,12 @@ export default function WebScreen() {
       const { editorFilledTabs, autoFetch } = useStore.getState();
       if (editorFilledTabs.includes(scrapeTargetTab) && !autoFetch) return;
       handleScrapeLyrics();
-    } else if (
-      useStore.getState().autoFetch?.step === 'lyrics' &&
-      currentUrl.includes('google.com') &&
-      autoFollowedUrl.current !== currentUrl
-    ) {
+    } else if (currentUrl.includes('google.com') && autoFollowedUrl.current !== currentUrl) {
       autoFollowedUrl.current = currentUrl;
-      // Give Google's lyrics panel a moment to render before falling back
-      setTimeout(() => webViewRef.current?.injectJavaScript(followLyricsLinkJS), 1500);
+      // Only the automatic flow says so when there are no sites; a search the user made themselves stays quiet
+      const quiet = useStore.getState().autoFetch?.step !== 'lyrics';
+      // Give Google's lyrics panel a moment to render before listing the sites
+      setTimeout(() => webViewRef.current?.injectJavaScript(findLyricsSitesJS(quiet)), 1500);
     }
   };
 

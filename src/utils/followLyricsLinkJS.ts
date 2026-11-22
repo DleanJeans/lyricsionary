@@ -1,8 +1,8 @@
 import { LYRICS_SITE_DOMAINS } from './nowPlaying';
 
-// Script for the automatic lyrics flow: when a Google results page has no lyrics panel,
+// Script for Google results pages: when a Google results page has no lyrics panel,
 // list the supported lyrics sites found in the results.
-export const followLyricsLinkJS = `
+export const findLyricsSitesJS = (quiet: boolean) => `
   (function() {
     try {
       if (document.querySelector('div[data-lyricid]')) return;
@@ -26,7 +26,7 @@ export const followLyricsLinkJS = `
       });
       if (sites.length) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'lyricsSites', sites: sites }));
-      } else {
+      } else if (!${quiet}) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: 'No lyrics found for this song' }));
       }
     } catch (e) {

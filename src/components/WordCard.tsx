@@ -15,6 +15,7 @@ import { nextDueAt } from '../utils/wordQuiz';
 import { emojisByCategory } from 'rn-emoji-keyboard';
 import { isGermanLanguage } from '../utils/compoundWords';
 import AlsoInSongs from './AlsoInSongs';
+import WordTransformButtons from './WordTransformButtons';
 import CompoundSplitEditor, { SplitButton, useCompoundSplit } from './CompoundSplitEditor';
 import QuickNote from './QuickNote';
 import DueLabel from './DueLabel';
@@ -241,6 +242,24 @@ export default function WordCard({
                 <Ionicons name="search" size={16} color={Colors.white} />
                 <Text style={styles.lookUpText}>Look up</Text>
               </TouchableOpacity>
+            )}
+            {/* A split compound's parts to look up on their own, e.g. Falsch and parker */}
+            {!quizPending && !split.editing && split.parts && (
+              <WordTransformButtons
+                word={item.word}
+                language={item.language}
+                songId={songId}
+                songName={songName}
+                artistName={artistName}
+                lyricsLine={lyricsLine}
+                translationLine={translationLine}
+                originalLanguages={originalLanguages}
+                source="Learn"
+                occurrence={occurrence}
+                hideOriginalWord
+                compact
+                extraWords={split.parts.map((p) => p.lookup)}
+              />
             )}
             <AlsoInSongs item={item} songId={songId} hideTranslations={quizPending} folded={inSheet} />
           </>

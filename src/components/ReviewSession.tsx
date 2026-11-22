@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useRef, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MORE_REVIEW_SIZE, pauseSpeakingQuizzes, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
@@ -422,7 +422,7 @@ function ReviewQuestion({
         )}
       />
       {listen && !answered && <SwitchQuizButton onPress={() => setNoAudio(true)} />}
-      {speak && !answered && <SwitchQuizButton label="Can't use the mic? Try another quiz" onPress={() => { pauseSpeakingQuizzes(); setNoAudio(true); }} />}
+      {speak && !answered && <SwitchQuizButton label="Can't use the mic? Try another quiz" onPress={() => { pauseSpeakingQuizzes(); if (Platform.OS === 'android') ToastAndroid.show('Voice quiz paused for 5 minutes', ToastAndroid.SHORT); setNoAudio(true); }} />}
     </View>
   );
 }

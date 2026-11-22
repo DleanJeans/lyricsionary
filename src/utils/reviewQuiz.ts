@@ -244,7 +244,7 @@ export const reviewIpa = (entry: WordEntry, context: WordContext | undefined): s
  * IPA alone ('lyric-ipa'). Either can also be said out loud ('speak') where the device can recognize speech.
  */
 const SPEAK_PAUSE_KEY = '@lyricsionary_speak_paused_until';
-const SPEAK_PAUSE_MS = 10 * 60 * 1000;
+const SPEAK_PAUSE_MS = 5 * 60 * 1000;
 let speakPausedUntil = 0;
 AsyncStorage.getItem(SPEAK_PAUSE_KEY)
   .then((v) => {

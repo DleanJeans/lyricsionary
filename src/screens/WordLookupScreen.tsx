@@ -27,6 +27,7 @@ import { findPartOfSpeech } from '../utils/partOfSpeech';
 import WordTransformButtons from '../components/WordTransformButtons';
 import MasteryLevelSelector from '../components/MasteryLevelSelector';
 import PronunciationAudio from '../components/PronunciationAudio';
+import IpaBoxes from '../components/IpaBoxes';
 import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
 import { isSameLanguage } from '../constants/languages';
@@ -45,7 +46,7 @@ import MergeForms from '../components/MergeForms';
 import UnsavedContextCards from '../components/UnsavedContextCards';
 import WordFrequency from '../components/WordFrequency';
 import AnswerHistory from '../components/AnswerHistory';
-import { addIpa } from '../utils/ipaList';
+import { addIpa, splitIpas } from '../utils/ipaList';
 import { focusWiktionaryJS, wiktionaryNightJS } from '../utils/wiktionaryPageJS';
 
 type WordLookupRouteProp = RouteProp<RootTabParamList, 'WordLookup'>;
@@ -693,8 +694,10 @@ export default function WordLookupScreen() {
     && (wiktionaryPronunciation.ipa.length === 0 || !!wiktionaryPronunciation.derivedFrom)
     && !(lookupSource === 'wiktionary' && scrapedIpaResults.length > 0);
 
-  const ipaPlaceholder = pronunciation
-    ? (pronunciation.includes('/') ? pronunciation : `/${pronunciation}/`)
+  // A context without its own IPA shows the word's first one
+  const wordIpas = useMemo(() => splitIpas(pronunciation), [pronunciation]);
+  const ipaPlaceholder = wordIpas[0]
+    ? (/[/[\]]/.test(wordIpas[0]) ? wordIpas[0] : `/${wordIpas[0]}/`)
     : 'IPA';
 
   const existingWord = findExistingWord();
@@ -902,22 +905,7 @@ export default function WordLookupScreen() {
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Pronunciation</Text>
-            <View>
-              <TextInput
-                style={[styles.fieldInput, searchingGoogleIpa && { paddingRight: 44 }]}
-                value={pronunciation}
-                onChangeText={setPronunciation}
-                placeholder="e.g., /prəˌnʌnsiˈeɪʃən/"
-                placeholderTextColor={Colors.textMuted}
-              />
-              {searchingGoogleIpa && (
-                <ActivityIndicator
-                  size="small"
-                  color={Colors.primary}
-                  style={{ position: 'absolute', right: 14, top: 0, bottom: 0 }}
-                />
-              )}
-            </View>
+            <IpaBoxes value={pronunciation} onChange={setPronunciation} loading={searchingGoogleIpa} />
             {!numberWord && wiktionaryHasNoIpa && !pronunciation.trim() && !(ipaSearch && lookupSource === 'google') && (
               <TouchableOpacity
                 style={styles.ipaSearchButton}
@@ -934,12 +922,13 @@ export default function WordLookupScreen() {
                 {ipaOptions.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
                   <TouchableOpacity
                     key={index}
-                    style={styles.ipaResultButton}
+                    style={[styles.ipaResultButton, styles.ipaResultButtonRow]}
                     // Adds it to the IPAs already there, so a word can keep several
                     onPress={() => setPronunciation((current) => addIpa(current, ipa))}
                     accessibilityLabel={`Add IPA ${ipa}`}
                   >
-                    <Text style={styles.ipaResultButtonText}>+ {ipa}</Text>
+                    <Ionicons name="add" size={14} color={Colors.primaryLight} />
+                    <Text style={styles.ipaResultButtonText}>{ipa}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1044,6 +1033,7 @@ export default function WordLookupScreen() {
             songName={songName}
             artistName={artistName}
             ipaPlaceholder={ipaPlaceholder}
+            wordIpas={wordIpas}
             isNewWord={!!isNewWord}
             definitionSuggestions={definitionSuggestions}
             onUpdateWordSense={updateWordSense}
@@ -1328,6 +1318,11 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 14,
     fontWeight: '600',
+  },
+  ipaResultButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   ipaResultButton: {
     backgroundColor: Colors.surface,

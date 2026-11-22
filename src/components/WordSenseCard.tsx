@@ -24,6 +24,8 @@ interface WordSenseCardProps {
   ipa: string;
   onIpaChange: (value: string) => void;
   ipaPlaceholder: string;
+  /** The word's IPAs: with more than one, tapping the IPA picks which one this line uses */
+  wordIpas?: string[];
   definition: string;
   // `at` is where the definition was picked in the translation, when it was picked there
   onDefinitionChange: (value: string, at?: number) => void;
@@ -66,6 +68,7 @@ export default function WordSenseCard({
   ipa,
   onIpaChange,
   ipaPlaceholder,
+  wordIpas,
   definition,
   onDefinitionChange,
   definitionAt,
@@ -99,6 +102,11 @@ export default function WordSenseCard({
   const canLowercase = !isRemoved && definition !== definition.toLowerCase();
   const [choosingType, setChoosingType] = useState(false);
   const [editingIpa, setEditingIpa] = useState(false);
+  const [choosingIpa, setChoosingIpa] = useState(false);
+  const bareIpa = (s: string) => s.replace(/[/[\]]/g, '').trim();
+  const pickableIpas = (wordIpas ?? []).length > 1 ? wordIpas! : [];
+  // The word's IPA this line uses: its own when it has one, else the word's first
+  const pickedIpa = ipa ? pickableIpas.find((option) => bareIpa(option) === bareIpa(ipa)) : pickableIpas[0];
   // Shown faded until tapped to keep it
   const suggestedEmoji = useMemo(
     () => (!emoji && onEmojiChange && !isRemoved ? suggestEmoji(definition, emojisByCategory) : null),
@@ -332,6 +340,48 @@ export default function WordSenseCard({
               onBlur={() => setEditingIpa(false)}
               onSubmitEditing={() => setEditingIpa(false)}
             />
+          ) : pickableIpas.length > 0 ? (
+            <>
+              {/* The word has several IPAs: tap to pick the one this line is sung with */}
+              <TouchableOpacity
+                style={[styles.typeChip, choosingIpa && styles.ipaChipPicked]}
+                onPress={() => setChoosingIpa((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={`IPA for this line: ${ipa || pickableIpas[0]}`}
+                accessibilityState={{ expanded: choosingIpa }}
+              >
+                <Text style={[styles.typeChipText, !ipa && styles.ipaChipTextDefault]}>{ipa || pickableIpas[0]}</Text>
+                <Ionicons name={choosingIpa ? 'chevron-up' : 'chevron-down'} size={10} color={Colors.textSecondary} />
+              </TouchableOpacity>
+              {choosingIpa && pickableIpas.filter((option) => option !== pickedIpa).map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={styles.typeChip}
+                  onPress={() => {
+                    setChoosingIpa(false);
+                    onIpaChange(option);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use IPA ${option} for this line`}
+                >
+                  <Text style={styles.typeChipText}>{option}</Text>
+                </TouchableOpacity>
+              ))}
+              {choosingIpa && (
+                <TouchableOpacity
+                  style={[styles.typeChip, styles.ipaChipUnset]}
+                  onPress={() => {
+                    setChoosingIpa(false);
+                    setEditingIpa(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Type another IPA for this line"
+                >
+                  <Ionicons name="pencil" size={10} color={Colors.primary} />
+                  <Text style={[styles.typeChipText, styles.typeChipTextUnset]}>other</Text>
+                </TouchableOpacity>
+              )}
+            </>
           ) : (
             <TouchableOpacity
               style={[styles.typeChip, !ipa && styles.ipaChipUnset]}
@@ -567,6 +617,13 @@ const styles = StyleSheet.create({
   },
   ipaChipUnset: {
     borderStyle: 'dashed',
+  },
+  ipaChipPicked: {
+    borderColor: Colors.primary,
+  },
+  // The word's first IPA, shown while the line has none of its own
+  ipaChipTextDefault: {
+    color: Colors.textMuted,
   },
   contextDefinitionField: {
     flex: 1,

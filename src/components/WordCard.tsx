@@ -114,9 +114,10 @@ export default function WordCard({
     if (showClose && !item.audio && wiktionary.loaded) setWordAudio(item.id, wiktionary.audio);
   }, [showClose, item.id, item.audio, wiktionary.loaded, wiktionary.audio, setWordAudio]);
   // Wiktionary's IPA until the word has one of its own
-  const ipa = item.pronunciation
-    ? (item.pronunciation.includes('/') ? item.pronunciation : `/${item.pronunciation}/`)
-    : wiktionary.ipa.join(', ');
+  const allIpas = (item.pronunciation ? splitIpas(item.pronunciation) : wiktionary.ipa)
+    .map((one) => (/[/[\]]/.test(one) ? one : `/${one}/`));
+  // One IPA sits beside the word; several each get a box of their own below it
+  const ipa = allIpas.length === 1 ? allIpas[0] : '';
   // The emoji of the selected line's context in Learn, otherwise the first context's
   const context =
     item.contexts?.find((c) => c.songId === songId && c.context === lyricsLine && (c.occurrence || 1) === (occurrence || 1)) ??
@@ -207,6 +208,20 @@ export default function WordCard({
                 </TouchableOpacity>
               </View>
             </View>
+            {allIpas.length > 1 && (
+              <View style={styles.ipaBoxes}>
+                {allIpas.map((one) => {
+                  // The one this line is sung with: the context's own, else the first
+                  const bare = (s: string) => s.replace(/[/[\]]/g, '').trim();
+                  const used = context?.ipa ? bare(context.ipa) === bare(one) : one === allIpas[0];
+                  return (
+                    <View key={one} style={[styles.ipaBox, used && styles.ipaBoxUsed]} accessibilityLabel={used ? `IPA ${one}, used in this line` : `IPA ${one}`}>
+                      <Text style={[styles.ipaBoxText, used && styles.ipaBoxTextUsed]}>{one}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
             {!inSheet && wiktionary.audio.length > 0 && (
               <View style={styles.ipaRow}>
                 <PronunciationAudio audio={wiktionary.audio} compact short autoPlay={autoPlayAudio} />
@@ -549,6 +564,30 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   // Plain RN Text inside the word's text, since the app's Text leaves the weight to inherit, which would make it bold
+  ipaBoxes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  ipaBox: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  ipaBoxUsed: {
+    borderColor: Colors.primary,
+  },
+  ipaBoxText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  ipaBoxTextUsed: {
+    color: Colors.text,
+  },
   ipaInline: {
     color: Colors.textSecondary,
     fontSize: 15,

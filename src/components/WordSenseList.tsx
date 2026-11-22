@@ -38,6 +38,8 @@ interface WordSenseListProps {
   songName?: string;
   artistName?: string;
   ipaPlaceholder: string;
+  /** The word's IPAs, for a context to pick the one its line is sung with */
+  wordIpas?: string[];
   isNewWord: boolean;
   definitionSuggestions?: WiktionaryDefinition[];
   onUpdateWordSense: (index: number, field: keyof WordSenseData, value: string | number, at?: number) => void;
@@ -66,6 +68,7 @@ export default function WordSenseList({
   songName,
   artistName,
   ipaPlaceholder,
+  wordIpas,
   isNewWord,
   definitionSuggestions,
   onUpdateWordSense,
@@ -169,6 +172,7 @@ export default function WordSenseList({
               ipa={block.ipa}
               onIpaChange={(value) => onUpdateWordSense(currentSenseIndex, 'ipa', value)}
               ipaPlaceholder={ipaPlaceholder}
+              wordIpas={wordIpas}
               definition={block.definition}
               onDefinitionChange={(value, at) => onUpdateWordSense(currentSenseIndex, 'definition', value, at)}
               definitionAt={block.definitionAt}

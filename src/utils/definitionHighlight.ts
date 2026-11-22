@@ -48,12 +48,25 @@ const CONTRACTIONS: Record<string, Array<[string, string, string]>> = {
 // "will" in "won't" or "I'll"; null when it isn't there.
 function findWhole(haystack: string, needle: string, from = 0): [number, number] | null {
   const index = indexOfWhole(haystack, needle, from);
-  if (index >= 0) return [index, index + needle.length];
+  if (index >= 0) {
+    const range: [number, number] = [index, index + needle.length];
+    // A contraction piece like "n't" or "'ll" highlights its whole word: "don't", "I'll"
+    return needle.startsWith("'") || needle.startsWith("n't") ? wholeWordAround(haystack, range) : range;
+  }
   for (const [before, word, after] of CONTRACTIONS[needle] ?? []) {
     const contracted = indexOfWhole(haystack, before + word + after, Math.max(0, from - before.length));
-    if (contracted >= 0) return [contracted + before.length, contracted + before.length + word.length];
+    if (contracted >= 0) return wholeWordAround(haystack, [contracted, contracted + (before + word + after).length]);
   }
   return null;
+}
+
+// The range grown to the whole word it sits in, apostrophes included: "n't" in "don't" -> "don't"
+function wholeWordAround(haystack: string, [start, end]: [number, number]): [number, number] {
+  let from = start;
+  let to = end;
+  while (from > 0 && (WORD_CHAR.test(haystack[from - 1]) || (haystack[from - 1] === "'" && from > 1 && WORD_CHAR.test(haystack[from - 2])))) from--;
+  while (to < haystack.length && (WORD_CHAR.test(haystack[to]) || (haystack[to] === "'" && WORD_CHAR.test(haystack[to + 1] ?? '')))) to++;
+  return [from, to];
 }
 
 // Most words that can sit between the parts of a split phrase, e.g. "much" in "give much away"
@@ -67,12 +80,21 @@ function findSplitPhrase(haystack: string, needle: string): Array<[number, numbe
     const ranges: Array<[number, number]> = [first];
     for (const word of words.slice(1)) {
       const previousEnd = ranges[ranges.length - 1][1];
-      const range = findWhole(haystack, word, previousEnd);
+      let range = findWhole(haystack, word, previousEnd);
+      if (!range) {
+        // The same contraction can hold both words: "will not" in "won't"
+        const last = ranges[ranges.length - 1];
+        const again = findWhole(haystack, word, last[0]);
+        if (again && again[0] === last[0] && again[1] === last[1]) range = again;
+      }
       const gap = range ? haystack.slice(previousEnd, range[0]).trim() : '';
       if (!range || (gap && gap.split(/\s+/).length > MAX_GAP_WORDS) || /[.,;:!?]/.test(gap)) break;
       ranges.push(range);
     }
-    if (ranges.length === words.length) return ranges;
+    if (ranges.length === words.length) {
+      // Pieces of one contraction ("will not" in "won't") are one highlight
+      return ranges.filter((range, i) => i === 0 || range[0] !== ranges[i - 1][0] || range[1] !== ranges[i - 1][1]);
+    }
   }
   return null;
 }
@@ -243,6 +265,14 @@ export function withWordForms(definitions: string[]): string[] {
 export function pickDefinition(definitions: WiktionaryDefinition[], translation?: string): string | null {
   const unique = [...new Map(definitions.filter((d) => d.text).map((d) => [d.text, d])).values()];
   if (translation) {
+    // Of the meanings found as they are, the one covering the most text: "not" (don't) over "n't"
+    let longest: { text: string; length: number } | null = null;
+    for (const { text } of unique) {
+      const ranges = findDefinitionHighlight(translation, [text]);
+      const length = ranges ? Math.max(...ranges.map(([start, end]) => end - start)) : 0;
+      if (ranges && (!longest || length > longest.length)) longest = { text, length };
+    }
+    if (longest) return longest.text;
     for (const { text, partOfSpeech } of unique) {
       if (findDefinitionHighlight(translation, [text])) return text;
       if (partOfSpeech.toLowerCase() === 'noun') {

@@ -10,23 +10,25 @@ describe('findDefinitionHighlight', () => {
   });
 
   it("finds contracted parts like 've and n't inside words", () => {
-    expect(highlighted("I've got it", "'ve got")).toEqual(["'ve got"]);
-    expect(highlighted("It isn't love", "n't")).toEqual(["n't"]);
+    expect(highlighted("I've got it", "'ve got")).toEqual(["I've got"]);
+    expect(highlighted("It isn't love", "n't")).toEqual(["isn't"]);
     expect(highlighted("It isn't love", 'is')).toEqual(['is']);
     expect(highlighted("I don't know", 'do')).toEqual(['do']);
     expect(highlighted('It isnot love', 'is')).toBeNull();
-    expect(highlighted('It isn’t love', "not; n't")).toEqual(['n’t']);
+    expect(highlighted('It isn’t love', "not; n't")).toEqual(['isn’t']);
   });
 
   it('finds words in their irregular contractions', () => {
-    expect(highlighted("I won't stay", 'will')).toEqual(['wo']);
-    expect(highlighted("I won't stay", 'will not')).toEqual(['wo', "n't"]);
-    expect(highlighted("It isn't love", 'not')).toEqual(["n't"]);
-    expect(highlighted('I cannot stay', 'can not')).toEqual(['can', 'not']);
-    expect(highlighted('I cannot stay', 'not')).toEqual(['not']);
-    expect(highlighted("I'll be there", 'will')).toEqual(["'ll"]);
-    expect(highlighted("You're mine", 'are')).toEqual(["'re"]);
-    expect(highlighted("We shan't", 'shall')).toEqual(['sha']);
+    expect(highlighted("I won't stay", 'will')).toEqual(["won't"]);
+    expect(highlighted("I won't stay", 'will not')).toEqual(["won't"]);
+    expect(highlighted("It isn't love", 'not')).toEqual(["isn't"]);
+    expect(highlighted("I can't do much, and I don't have everything", 'not')).toEqual(["can't"]);
+    expect(highlighted("I don't have it", 'not')).toEqual(["don't"]);
+    expect(highlighted('I cannot stay', 'can not')).toEqual(['cannot']);
+    expect(highlighted('I cannot stay', 'not')).toEqual(['cannot']);
+    expect(highlighted("I'll be there", 'will')).toEqual(["I'll"]);
+    expect(highlighted("You're mine", 'are')).toEqual(["You're"]);
+    expect(highlighted("We shan't", 'shall')).toEqual(["shan't"]);
     expect(highlighted('I want it', 'will')).toBeNull();
     expect(highlighted('a knot', 'not')).toBeNull();
   });

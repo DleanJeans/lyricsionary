@@ -163,9 +163,10 @@ export function LearnLyricsLine({
   const romanizedText = shown.find((translation) => isRomanized(translation.language))?.text ||
     (showTranslations ? line.romanized : undefined);
   // A "romanization" that only repeats the original (a Latin-script song) says nothing, so it isn't shown
-  const romanized = romanizedText && romanizedText.trim().toLowerCase() !== line.original.trim().toLowerCase()
-    ? romanizedText
-    : undefined;
+  // (compared without case, accents or punctuation, so "kündige" vs "kundige" counts as the same)
+  const plain = (text: string) =>
+    text.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
+  const romanized = romanizedText && plain(romanizedText) !== plain(line.original) ? romanizedText : undefined;
   // Reversed, a line with a translation to go from is hidden until tapped, its romanization with it
   const hidden = (reverse && !!line.original.trim() && !revealedOriginals?.has(lineIndex) &&
     shown.some((translation) => !isRomanized(translation.language) && translation.text.trim())) ||

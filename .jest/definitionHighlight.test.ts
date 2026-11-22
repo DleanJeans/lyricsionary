@@ -103,3 +103,11 @@ describe('findDefinitionHighlightAt', () => {
     expect(findDefinitionHighlightAt('then the', 'the', 0)).toBeNull();
   });
 });
+
+describe('pickDefinition contraction pieces', () => {
+  it('fills in the whole contracted word', () => {
+    const defs = [{ text: "n't", partOfSpeech: 'adverb' }] as any;
+    expect(pickDefinition(defs, "You say it won't work out")).toBe("won't");
+    expect(pickDefinition(defs, "I can't do much")).toBe("can't");
+  });
+});

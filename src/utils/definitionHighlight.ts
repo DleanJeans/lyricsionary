@@ -272,7 +272,12 @@ export function pickDefinition(definitions: WiktionaryDefinition[], translation?
       const length = ranges ? Math.max(...ranges.map(([start, end]) => end - start)) : 0;
       if (ranges && (!longest || length > longest.length)) longest = { text, length };
     }
-    if (longest) return longest.text;
+    if (longest) {
+      // A contraction piece like "n't" is filled in as its whole word in the translation: "won't"
+      const piece = normalize(longest.text.trim());
+      const range = piece.startsWith("n't") || piece.startsWith("'") ? findDefinitionHighlight(translation, [longest.text]) : null;
+      return range?.length === 1 ? translation.slice(range[0][0], range[0][1]) : longest.text;
+    }
     for (const { text, partOfSpeech } of unique) {
       if (findDefinitionHighlight(translation, [text])) return text;
       if (partOfSpeech.toLowerCase() === 'noun') {

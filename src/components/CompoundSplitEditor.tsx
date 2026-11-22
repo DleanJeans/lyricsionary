@@ -18,7 +18,7 @@ export function useCompoundSplit(word: string, enabled: boolean) {
   const [positions, setPositions] = useState<number[]>([]);
 
   const start = () => {
-    setPositions(parts ? getSplitPositions(parts.map((p) => p.text)) : []);
+    setPositions(parts ? getSplitPositions(parts.map((p) => p.text + (p.after ?? ''))) : []);
     setEditing(true);
   };
   const toggle = (position: number) =>
@@ -53,7 +53,7 @@ export default function CompoundSplitEditor({ word, split }: { word: string; spl
           const partIndex = split.positions.filter((p) => p <= i).length;
           return (
             <React.Fragment key={i}>
-              {i > 0 && (
+              {i > 0 && letter !== '-' && letters[i - 1] !== '-' && (
                 <TouchableOpacity
                   accessibilityLabel={`Split before letter ${i + 1}`}
                   style={styles.splitGap}
@@ -63,7 +63,8 @@ export default function CompoundSplitEditor({ word, split }: { word: string; spl
                   <View style={[styles.splitLine, split.positions.includes(i) && styles.splitLineActive]} />
                 </TouchableOpacity>
               )}
-              <Text style={[styles.splitLetter, partIndex % 2 === 1 && styles.splitLetterAlt]}>{letter}</Text>
+              {/* A hyphen already splits the word, so it's shown but can't be toggled */}
+              <Text style={[styles.splitLetter, partIndex % 2 === 1 && styles.splitLetterAlt, letter === '-' && styles.splitHyphen]}>{letter}</Text>
             </React.Fragment>
           );
         })}
@@ -88,6 +89,7 @@ const styles = StyleSheet.create({
   letterRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch' },
   splitLetter: { color: Colors.text, fontSize: 24, lineHeight: 32, fontWeight: '600' },
   splitLetterAlt: { color: Colors.primary },
+  splitHyphen: { color: Colors.textMuted, marginHorizontal: 2 },
   splitGap: { width: 14, alignItems: 'center', justifyContent: 'center' },
   splitLine: { width: 1, height: 20, backgroundColor: Colors.textMuted, opacity: 0.5 },
   splitLineActive: { width: 3, height: 30, borderRadius: 2, backgroundColor: Colors.primary, opacity: 1 },

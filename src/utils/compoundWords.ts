@@ -6,6 +6,8 @@ export interface CompoundPart {
   // Form to look up: the saved word's spelling when known, else the lemma; capitalized when the
   // compound is (German nouns keep their capital, e.g. "Liebesbrief" -> "Liebe", "Brief")
   lookup: string;
+  // The hyphen that follows this part in the word, if any, e.g. "-" after Nebelaktions in Nebelaktions-Enthusiast
+  after?: string;
 }
 
 // Lowercased known words, optionally mapped to their saved spelling
@@ -35,6 +37,18 @@ export function parseManualSplit(word: string, input: string): string[] | null {
   return parts;
 }
 
+/** The word without its hyphens, which the parts of a split spell, e.g. "Nebelaktions-Enthusiast" -> "nebelaktionsenthusiast" */
+function spelledByParts(word: string): string {
+  return word.replace(/-/g, '').toLowerCase();
+}
+
+/** The parts a hyphen cuts a word into, e.g. "Nebelaktions-Enthusiast" -> ["Nebelaktions", "Enthusiast"]; null without a hyphen between two real parts */
+export function splitAtHyphens(word: string): string[] | null {
+  if (!word.includes('-') || /\s/.test(word)) return null;
+  const parts = word.split(/-+/);
+  return parts.length >= 2 && parts.every((p) => Array.from(p).length >= 2) ? parts : null;
+}
+
 /** Character positions where the segments meet, e.g. ["Liebes", "brief"] -> [6] */
 export function getSplitPositions(segments: string[]): number[] {
   const positions: number[] = [];
@@ -49,8 +63,12 @@ export function getSplitPositions(segments: string[]): number[] {
 /** Cut a word at character positions, e.g. ("Liebesbrief", [6]) -> ["Liebes", "brief"] */
 export function splitAtPositions(word: string, positions: number[]): string[] {
   const chars = Array.from(word);
-  const cuts = [...new Set(positions)].filter((p) => p > 0 && p < chars.length).sort((a, b) => a - b);
-  return [0, ...cuts].map((start, i) => chars.slice(start, cuts[i] ?? chars.length).join(''));
+  // A hyphen always splits the word, and belongs to neither side
+  const hyphens = chars.flatMap((c, i) => (c === '-' ? [i, i + 1] : []));
+  const cuts = [...new Set([...positions, ...hyphens])].filter((p) => p > 0 && p < chars.length).sort((a, b) => a - b);
+  return [0, ...cuts]
+    .map((start, i) => chars.slice(start, cuts[i] ?? chars.length).join('').replace(/^-+|-+$/g, ''))
+    .filter(Boolean);
 }
 
 /**
@@ -61,8 +79,11 @@ export function toCompoundParts(word: string, segments: string[], knownWords: Kn
   const isCapitalized = word[0] !== word[0].toLowerCase();
   let pos = 0;
   return segments.map((segment, i) => {
+    while (word[pos] === '-') pos++;
     const text = word.slice(pos, pos + segment.length);
     pos += segment.length;
+    let after = '';
+    while (word[pos] === '-') after += word[pos++];
     const lower = text.toLowerCase();
     let lemma = lower;
     if (i < segments.length - 1 && !knownWords.has(lower)) {
@@ -74,7 +95,7 @@ export function toCompoundParts(word: string, segments: string[], knownWords: Kn
     const saved = (knownWords instanceof Map ? knownWords.get(lemma) : undefined) ?? lemma;
     // Parts of a capitalized compound are nouns, even when saved lowercase (e.g. "liebe" the verb)
     const lookup = isCapitalized ? saved.charAt(0).toUpperCase() + saved.slice(1) : saved;
-    return { text, lemma, lookup };
+    return after ? { text, lemma, lookup, after } : { text, lemma, lookup };
   });
 }
 
@@ -136,9 +157,12 @@ export function getCompoundParts(
   knownWords: KnownWords
 ): CompoundPart[] | null {
   const manual = manualSplits[word.toLowerCase()];
-  if (manual && manual.join('').toLowerCase() === word.toLowerCase()) {
+  if (manual && manual.join('').toLowerCase() === spelledByParts(word)) {
     return toCompoundParts(word, manual, knownWords);
   }
+  // A hyphen splits a word by itself, e.g. Nebelaktions-Enthusiast -> Nebelaktions · Enthusiast
+  const hyphenated = splitAtHyphens(word);
+  if (hyphenated) return toCompoundParts(word, hyphenated, knownWords);
   // Words written apart are a phrase, not a compound. Phrases are tried for every few words of every
   // song's lyrics, so they're not split letter by letter.
   if (/\s/.test(word)) return null;

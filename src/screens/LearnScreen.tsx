@@ -1310,7 +1310,7 @@ export default function LearnScreen() {
                               lineHeight: fontSize * 1.6,
                             }}
                           >
-                            {part.text}
+                            {part.text}{part.after}
                           </Text>
                         </React.Fragment>
                       );

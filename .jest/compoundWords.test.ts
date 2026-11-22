@@ -145,3 +145,31 @@ describe('joinCompoundIpa', () => {
     expect(joinCompoundIpa(parts, ['/ˈhant/', ' '])).toBeNull();
   });
 });
+
+describe('hyphenated words', () => {
+  it('splits at the hyphen by itself', () => {
+    expect(getCompoundParts('Nebelaktions-Enthusiast', {}, known)?.map((p) => p.text)).toEqual(['Nebelaktions', 'Enthusiast']);
+  });
+
+  it('keeps the hyphen to show it in lyrics', () => {
+    expect(getCompoundParts('Nebelaktions-Enthusiast', {}, known)?.[0].after).toBe('-');
+  });
+
+  it('lets a manual split cut a part further', () => {
+    const word = 'Nebelaktions-Enthusiast';
+    const parts = splitAtPositions(word, [5]);
+    expect(parts).toEqual(['Nebel', 'aktions', 'Enthusiast']);
+    expect(getCompoundParts(word, { [word.toLowerCase()]: parts }, known)?.map((p) => p.text)).toEqual(parts);
+  });
+
+  it('starts the editor with the parts', () => {
+    const word = 'Nebelaktions-Enthusiast';
+    const parts = getCompoundParts(word, {}, known)!;
+    expect(splitAtPositions(word, getSplitPositions(parts.map((p) => p.text + (p.after ?? ''))))).toEqual(['Nebelaktions', 'Enthusiast']);
+  });
+
+  it('leaves a lone dash alone', () => {
+    expect(getCompoundParts('-', {}, known)).toBeNull();
+    expect(getCompoundParts('E-', {}, known)).toBeNull();
+  });
+});

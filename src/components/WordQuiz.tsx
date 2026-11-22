@@ -332,6 +332,10 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
                 <>
                   Right! Mind the accents: <Text style={[styles.resultText, styles.levelText]}>{entry.word}</Text>
                 </>
+              ) : typedResult === 'capital' ? (
+                <>
+                  Nouns start with a capital: <Text style={[styles.resultText, styles.levelText]}>{entry.word}</Text>
+                </>
               ) : typedResult === 'wrong' ? (
                 <>
                   It's <Text style={[styles.resultText, styles.levelText]}>{entry.word}</Text>

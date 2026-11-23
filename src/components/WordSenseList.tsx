@@ -179,7 +179,7 @@ export default function WordSenseList({
               definitionSuggestions={definitionSuggestions}
               partOfSpeech={block.partOfSpeech}
               onPartOfSpeechChange={(value) => onUpdateWordSense(currentSenseIndex, 'partOfSpeech', value)}
-              onRemove={wordSenses.length > 1 ? () => onRemoveWordSense(currentSenseIndex) : undefined}
+              onRemove={() => onRemoveWordSense(currentSenseIndex)}
               word={displayWord}
               occurrence={block.occurrence}
               onOccurrenceChange={

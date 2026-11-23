@@ -322,6 +322,7 @@ export default function LearnScreen() {
     }
     // Fall back to first context
     const first = wordEntry.contexts[0];
+    if (!first) return { emoji: undefined, ipa: undefined, definition: undefined, partOfSpeech: undefined };
     return { emoji: first.emoji, ipa: first.ipa, definition: first.definition, partOfSpeech: first.partOfSpeech };
   }, [song?.id]);
 

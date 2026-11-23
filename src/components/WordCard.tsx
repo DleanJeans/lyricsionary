@@ -259,7 +259,7 @@ export default function WordCard({
               </TouchableOpacity>
             )}
             {/* A split compound's parts to look up on their own, e.g. Falsch and parker */}
-            {!quizPending && !split.editing && split.parts && (
+            {!quizPending && !split.editing && (split.parts || /\s/.test(item.word.trim())) && (
               <WordTransformButtons
                 word={item.word}
                 language={item.language}
@@ -273,7 +273,7 @@ export default function WordCard({
                 occurrence={occurrence}
                 hideOriginalWord
                 compact
-                extraWords={split.parts.map((p) => p.lookup)}
+                extraWords={split.parts?.map((p) => p.lookup)}
               />
             )}
             <AlsoInSongs item={item} songId={songId} hideTranslations={quizPending} folded={inSheet} />

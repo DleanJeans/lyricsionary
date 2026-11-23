@@ -63,8 +63,17 @@ export default function WordTransformButtons({
   }, [lowercaseWord]);
 
   // Get all transformed versions of the word
+  // A phrase's own words, e.g. give and up in "give up", hört and auf in "hört … auf"
+  const phraseWords = /\s/.test(word.trim())
+    ? word.split(/\s+/).map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')).filter(Boolean)
+    : [];
+  const isPhrase = phraseWords.length > 1;
   const transforms = [
-    ...new Set([...getWordTransforms(word, language || originalLanguages?.[0]), ...extraWords]),
+    ...new Set([
+      ...(isPhrase ? [] : getWordTransforms(word, language || originalLanguages?.[0])),
+      ...phraseWords,
+      ...extraWords,
+    ]),
   ].filter((w) => !hideLowercase || w !== lowercaseWord || extraWords.includes(w));
 
   // Always show at least the original word as a button

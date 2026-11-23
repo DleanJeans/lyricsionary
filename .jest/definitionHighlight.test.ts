@@ -113,3 +113,13 @@ describe('pickDefinition contraction pieces', () => {
     expect(pickDefinition(defs, "I can't do much")).toBe("can't");
   });
 });
+
+describe('contracted words found again from inside them', () => {
+  it("doesn't hang on a phrase whose first word only shows up contracted (are in you're)", () => {
+    expect(findDefinitionHighlight("And you're pretty good at talking to kids", ['are able'])).toBeNull();
+  });
+
+  it('finds a later occurrence past a contraction instead of counting it twice', () => {
+    expect(findDefinitionHighlight("you've got it, you've had it", ['have'], 2)).toEqual([[15, 21]]);
+  });
+});

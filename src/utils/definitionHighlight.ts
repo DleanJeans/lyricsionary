@@ -76,7 +76,11 @@ const MAX_GAP_WORDS = 3;
 function findSplitPhrase(haystack: string, needle: string): Array<[number, number]> | null {
   const words = needle.split(/\s+/);
   if (words.length < 2) return null;
-  for (let first = findWhole(haystack, words[0]); first; first = findWhole(haystack, words[0], first[0] + 1)) {
+  // A contraction's range can start before the search position ("'ve" grows back to "you've"), so the
+  // search moves on from where it was, not from the range, or it would find the same one forever
+  let searchFrom = 0;
+  for (let first = findWhole(haystack, words[0]); first; first = findWhole(haystack, words[0], searchFrom)) {
+    searchFrom = Math.max(searchFrom, first[0]) + 1;
     const ranges: Array<[number, number]> = [first];
     for (const word of words.slice(1)) {
       const previousEnd = ranges[ranges.length - 1][1];
@@ -113,7 +117,11 @@ export function findDefinitionHighlight(text: string, definitions: string[], occ
         if (occurrence > 1) {
           let found = range;
           let count = 1;
-          for (let next = findWhole(haystack, needle, found[0] + 1); next && count < occurrence; next = findWhole(haystack, needle, found[0] + 1)) {
+          let searchFrom = range[0] + 1;
+          for (let next = findWhole(haystack, needle, searchFrom); next && count < occurrence; next = findWhole(haystack, needle, searchFrom)) {
+            searchFrom = Math.max(searchFrom, next[0]) + 1;
+            // The same contracted word found again from inside it isn't another occurrence
+            if (next[0] === found[0] && next[1] === found[1]) continue;
             found = next;
             count++;
           }

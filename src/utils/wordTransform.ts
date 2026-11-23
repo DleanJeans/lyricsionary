@@ -1,3 +1,4 @@
+import { cleanLyricWord } from './cleanLyrics';
 import { isGermanLanguage } from './compoundWords';
 import { getKoreanStem, isKoreanLanguage } from './koreanWords';
 import { getRomanceBaseWord } from './romanceClitics';
@@ -251,4 +252,63 @@ export function elisionDisplayParts(cleaned: string, core: string): { parts: str
     pos = end;
   });
   return { parts, display };
+}
+
+/**
+ * Splits the elided start off a word when the phrase after it is a word `isWord` accepts, so a phrase can begin
+ * mid-word, e.g. ["j'aurai", " ", "l'air"] -> ["j'", "aurai l'air"] when "aurai l'air" is selected or saved.
+ * Words that already group into a longer phrase whole, e.g. "j'aurai l'air", stay as they are.
+ */
+export function splitElidedPhraseStarts(tokens: string[], isWord: (word: string) => boolean, maxWords = 4): string[] {
+  const isSpace = (token: string | undefined) => !!token && /^[^\S\n]+$/.test(token);
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    const cleaned = token.trim() ? cleanLyricWord(token) : '';
+    const cut = token.search(/['’]/) + 1;
+    if (!cleaned || cleaned.includes(' ') || cut <= 0 || cut >= token.length || !hasContractedPrefix(cleaned.replace(/’/g, "'"))) {
+      out.push(token);
+      continue;
+    }
+    let whole = false;
+    let best = 0;
+    for (let n = 1; n < maxWords && isSpace(tokens[i + 2 * n - 1]) && tokens[i + 2 * n]?.trim(); n++) {
+      const tail = tokens.slice(i + 1, i + 2 * n + 1).join('');
+      if (isWord(cleanLyricWord(token + tail))) whole = true;
+      if (isWord(cleanLyricWord(token.slice(cut) + tail))) best = n;
+    }
+    if (whole || !best) {
+      out.push(token);
+      continue;
+    }
+    out.push(token.slice(0, cut), token.slice(cut) + tokens.slice(i + 1, i + 2 * best + 1).join(''));
+    i += 2 * best;
+  }
+  return splitElidedPhraseEnds(out, isWord, maxWords);
+}
+
+/** The same for a phrase that ends after an elided start, e.g. ["pas", " ", "j'aurai"] -> ["pas j'", "aurai"] when "pas j'" is selected */
+function splitElidedPhraseEnds(tokens: string[], isWord: (word: string) => boolean, maxWords: number): string[] {
+  const isSpace = (token: string | undefined) => !!token && /^[^\S\n]+$/.test(token);
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    let done = false;
+    if (tokens[i].trim() && !tokens[i].includes(' ')) {
+      for (let m = maxWords - 1; m >= 1 && !done; m--) {
+        const last = tokens[i + 2 * m];
+        const cut = last ? last.search(/['’]/) + 1 : 0;
+        if (cut <= 0 || cut >= last.length || !hasContractedPrefix(cleanLyricWord(last).replace(/’/g, "'"))) continue;
+        let spaced = true;
+        for (let k = 1; k < 2 * m; k += 2) spaced = spaced && isSpace(tokens[i + k]);
+        if (!spaced) continue;
+        const head = tokens.slice(i, i + 2 * m).join('');
+        if (isWord(cleanLyricWord(head + last)) || !isWord(cleanLyricWord(head + last.slice(0, cut)))) continue;
+        out.push(head + last.slice(0, cut), last.slice(cut));
+        i += 2 * m;
+        done = true;
+      }
+    }
+    if (!done) out.push(tokens[i]);
+  }
+  return out;
 }

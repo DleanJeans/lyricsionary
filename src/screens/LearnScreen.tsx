@@ -49,7 +49,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { clippedFormIpa, getWiktionaryDefinitions, getWiktionaryPronunciation, peekWiktionaryDefinitions } from '../utils/wiktionary';
-import { elisionDisplayParts, germanFullForms, getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
+import { elisionDisplayParts, germanFullForms, getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElidedPhraseStarts, splitElisionParts } from '../utils/wordTransform';
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
@@ -773,6 +773,8 @@ export default function LearnScreen() {
   // The words being dragged across, shown selected until the finger lifts
   const [dragRange, setDragRange] = useState<{ lineIndex: number; from: number; to: number } | null>(null);
   const dragStartRef = useRef(-1);
+  // Characters of the word a drag started on that it leaves out, e.g. 2 for a drag starting on aurai of j'aurai
+  const dragCutRef = useRef(0);
 
   const handleTranslationPress = (lineIndex: number, translationIndex: number) => {
     const key = `${lineIndex}-${translationIndex}`;
@@ -850,7 +852,9 @@ export default function LearnScreen() {
     const isSelectedLine = lineIndex === selectedLineIndex;
     const isWord = (candidate: string) => (isSelectedLine && candidate === selectedWord) || !!findSavedEntry(candidate);
     const cjkGrouped = groupCjkTokens(splitLyricTokens(text), isWord);
-    const textWords = groupSpacedWords(cjkGrouped, isWord);
+    const spaced = groupSpacedWords(cjkGrouped, isWord);
+    // A phrase can start after an elided start, e.g. aurai l'air of j'aurai l'air
+    const textWords = hasFrenchLanguage || hasItalianLanguage ? splitElidedPhraseStarts(spaced, isWord) : spaced;
     const occurrenceMap: Record<number, number> = {};
     const wordCountMap: Record<string, number> = {};
     // How many times each elided start, e.g. j', has come up so far in the line
@@ -898,6 +902,15 @@ export default function LearnScreen() {
       .onStart((event) => {
         dragStartRef.current = wordAt(event.x - event.translationX, event.y - event.translationY);
         if (dragStartRef.current < 0) return;
+        // A drag starting on the rest of an elided word, e.g. aurai of j'aurai, leaves the start out
+        dragCutRef.current = 0;
+        const startToken = textWords[dragStartRef.current];
+        const startRect = rects[dragStartRef.current];
+        const startCut = startToken.search(/['’]/) + 1;
+        if (startRect && startCut > 0 && startCut < startToken.length && hasContractedPrefix(cleanLyricWord(startToken).replace(/’/g, "'"))) {
+          const x = event.x - event.translationX;
+          if (x > startRect.x + startRect.width * (startCut / startToken.length)) dragCutRef.current = startCut;
+        }
         const range = dragTo(event.x, event.y);
         if (range) setDragRange({ lineIndex, from: range.from, to: range.to });
       })
@@ -914,9 +927,23 @@ export default function LearnScreen() {
         else if (markMode) {
           for (let j = range.from; j <= range.to; j++) pickWord(textWords[j], text, lineIndex, occurrenceMap[j] || 1, false);
         } else if (isTappableLyric(range.word)) {
-          const words = textWords.slice(range.from, range.to + 1).map(cleanLyricWord).filter(Boolean);
-          const start = tokenEnds[range.from] - textWords[range.from].length;
-          selectPhrase(range.word, text, lineIndex, tokenEnds[range.to], { words, start });
+          const cut = dragStartRef.current === range.from ? dragCutRef.current : 0;
+          const tokens = textWords.slice(range.from, range.to + 1);
+          tokens[0] = tokens[0].slice(cut);
+          // A drag ending on the start of an elided word, e.g. j' of j'aurai, leaves the rest out
+          const endToken = tokens[tokens.length - 1];
+          const endRect = rects[range.to];
+          const endCut = endToken.search(/['’]/) + 1;
+          let endTrim = 0;
+          if (tokens.length > 1 && dragStartRef.current === range.from && endRect && endCut > 0 && endCut < endToken.length &&
+              hasContractedPrefix(cleanLyricWord(endToken).replace(/’/g, "'")) &&
+              event.x < endRect.x + endRect.width * (endCut / endToken.length)) {
+            endTrim = endToken.length - endCut;
+            tokens[tokens.length - 1] = endToken.slice(0, endCut);
+          }
+          const words = tokens.map(cleanLyricWord).filter(Boolean);
+          const start = tokenEnds[range.from] - textWords[range.from].length + cut;
+          selectPhrase(cut || endTrim ? cleanLyricWord(tokens.join('')) : range.word, text, lineIndex, tokenEnds[range.to] - endTrim, { words, start });
         }
       })
       .onFinalize(() => {

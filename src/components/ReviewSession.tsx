@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
@@ -131,6 +131,13 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
   const lookUpRef = useRef<(() => void) | null>(null);
+  // Hidden, not closed, while a Look Up page is open, so Back finds the quiz as it was
+  const [hidden, setHidden] = useState(false);
+  const stepAside = () => {
+    setReviewResume(() => setHidden(false));
+    setHidden(true);
+  };
+  useEffect(() => () => setReviewResume(null), []);
   const isRetry = index >= firstTries.length;
   // A first try's quiz is built again when it's shown, so a word answered right earlier today, also
   // in this session, isn't one of its wrong options. A retry keeps the options it was missed with.
@@ -165,7 +172,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
   };
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={!hidden} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.card, isWide && styles.cardWide]}>
           <View style={styles.header}>
@@ -260,9 +267,9 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
                 isWide={isWide}
                 practice={isRetry}
                 lookUpRef={lookUpRef}
-                onCloseReview={onClose}
+                onCloseReview={stepAside}
                 onLookUp={(entry, line, songId, songName) => {
-                  onClose();
+                  stepAside();
                   openWordLookup({ word: entry.word, wordId: entry.id, songId, songName, lyricsLine: line ?? undefined, source: 'Words' });
                 }}
               />

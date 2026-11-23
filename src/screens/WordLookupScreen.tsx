@@ -1,3 +1,4 @@
+import { resumeReview } from '../navigation/reviewResume';
 import { Ionicons } from '@expo/vector-icons';
 import { withAbbreviationNote } from '../utils/abbreviationNote';
 import { RouteProp, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
@@ -73,6 +74,8 @@ export default function WordLookupScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<WordLookupRouteProp>();
   const isFocused = useIsFocused();
+  // A review that stepped aside for this page comes back once it's left
+  useEffect(() => (isFocused ? resumeReview : undefined), [isFocused]);
   const { word, wordId, songId, songName, artistName, lyricsLine, translationLine, originalLanguages, source, occurrence: routeOccurrence, ipa: routeIpa } = route.params || {};
   // A line's translation with each translation on its own line, and the icons of their sites
   const senseTranslation = (sId: string | undefined, context: string | undefined, fallback?: string) => {

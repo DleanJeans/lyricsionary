@@ -7,7 +7,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import { moveField } from '../utils/activity';
-import { checkTypedAnswer, mustCapitalize, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
+import { checkSpokenAnswer, checkTypedAnswer, mustCapitalize, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
 import { getFlagForLanguage } from '../constants/languages';
 import DueLabel from './DueLabel';
@@ -140,15 +140,13 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (answered || listening) return;
     setSpeechNote(null);
     setListening(true);
-    stopListening.current = listenForWord(entry.language, (outcome) => {
+    stopListening.current = listenForWord(entry.language, entry.word, (outcome) => {
       stopListening.current = null;
       setListening(false);
       if (outcome.type === 'denied') return setSpeechNote('Allow the microphone for Lyricsionary in Settings to say words.');
       if (outcome.type === 'unavailable') return setSpeechNote("This phone can't recognize speech here. Try another quiz.");
       if (outcome.type === 'nothing') return setSpeechNote("Didn't catch that. Tap the mic and try again.");
-      // Any of the recognizer's guesses counts, and accents can't be heard
-      const results = outcome.alternatives.map((heard) => checkTypedAnswer(heard, entry.word));
-      if (results.includes('right') || results.includes('accents')) void submitTyped(false, 'right');
+      if (checkSpokenAnswer(outcome.alternatives, entry.word)) void submitTyped(false, 'right');
       else setSpeechNote(`Heard "${outcome.alternatives[0]}". Try again.`);
     });
   };

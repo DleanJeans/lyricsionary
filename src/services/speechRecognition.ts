@@ -31,7 +31,7 @@ export type ListenOutcome =
  * Listens once for the word to be said and calls back with what was heard, or why it wasn't. Returns
  * a function that stops listening.
  */
-export function listenForWord(language: string, onDone: (outcome: ListenOutcome) => void): () => void {
+export function listenForWord(language: string, word: string, onDone: (outcome: ListenOutcome) => void): () => void {
   if (!hasSpeechModule()) {
     onDone({ type: 'unavailable' });
     return () => {};
@@ -63,7 +63,7 @@ export function listenForWord(language: string, onDone: (outcome: ListenOutcome)
         }),
         Module.addListener('end', () => finish(heard.length ? { type: 'heard', alternatives: heard } : { type: 'nothing' }))
       );
-      Module.start({ lang: speechLocale(language), interimResults: false, maxAlternatives: 5, continuous: false });
+      Module.start({ lang: speechLocale(language), interimResults: false, maxAlternatives: 10, contextualStrings: [word], continuous: false });
     } catch {
       finish({ type: 'unavailable' });
     }

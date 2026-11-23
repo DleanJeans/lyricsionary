@@ -171,11 +171,11 @@ export default function LearnScreen() {
     },
     [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong, song?.originalLanguages]
   );
-  // The elided starts of a French or Italian word shown split, e.g. j' for j'ai, selectable on their own
+  // The parts of a French or Italian word shown split, e.g. j' and ai for j'ai, selectable on their own
   const elidedStartsOf = useCallback(
     (cleaned: string) =>
       (hasFrenchLanguage || hasItalianLanguage) && !/\s/.test(cleaned) && !findWordEntry(cleaned)
-        ? (splitElisionParts(cleaned) ?? []).slice(0, -1)
+        ? (splitElisionParts(cleaned) ?? [])
         : [],
     [findWordEntry, hasFrenchLanguage, hasItalianLanguage]
   );
@@ -1029,7 +1029,7 @@ export default function LearnScreen() {
                   {elisionParts.map((part, pi) => {
                     const partEntry = partEntries[pi];
                     // The start of the word, e.g. j', is selected on its own; the rest selects the whole word
-                    const isElidedStart = pi < elisionParts.length - 1;
+                    const isElidedStart = true;
                     const startOccurrence = isElidedStart ? (elidedStartCounts[part.toLowerCase()] = (elidedStartCounts[part.toLowerCase()] || 0) + 1) : 0;
                     const isStartSelected = isElidedStart && !!selectedWord && part.toLowerCase() === selectedWord.toLowerCase() &&
                       lineIndex === selectedLineIndex && startOccurrence === selectedOccurrence;
@@ -1400,6 +1400,8 @@ export default function LearnScreen() {
   }, [selectedWord]);
   useEffect(() => {
     if (!selectedWord || selectedWordSaved || selectedWordIgnored || !songLanguage || !song) return;
+    // An elided word, e.g. j'vois or l'abîme, isn't saved whole: its parts are tapped and saved on their own
+    if (elidedStartsOf(selectedWord).length > 1) return;
     const job = { word: selectedWord, cancelled: false };
     wordFetchRef.current = job;
     const loadingKey = loadingWordKey(selectedWord, selectedLineIndex, selectedOccurrence);

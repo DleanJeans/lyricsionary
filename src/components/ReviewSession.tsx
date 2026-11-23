@@ -23,6 +23,8 @@ interface ReviewSessionProps {
   isWide?: boolean;
   /** Starts a session of this many right away, without asking (a daily batch); the rest of dueItems is for more */
   startSize?: number;
+  /** Every word due in each language, when dueItems is only a part of them (the launch review) */
+  dueTotals?: Record<string, number>;
 }
 
 const GAP = '_____';
@@ -81,7 +83,7 @@ export default function ReviewSession(props: ReviewSessionProps) {
                 >
                   <Text style={styles.languageFlag}>{getFlagForLanguage(lang)}</Text>
                   <Text style={styles.languageName}>{name}</Text>
-                  <Text style={styles.sizeHint}>{`${count} due`}</Text>
+                  <Text style={styles.sizeHint}>{props.dueTotals?.[lang] && props.dueTotals[lang] > count ? `${count} of ${props.dueTotals[lang]} due` : `${count} due`}</Text>
                   <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
                 </TouchableOpacity>
               );

@@ -19,7 +19,7 @@ import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 import { useIsWide } from './src/hooks/useLayout';
 import { navigationRef } from './src/navigation/navigationRef';
 import ReviewSession from './src/components/ReviewSession';
-import { buildLaunchReview, buildSongReview, type ReviewItem } from './src/utils/reviewQuiz';
+import { buildLaunchReview, buildSongReview, canReview, dueWords, type ReviewItem } from './src/utils/reviewQuiz';
 import { useUsageTracker } from './src/services/usageTime';
 import { flushWrites } from './src/services/storageWrites';
 import { applyOtaResume, reloadForUpdate, takeOtaResume } from './src/utils/otaResume';
@@ -72,6 +72,8 @@ export default function App() {
   useWordQuizResponse(dataLoaded, () => setReviewReminderTapped(true));
   // Opening the app starts a review of 10 due words from the songs opened last
   const [launchReview, setLaunchReview] = useState<ReviewItem[] | null>(null);
+  // All the words due in each language, shown beside the launch review's part of them
+  const [launchTotals, setLaunchTotals] = useState<Record<string, number> | undefined>();
   const isWide = useIsWide();
   useUsageTracker();
   const [otaResume, setOtaResume] = useState<{ songId: string; screen: string } | null>(null);
@@ -116,7 +118,12 @@ export default function App() {
       if (resume) setOtaResume(resume);
       else {
         const review = buildLaunchReview(songs, words);
-        if (review.length) setLaunchReview(review);
+        if (review.length) {
+          const totals: Record<string, number> = {};
+          for (const w of dueWords(words, Date.now(), words).filter(canReview)) totals[w.language] = (totals[w.language] ?? 0) + 1;
+          setLaunchTotals(totals);
+          setLaunchReview(review);
+        }
       }
       setDataLoaded(true);
       await checkForUpdates();
@@ -220,7 +227,7 @@ export default function App() {
         <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme} onReady={() => setNavigationReady(true)}>
           <AppNavigator />
         </NavigationContainer>
-        {launchReview && <ReviewSession dueItems={launchReview} onClose={() => setLaunchReview(null)} isWide={isWide} />}
+        {launchReview && <ReviewSession dueItems={launchReview} dueTotals={launchTotals} onClose={() => { setLaunchReview(null); setLaunchTotals(undefined); }} isWide={isWide} />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

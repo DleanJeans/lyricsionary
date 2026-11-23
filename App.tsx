@@ -12,6 +12,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useStore } from './src/store/useStore';
 import { NowPlayingRequest, setupNowPlayingNotifications, useNowPlayingResponse } from './src/services/nowPlayingNotification';
 import { findSavedSong } from './src/utils/nowPlaying';
+import { useWordQuizResponse, useWordQuizSchedule } from './src/services/wordQuizNotification';
 import { useReviewReminderResponse, useReviewReminderSchedule, useStreakSaverSchedule } from './src/services/reviewReminder';
 import { completeSpotifySignIn, isSpotifyCallback, isSpotifyConnected } from './src/services/spotify';
 import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
@@ -65,6 +66,10 @@ export default function App() {
   useStreakSaverSchedule(activity, reviewReminder, dataLoaded);
   const [reviewReminderTapped, setReviewReminderTapped] = useState(false);
   useReviewReminderResponse(() => setReviewReminderTapped(true));
+  // The one-word quiz notification answers from its buttons; tapping it opens Words like the reminder
+  const wordQuizNotification = useStore((s) => s.wordQuizNotification);
+  useWordQuizSchedule(words, wordQuizNotification, dataLoaded);
+  useWordQuizResponse(dataLoaded, () => setReviewReminderTapped(true));
   // Opening the app starts a review of 10 due words from the songs opened last
   const [launchReview, setLaunchReview] = useState<ReviewItem[] | null>(null);
   const isWide = useIsWide();

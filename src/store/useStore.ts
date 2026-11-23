@@ -19,6 +19,7 @@ const COMPOUND_SPLITS_KEY = '@lyricsionary_compound_splits';
 const LEARN_SETTINGS_KEY = '@lyricsionary_learn_settings';
 const ACTIVITY_KEY = '@lyricsionary_activity';
 const REVIEW_REMINDER_KEY = '@lyricsionary_review_reminder';
+const WORD_QUIZ_NOTIFICATION_KEY = '@lyricsionary_word_quiz_notification';
 
 export interface IgnoredWord {
   word: string;
@@ -173,6 +174,9 @@ interface AppState {
   /** A 7 PM notification when words are due */
   reviewReminder: boolean;
   setReviewReminder: (on: boolean) => Promise<void>;
+  /** The one-word quiz notification: on or off and how often it's sent */
+  wordQuizNotification: { on: boolean; everyHours: 2 | 4 | 8 };
+  setWordQuizNotification: (changes: Partial<{ on: boolean; everyHours: 2 | 4 | 8 }>) => Promise<void>;
   /** Signed in to Spotify, for seeking it by lyric line in Learn */
   spotifyConnected: boolean;
   setSpotifyConnected: (connected: boolean) => void;
@@ -517,7 +521,12 @@ export const useStore = create<AppState>((set, get) => ({
 
   loadActivity: async () => {
     try {
-      const [json, reminder] = await Promise.all([AsyncStorage.getItem(ACTIVITY_KEY), AsyncStorage.getItem(REVIEW_REMINDER_KEY)]);
+      const [json, reminder, quizNotification] = await Promise.all([
+        AsyncStorage.getItem(ACTIVITY_KEY),
+        AsyncStorage.getItem(REVIEW_REMINDER_KEY),
+        AsyncStorage.getItem(WORD_QUIZ_NOTIFICATION_KEY),
+      ]);
+      if (quizNotification) set({ wordQuizNotification: { ...get().wordQuizNotification, ...JSON.parse(quizNotification) } });
       if (json) set({ activity: JSON.parse(json) });
       if (reminder) set({ reviewReminder: JSON.parse(reminder) === true });
     } catch (e) {
@@ -526,6 +535,13 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   reviewReminder: false,
+  wordQuizNotification: { on: false, everyHours: 4 },
+
+  setWordQuizNotification: async (changes) => {
+    const next = { ...get().wordQuizNotification, ...changes };
+    set({ wordQuizNotification: next });
+    await persist(WORD_QUIZ_NOTIFICATION_KEY, () => JSON.stringify(next));
+  },
 
   spotifyConnected: false,
   setSpotifyConnected: (connected) => set({ spotifyConnected: connected }),

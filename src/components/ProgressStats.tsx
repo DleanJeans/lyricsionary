@@ -5,6 +5,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { MASTERY_LEVELS, type MasteryLevel } from '../types';
 import { useStore } from '../store/useStore';
 import { allowReviewReminders } from '../services/reviewReminder';
+import { allowWordQuizzes, QUIZ_NOTIFICATION_FREQUENCIES } from '../services/wordQuizNotification';
 import { answersToday, dayStreak, nextDailyGoal, weekDays, weekTotals } from '../utils/activity';
 import { useDailyGoal } from '../hooks/useDailyGoal';
 import { REMINDER_HOUR, STREAK_SAVER_HOUR } from '../utils/reviewReminder';
@@ -120,6 +121,12 @@ export default function ProgressStats() {
     if (on && !(await allowReviewReminders())) return;
     await setReviewReminder(on);
   };
+  const quizNotification = useStore((s) => s.wordQuizNotification);
+  const setQuizNotification = useStore((s) => s.setWordQuizNotification);
+  const toggleQuizNotification = async (on: boolean) => {
+    if (on && !(await allowWordQuizzes())) return;
+    await setQuizNotification({ on });
+  };
   const clock = (hour: number) => `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`;
   const reminderTime = clock(REMINDER_HOUR);
   const now = Date.now();
@@ -161,11 +168,57 @@ export default function ProgressStats() {
           />
         </View>
       )}
+      {Platform.OS !== 'web' && (
+        <View style={styles.reminderRow}>
+          <Ionicons name="help-circle-outline" size={18} color={Colors.textSecondary} />
+          <Text style={styles.reminderText}>Ask me one word in a notification I can answer there, between 9 AM and 9 PM</Text>
+          <Switch
+            value={quizNotification.on}
+            onValueChange={(on) => void toggleQuizNotification(on)}
+            trackColor={{ true: Colors.primary, false: Colors.border }}
+            thumbColor={Colors.white}
+            accessibilityLabel="One-word quiz notification"
+          />
+        </View>
+      )}
+      {Platform.OS !== 'web' && quizNotification.on && (
+        <View style={styles.reminderRow}>
+          <Text style={styles.reminderText}>How often</Text>
+          {QUIZ_NOTIFICATION_FREQUENCIES.map((hours) => (
+            <TouchableOpacity
+              key={hours}
+              onPress={() => void setQuizNotification({ everyHours: hours })}
+              style={[styles.frequencyChip, quizNotification.everyHours === hours && styles.frequencyChipOn]}
+              accessibilityLabel={`Every ${hours} hours`}
+            >
+              <Text style={[styles.frequencyText, quizNotification.everyHours === hours && styles.frequencyTextOn]}>{hours}h</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  frequencyChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  frequencyChipOn: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  frequencyText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  frequencyTextOn: {
+    color: Colors.white,
+  },
   container: {
     gap: 10,
   },

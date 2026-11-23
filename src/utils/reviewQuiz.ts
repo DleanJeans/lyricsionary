@@ -185,9 +185,10 @@ function pickLine(
   entry: WordEntry,
   songs: ReviewSong[],
   random: () => number
-): { context: WordContext; song?: undefined } | { context?: undefined; song: ReviewSong; line: string } | null {
-  const bySong = new Map<string, ({ context: WordContext } | { song: ReviewSong; line: string })[]>();
-  const add = (key: string, choice: { context: WordContext } | { song: ReviewSong; line: string }) => {
+): { context: WordContext; song?: undefined } | { context?: undefined; song: ReviewSong; line: string; match: WordContext } | null {
+  type Choice = { context: WordContext } | { song: ReviewSong; line: string; match: WordContext };
+  const bySong = new Map<string, Choice[]>();
+  const add = (key: string, choice: Choice) => {
     const list = bySong.get(key);
     if (list) list.push(choice);
     else bySong.set(key, [choice]);
@@ -197,24 +198,29 @@ function pickLine(
       add(context.songId ?? `context ${i}`, { context });
     }
   });
-  // Another song's line whose translation shows none of the word's saved meanings (nach meaning "past"
-  // in a line that's about smelling smoke, as in "riech nach") isn't asked, as that meaning would be wrong
-  const meanings = (entry.contexts ?? [])
-    .flatMap((c) => (c.definition ?? '').toLowerCase().split(/[,;/()]+/))
-    .map((m) => m.replace(/^\s*(to|a|an|the)\s+/, '').trim())
-    .filter((m) => m.length > 1);
-  const fits = (song: ReviewSong, line: string) => {
+  // Another song's line is asked only when its translation shows one of a saved meaning (nach meaning
+  // "past" in a line about smelling smoke, or da "there" when the saved meaning is "all that", isn't a
+  // match); a line with no translation can't be checked, so it isn't asked. That meaning's context
+  // is the one asked about.
+  const meaningsOf = (c: WordContext) =>
+    (c.definition ?? '')
+      .toLowerCase()
+      .split(/[,;/()]+/)
+      .map((m) => m.replace(/^\s*(to|a|an|the)\s+/, '').trim())
+      .filter((m) => m.length > 1);
+  const fits = (song: ReviewSong, line: string): WordContext | undefined => {
     const translation = song.originalLyrics && song.translations ? lineTranslation(song as Song, line) : null;
-    if (!translation || !meanings.length) return true;
+    if (!translation) return undefined;
     const lower = translation.toLowerCase();
-    return meanings.some((m) => lower.includes(m));
+    return (entry.contexts ?? []).find((c) => meaningsOf(c).some((m) => lower.includes(m)));
   };
   for (const spot of otherSongLines(entry, songs)) {
-    if (fits(spot.song, spot.line)) add(spot.song.id, spot);
+    const match = fits(spot.song, spot.line);
+    if (match) add(spot.song.id, { ...spot, match });
   }
   if (!bySong.size) return null;
   const choice = pickOne(pickOne([...bySong.values()], random), random);
-  return 'context' in choice ? { context: choice.context } : { song: choice.song, line: choice.line };
+  return 'context' in choice ? { context: choice.context } : { song: choice.song, line: choice.line, match: choice.match };
 }
 
 // The context to ask about: the first with a lyric line and a meaning, otherwise the first with a meaning
@@ -333,7 +339,7 @@ export function buildReviewItems(
     // The line is one of the word's saved ones or another song's it wasn't saved from; that one asks
     // for the meaning saved first
     const picked = pickLine(entry, songs, random);
-    const context = picked?.context ?? pickContext(entry);
+    const context = picked?.context ?? picked?.match ?? pickContext(entry);
     const answer = answerFor(entry, context);
     if (!answer) continue;
     const other = picked?.song;

@@ -933,7 +933,7 @@ export default function WordLookupScreen() {
                 ))}
               </View>
             )}
-            <PronunciationAudio audio={pronunciationAudio} />
+            <PronunciationAudio audio={pronunciationAudio} wordId={savedWord?.id} />
           </View>
 
           <View style={styles.field}>

@@ -379,8 +379,8 @@ function ReviewQuestion({
           ) : null}
         </View>
       ) : null}
-      {listen && !answered && <PronunciationAudio audio={entry.audio ?? []} autoPlay />}
-      {speak && kind === 'meaning' && !answered && <PronunciationAudio audio={entry.audio ?? []} />}
+      {listen && !answered && <PronunciationAudio audio={entry.audio ?? []} wordId={entry.id} autoPlay />}
+      {speak && kind === 'meaning' && !answered && <PronunciationAudio audio={entry.audio ?? []} wordId={entry.id} />}
       {speakIpa && !answered && <Text style={styles.ipa}>{formatIpa(speakIpa, true)}</Text>}
       {ipa && !answered && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
       {showHint && !answered ? <Text style={styles.hint}>{shownHint}</Text> : null}

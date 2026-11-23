@@ -368,10 +368,10 @@ export function AnswerAudio({ entry, collapsed = false }: { entry: WordEntry; co
     if (!entry.audio && wiktionary.loaded) void setWordAudio(entry.id, wiktionary.audio);
   }, [entry.id, entry.audio, wiktionary.loaded, wiktionary.audio, setWordAudio]);
   if (wiktionary.audio.length === 0) return null;
-  if (collapsed) return <PronunciationAudio audio={wiktionary.audio} short compact collapsed />;
+  if (collapsed) return <PronunciationAudio audio={wiktionary.audio} wordId={entry.id} short compact collapsed />;
   return (
     <View style={{ alignItems: 'flex-start' }}>
-      <PronunciationAudio audio={wiktionary.audio} short />
+      <PronunciationAudio audio={wiktionary.audio} wordId={entry.id} short />
     </View>
   );
 }

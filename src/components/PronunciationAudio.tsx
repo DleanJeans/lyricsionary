@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/theme';
-import type { WiktionaryAudio } from '../utils/wiktionary';
+import { getWiktionaryPronunciation, type WiktionaryAudio } from '../utils/wiktionary';
+import { useStore } from '../store/useStore';
 import AudioPlayer, { type AudioPlayerHandle } from './AudioPlayer';
 import { Text } from './Text';
 import { shortAudioLabels } from '../utils/audioLabels';
@@ -17,11 +18,29 @@ interface Props {
   short?: boolean;
   /** Only the first recording, with a button that shows the others */
   collapsed?: boolean;
+  /** A saved word whose recordings can be fixed here: wrong ones removed, or all fetched again from Wiktionary */
+  wordId?: string;
 }
 
 /** Buttons that play the word's Wiktionary pronunciation recordings, labeled by accent */
-export default function PronunciationAudio({ audio, compact = false, autoPlay = false, short = false, collapsed = false }: Props) {
+export default function PronunciationAudio({ audio: audioProp, compact = false, autoPlay = false, short = false, collapsed = false, wordId }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const word = useStore((s) => (wordId ? s.words.find((w) => w.id === wordId) : undefined));
+  const setWordAudio = useStore((s) => s.setWordAudio);
+  // The saved recordings, so a fix shows at once even where the word was passed in as a snapshot
+  const audio = word?.audio ?? audioProp;
+  const [fixing, setFixing] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const reload = async () => {
+    if (!word) return;
+    setReloading(true);
+    try {
+      const result = await getWiktionaryPronunciation(word.word, word.language);
+      if (result) await setWordAudio(word.id, result.audio);
+    } finally {
+      setReloading(false);
+    }
+  };
   const playerRef = useRef<AudioPlayerHandle>(null);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
 
@@ -43,7 +62,7 @@ export default function PronunciationAudio({ audio, compact = false, autoPlay = 
     playerRef.current?.play(firstUrl);
   }, [autoPlay, firstUrl]);
 
-  if (audio.length === 0) return null;
+  if (audio.length === 0 && !(fixing && word)) return null;
 
   const play = (url: string) => {
     setPlayingUrl(url);
@@ -52,19 +71,19 @@ export default function PronunciationAudio({ audio, compact = false, autoPlay = 
 
   return (
     <View style={[styles.row, compact && styles.rowCompact]}>
-      {(collapsed && !expanded ? audio.slice(0, 1) : audio).map((item, index) => {
+      {(collapsed && !expanded && !fixing ? audio.slice(0, 1) : audio).map((item, index) => {
         const playing = playingUrl === item.url;
         return (
           <TouchableOpacity
             key={item.url}
             style={[styles.button, compact && styles.buttonCompact, playing && styles.buttonPlaying]}
-            onPress={() => play(item.url)}
+            onPress={fixing && word ? () => void setWordAudio(word.id, audio.filter((a) => a.url !== item.url)) : () => play(item.url)}
             onLongPress={short && item.label ? () => setHeldUrl(item.url) : undefined}
             accessibilityRole="button"
             accessibilityLabel={`Play pronunciation${item.label ? ` (${item.label})` : ''}`}
           >
             <Ionicons
-              name={playing ? 'volume-high' : 'volume-medium-outline'}
+              name={fixing ? 'close-circle' : playing ? 'volume-high' : 'volume-medium-outline'}
               size={compact ? 14 : 16}
               color={playing ? Colors.white : compact ? Colors.primaryLight : Colors.primary}
             />
@@ -84,7 +103,29 @@ export default function PronunciationAudio({ audio, compact = false, autoPlay = 
           </TouchableOpacity>
         );
       })}
-      {collapsed && audio.length > 1 && (
+      {fixing && word && (
+        <TouchableOpacity
+          style={[styles.button, compact && styles.buttonCompact, styles.moreButton]}
+          onPress={() => void reload()}
+          disabled={reloading}
+          accessibilityRole="button"
+          accessibilityLabel="Fetch the recordings from Wiktionary again"
+        >
+          {reloading ? <ActivityIndicator size="small" color={Colors.primaryLight} /> : <Ionicons name="refresh" size={14} color={Colors.primaryLight} />}
+        </TouchableOpacity>
+      )}
+      {word && (
+        <TouchableOpacity
+          style={[styles.button, compact && styles.buttonCompact, styles.moreButton]}
+          onPress={() => setFixing((on) => !on)}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={fixing ? 'Done fixing recordings' : 'Wrong audio? Remove a recording'}
+        >
+          <Ionicons name={fixing ? 'checkmark' : 'flag-outline'} size={14} color={Colors.primaryLight} />
+        </TouchableOpacity>
+      )}
+      {collapsed && !fixing && audio.length > 1 && (
         <TouchableOpacity
           style={[styles.button, compact && styles.buttonCompact, styles.moreButton]}
           onPress={() => setExpanded((open) => !open)}

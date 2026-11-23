@@ -993,10 +993,17 @@ export default function LearnScreen() {
             const quiet = quietKnownWords && mainEntry?.masteryLevel === 'Known';
             let displayContent = '';
             if (showIpa && mainEntry && !quiet) {
-              const ipaValue = formIpa(mainEntry, cleanedWord) || ctx?.ipa || mainEntry.pronunciation;
-              if (ipaValue) {
-                displayContent = formatIpa(ipaValue, showIpaBrackets);
-              }
+              // Every saved part adds its own IPA, e.g. n' (/n‿/) and passe (/pas/) read /n‿pas/
+              const partIpas = partEntries.map((entry, pi) => {
+                if (!entry || (pi < partEntries.length - 1 && quietKnownWords && entry.masteryLevel === 'Known')) return '';
+                const value = pi === partEntries.length - 1
+                  ? formIpa(entry, cleanedWord) || ctx?.ipa || entry.pronunciation
+                  : formIpa(entry, elisionParts[pi]) || entry.pronunciation;
+                return value ? formatIpa(value, false) : '';
+              }).filter(Boolean);
+              const fallback = formIpa(mainEntry, cleanedWord) || ctx?.ipa || mainEntry.pronunciation;
+              if (partIpas.length > 1) displayContent = formatIpa(partIpas.join(''), showIpaBrackets);
+              else if (fallback) displayContent = formatIpa(fallback, showIpaBrackets);
             }
 
             const contextEmoji = ctx?.emoji;

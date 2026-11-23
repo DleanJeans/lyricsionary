@@ -30,7 +30,7 @@ import { answersToday } from '../utils/activity';
 import BulkEditBar from '../components/BulkEditBar';
 import ReviewSession from '../components/ReviewSession';
 import SongFilter from '../components/SongFilter';
-import { buildReviewItems, canReview, dueWords, MORE_REVIEW_SIZE, pickDailyBatch, ReviewItem } from '../utils/reviewQuiz';
+import { buildReviewItems, canReview, dueWords, MORE_REVIEW_SIZE, orderDueWords, pickDailyBatch, ReviewItem } from '../utils/reviewQuiz';
 import { compareMostMissed, isTricky, nextDueAt } from '../utils/wordQuiz';
 import { useStoreWhileShown } from '../hooks/useStoreWhileShown';
 import { getPreloadedIpa, getPreloadedWord, loadPreloadedIpa } from '../utils/preloadedIpa';
@@ -616,13 +616,24 @@ export default function WordsScreen() {
                 <TouchableOpacity
                   style={[styles.reviewButton, !!dailyGoal && answeredToday >= dailyGoal && styles.reviewButtonDone]}
                   onPress={() => {
-                    const items = buildReviewItems(due, words, undefined, undefined, useStore.getState().songs);
-                    if (!items.length) return;
-                    if (!dailyGoal) return setReviewing({ items });
+                    // The quizzes of the words needed first are built now so the dialog opens at once; the
+                    // rest are built right after it shows, since building them all took seconds
+                    const songs = useStore.getState().songs;
+                    const ordered = orderDueWords(due, songs);
+                    const FIRST = Math.max(60, (dailyGoal ?? 0) * 3);
+                    const first = buildReviewItems(ordered.slice(0, FIRST), words, undefined, undefined, songs);
+                    if (!first.length) return;
+                    const restOf = (items: ReviewItem[]) => (ordered.length > FIRST ? [...items, ...buildReviewItems(ordered.slice(FIRST), words, undefined, undefined, songs)] : items);
+                    if (!dailyGoal) {
+                      setReviewing({ items: first });
+                      if (ordered.length > FIRST) setTimeout(() => setReviewing((r) => (r ? { ...r, items: restOf(r.items) } : r)), 600);
+                      return;
+                    }
                     // A daily batch first, then the rest of the due words for more sessions
                     const left = dailyGoal - answeredToday;
-                    const { batch, rest } = pickDailyBatch(items, dailyGoal, left);
+                    const { batch, rest } = pickDailyBatch(first, dailyGoal, left);
                     setReviewing({ items: [...batch, ...rest], startSize: batch.length || Math.min(MORE_REVIEW_SIZE, rest.length) });
+                    if (ordered.length > FIRST) setTimeout(() => setReviewing((r) => (r ? { ...r, items: restOf(r.items) } : r)), 600);
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={dailyGoal ? `Review today's batch, ${Math.min(answeredToday, dailyGoal)} of ${dailyGoal} done` : `Review ${due.length} due ${due.length === 1 ? 'word' : 'words'}`}

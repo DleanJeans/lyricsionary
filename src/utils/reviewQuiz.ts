@@ -299,6 +299,18 @@ export function rebuildReviewQuiz(item: ReviewItem, words: WordEntry[], random =
  */
 export const canReview = (entry: WordEntry) => !!quizKindFor(entry.masteryLevel) && !!answerFor(entry, pickContext(entry));
 
+/** Due words in the order they're asked: tricky ones first, then the ones not quizzed for longest */
+export function orderDueWords(dueWords: WordEntry[], songs: ReviewSong[] = []): WordEntry[] {
+  const now = Date.now();
+  const tier = new Map(dueWords.map((w) => [w.id, frequencyTier(w, songs)]));
+  return [...dueWords].sort(
+    (a, b) =>
+      Number(isTricky(b.quiz, now)) - Number(isTricky(a.quiz, now)) ||
+      tier.get(b.id)! - tier.get(a.id)! ||
+      (a.quiz?.lastAnsweredAt ?? 0) - (b.quiz?.lastAnsweredAt ?? 0)
+  );
+}
+
 /**
  * A quiz for each word that's due (isDue), tricky ones (isTricky) first, then the ones in more
  * distinct sentences and songs (frequencyTier), then the ones not quizzed for longest. Each word is asked the way asked least so far among the ones it has (reviewWays), so
@@ -313,15 +325,8 @@ export function buildReviewItems(
   songs: ReviewSong[] = []
 ): ReviewItem[] {
   const items: ReviewItem[] = [];
-  // Tricky words first, then the ones not quizzed for longest
   const now = Date.now();
-  const tier = new Map(dueWords.map((w) => [w.id, frequencyTier(w, songs)]));
-  const ordered = [...dueWords].sort(
-    (a, b) =>
-      Number(isTricky(b.quiz, now)) - Number(isTricky(a.quiz, now)) ||
-      tier.get(b.id)! - tier.get(a.id)! ||
-      (a.quiz?.lastAnsweredAt ?? 0) - (b.quiz?.lastAnsweredAt ?? 0)
-  );
+  const ordered = orderDueWords(dueWords, songs);
   for (const entry of ordered) {
     const kind = quizKindFor(entry.masteryLevel);
     if (!kind) continue;

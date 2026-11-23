@@ -26,7 +26,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { contextTranslation } from '../utils/wordOfTheDay';
-import { RootTabParamList, WordContext, WordEntry } from '../types';
+import { MASTERY_LEVELS, MasteryLevel, RootTabParamList, WordContext, WordEntry } from '../types';
 import { cleanLyricWord, isLyricWord, isTappableLyric, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
 import { findDefinitionHighlight, pickDefinition, withWordForms } from '../utils/definitionHighlight';
 import { formatSongSections } from '../utils/songSections';
@@ -656,8 +656,8 @@ export default function LearnScreen() {
     setSelectedWord(null);
     setMarkMode(true);
   };
-  // Saves the words not saved yet as Known and moves the saved ones up to it
-  const markPickedKnown = async () => {
+  // Saves the words not saved yet at the level and moves the saved ones to it
+  const markPickedLevel = async (level: MasteryLevel) => {
     const language = song?.originalLanguages?.[0];
     if (!song || !language || marked.size === 0) return;
     const picked = [...marked.values()];
@@ -665,7 +665,7 @@ export default function LearnScreen() {
     const ids = new Set<string>();
     const adds: Promise<void>[] = [];
     for (const item of picked) {
-      // A word marked Known is no longer ignored
+      // A word given a level is no longer ignored
       if (isIgnoredWord(item.word, language)) void toggleIgnoredWord(item.word, language);
       const saved = findSavedEntry(item.word);
       if (saved) {
@@ -682,11 +682,11 @@ export default function LearnScreen() {
         songName: song.songName,
         fromSong: true,
         occurrence: item.occurrence,
-      }], 'Known'));
+      }], level));
     }
     await Promise.all(adds);
-    if (ids.size) await setWordsLevel([...ids], 'Known');
-    setMarkedToast(`Marked ${picked.length} ${picked.length === 1 ? 'word' : 'words'} Known`);
+    if (ids.size) await setWordsLevel([...ids], level);
+    setMarkedToast(`Set ${picked.length} ${picked.length === 1 ? 'word' : 'words'} ${level}`);
   };
 
   // Ignores the picked words that aren't saved; saved ones are left as they are
@@ -2175,34 +2175,58 @@ export default function LearnScreen() {
     else if (spotifyBarHidden) setSpotifyBarHidden(false);
   };
   const headerSwipe = useSwipe(() => {}, revealMore);
+  const [markMenuOpen, setMarkMenuOpen] = useState(false);
+  const pickAction = (run: () => Promise<void>) => {
+    setMarkMenuOpen(false);
+    void run();
+  };
   const markBar = (
-    <View style={styles.markBar}>
-      <TouchableOpacity onPress={exitMarkMode} style={styles.markClose} accessibilityRole="button" accessibilityLabel="Stop picking words">
-        <Ionicons name="close" size={22} color={Colors.textSecondary} />
-      </TouchableOpacity>
-      <Text style={styles.markCount} numberOfLines={1}>
-        {marked.size === 0 ? 'Pick words' : `${marked.size} picked`}
-      </Text>
-      <TouchableOpacity
-        onPress={() => void ignorePicked()}
-        disabled={marked.size === 0}
-        style={[styles.markButton, styles.ignoreButton, marked.size === 0 && { opacity: 0.4 }]}
-        accessibilityRole="button"
-        accessibilityLabel="Ignore picked words"
-      >
-        <Ionicons name="eye-off-outline" size={18} color={Colors.textSecondary} />
-        <Text style={[styles.markButtonText, { color: Colors.textSecondary }]}>Ignore</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => void markPickedKnown()}
-        disabled={marked.size === 0}
-        style={[styles.markButton, marked.size === 0 && { opacity: 0.4 }]}
-        accessibilityRole="button"
-        accessibilityLabel="Mark picked words Known"
-      >
-        <Ionicons name="checkmark-done" size={18} color="#fff" />
-        <Text style={styles.markButtonText}>Mark Known</Text>
-      </TouchableOpacity>
+    <View style={styles.markBarWrap}>
+      <View style={styles.markBar}>
+        <TouchableOpacity onPress={() => { setMarkMenuOpen(false); exitMarkMode(); }} style={styles.markClose} accessibilityRole="button" accessibilityLabel="Stop picking words">
+          <Ionicons name="close" size={22} color={Colors.textSecondary} />
+        </TouchableOpacity>
+        <Text style={styles.markCount} numberOfLines={1}>
+          {marked.size === 0 ? 'Pick words' : `${marked.size} picked`}
+        </Text>
+        <TouchableOpacity
+          onPress={() => setMarkMenuOpen((open) => !open)}
+          disabled={marked.size === 0}
+          style={[styles.markButton, marked.size === 0 && { opacity: 0.4 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Choose what to do with the picked words"
+        >
+          <Ionicons name="options-outline" size={18} color="#fff" />
+          <Text style={styles.markButtonText}>Set to</Text>
+          <Ionicons name={markMenuOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      {markMenuOpen && marked.size > 0 && (
+        <View style={styles.markMenu}>
+          {MASTERY_LEVELS.map((level) => (
+            <TouchableOpacity
+              key={level}
+              onPress={() => pickAction(() => markPickedLevel(level))}
+              style={styles.markMenuItem}
+              accessibilityRole="button"
+              accessibilityLabel={`Set picked words to ${level}`}
+            >
+              <View style={[styles.markMenuDot, { backgroundColor: getMasteryLevelColor(level) }]} />
+              <Text style={styles.markMenuText}>{level}</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={styles.markMenuDivider} />
+          <TouchableOpacity
+            onPress={() => pickAction(ignorePicked)}
+            style={styles.markMenuItem}
+            accessibilityRole="button"
+            accessibilityLabel="Ignore picked words"
+          >
+            <Ionicons name="eye-off-outline" size={18} color={Colors.textSecondary} />
+            <Text style={[styles.markMenuText, { color: Colors.textSecondary }]}>Ignore</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
   const actionBar = (
@@ -2612,6 +2636,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  markBarWrap: { zIndex: 20, elevation: 20 },
+  markMenu: {
+    position: 'absolute',
+    top: '100%',
+    right: 12,
+    minWidth: 190,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.background,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  markMenuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  markMenuDot: { width: 14, height: 14, borderRadius: 7 },
+  markMenuText: { color: Colors.text, fontSize: 15, fontWeight: '600' },
+  markMenuDivider: { height: 1, marginVertical: 4, backgroundColor: Colors.background },
   markBar: {
     flexDirection: 'row',
     alignItems: 'center',

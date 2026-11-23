@@ -1,4 +1,5 @@
 import type { WordEntry, WordContext } from '../types';
+import { shownDefinition } from './partOfSpeech';
 
 /** A meaning to show above a word in full, up to its first ; or , or ( e.g. "to be able to; can" -> "to be able to" */
 export function shortMeaning(text: string): string {
@@ -12,5 +13,6 @@ export function meaningAbove(entry: WordEntry, ctx?: WordContext | null, fitting
     || entry.contexts.find((c) => c.definition)?.definition
     || entry.definitions?.[0]?.text
     || '';
-  return text ? shortMeaning(text) : '';
+  // Saved verbs keep their "to"; it's hidden here like in Look Up
+  return text ? shortMeaning(shownDefinition(text, ctx?.partOfSpeech)) : '';
 }

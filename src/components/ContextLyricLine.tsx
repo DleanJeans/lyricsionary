@@ -10,6 +10,7 @@ import { findWordOccurrences } from '../utils/wordOccurrences';
 import { formatIpa } from '../utils/ipaDisplay';
 import { firstIpa } from '../utils/ipaList';
 import { getPreloadedIpa, loadPreloadedIpa } from '../utils/preloadedIpa';
+import { hasContractedPrefix, splitElisionParts } from '../utils/wordTransform';
 import { removeStressMarks } from '../utils/russianStress';
 
 interface ContextLyricLineProps {
@@ -110,6 +111,23 @@ export default function ContextLyricLine({
           : showMasteryLevelColors && entry?.masteryLevel
             ? getMasteryLevelColor(entry.masteryLevel)
             : Colors.text;
+        // An elided word not saved whole, e.g. n'passe, colors each part by its own level like Learn
+        const isFrenchOrItalian = ['french', 'fr', 'italian', 'it'].includes((language || '').toLowerCase());
+        const elisionParts = !entry && !isCurrent && isFrenchOrItalian && cleaned && !cleaned.includes(' ') && hasContractedPrefix(cleaned)
+          ? splitElisionParts(cleaned)
+          : null;
+        const partNodes = elisionParts && elisionParts.length > 1 && elisionParts.join('').length === core.length
+          ? (() => {
+              let pos = 0;
+              return elisionParts.map((part, pi) => {
+                const text = core.slice(pos, pos + part.length);
+                pos += part.length;
+                const partEntry = part ? entryOf(part) : undefined;
+                const partColor = showMasteryLevelColors && partEntry?.masteryLevel ? getMasteryLevelColor(partEntry.masteryLevel) : color;
+                return <Text key={pi} style={{ color: partColor, fontSize, lineHeight: fontSize * 1.6 }}>{text}</Text>;
+              });
+            })()
+          : null;
         const onPress = !pressable
           ? undefined
           : isSameWord ? () => onOccurrencePress?.(tokenOccurrence) : () => onWordPress?.(cleaned, tokenOccurrence);
@@ -131,7 +149,7 @@ export default function ContextLyricLine({
             >
               {leading}
               <Text style={{ color, fontSize, lineHeight: fontSize * 1.6, ...(isCurrent ? { textDecorationLine: 'underline', fontWeight: '700' } : null) }}>
-                {core}
+                {partNodes ?? core}
               </Text>
               {trailing}
             </Text>

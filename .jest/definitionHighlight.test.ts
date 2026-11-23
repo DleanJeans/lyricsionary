@@ -10,7 +10,7 @@ describe('findDefinitionHighlight', () => {
   });
 
   it("finds contracted parts like 've and n't inside words", () => {
-    expect(highlighted("I've got it", "'ve got")).toEqual(["I've got"]);
+    expect(highlighted("I've got it", "'ve got")).toEqual(["'ve got"]);
     expect(highlighted("It isn't love", "n't")).toEqual(["isn't"]);
     expect(highlighted("It isn't love", 'is')).toEqual(['is']);
     expect(highlighted("I don't know", 'do')).toEqual(['do']);
@@ -27,6 +27,8 @@ describe('findDefinitionHighlight', () => {
     expect(highlighted('I cannot stay', 'can not')).toEqual(['cannot']);
     expect(highlighted('I cannot stay', 'not')).toEqual(['cannot']);
     expect(highlighted("I'll be there", 'will')).toEqual(["I'll"]);
+    expect(highlighted("And who cares if she's beautiful?", "'s")).toEqual(["'s"]);
+    expect(highlighted("I don't know", "n't")).toEqual(["don't"]);
     expect(highlighted("You're mine", 'are')).toEqual(["You're"]);
     expect(highlighted("We shan't", 'shall')).toEqual(["shan't"]);
     expect(highlighted('I want it', 'will')).toBeNull();

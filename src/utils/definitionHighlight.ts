@@ -50,8 +50,8 @@ function findWhole(haystack: string, needle: string, from = 0): [number, number]
   const index = indexOfWhole(haystack, needle, from);
   if (index >= 0) {
     const range: [number, number] = [index, index + needle.length];
-    // A contraction piece like "n't" or "'ll" highlights its whole word: "don't", "I'll"
-    return needle.startsWith("'") || needle.startsWith("n't") ? wholeWordAround(haystack, range) : range;
+    // n't highlights its whole word (don't); a piece starting with an apostrophe ('s, 'll) stays just the piece
+    return needle.startsWith("n't") ? wholeWordAround(haystack, range) : range;
   }
   for (const [before, word, after] of CONTRACTIONS[needle] ?? []) {
     const contracted = indexOfWhole(haystack, before + word + after, Math.max(0, from - before.length));

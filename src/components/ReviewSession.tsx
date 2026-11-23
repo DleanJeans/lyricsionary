@@ -14,7 +14,8 @@ import { openSongAtLine, openWordLookup } from '../navigation/navigationRef';
 import PronunciationAudio from './PronunciationAudio';
 import SwitchQuizButton from './SwitchQuizButton';
 import WordQuiz, { AnswerAudio } from './WordQuiz';
-import type { WordEntry } from '../types';
+import { MASTERY_LEVELS, type WordEntry } from '../types';
+import { dueCountAt } from '../utils/reviewReminder';
 
 interface ReviewSessionProps {
   /** A quiz for each due word (buildReviewItems) */
@@ -105,6 +106,13 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
         ? pickReviewItems(dueItems, dueItems.length)
         : null
   );
+  const insets = useSafeAreaInsets();
+  const words = useStore((s) => s.words);
+  // The levels the words had when the review opened, to count how many moved
+  const startLevels = useRef<Map<string, number> | null>(null);
+  if (!startLevels.current) {
+    startLevels.current = new Map(dueItems.map((d) => [d.entry.id, MASTERY_LEVELS.indexOf(d.entry.masteryLevel ?? 'Seen')]));
+  }
   // Words from earlier sessions of this review, which "more" skips
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const remaining = dueItems.filter((d) => !doneIds.has(d.entry.id) && !session?.some((s) => s.entry.id === d.entry.id));
@@ -136,6 +144,21 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
   const finished = !!session && index >= items.length;
   // The score is the first tries; retries are practice
   const right = answers.slice(0, firstTries.length).filter(Boolean).length;
+  const levelChanges = useMemo(() => {
+    if (!finished) return { up: 0, down: 0 };
+    let up = 0;
+    let down = 0;
+    for (const w of words) {
+      const before = startLevels.current?.get(w.id);
+      if (before === undefined) continue;
+      const now = MASTERY_LEVELS.indexOf(w.masteryLevel ?? 'Seen');
+      if (now > before) up++;
+      else if (now < before) down++;
+    }
+    return { up, down };
+  }, [finished, words]);
+  // Every word due in any language, as the review reminder counts them
+  const dueLeft = useMemo(() => (finished ? dueCountAt(words, Date.now()) : 0), [finished, words]);
   const onAnswered = (correct: boolean) => {
     setAnswers((prev) => [...prev, correct]);
     if (!correct && !isRetry && item) setRetries((prev) => [...prev, { ...item, quiz: reshuffle(item.quiz) }]);
@@ -184,7 +207,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
                 <Text style={styles.sizeHint}>The words waiting longest come first</Text>
               </View>
             ) : finished ? (
-              <View style={styles.summary}>
+              <View style={[styles.summary, { paddingBottom: 16 + insets.bottom }]}>
                 <Ionicons name="trophy-outline" size={40} color={Colors.primaryLight} />
                 <Text style={styles.summaryText}>{`${right} of ${firstTries.length} right`}</Text>
                 {retries.length > 0 && (
@@ -192,6 +215,22 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
                     {`${answers.slice(firstTries.length).filter(Boolean).length} of ${retries.length} missed ${retries.length === 1 ? 'word' : 'words'} right the second time`}
                   </Text>
                 )}
+                <View style={styles.statsRow}>
+                  <View style={styles.stat}>
+                    <Ionicons name="trending-up" size={18} color={Colors.primaryLight} />
+                    <Text style={styles.statText}>{`${levelChanges.up} leveled up`}</Text>
+                  </View>
+                  {levelChanges.down > 0 && (
+                    <View style={styles.stat}>
+                      <Ionicons name="trending-down" size={18} color={Colors.textSecondary} />
+                      <Text style={styles.statText}>{`${levelChanges.down} dropped`}</Text>
+                    </View>
+                  )}
+                  <View style={styles.stat}>
+                    <Ionicons name="time-outline" size={18} color={Colors.textSecondary} />
+                    <Text style={styles.statText}>{`${dueLeft} due left`}</Text>
+                  </View>
+                </View>
                 {remaining.length > 0 && (
                   <TouchableOpacity
                     style={[styles.button, styles.moreButton]}
@@ -607,6 +646,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  stat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
   summaryText: {
     fontSize: 16,

@@ -1027,7 +1027,15 @@ export default function LearnScreen() {
             const shouldShowEmoji = showEmoji && mainEntry && !quiet && effectiveEmoji &&
               effectiveEmoji !== getFlagForLanguage(mainEntry.language);
 
-            const meaningText = showMeaning && mainEntry && !quiet ? meaningAbove(mainEntry, ctx, fittingMeaning(mainEntry, ctx, lineIndex)) : '';
+            // Every saved part adds its own meaning, e.g. j' (I) and te (you) read "I you"
+            const meaningText = showMeaning && mainEntry && !quiet
+              ? partEntries.map((entry, pi) => {
+                  if (!entry) return '';
+                  if (pi < partEntries.length - 1 && quietKnownWords && entry.masteryLevel === 'Known') return '';
+                  const partCtx = entry === mainEntry ? ctx : findWordContext(entry, text, occurrenceMap[i] || 1);
+                  return meaningAbove(entry, partCtx, fittingMeaning(entry, partCtx, lineIndex));
+                }).filter(Boolean).join(' ')
+              : '';
 
             return (
               <View key={i} onLayout={onWordLayout(i)} style={{ alignItems: 'center' }}>

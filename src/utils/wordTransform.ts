@@ -229,3 +229,26 @@ export function getWithoutHyphenatedPrefix(word: string): string {
 export function getWithoutHyphens(word: string): string {
   return word.replace(/-/g, '');
 }
+
+/** Whether a language (as a song or word language name or code) elides word starts, e.g. French j'ai, Italian dell'umanità */
+export function isElidingLanguage(language?: string): boolean {
+  return ['french', 'fr', 'italian', 'it'].includes((language || '').toLowerCase());
+}
+
+/**
+ * The parts of an elided word, e.g. n'passe -> n' + passe, as spelled in the lyric's core (its text without edge
+ * punctuation); null when the word isn't elided. Learn and the context lines both color and annotate each part.
+ */
+export function elisionDisplayParts(cleaned: string, core: string): { parts: string[]; display: string[] } | null {
+  if (!cleaned || cleaned.includes(' ') || !hasContractedPrefix(cleaned)) return null;
+  const parts = splitElisionParts(cleaned);
+  if (!parts || parts.length < 2) return null;
+  const display: string[] = [];
+  let pos = 0;
+  parts.forEach((part, pi) => {
+    const end = pi === parts.length - 1 ? core.length : pos + part.length;
+    display.push(core.slice(pos, end));
+    pos = end;
+  });
+  return { parts, display };
+}

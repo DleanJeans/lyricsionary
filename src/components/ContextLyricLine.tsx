@@ -10,7 +10,7 @@ import { findWordOccurrences } from '../utils/wordOccurrences';
 import { formatIpa } from '../utils/ipaDisplay';
 import { firstIpa } from '../utils/ipaList';
 import { getPreloadedIpa, loadPreloadedIpa } from '../utils/preloadedIpa';
-import { hasContractedPrefix, splitElisionParts } from '../utils/wordTransform';
+import { elisionDisplayParts, isElidingLanguage } from '../utils/wordTransform';
 import { removeStressMarks } from '../utils/russianStress';
 
 interface ContextLyricLineProps {
@@ -112,21 +112,13 @@ export default function ContextLyricLine({
             ? getMasteryLevelColor(entry.masteryLevel)
             : Colors.text;
         // An elided word not saved whole, e.g. n'passe, colors each part by its own level like Learn
-        const isFrenchOrItalian = ['french', 'fr', 'italian', 'it'].includes((language || '').toLowerCase());
-        const elisionParts = !entry && !isCurrent && isFrenchOrItalian && cleaned && !cleaned.includes(' ') && hasContractedPrefix(cleaned)
-          ? splitElisionParts(cleaned)
-          : null;
-        const partNodes = elisionParts && elisionParts.length > 1 && elisionParts.join('').length === core.length
-          ? (() => {
-              let pos = 0;
-              return elisionParts.map((part, pi) => {
-                const text = core.slice(pos, pos + part.length);
-                pos += part.length;
-                const partEntry = part ? entryOf(part) : undefined;
-                const partColor = showMasteryLevelColors && partEntry?.masteryLevel ? getMasteryLevelColor(partEntry.masteryLevel) : color;
-                return <Text key={pi} style={{ color: partColor, fontSize, lineHeight: fontSize * 1.6 }}>{text}</Text>;
-              });
-            })()
+        const elision = !entry && !isCurrent && isElidingLanguage(language) ? elisionDisplayParts(cleaned, core) : null;
+        const partNodes = elision
+          ? elision.parts.map((part, pi) => {
+              const partEntry = part ? entryOf(part) : undefined;
+              const partColor = showMasteryLevelColors && partEntry?.masteryLevel ? getMasteryLevelColor(partEntry.masteryLevel) : color;
+              return <Text key={pi} style={{ color: partColor, fontSize, lineHeight: fontSize * 1.6 }}>{elision.display[pi]}</Text>;
+            })
           : null;
         const onPress = !pressable
           ? undefined

@@ -49,7 +49,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { useSpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { normalizePartOfSpeech, type PartOfSpeech } from '../utils/partOfSpeech';
 import { clippedFormIpa, getWiktionaryDefinitions, getWiktionaryPronunciation, peekWiktionaryDefinitions } from '../utils/wiktionary';
-import { germanFullForms, getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
+import { elisionDisplayParts, germanFullForms, getGermanExpandedForm, hasContractedPrefix, hasHyphenatedPrefix, splitElisionParts } from '../utils/wordTransform';
 import { findWordSpots, stepWordSpot } from '../utils/wordLines';
 import WordSpotStepper from '../components/WordSpotStepper';
 import LemmaMergeHint from '../components/LemmaMergeHint';
@@ -965,20 +965,7 @@ export default function LearnScreen() {
             const cleanStart = leading.length;
             const cleanEnd = word.length - trailing.length;
 
-            const displayParts: string[] = [];
-            let pos = cleanStart;
-            for (let p = 0; p < elisionParts.length; p++) {
-              const partLength = elisionParts[p].length;
-              if (p === 0) {
-                displayParts.push(word.slice(cleanStart, cleanStart + partLength));
-                pos = cleanStart + partLength;
-              } else if (p === elisionParts.length - 1) {
-                displayParts.push(word.slice(pos, cleanEnd));
-              } else {
-                displayParts.push(word.slice(pos, pos + partLength));
-                pos += partLength;
-              }
-            }
+            const displayParts = elisionDisplayParts(cleanedWord, word.slice(cleanStart, cleanEnd))?.display ?? elisionParts;
 
             const isElisionIgnored = isIgnoredWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
             const partEntries = elisionParts.map(part =>

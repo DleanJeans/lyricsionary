@@ -1738,6 +1738,15 @@ export default function LearnScreen() {
     const entry = useStore.getState().words.find((w) => w.id === savedNeedsIpaId);
     if (!entry) return;
     const lookupLanguage = entry.language || songLanguage;
+    // The tapped word shows the loading indicator above it while its IPA is fetched, like a new word
+    const loadingKey = loadingWordKey(selectedWord, selectedLineIndex, selectedOccurrence);
+    setLoadingWords((keys) => new Set(keys).add(loadingKey));
+    const doneLoading = () => setLoadingWords((keys) => {
+      if (!keys.has(loadingKey)) return keys;
+      const next = new Set(keys);
+      next.delete(loadingKey);
+      return next;
+    });
     (async () => {
       const first = async (word: string) => (await getWiktionaryPronunciation(word, lookupLanguage))?.ipa.find(Boolean);
       let ipa = await first(entry.word);
@@ -1767,11 +1776,13 @@ export default function LearnScreen() {
       const latest = useStore.getState().words.find((w) => w.id === savedNeedsIpaId);
       if (!latest || latest.pronunciation?.trim() || latest.contexts?.some((c) => c.ipa?.trim())) return;
       await useStore.getState().updateWordEntry(latest.id, movedTo ? { pronunciation: ipa, language: movedTo } : { pronunciation: ipa });
-    })().catch(() => {});
+    })().catch(() => {}).finally(doneLoading);
     return () => {
       cancelled = true;
+      doneLoading();
     };
-  }, [savedNeedsIpaId, selectedWord, songLanguage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedNeedsIpaId, selectedWord, selectedLineIndex, selectedOccurrence, songLanguage]);
 
   // A phrase whose words sit apart, saved from Look Up with them together, e.g. "hört auf" for hört … auf,
   // takes it as a form, so the line shows it saved

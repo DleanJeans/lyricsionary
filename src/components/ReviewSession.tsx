@@ -11,6 +11,7 @@ import { formatIpa } from '../utils/ipaDisplay';
 import { contextTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
 import { openSongAtLine, openWordLookup } from '../navigation/navigationRef';
+import { setReviewResume } from '../navigation/reviewResume';
 import PronunciationAudio from './PronunciationAudio';
 import SwitchQuizButton from './SwitchQuizButton';
 import WordQuiz, { AnswerAudio } from './WordQuiz';

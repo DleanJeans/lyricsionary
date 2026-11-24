@@ -348,6 +348,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
           {!levelUp && due}
         </View>
       )}
+      {!answered && showAudio && !current.audio && <AudioPrefetch entry={current} />}
       {answered && showAudio && <AnswerAudio entry={current} autoPlay={correct} />}
       {typed && !answered && (
         <TouchableOpacity style={styles.giveUp} onPress={() => void submitTyped(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show the answer">
@@ -358,6 +359,16 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
       {answered && !practice && <LevelTrack from={unanswered} entry={current} />}
     </View>
   );
+}
+
+/** Fetches and saves a word's missing recordings while the question is up, so the pills are there the moment it's answered */
+function AudioPrefetch({ entry }: { entry: WordEntry }) {
+  const setWordAudio = useStore((s) => s.setWordAudio);
+  const wiktionary = useWiktionaryPronunciation(entry.word, entry.language, { needsIpa: false });
+  useEffect(() => {
+    if (wiktionary.loaded) void setWordAudio(entry.id, wiktionary.audio);
+  }, [entry.id, wiktionary.loaded, wiktionary.audio, setWordAudio]);
+  return null;
 }
 
 /** The word's recordings after an answer, to hear how it sounds. Fetched once for a word saved without any. */

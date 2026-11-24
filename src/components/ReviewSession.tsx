@@ -473,9 +473,9 @@ function ReviewQuestion({
         audio={!listen}
         onLookUpWord={onCloseReview}
         missedNote="Again at the end"
-        renderAnswered={(current) => (
+        renderAnswered={(current, correct) => (
           <>
-            <AnsweredWordCard entry={current} ipa={answerIpa} meaning={meaning} />
+            <AnsweredWordCard entry={current} ipa={answerIpa} meaning={meaning} autoPlay={correct} />
             {line ? (
               <View style={styles.lineCard}>
                 <Text style={styles.cardLine}>
@@ -534,7 +534,7 @@ function ReviewQuestion({
 }
 
 /** The word once answered: its level, recordings, IPA and meaning */
-function AnsweredWordCard({ entry, ipa, meaning }: { entry: WordEntry; ipa?: string; meaning?: string }) {
+function AnsweredWordCard({ entry, ipa, meaning, autoPlay = false }: { entry: WordEntry; ipa?: string; meaning?: string; autoPlay?: boolean }) {
   const level = entry.masteryLevel ?? 'Seen';
   return (
     <View style={styles.wordCard}>
@@ -543,7 +543,7 @@ function AnsweredWordCard({ entry, ipa, meaning }: { entry: WordEntry; ipa?: str
           <Text style={styles.levelChipText}>{level.toUpperCase()}</Text>
         </View>
         <View style={{ marginLeft: 'auto' }}>
-          <AnswerAudio entry={entry} collapsed />
+          <AnswerAudio entry={entry} collapsed autoPlay={autoPlay} />
         </View>
       </View>
       <View style={styles.wordRow}>

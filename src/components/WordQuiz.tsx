@@ -47,7 +47,7 @@ interface WordQuizProps {
    * Once answered, shows a one-line verdict in place of the prompt, answer and result, then what this
    * returns (e.g. the word and line cards), then the songs-and-sentences pill and the level track
    */
-  renderAnswered?: (current: WordEntry) => ReactNode;
+  renderAnswered?: (current: WordEntry, correct: boolean) => ReactNode;
   /** Said on the verdict of a wrong answer, e.g. "Again at the end" when a review asks it once more */
   missedNote?: string;
 }
@@ -214,7 +214,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
             </View>
           ) : null}
         </View>
-        {renderAnswered(current)}
+        {renderAnswered(current, correct)}
         <View style={{ alignItems: 'flex-start' }}>
           <WordFrequency entry={current} onLookUpWord={onLookUpWord} pill />
         </View>
@@ -348,7 +348,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
           {!levelUp && due}
         </View>
       )}
-      {answered && showAudio && <AnswerAudio entry={current} />}
+      {answered && showAudio && <AnswerAudio entry={current} autoPlay={correct} />}
       {typed && !answered && (
         <TouchableOpacity style={styles.giveUp} onPress={() => void submitTyped(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show the answer">
           <Text style={styles.giveUpText}>{spoken ? "I can't say it" : "I don't remember"}</Text>
@@ -361,17 +361,18 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
 }
 
 /** The word's recordings after an answer, to hear how it sounds. Fetched once for a word saved without any. */
-export function AnswerAudio({ entry, collapsed = false }: { entry: WordEntry; collapsed?: boolean }) {
+/** autoPlay plays the first recording once it's there, e.g. after a right answer */
+export function AnswerAudio({ entry, collapsed = false, autoPlay = false }: { entry: WordEntry; collapsed?: boolean; autoPlay?: boolean }) {
   const setWordAudio = useStore((s) => s.setWordAudio);
   const wiktionary = useWiktionaryPronunciation(entry.word, entry.language, { savedAudio: entry.audio, needsIpa: false });
   useEffect(() => {
     if (!entry.audio && wiktionary.loaded) void setWordAudio(entry.id, wiktionary.audio);
   }, [entry.id, entry.audio, wiktionary.loaded, wiktionary.audio, setWordAudio]);
   if (wiktionary.audio.length === 0) return null;
-  if (collapsed) return <PronunciationAudio audio={wiktionary.audio} wordId={entry.id} short compact collapsed />;
+  if (collapsed) return <PronunciationAudio audio={wiktionary.audio} wordId={entry.id} short compact collapsed autoPlay={autoPlay} />;
   return (
     <View style={{ alignItems: 'flex-start' }}>
-      <PronunciationAudio audio={wiktionary.audio} wordId={entry.id} short />
+      <PronunciationAudio audio={wiktionary.audio} wordId={entry.id} short autoPlay={autoPlay} />
     </View>
   );
 }

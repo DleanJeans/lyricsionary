@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { ActivityIndicator, I18nManager, LayoutChangeEvent, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, I18nManager, LayoutChangeEvent, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from '../components/Toast';
 import LineActionSheet from '../components/LineActionSheet';
 import LearnActionBar from '../components/LearnActionBar';
@@ -536,6 +536,38 @@ export default function LearnScreen() {
     if (selectedWord) setFoundLine(null);
   }, [selectedWord]);
   useEffect(() => setFoundLine(null), [song?.id]);
+  // Search the lyrics: lines whose original or translation has the text, stepped through with next/previous
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [searchPos, setSearchPos] = useState(0);
+  const searchMatches = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!searchOpen || !q) return [] as number[];
+    const found: number[] = [];
+    lines.forEach((line, i) => {
+      if (line.original.toLowerCase().includes(q) || line.translations.some((tl) => tl.text?.toLowerCase().includes(q))) found.push(i);
+    });
+    return found;
+  }, [searchOpen, searchText, lines]);
+  useEffect(() => setSearchPos(0), [searchText]);
+  useEffect(() => {
+    if (!searchOpen) return;
+    const index = searchMatches[searchPos];
+    if (index === undefined) {
+      setFoundLine(null);
+      return;
+    }
+    setFoundLine(index);
+    setScrollToLine({ index, key: Date.now() });
+  }, [searchOpen, searchMatches, searchPos]);
+  const stepSearch = (by: number) => {
+    if (searchMatches.length) setSearchPos((searchPos + by + searchMatches.length) % searchMatches.length);
+  };
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchText('');
+    setFoundLine(null);
+  };
   useEffect(() => {
     if (!focus || isRendering) return;
     const lineIndex = lines.findIndex((line) => line.original === focus.line);
@@ -2388,6 +2420,14 @@ export default function LearnScreen() {
           />
         </View>
         <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={[styles.headerBtn, searchOpen && { backgroundColor: Colors.primary }]}
+            onPress={searchOpen ? closeSearch : () => setSearchOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={searchOpen ? 'Close search' : 'Search the lyrics'}
+          >
+            <Ionicons name="search-outline" size={22} color={searchOpen ? '#fff' : Colors.primary} />
+          </TouchableOpacity>
           {!quizMode && !lyricQuiz && (
             <TouchableOpacity
               style={[styles.headerBtn, markMode && { backgroundColor: Colors.primary }]}
@@ -2415,6 +2455,33 @@ export default function LearnScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {searchOpen && (
+        <View style={styles.searchBar}>
+          <TextInput
+            style={styles.searchInput}
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholder="Search lyrics"
+            placeholderTextColor={Colors.textMuted}
+            autoFocus
+            returnKeyType="search"
+            onSubmitEditing={() => stepSearch(1)}
+          />
+          <Text style={styles.searchCount}>
+            {searchText.trim() ? (searchMatches.length ? `${searchPos + 1}/${searchMatches.length}` : '0') : ''}
+          </Text>
+          <TouchableOpacity onPress={() => stepSearch(-1)} disabled={searchMatches.length < 2} style={styles.searchBtn} accessibilityRole="button" accessibilityLabel="Previous match">
+            <Ionicons name="chevron-up" size={22} color={searchMatches.length < 2 ? Colors.textMuted : Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => stepSearch(1)} disabled={searchMatches.length < 2} style={styles.searchBtn} accessibilityRole="button" accessibilityLabel="Next match">
+            <Ionicons name="chevron-down" size={22} color={searchMatches.length < 2 ? Colors.textMuted : Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={closeSearch} style={styles.searchBtn} accessibilityRole="button" accessibilityLabel="Close search">
+            <Ionicons name="close" size={22} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Loading overlay - positioned below header */}
       {(isLoadingSong || isRendering) && (
@@ -2713,6 +2780,19 @@ const styles = StyleSheet.create({
   },
   ignoreButton: { backgroundColor: Colors.background },
   markButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginHorizontal: 12,
+    marginBottom: 6,
+    paddingLeft: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+  },
+  searchInput: { flex: 1, paddingVertical: 8, color: Colors.text, fontSize: 15 },
+  searchCount: { color: Colors.textMuted, fontSize: 13, minWidth: 28, textAlign: 'right' },
+  searchBtn: { padding: 8 },
   headerBtn: {
     padding: 8,
     backgroundColor: Colors.surface,

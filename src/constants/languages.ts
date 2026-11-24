@@ -174,3 +174,26 @@ export function searchLanguages<T extends { code: string; name: string }>(langua
   if (!q) return languages;
   return languages.filter((l) => l.code === q || fold(l.name).split(/\s+/).some((word) => word.startsWith(q)));
 }
+
+// Each language's name in itself, e.g. "français" for French, for searches written the way its speakers do
+const ENDONYMS: Record<string, string> = {
+  English: 'English', Spanish: 'español', French: 'français', German: 'Deutsch', Italian: 'italiano',
+  Portuguese: 'português', Japanese: '日本語', Korean: '한국어', Chinese: '中文', Russian: 'русский',
+  Arabic: 'العربية', Hindi: 'हिन्दी', Thai: 'ไทย', Vietnamese: 'Tiếng Việt', Turkish: 'Türkçe',
+  Dutch: 'Nederlands', Swedish: 'svenska', Polish: 'polski', Afrikaans: 'Afrikaans', Albanian: 'shqip',
+  Armenian: 'հայերեն', Basque: 'euskara', Bengali: 'বাংলা', Bosnian: 'bosanski', Bulgarian: 'български',
+  Cantonese: '粵語', Catalan: 'català', Croatian: 'hrvatski', Czech: 'čeština', Danish: 'dansk',
+  Esperanto: 'Esperanto', Estonian: 'eesti', Finnish: 'suomi', Galician: 'galego', Georgian: 'ქართული',
+  Greek: 'Ελληνικά', 'Haitian Creole': 'Kreyòl ayisyen', Hawaiian: 'ʻŌlelo Hawaiʻi', Hebrew: 'עברית',
+  Hungarian: 'magyar', Icelandic: 'íslenska', Indonesian: 'Bahasa Indonesia', Irish: 'Gaeilge',
+  Kazakh: 'қазақ тілі', Latin: 'Latina', Latvian: 'latviešu', Lithuanian: 'lietuvių', Macedonian: 'македонски',
+  Malay: 'Bahasa Melayu', Mongolian: 'монгол', Nepali: 'नेपाली', Norwegian: 'norsk', Persian: 'فارسی',
+  Punjabi: 'ਪੰਜਾਬੀ', Romanian: 'română', Serbian: 'српски', Slovak: 'slovenčina', Slovene: 'slovenščina',
+  Swahili: 'Kiswahili', Tagalog: 'Tagalog', Tamil: 'தமிழ்', Telugu: 'తెలుగు', Ukrainian: 'українська',
+  Urdu: 'اردو', Welsh: 'Cymraeg', Yoruba: 'Yorùbá', Zulu: 'isiZulu',
+};
+
+/** A language's name in itself, e.g. "français" for "French"; the name given when it isn't known */
+export function getEndonym(language: string): string {
+  return ENDONYMS[language.trim()] ?? language;
+}

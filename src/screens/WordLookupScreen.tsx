@@ -31,7 +31,7 @@ import PronunciationAudio from '../components/PronunciationAudio';
 import IpaBoxes from '../components/IpaBoxes';
 import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
-import { isSameLanguage } from '../constants/languages';
+import { getEndonym, isSameLanguage } from '../constants/languages';
 import { isIpaKept, isWordIgnored, useStore } from '../store/useStore';
 import { contextTranslationLines } from '../utils/wordOfTheDay';
 import { MasteryLevel, RootTabParamList, WordContext } from '../types';
@@ -58,9 +58,9 @@ const wiktionaryPageUrl = (word: string) => `https://en.m.wiktionary.org/wiki/${
 // The tabs above the browser and the handle over them, peeking under the details
 const SHEET_PEEK_HEIGHT = 72;
 const wiktionarySectionId = (language: string) => getWiktionaryLanguage(language).replace(/ /g, '_');
-// Google's AI overview usually gives the IPA for "<word> <language> IPA", e.g. "Herz German IPA"
+// Google's AI overview usually gives the IPA for "<language> IPA: <word>", e.g. "Deutsch IPA: Herz"
 const googleIpaUrl = (word: string, language: string) =>
-  `https://www.google.com/search?igu=1&q=${encodeURIComponent(`${word} ${language} IPA`)}`;
+  `https://www.google.com/search?igu=1&q=${encodeURIComponent(`${getEndonym(language)} IPA: ${word}`)}`;
 // "<language> define <word>", so Google doesn't pick an unrelated meaning (e.g. a math one)
 const googleDefineUrl = (word: string, language: string) =>
   `https://www.google.com/search?igu=1&q=${encodeURIComponent(`${language} define ${word}`)}`;

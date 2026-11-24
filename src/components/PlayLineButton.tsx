@@ -57,11 +57,19 @@ export default function PlayLineButton({ song, line, size = 15, style }: { song?
       }
       const end = times.end ?? times.start + 8000;
       const giveUp = Date.now() + end - times.start + 10000;
+      let fixes = 0;
       await sleep(800);
       while (runRef.current === run && Date.now() < giveUp) {
         const current = await getSpotifyPlayback().catch(() => null);
         if (!current || !isSameTrack(song.songName, song.artistName ?? '', current.trackName, current.artists) || !current.isPlaying) break;
         const progress = current.progressMs + (Date.now() - current.readAt);
+        // Spotify sometimes starts the song from the top or ignores the seek: go to the line again
+        if (progress < times.start - 1000 && fixes < 4) {
+          fixes++;
+          await seekSpotify(times.start);
+          await sleep(700);
+          continue;
+        }
         if (progress >= end - 150) {
           await pauseSpotify();
           break;

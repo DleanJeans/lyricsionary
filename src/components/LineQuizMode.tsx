@@ -6,6 +6,7 @@ import { isRomanized } from '../constants/languages';
 import type { SpotifyLyricsSync } from '../hooks/useSpotifyLyricsSync';
 import { useStore } from '../store/useStore';
 import type { Song, WordEntry } from '../types';
+import { findDefinitionHighlight, withWordForms } from '../utils/definitionHighlight';
 import { formatIpa } from '../utils/ipaDisplay';
 import { pickLineQuiz, stepQuizLine, type LineQuizItem } from '../utils/lineQuiz';
 import type { ReviewWay } from '../utils/reviewQuiz';
@@ -250,6 +251,15 @@ function LineQuestion({
           ? translation || meaning
           : undefined;
 
+  // The word's meaning in the translation, in bold like the word in its line
+  const hintRanges =
+    hint && hint === translation && meaning
+      ? findDefinitionHighlight(
+          hint,
+          withWordForms([meaning, ...meaning.split(/[,;/]+/).map((m) => m.replace(/\([^)]*\)/g, '').trim()).filter(Boolean)])
+        )
+      : null;
+
   return (
     <>
       {showLine && (
@@ -261,7 +271,19 @@ function LineQuestion({
       )}
       {mode === 'listen' && <PronunciationAudio audio={entry.audio ?? []} wordId={entry.id} autoPlay={!answered} />}
       {ipa && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {hint ? (
+        <Text style={styles.hint}>
+          {hintRanges ? (
+            hintRanges.map(([start, end], i) => (
+              <React.Fragment key={i}>
+                {hint.slice(i === 0 ? 0 : hintRanges[i - 1][1], start)}
+                <Text style={styles.hintMeaning}>{hint.slice(start, end)}</Text>
+              </React.Fragment>
+            ))
+          ) : null}
+          {hintRanges ? hint.slice(hintRanges[hintRanges.length - 1][1]) : hint}
+        </Text>
+      ) : null}
       <WordQuiz
         entry={entry}
         kind={kind}
@@ -375,6 +397,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     fontStyle: 'italic',
+  },
+  hintMeaning: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    fontWeight: '700',
+    color: Colors.text,
   },
   quizWord: {
     fontSize: 14,

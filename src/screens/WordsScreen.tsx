@@ -120,7 +120,7 @@ export default function WordsScreen() {
   // Only words answered wrong lately
   const [trickyOnly, setTrickyOnly] = useState(false);
   const [thisWeekOnly, setThisWeekOnly] = useState(false);
-  const [reviewing, setReviewing] = useState<{ items: ReviewItem[]; startSize?: number } | null>(null);
+  const [reviewing, setReviewing] = useState<{ items: ReviewItem[]; startSize?: number; totals?: Record<string, number> } | null>(null);
   const [dailyGoal] = useDailyGoal();
   const answeredToday = useStore((s) => answersToday(s.activity, Date.now()));
 
@@ -621,18 +621,20 @@ export default function WordsScreen() {
                     const songs = useStore.getState().songs;
                     const ordered = orderDueWords(due, songs);
                     const FIRST = Math.max(60, (dailyGoal ?? 0) * 3);
+                    const totals: Record<string, number> = {};
+                    for (const w of due) totals[w.language] = (totals[w.language] ?? 0) + 1;
                     const first = buildReviewItems(ordered.slice(0, FIRST), words, undefined, undefined, songs);
                     if (!first.length) return;
                     const restOf = (items: ReviewItem[]) => (ordered.length > FIRST ? [...items, ...buildReviewItems(ordered.slice(FIRST), words, undefined, undefined, songs)] : items);
                     if (!dailyGoal) {
-                      setReviewing({ items: first });
+                      setReviewing({ items: first, totals });
                       if (ordered.length > FIRST) setTimeout(() => setReviewing((r) => (r ? { ...r, items: restOf(r.items) } : r)), 600);
                       return;
                     }
                     // A daily batch first, then the rest of the due words for more sessions
                     const left = dailyGoal - answeredToday;
                     const { batch, rest } = pickDailyBatch(first, dailyGoal, left);
-                    setReviewing({ items: [...batch, ...rest], startSize: batch.length || Math.min(MORE_REVIEW_SIZE, rest.length) });
+                    setReviewing({ totals, items: [...batch, ...rest], startSize: batch.length || Math.min(MORE_REVIEW_SIZE, rest.length) });
                     if (ordered.length > FIRST) setTimeout(() => setReviewing((r) => (r ? { ...r, items: restOf(r.items) } : r)), 600);
                   }}
                   accessibilityRole="button"
@@ -664,7 +666,7 @@ export default function WordsScreen() {
           }}
         />
       )}
-      {reviewing && <ReviewSession dueItems={reviewing.items} startSize={reviewing.startSize} onClose={() => setReviewing(null)} isWide={isWide} />}
+      {reviewing && <ReviewSession dueItems={reviewing.items} dueTotals={reviewing.totals} startSize={reviewing.startSize} onClose={() => setReviewing(null)} isWide={isWide} />}
       {listsFrequencies ? (
         searchedFrequencies.length === 0 ? (
           <EmptyState

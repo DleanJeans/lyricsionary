@@ -84,7 +84,7 @@ export default function ReviewSession(props: ReviewSessionProps) {
           </View>
           <View style={[styles.languages, { paddingBottom: 16 + insets.bottom }]}>
             {languages.map((lang) => {
-              const count = byLanguage ? (props.dueTotals![lang] ?? 0) : props.dueItems.filter((i) => i.entry.language === lang).length;
+              const count = props.dueTotals?.[lang] ?? props.dueItems.filter((i) => i.entry.language === lang).length;
               const name = getLanguageNameFromCode(lang) ?? lang;
               return (
                 <TouchableOpacity
@@ -703,6 +703,8 @@ const styles = StyleSheet.create({
   },
   sizes: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 10,
   },
   sizeButton: {

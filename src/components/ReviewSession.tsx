@@ -12,6 +12,7 @@ import { contextTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
 import { openSongAtLine, openWordLookup } from '../navigation/navigationRef';
 import { setReviewResume } from '../navigation/reviewResume';
+import PlayLineButton from './PlayLineButton';
 import PronunciationAudio from './PronunciationAudio';
 import SwitchQuizButton from './SwitchQuizButton';
 import WordQuiz, { AnswerAudio } from './WordQuiz';
@@ -425,6 +426,7 @@ function ReviewQuestion({
             {artistName ? `${songName} · ${artistName}` : songName}
             {unsaved && !savedLine ? ' · not saved here yet' : ''}
           </Text>
+          {line ? <PlayLineButton song={song} line={line} size={18} /> : null}
           {songId && line ? (
             <TouchableOpacity
               hitSlop={10}
@@ -522,6 +524,7 @@ function ReviewQuestion({
                       <Text style={[styles.iconButtonText, savedLine && { color: Colors.success }]}>{savedLine ? 'Saved' : 'Save'}</Text>
                     </TouchableOpacity>
                   )}
+                  <PlayLineButton song={song} line={line} style={styles.iconButton} />
                   {songId ? (
                     <TouchableOpacity
                       hitSlop={6}

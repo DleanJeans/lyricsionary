@@ -27,6 +27,8 @@ interface ReviewSessionProps {
   startSize?: number;
   /** Every word due in each language, when dueItems is only a part of them (the launch review) */
   dueTotals?: Record<string, number>;
+  /** With dueTotals: the review of one language, built when it's picked (the launch review) */
+  buildForLanguage?: (language: string) => ReviewItem[];
 }
 
 const GAP = '_____';
@@ -42,21 +44,30 @@ function reshuffle(quiz: Quiz): Quiz {
 }
 
 /** The languages of the items, the one of the most recently opened song first */
-function languagesByRecency(items: ReviewItem[]): string[] {
+function languagesByRecency(codes: string[]): string[] {
   const rank = new Map<string, number>();
   for (const song of useStore.getState().songs) {
     const lang = song.originalLanguages?.[0];
     if (lang) rank.set(lang, Math.max(rank.get(lang) ?? 0, song.lastOpenedAt ?? 0));
   }
   const recency = (lang: string) => rank.get(lang) ?? rank.get(getLanguageNameFromCode(lang) ?? '') ?? 0;
-  return [...new Set(items.map((i) => i.entry.language))].sort((a, b) => recency(b) - recency(a));
+  return [...new Set(codes)].sort((a, b) => recency(b) - recency(a));
 }
 
 /** Asks which language to review first when the due words are in more than one, then the session */
 export default function ReviewSession(props: ReviewSessionProps) {
-  const languages = useMemo(() => languagesByRecency(props.dueItems), [props.dueItems]);
+  const byLanguage = !!props.buildForLanguage && !!props.dueTotals;
+  const languages = useMemo(
+    () => languagesByRecency(byLanguage ? Object.keys(props.dueTotals!) : props.dueItems.map((i) => i.entry.language)),
+    [props.dueItems, props.dueTotals, byLanguage]
+  );
+  const [built, setBuilt] = useState<ReviewItem[] | null>(null);
   const [language, setLanguage] = useState<string | null>(languages.length > 1 ? null : (languages[0] ?? ''));
   const insets = useSafeAreaInsets();
+  if (language !== null && byLanguage && languages.length > 1) {
+    const items = built ?? [];
+    return <LanguageReview {...props} dueItems={items} startSize={items.length} />;
+  }
   if (language !== null) {
     const items = languages.length > 1 ? props.dueItems.filter((i) => i.entry.language === language) : props.dueItems;
     return <LanguageReview {...props} dueItems={items} startSize={languages.length > 1 ? undefined : props.startSize} />;
@@ -73,19 +84,22 @@ export default function ReviewSession(props: ReviewSessionProps) {
           </View>
           <View style={[styles.languages, { paddingBottom: 16 + insets.bottom }]}>
             {languages.map((lang) => {
-              const count = props.dueItems.filter((i) => i.entry.language === lang).length;
+              const count = byLanguage ? (props.dueTotals![lang] ?? 0) : props.dueItems.filter((i) => i.entry.language === lang).length;
               const name = getLanguageNameFromCode(lang) ?? lang;
               return (
                 <TouchableOpacity
                   key={lang}
                   style={styles.languageRow}
-                  onPress={() => setLanguage(lang)}
+                  onPress={() => {
+                    if (byLanguage) setBuilt(props.buildForLanguage!(lang));
+                    setLanguage(lang);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={`Review ${name}, ${count} due`}
                 >
                   <Text style={styles.languageFlag}>{getFlagForLanguage(lang)}</Text>
                   <Text style={styles.languageName}>{name}</Text>
-                  <Text style={styles.sizeHint}>{props.dueTotals?.[lang] && props.dueTotals[lang] > count ? `${count} of ${props.dueTotals[lang]} due` : `${count} due`}</Text>
+                  <Text style={styles.sizeHint}>{`${count} due`}</Text>
                   <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
                 </TouchableOpacity>
               );

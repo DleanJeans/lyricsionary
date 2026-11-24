@@ -74,6 +74,11 @@ export default function App() {
   const [launchReview, setLaunchReview] = useState<ReviewItem[] | null>(null);
   // All the words due in each language, shown beside the launch review's part of them
   const [launchTotals, setLaunchTotals] = useState<Record<string, number> | undefined>();
+  // With several languages due, the launch review of 10 is built for the one picked
+  const buildLaunchFor = (language: string) => {
+    const { songs, words } = useStore.getState();
+    return buildLaunchReview(songs, words.filter((w) => w.language === language));
+  };
   const isWide = useIsWide();
   useUsageTracker();
   const [otaResume, setOtaResume] = useState<{ songId: string; screen: string } | null>(null);
@@ -227,7 +232,7 @@ export default function App() {
         <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme} onReady={() => setNavigationReady(true)}>
           <AppNavigator />
         </NavigationContainer>
-        {launchReview && <ReviewSession dueItems={launchReview} dueTotals={launchTotals} onClose={() => { setLaunchReview(null); setLaunchTotals(undefined); }} isWide={isWide} />}
+        {launchReview && <ReviewSession dueItems={launchReview} dueTotals={launchTotals} buildForLanguage={launchTotals ? buildLaunchFor : undefined} onClose={() => { setLaunchReview(null); setLaunchTotals(undefined); }} isWide={isWide} />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

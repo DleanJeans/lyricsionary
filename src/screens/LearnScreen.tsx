@@ -25,6 +25,7 @@ import { findWordIndex, type WordRect } from '../components/SelectableTranslatio
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
+import { lineWordsAt } from '../utils/lineQuiz';
 import { contextTranslation } from '../utils/wordOfTheDay';
 import { MASTERY_LEVELS, MasteryLevel, RootTabParamList, WordContext, WordEntry } from '../types';
 import { cleanLyricWord, isLyricWord, isTappableLyric, removeSpecialChars, splitEdgePunctuation, splitLyricTokens } from '../utils/cleanLyrics';
@@ -2207,6 +2208,14 @@ export default function LearnScreen() {
   ) : wordCardPanel);
 
   // Quiz mode is offered once every word in the song is saved (or ignored)
+  // Lines whose words are all ignored have nothing to quiz
+  const quizLines = useMemo(() => {
+    const language = song?.originalLanguages?.[0] || 'unknown';
+    return contentLines.filter((i) => {
+      const found = lineWordsAt(lines[i]?.original ?? '', () => false);
+      return !found.length || !found.every((w) => isIgnoredWord(w.text, language));
+    });
+  }, [contentLines, lines, isIgnoredWord, song?.originalLanguages]);
   const canQuizSong = !lyricQuiz && contentLines.length > 0 && !!wordProgress && wordProgress.total > 0 && wordProgress.newWords === 0;
   const toggleQuizMode = () => {
     if (quizMode) {
@@ -2214,12 +2223,12 @@ export default function LearnScreen() {
       return;
     }
     // Starts where Learn was: the tapped word's line, the line shown 1 by 1, or the found line
-    const start = [selectedLineIndex, lineByLine, foundLine].find((i) => i !== null && contentLines.includes(i));
+    const start = [selectedLineIndex, lineByLine, foundLine].find((i) => i !== null && quizLines.includes(i));
     setSelectedWord(null);
     setDictation(null);
     autoLineByLine.current = false;
     setLineByLine(null);
-    setQuizMode({ startLine: start ?? contentLines[0] });
+    setQuizMode({ startLine: start ?? quizLines[0] ?? contentLines[0] });
   };
 
   // The song's due words, to review from the Spotify bar while it plays
@@ -2352,7 +2361,7 @@ export default function LearnScreen() {
           key={song.id}
           song={song}
           lines={lines}
-          contentLines={contentLines}
+          contentLines={quizLines.length ? quizLines : contentLines}
           startLine={quizMode.startLine}
           translationLanguages={localSelectedLanguages}
           findEntry={findSavedEntry}

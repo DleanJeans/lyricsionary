@@ -175,6 +175,18 @@ function SpotifyBarBody({
       {sync.timings !== 'ready' && sync.isThisSong && (
         <ControlButton icon={sync.isPlaying ? 'pause' : 'play'} label={sync.isPlaying ? 'Pause' : 'Play'} onPress={() => void sync.togglePlay()} />
       )}
+      {sync.timings !== 'ready' && sync.isThisSong && (
+        <TouchableOpacity
+          style={[styles.control, sync.repeating && styles.repeatOn]}
+          onPress={() => void sync.toggleRepeat()}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="On repeat"
+          accessibilityState={{ selected: sync.repeating }}
+        >
+          <Ionicons name="infinite" size={20} color={sync.repeating ? '#000' : Colors.text} />
+        </TouchableOpacity>
+      )}
       {status && (sync.error || onDismiss) && (
         <TouchableOpacity
           onPress={sync.error ? sync.clearError : onDismiss}
@@ -249,6 +261,7 @@ function SpotifyBarBody({
                 onPress={() => sync.toggleLoop(lineToLoop)}
               />
             )}
+            <TogglePill icon="infinite" label="On repeat" on={sync.repeating} onPress={() => void sync.toggleRepeat()} />
             <TogglePill icon={follow ? 'locate' : 'locate-outline'} label="Auto-scroll" on={follow} onPress={onToggleFollow} />
             {canPlaySelected && <TogglePill icon="play" label="Play line" onPress={() => void sync.seekToLine(selectedLineIndex!)} accent />}
             {reviewPill}
@@ -329,6 +342,7 @@ const styles = StyleSheet.create({
   pillOn: { backgroundColor: SPOTIFY_GREEN, borderColor: SPOTIFY_GREEN },
   pillAccent: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   pillText: { fontSize: 12, fontWeight: '700', color: Colors.text },
+  repeatOn: { backgroundColor: SPOTIFY_GREEN, borderRadius: 999 },
   controlDisabled: {
     opacity: 0.4,
   },

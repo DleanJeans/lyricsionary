@@ -12,6 +12,7 @@ import {
   playSpotifyTrack,
   queueSpotifyTrack,
   seekSpotify,
+  setSpotifyRepeat,
   SpotifyError,
   spotifyErrorMessage,
   type SpotifyPlayback,
@@ -56,6 +57,9 @@ export interface SpotifyLyricsSync {
   queueSong: () => Promise<void>;
   /** The song is in the queue, so queueSong plays it right away instead */
   queued: boolean;
+  /** Spotify repeats this song */
+  repeating: boolean;
+  toggleRepeat: () => Promise<void>;
 }
 
 /** Follows Spotify while it plays the song open in Learn, and seeks it by lyric line */
@@ -278,5 +282,12 @@ export function useSpotifyLyricsSync(song: Song | undefined, lines: string[], en
     startingSong,
     queueSong,
     queued: !!queuedUri,
+    repeating: isThisSong && playback?.repeat === 'track',
+    toggleRepeat: async () => {
+      const next = playback?.repeat === 'track' ? 'off' : 'track';
+      await run(() => setSpotifyRepeat(next));
+      // Shows it right away instead of after the next poll
+      setPlayback((prev) => (prev ? { ...prev, repeat: next } : prev));
+    },
   };
 }

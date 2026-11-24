@@ -33,6 +33,8 @@ export interface SpotifyPlayback {
   durationMs: number;
   trackName: string;
   artists: string;
+  /** Whether Spotify repeats the track, its playlist, or nothing */
+  repeat: 'off' | 'track' | 'context';
   /** When progressMs was read, to move it along between polls */
   readAt: number;
 }
@@ -188,8 +190,14 @@ export async function getSpotifyPlayback(): Promise<SpotifyPlayback | null> {
     durationMs: body.item.duration_ms ?? 0,
     trackName: body.item.name ?? '',
     artists: (body.item.artists ?? []).map((a: { name: string }) => a.name).join(', '),
+    repeat: body.repeat_state === 'track' || body.repeat_state === 'context' ? body.repeat_state : 'off',
     readAt: Date.now(),
   };
+}
+
+/** Repeats the playing track, or turns repeat off */
+export async function setSpotifyRepeat(state: 'track' | 'off'): Promise<void> {
+  await api(`/me/player/repeat?state=${state}`, { method: 'PUT' });
 }
 
 export async function seekSpotify(positionMs: number): Promise<void> {

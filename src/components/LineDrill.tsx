@@ -49,7 +49,12 @@ export default function LineDrill({ line, hint, onDone }: { line: string; hint?:
       </View>
       <View style={styles.pieces}>
         {order.map((index) =>
-          placed.includes(index) ? null : (
+          placed.includes(index) ? (
+            // Keeps the chip's room so the others don't shift under a finger
+            <View key={index} style={[styles.piece, styles.pieceSlot]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Text style={[styles.pieceText, styles.pieceSlotText]}>{pieces[index]}</Text>
+            </View>
+          ) : (
             <TouchableOpacity
               key={index}
               style={[styles.piece, wrongIndex === index && styles.pieceWrong]}
@@ -126,6 +131,13 @@ const styles = StyleSheet.create({
   pieceWrong: {
     borderColor: Colors.danger,
     backgroundColor: 'rgba(255, 107, 107, 0.12)',
+  },
+  pieceSlot: {
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+  },
+  pieceSlotText: {
+    opacity: 0,
   },
   pieceText: {
     fontSize: 15,

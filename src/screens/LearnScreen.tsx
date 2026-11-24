@@ -2331,7 +2331,7 @@ export default function LearnScreen() {
           hideStatus={noSyncHidden && spotify.timings === 'none'}
           sync={spotify}
           dueCount={songReviewCount}
-          onReview={() => {
+          onReview={quizMode ? undefined : () => {
             const items = buildSongReview(song.id, words, songs);
             if (items.length) setSongReview(items);
           }}

@@ -19,6 +19,7 @@ jobs:
       expo-project-slug: lyricsionary
       ota-label: expo ota
       ota-click-url: lyricsionary://
+      disabled-profiles: development
     secrets:
       expo-token: ${{ secrets.EXPO_TOKEN }}
       ntfy-topic: ${{ secrets.NTFY_TOPIC }}

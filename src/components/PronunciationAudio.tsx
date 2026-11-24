@@ -14,7 +14,7 @@ interface Props {
   compact?: boolean;
   /** Plays the first recording when it shows, e.g. for a listening quiz */
   autoPlay?: boolean;
-  /** Short accent codes, e.g. "AT" for Austria, with the full name shown while it plays or for a moment when held */
+  /** Short accent codes, e.g. "AT" for Austria, always short so the row keeps one height */
   short?: boolean;
   /** Only the first recording, with a button that shows the others */
   collapsed?: boolean;
@@ -45,13 +45,6 @@ export default function PronunciationAudio({ audio: audioProp, compact = false, 
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
 
   useEffect(() => setPlayingUrl(null), [audio]);
-  // The recording whose full accent name shows for a moment after a long press
-  const [heldUrl, setHeldUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!heldUrl) return;
-    const timer = setTimeout(() => setHeldUrl(null), 2500);
-    return () => clearTimeout(timer);
-  }, [heldUrl]);
   const shortLabels = short ? shortAudioLabels(audio.map((item) => item.label)) : [];
 
   // Once per first recording shown
@@ -78,7 +71,6 @@ export default function PronunciationAudio({ audio: audioProp, compact = false, 
             key={item.url}
             style={[styles.button, compact && styles.buttonCompact, playing && styles.buttonPlaying]}
             onPress={fixing && word ? () => void setWordAudio(word.id, audio.filter((a) => a.url !== item.url)) : () => play(item.url)}
-            onLongPress={short && item.label ? () => setHeldUrl(item.url) : undefined}
             accessibilityRole="button"
             accessibilityLabel={`Play pronunciation${item.label ? ` (${item.label})` : ''}`}
           >
@@ -87,7 +79,7 @@ export default function PronunciationAudio({ audio: audioProp, compact = false, 
               size={compact ? 14 : 16}
               color={playing ? Colors.white : compact ? Colors.primaryLight : Colors.primary}
             />
-            {short && ((heldUrl !== item.url && !playing) || !item.label) ? (
+            {short ? (
               shortLabels[index] ? (
                 <Text style={[styles.buttonText, compact && styles.buttonTextCompact, playing && styles.buttonTextPlaying]}>
                   {shortLabels[index]}

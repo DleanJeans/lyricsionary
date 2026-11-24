@@ -134,9 +134,9 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     height: 32,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: 10,
     backgroundColor: Colors.surface,
     borderWidth: 1,

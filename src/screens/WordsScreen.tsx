@@ -641,7 +641,7 @@ export default function WordsScreen() {
                   accessibilityLabel={dailyGoal ? `Review today's batch, ${Math.min(answeredToday, dailyGoal)} of ${dailyGoal} done` : `Review ${due.length} due ${due.length === 1 ? 'word' : 'words'}`}
                 >
                   <Ionicons name={dailyGoal && answeredToday >= dailyGoal ? 'checkmark' : 'flash'} size={15} color={Colors.white} />
-                  <Text style={styles.reviewButtonText}>{dailyGoal ? `Today ${Math.min(answeredToday, dailyGoal)} of ${dailyGoal}` : due.length}</Text>
+                  <Text style={styles.reviewButtonText}>{dailyGoal ? `${Math.min(answeredToday, dailyGoal)}/${dailyGoal}` : due.length}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -850,8 +850,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginLeft: 'auto',
+    flexShrink: 0,
     height: 32,
-    paddingHorizontal: 12,
+    paddingHorizontal: 9,
     borderRadius: 10,
     backgroundColor: Colors.primary,
   },

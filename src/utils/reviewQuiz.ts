@@ -575,5 +575,14 @@ export const QUIZ_TYPES: QuizType[] = [
 export function buildTypeItems(type: QuizType, language: string, words: WordEntry[], songs: ReviewSong[], size = 5): ReviewItem[] {
   const pool = words.filter((w) => w.language === language && (!type.levels || type.levels.includes(w.masteryLevel ?? 'Seen')));
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  return buildReviewItems(shuffled, words, Math.random, new Map(), songs, { way: type.way, kind: type.kind, needsLine: type.needsLine }).slice(0, size);
+  // Built a few words at a time, since every quiz is compared with all the saved words and building
+  // them all is slow; most words suit a type, so the first few are enough
+  const force = { way: type.way, kind: type.kind, needsLine: type.needsLine };
+  const counts = new Map<ReviewWay, number>();
+  const items: ReviewItem[] = [];
+  const chunk = Math.max(size * 2, 4);
+  for (let i = 0; i < shuffled.length && items.length < size; i += chunk) {
+    items.push(...buildReviewItems(shuffled.slice(i, i + chunk), words, Math.random, counts, songs, force));
+  }
+  return items.slice(0, size);
 }

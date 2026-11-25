@@ -46,11 +46,12 @@ interface MasteryOptionProps {
   onPress: () => void;
 }
 
-function MasteryOption({ level, active, onPress }: MasteryOptionProps) {
+function MasteryOption({ level, active, onPress, first }: MasteryOptionProps & { first: boolean }) {
   return (
     <Pressable
       style={({ pressed }) => [
         styles.button,
+        !first && styles.buttonDivider,
         active && styles.buttonActive,
         active && { backgroundColor: level.color },
         pressed && styles.buttonPressed,
@@ -64,7 +65,7 @@ function MasteryOption({ level, active, onPress }: MasteryOptionProps) {
         style={[styles.buttonText, active && styles.buttonTextActive]}
         numberOfLines={1}
         adjustsFontSizeToFit
-        minimumFontScale={0.8}
+        minimumFontScale={0.7}
       >
         {level.label}
       </Text>
@@ -76,8 +77,9 @@ export default function MasteryLevelSelector({ value, onChange, onRemove }: Mast
   return (
     <View style={styles.selector}>
       <View style={styles.levels}>
-        {levels.map((level) => (
+        {levels.map((level, i) => (
           <MasteryOption
+            first={i === 0}
             key={level.value}
             level={level}
             active={value === level.value}
@@ -105,21 +107,26 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   levels: {
+    // One joined control: the segments share borders and only the outer corners are rounded
     flexDirection: 'row',
-    gap: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    overflow: 'hidden',
+  },
+  buttonDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.border,
   },
   button: {
     // The four levels share the row equally
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
     minHeight: 44,
     paddingVertical: 10,
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   removeButton: {
     flexDirection: 'row',
@@ -142,11 +149,11 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   buttonActive: {
-    borderColor: 'transparent',
+    borderLeftColor: 'transparent',
   },
   buttonText: {
     color: Colors.text,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   buttonTextActive: {

@@ -35,7 +35,7 @@ describe('pickDefinition', () => {
   it('fills a noun as its plural when the translation has that', () => {
     expect(pickDefinition([noun('care'), noun('worry'), noun('concern')], 'All my worries are gone')).toBe('worries');
     expect(pickDefinition([noun('sorrow'), noun('tax adviser')], 'We need tax advisers')).toBe('tax advisers');
-    expect(pickDefinition([verb('to worry'), verb('to fret')], 'All my worries')).toBeNull();
+    expect(pickDefinition([verb('to worry'), verb('to fret')], 'All my worries')).toBe('worries');
   });
 
   it('keeps "to" when the translation has it', () => {

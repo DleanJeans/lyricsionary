@@ -260,6 +260,11 @@ function thirdPersonsOf(definition: string): string[] {
   return partsOf(definition).map((part) => part.replace(/^\S+/, toThirdPerson));
 }
 
+// Each verb in the future, e.g. "to turn; to give up" -> "will turn", "will give up"
+function futuresOf(definition: string): string[] {
+  return partsOf(definition).map((part) => `will ${part}`);
+}
+
 // Each verb's past forms, e.g. "to give up; to cry" -> "gave up", "given up", "cried". Not the third
 // person ("cries"), which reads the same as a noun's plural ("All my worries").
 function pastFormsOf(definition: string): string[] {
@@ -275,7 +280,7 @@ function pastFormsOf(definition: string): string[] {
 export function withWordForms(definitions: string[]): string[] {
   const forms = definitions.flatMap((definition) =>
     /^to\s/i.test(definition.trim())
-      ? [withoutInfinitiveTo(definition), ...gerundsOf(definition), ...pastFormsOf(definition), ...thirdPersonsOf(definition)]
+      ? [...futuresOf(definition), withoutInfinitiveTo(definition), ...gerundsOf(definition), ...pastFormsOf(definition), ...thirdPersonsOf(definition)]
       : pluralsOf(definition)
   );
   return [...new Set([...definitions, ...forms])];
@@ -297,6 +302,10 @@ export function pickDefinition(definitions: WiktionaryDefinition[], translation?
       if (ranges && (!longest || length > longest.length)) longest = { text, length };
     }
     if (longest) {
+      // A verb after will is filled in with it: "will turn"
+      const verb = unique.find((d) => d.text === longest!.text && d.partOfSpeech.toLowerCase() === 'verb');
+      const future = verb && futuresOf(verb.text).find((f) => findDefinitionHighlight(translation, [f]));
+      if (future) return future;
       // A contraction piece like "n't" is filled in as its whole word in the translation: "won't"
       const piece = normalize(longest.text.trim());
       const range = piece.startsWith("n't") || piece.startsWith("'") ? findDefinitionHighlight(translation, [longest.text]) : null;
@@ -317,6 +326,8 @@ export function pickDefinition(definitions: WiktionaryDefinition[], translation?
       if (past) return past;
       const third = thirdPersonsOf(text).find((t) => findDefinitionHighlight(translation, [t]));
       if (third) return third;
+      const future = futuresOf(text).find((f) => findDefinitionHighlight(translation, [f]));
+      if (future) return future;
     }
   }
   return unique.length === 1 ? unique[0].text : null;

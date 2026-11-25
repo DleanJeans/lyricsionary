@@ -135,4 +135,9 @@ describe('verbs in the third person', () => {
   it('highlights a saved verb as its -s form', () => {
     expect(findDefinitionHighlight('Twice turns into one', withWordForms(['to turn']))).toEqual([[6, 11]]);
   });
+
+  it('fills in a verb after will', () => {
+    expect(pickDefinition([{ text: 'turn', partOfSpeech: 'verb' }, { text: 'be', partOfSpeech: 'verb' }] as any, 'Soon it will turn into a lifetime')).toBe('will turn');
+    expect(findDefinitionHighlight('It will turn out', withWordForms(['to turn']))).toEqual([[3, 12]]);
+  });
 });

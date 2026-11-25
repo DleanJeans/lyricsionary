@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { languageKey } from '../constants/languages';
-import type { Song, WordContext, WordEntry } from '../types';
+import type { MasteryLevel, Song, WordContext, WordEntry } from '../types';
 import { removeSpecialChars } from './cleanLyrics';
 import { isCjkWord } from './cjkWords';
 import { contextTranslation, lineTranslation } from './wordOfTheDay';
@@ -328,13 +328,14 @@ export function buildReviewItems(
   words: WordEntry[],
   random = Math.random,
   counts: Map<ReviewWay, number> = new Map(),
-  songs: ReviewSong[] = []
+  songs: ReviewSong[] = [],
+  force?: { way: ReviewWay; kind: QuizKind; needsLine?: boolean }
 ): ReviewItem[] {
   const items: ReviewItem[] = [];
   const now = Date.now();
   const ordered = orderDueWords(dueWords, songs);
   for (const entry of ordered) {
-    const kind = quizKindFor(entry.masteryLevel);
+    const kind = force?.kind ?? quizKindFor(entry.masteryLevel);
     if (!kind) continue;
     // The line is one of the word's saved ones or another song's it wasn't saved from; that one asks
     // for the meaning saved first
@@ -362,9 +363,10 @@ export function buildReviewItems(
     const built = buildQuiz(kind, target, words, random, now);
     const ways = reviewWays(kind, { hasQuiz: !!built, hasLine: !!wordAt, hasAudio: !!entry.audio?.length, hasIpa: !!ipaText, canSpeak: hasSpeechModule() && !!built && !speakingPaused() });
     if (!ways.length) continue;
+    if (force && (!ways.includes(force.way) || (force.needsLine && !wordAt))) continue;
     const fewest = Math.min(...ways.map((w) => counts.get(w) ?? 0));
     const least = ways.filter((w) => (counts.get(w) ?? 0) === fewest);
-    const way = least[Math.min(least.length - 1, Math.floor(random() * least.length))];
+    const way = force ? force.way : least[Math.min(least.length - 1, Math.floor(random() * least.length))];
     counts.set(way, fewest + 1);
     const ipa = way.endsWith('ipa') ? ipaText : undefined;
     const speak = way === 'speak';
@@ -541,4 +543,37 @@ export function buildLaunchReview(
     }
   }
   return picked;
+}
+
+
+/** Every way Review can ask a word, to try one out: how it's asked, and which words suit it */
+export interface QuizType {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  way: ReviewWay;
+  kind: QuizKind;
+  /** The levels of words that take it, since a Recalled word's lyric quiz is typed and the others picked */
+  levels?: MasteryLevel[];
+  needsLine?: boolean;
+}
+
+export const QUIZ_TYPES: QuizType[] = [
+  { id: 'meaning', label: 'Pick the meaning', description: 'See the word, pick what it means', icon: 'list-outline', way: 'meaning', kind: 'meaning' },
+  { id: 'meaning-ipa', label: 'Meaning from IPA', description: 'See only the IPA, pick the meaning', icon: 'text-outline', way: 'meaning-ipa', kind: 'meaning' },
+  { id: 'meaning-listen', label: 'Meaning from audio', description: 'Hear the word, pick the meaning', icon: 'ear-outline', way: 'meaning-listen', kind: 'meaning' },
+  { id: 'say-word', label: 'Say the word', description: 'See the word and say it out loud (3 points)', icon: 'mic-outline', way: 'speak', kind: 'meaning' },
+  { id: 'lyric', label: 'Fill in the blank: pick', description: 'A lyric line with the word blanked out, pick it from options', icon: 'ellipsis-horizontal', way: 'lyric', kind: 'lyric', levels: ['Seen', 'Recognized'], needsLine: true },
+  { id: 'lyric-typed', label: 'Fill in the blank: type', description: 'The same, typed (2 points)', icon: 'create-outline', way: 'lyric', kind: 'lyric', levels: ['Recalled'], needsLine: true },
+  { id: 'lyric-listen', label: 'Hear the word', description: 'Hear the word, pick it from options', icon: 'ear-outline', way: 'lyric-listen', kind: 'lyric', levels: ['Seen', 'Recognized'] },
+  { id: 'lyric-ipa', label: 'Spell from IPA', description: 'See the IPA and type the word', icon: 'text-outline', way: 'lyric-ipa', kind: 'lyric' },
+  { id: 'say-gap', label: 'Say the missing word', description: 'A line with a gap, say the word that fits (3 points)', icon: 'mic-outline', way: 'speak', kind: 'lyric', needsLine: true },
+];
+
+/** A practice round of one quiz type with words of the language that suit it; answers aren't saved */
+export function buildTypeItems(type: QuizType, language: string, words: WordEntry[], songs: ReviewSong[], size = 5): ReviewItem[] {
+  const pool = words.filter((w) => w.language === language && (!type.levels || type.levels.includes(w.masteryLevel ?? 'Seen')));
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return buildReviewItems(shuffled, words, Math.random, new Map(), songs, { way: type.way, kind: type.kind, needsLine: type.needsLine }).slice(0, size);
 }

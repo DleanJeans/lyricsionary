@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
-import { MORE_REVIEW_SIZE, pauseSpeakingQuizzes, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
+import { buildTypeItems, MORE_REVIEW_SIZE, pauseSpeakingQuizzes, QUIZ_TYPES, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
 import { formatIpa } from '../utils/ipaDisplay';
 import { contextTranslation } from '../utils/wordOfTheDay';
@@ -140,6 +140,22 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
   );
   const insets = useSafeAreaInsets();
   const words = useStore((s) => s.words);
+  // Trying one quiz type: a practice round whose answers aren't saved
+  const [trying, setTrying] = useState(false);
+  const [typePicker, setTypePicker] = useState(false);
+  const [typeNote, setTypeNote] = useState<string | null>(null);
+  const language = dueItems[0]?.entry.language ?? session?.[0]?.entry.language;
+  const tryType = (type: (typeof QUIZ_TYPES)[number]) => {
+    const picked = buildTypeItems(type, language!, words, useStore.getState().songs);
+    if (!picked.length) return setTypeNote(`No ${getLanguageNameFromCode(language!) ?? language} words suit "${type.label}" yet`);
+    setTypeNote(null);
+    setTypePicker(false);
+    setTrying(true);
+    setRetries([]);
+    setIndex(0);
+    setAnswers([]);
+    setSession(picked);
+  };
   // The levels the words had when the review opened, to count how many moved
   const startLevels = useRef<Map<string, number> | null>(null);
   if (!startLevels.current) {
@@ -217,16 +233,43 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
                     ? `Once more: ${index - firstTries.length + 1} of ${retries.length}`
                     : `Review ${index + 1} of ${firstTries.length}`}
             </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close review">
-              <Ionicons name="close" size={22} color={Colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              {!!language && !typePicker && (
+                <TouchableOpacity onPress={() => setTypePicker(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Try a quiz type">
+                  <Ionicons name="apps-outline" size={22} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close review">
+                <Ionicons name="close" size={22} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
-          {session && !finished && (
+          {typePicker && (
+            <ScrollView contentContainerStyle={[styles.body, { paddingBottom: 16 + insets.bottom }]}>
+              <Text style={styles.summaryText}>Try a quiz type</Text>
+              <Text style={styles.sizeHint}>5 words of this language, answers not saved</Text>
+              {QUIZ_TYPES.map((type) => (
+                <TouchableOpacity key={type.id} style={styles.languageRow} onPress={() => tryType(type)} accessibilityRole="button" accessibilityLabel={type.label}>
+                  <Ionicons name={type.icon as any} size={22} color={Colors.primaryLight} />
+                  <View style={styles.languageInfo}>
+                    <Text style={styles.languageNameText}>{type.label}</Text>
+                    <Text style={styles.sizeHint}>{type.description}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                </TouchableOpacity>
+              ))}
+              {typeNote ? <Text style={styles.sizeHint}>{typeNote}</Text> : null}
+              <TouchableOpacity style={[styles.button, styles.outlineButton]} onPress={() => setTypePicker(false)} accessibilityRole="button" accessibilityLabel="Back">
+                <Text style={styles.outlineText}>Back</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+          {session && !finished && !typePicker && (
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${(answers.length / items.length) * 100}%` }]} />
             </View>
           )}
-          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          <ScrollView style={typePicker ? { display: 'none' } : undefined} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             {!session ? (
               <View style={styles.summary}>
                 <Text style={styles.summaryText}>How many do you want to review?</Text>
@@ -297,7 +340,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
                 answered={answered}
                 onAnswered={onAnswered}
                 isWide={isWide}
-                practice={isRetry}
+                practice={isRetry || trying}
                 lookUpRef={lookUpRef}
                 onCloseReview={stepAside}
                 onLookUp={(entry, line, songId, songName) => {
@@ -307,7 +350,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
               />
             )}
           </ScrollView>
-          {session && !finished && answered && (
+          {session && !finished && answered && !typePicker && (
             <View style={styles.actions}>
               {!isRetry && (
                 <TouchableOpacity

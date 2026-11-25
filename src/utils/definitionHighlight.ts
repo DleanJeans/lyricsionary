@@ -226,6 +226,16 @@ export function toPlural(noun: string): string {
   return `${noun}s`;
 }
 
+// English third person singular of a verb: turn -> turns, cry -> cries, go -> goes, have -> has, be -> is
+export function toThirdPerson(verb: string): string {
+  const word = verb.toLowerCase();
+  if (word === 'be') return 'is';
+  if (word === 'have') return 'has';
+  if (/[^aeiou]y$/.test(word)) return `${verb.slice(0, -1)}ies`;
+  if (/(?:s|x|z|ch|sh|o)$/.test(word)) return `${verb}es`;
+  return `${verb}s`;
+}
+
 // Each meaning in a list like "to give up; to quit (a job)", without parentheticals or "to"
 function partsOf(definition: string): string[] {
   return definition
@@ -244,6 +254,12 @@ function pluralsOf(definition: string): string[] {
   return partsOf(definition).map((part) => part.replace(/\S+$/, toPlural));
 }
 
+// Each verb's third person, e.g. "to turn; to give up" -> "turns", "gives up". Only for words known to be
+// verbs: the same spelling is a noun's plural ("worries").
+function thirdPersonsOf(definition: string): string[] {
+  return partsOf(definition).map((part) => part.replace(/^\S+/, toThirdPerson));
+}
+
 // Each verb's past forms, e.g. "to give up; to cry" -> "gave up", "given up", "cried". Not the third
 // person ("cries"), which reads the same as a noun's plural ("All my worries").
 function pastFormsOf(definition: string): string[] {
@@ -259,7 +275,7 @@ function pastFormsOf(definition: string): string[] {
 export function withWordForms(definitions: string[]): string[] {
   const forms = definitions.flatMap((definition) =>
     /^to\s/i.test(definition.trim())
-      ? [withoutInfinitiveTo(definition), ...gerundsOf(definition), ...pastFormsOf(definition)]
+      ? [withoutInfinitiveTo(definition), ...gerundsOf(definition), ...pastFormsOf(definition), ...thirdPersonsOf(definition)]
       : pluralsOf(definition)
   );
   return [...new Set([...definitions, ...forms])];
@@ -299,6 +315,8 @@ export function pickDefinition(definitions: WiktionaryDefinition[], translation?
       if (gerund) return gerund;
       const past = pastFormsOf(text).find((p) => findDefinitionHighlight(translation, [p]));
       if (past) return past;
+      const third = thirdPersonsOf(text).find((t) => findDefinitionHighlight(translation, [t]));
+      if (third) return third;
     }
   }
   return unique.length === 1 ? unique[0].text : null;

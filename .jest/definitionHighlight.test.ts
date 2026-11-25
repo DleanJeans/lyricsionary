@@ -123,3 +123,16 @@ describe('contracted words found again from inside them', () => {
     expect(findDefinitionHighlight("you've got it, you've had it", ['have'], 2)).toEqual([[15, 21]]);
   });
 });
+
+describe('verbs in the third person', () => {
+  it('fills in a verb as its -s form', () => {
+    const defs = [{ text: 'become', partOfSpeech: 'verb' }, { text: 'turn', partOfSpeech: 'verb' }] as any;
+    expect(pickDefinition(defs, 'Twice turns into a lifetime')).toBe('turns');
+    expect(pickDefinition([{ text: 'to cry', partOfSpeech: 'verb' }] as any, 'She cries a lot')).toBe('cries');
+    expect(pickDefinition([{ text: 'be going to', partOfSpeech: 'verb' }] as any, 'It is going to rain')).toBe('is going to');
+  });
+
+  it('highlights a saved verb as its -s form', () => {
+    expect(findDefinitionHighlight('Twice turns into one', withWordForms(['to turn']))).toEqual([[6, 11]]);
+  });
+});

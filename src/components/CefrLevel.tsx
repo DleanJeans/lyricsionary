@@ -28,7 +28,7 @@ export function CefrPill({ level, small }: { level: string; small?: boolean }) {
 /** A thin bar of how far it is to the next level */
 export function CefrMiniBar({ progress, width, height = 4 }: { progress: CefrProgress; width?: number; height?: number }) {
   return (
-    <View style={[styles.miniTrack, { height, borderRadius: height / 2 }, width ? { width } : { alignSelf: 'stretch' }]}>
+    <View style={[styles.miniTrack, { height, borderRadius: height / 2 }, width ? { width } : { flexGrow: 1, alignSelf: 'stretch' }]}>
       <View style={[styles.miniFill, { width: `${Math.round(progress.fraction * 100)}%` }]} />
     </View>
   );
@@ -206,7 +206,11 @@ export function CefrSheet({ progress, onClose }: { progress: CefrProgress | null
                 <View key={level} style={[styles.rung, i === CEFR_LEVELS.length - 1 && { borderBottomWidth: 0 }]}>
                   <Text style={[styles.rungLevel, reached && styles.rungReached, !reached && !current && styles.rungFuture]}>{level}</Text>
                   {reached && <Ionicons name="checkmark" size={16} color={Colors.primaryLight} />}
-                  {current && <CefrMiniBar progress={progress} width={70} />}
+                  {current && (
+                    <View style={styles.rungBar}>
+                      <CefrMiniBar progress={progress} height={6} />
+                    </View>
+                  )}
                   <Text style={[styles.rungWords, !reached && !current && styles.rungFuture]}>{n(scale.words[i])}</Text>
                 </View>
               );
@@ -325,6 +329,7 @@ const styles = StyleSheet.create({
   rungLevel: { width: 30, fontSize: 14, fontWeight: '700', color: Colors.text },
   rungReached: { color: Colors.primaryLight },
   rungFuture: { color: Colors.textMuted },
+  rungBar: { flex: 1, justifyContent: 'center' },
   rungWords: { marginLeft: 'auto', fontSize: 13, color: Colors.textSecondary },
   note: { flexDirection: 'row', gap: 6, marginTop: 10 },
   noteText: { flex: 1, fontSize: 12, lineHeight: 17, color: Colors.textSecondary },

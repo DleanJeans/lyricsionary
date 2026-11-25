@@ -110,7 +110,9 @@ export default function ReviewSession(props: ReviewSessionProps) {
                       <CefrPill level={levels[lang].level} small />
                     </View>
                     <View style={styles.languageLevel}>
-                      <CefrMiniBar progress={levels[lang]} width={60} />
+                      <View style={{ flex: 1 }}>
+                        <CefrMiniBar progress={levels[lang]} />
+                      </View>
                       <Text style={styles.sizeHint}>{toNextLabel(levels[lang])}</Text>
                     </View>
                   </View>

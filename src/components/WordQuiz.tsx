@@ -116,7 +116,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     answered && !undone && (current.masteryLevel ?? 'Seen') !== (unanswered.masteryLevel ?? 'Seen') ? current.masteryLevel ?? null : null;
 
   /** Shows the answer's level change before it's saved */
-  const points = ipaShown || typedProp ? 1 : answerPoints(spoken ? 'spoken' : typed || noHint ? 'typed' : 'picked');
+  const points = ipaShown || typedProp ? 1 : answerPoints(spoken || (typed && noHint) ? 'spoken' : typed || noHint ? 'typed' : 'picked');
   const predict = (right: boolean) =>
     setPredicted({ ...stored, ...recordAnswer(stored.masteryLevel, stored.quiz, kind, right, Date.now(), points) });
 

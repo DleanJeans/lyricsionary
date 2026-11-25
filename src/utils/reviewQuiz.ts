@@ -572,6 +572,7 @@ export const QUIZ_TYPES: QuizType[] = [
   { id: 'say-word', label: 'Say the word', description: 'See the word and say it out loud (3 points)', icon: 'mic-outline', way: 'speak', kind: 'meaning' },
   { id: 'lyric', label: 'Fill in the blank: pick', description: 'A lyric line with the word blanked out, pick it from options', icon: 'ellipsis-horizontal', way: 'lyric', kind: 'lyric', levels: ['Seen', 'Recognized'], needsLine: true },
   { id: 'lyric-blind', label: 'Fill in the blank: no translation', description: 'The same, without the translation to go by (2 points)', icon: 'eye-off-outline', way: 'lyric', kind: 'lyric', levels: ['Seen', 'Recognized'], needsLine: true, noTranslation: true },
+  { id: 'lyric-typed-blind', label: 'Fill in the blank: type, no translation', description: 'Typed, without the translation to go by (3 points)', icon: 'eye-off-outline', way: 'lyric', kind: 'lyric', levels: ['Recalled'], needsLine: true, noTranslation: true },
   { id: 'lyric-typed', label: 'Fill in the blank: type', description: 'The same, typed (2 points)', icon: 'create-outline', way: 'lyric', kind: 'lyric', levels: ['Recalled'], needsLine: true },
   { id: 'lyric-listen', label: 'Hear the word', description: 'Hear the word, pick it from options', icon: 'ear-outline', way: 'lyric-listen', kind: 'lyric', levels: ['Seen', 'Recognized'] },
   { id: 'lyric-ipa', label: 'Spell from IPA', description: 'See the IPA and type the word', icon: 'text-outline', way: 'lyric-ipa', kind: 'lyric' },

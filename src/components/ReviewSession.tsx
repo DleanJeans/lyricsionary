@@ -242,12 +242,12 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
           {typePicker && (
             <ScrollView contentContainerStyle={[styles.body, { paddingBottom: 16 + insets.bottom }]}>
               <Text style={styles.summaryText}>Try a quiz type</Text>
-              <Text style={styles.sizeHint}>Words of this language; answers count toward levels</Text>
-              <View style={styles.sizes}>
-                {[1, 3, 5, 10].map((n) => (
+              <Text style={styles.sizeHint}>{`${getFlagForLanguage(language!)} ${getLanguageNameFromCode(language!) ?? language}`}</Text>
+              <View style={{ flexDirection: 'row', alignSelf: 'center', borderWidth: 1, borderColor: Colors.primary, borderRadius: 10, overflow: 'hidden' }}>
+                {[1, 3, 5, 10].map((n, i) => (
                   <TouchableOpacity
                     key={n}
-                    style={[styles.sizeButton, n !== typeCount && styles.outlineButton]}
+                    style={{ minWidth: 52, paddingVertical: 8, alignItems: 'center', backgroundColor: n === typeCount ? Colors.primary : 'transparent', borderLeftWidth: i ? 1 : 0, borderLeftColor: Colors.primary }}
                     onPress={() => setTypeCount(n)}
                     accessibilityRole="button"
                     accessibilityLabel={`${n} ${n === 1 ? 'word' : 'words'}`}

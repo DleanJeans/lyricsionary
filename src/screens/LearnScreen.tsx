@@ -165,7 +165,7 @@ export default function LearnScreen() {
       if (koreanStem) return findWordEntry(koreanStem);
       // A Spanish or Portuguese verb without its pronouns or a preposition without its article, e.g. di
       // for dímelo, amo for amo-te, de for del
-      const romanceBase = getRomanceBaseWord(cleanedWord, song?.originalLanguages, { loose: true });
+      const romanceBase = getRomanceBaseWord(cleanedWord, song?.originalLanguages, { loose: true, contractions: false });
       if (romanceBase) return findWordEntry(romanceBase);
       const expanded = isGermanSong ? getGermanExpandedForm(cleanedWord, 'German') : null;
       return expanded ? findWordEntry(expanded) : undefined;

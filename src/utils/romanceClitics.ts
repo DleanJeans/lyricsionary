@@ -69,12 +69,18 @@ function songLanguage(languages?: string[]): 'spanish' | 'portuguese' | null {
  * The word a Spanish or Portuguese word with attached pronouns, or a preposition joined to an article,
  * is about: di for dímelo, amo for amo-te, de for del or do; null for other words and languages.
  * `loose` also takes apart forms that ordinary words share, like amarte, for a lookup that falls back
- * to the whole word.
+ * to the whole word. `contractions: false` leaves ao, do, na and the like as they are.
  */
-export function getRomanceBaseWord(word: string, languages?: string[], { loose = false } = {}): string | null {
+export function getRomanceBaseWord(
+  word: string,
+  languages?: string[],
+  { loose = false, contractions = true } = {}
+): string | null {
   const language = songLanguage(languages);
   if (!language) return null;
-  const contraction = CONTRACTIONS[language][word.toLowerCase()];
+  // A contraction like ao is a word of its own to select, save and count; it's only taken apart when
+  // `contractions` is on, as a fallback for a lookup
+  const contraction = contractions ? CONTRACTIONS[language][word.toLowerCase()] : undefined;
   if (contraction) return contraction;
   return language === 'spanish' ? getSpanishVerb(word, { loose }) : getPortugueseVerb(word);
 }

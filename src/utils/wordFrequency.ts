@@ -42,7 +42,7 @@ function getFullWord(word: string, languages: string[] | undefined): string | nu
   if (isKoreanLanguage(languages)) return getKoreanStem(word);
   // A Spanish or Portuguese verb without its pronouns or a preposition without its article, e.g. di for
   // dímelo or de for del
-  const romance = getRomanceBaseWord(word, languages);
+  const romance = getRomanceBaseWord(word, languages, { contractions: false });
   if (romance) return romance;
   if (!languages?.some((language) => ELISION_LANGUAGES.has(language.toLowerCase()))) return null;
   const parts = splitElisionParts(word);

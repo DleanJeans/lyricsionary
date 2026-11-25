@@ -119,10 +119,16 @@ export function stripDefinitionHtml(html: string): string {
  */
 export function getFormOfGloss(html: string): string | undefined {
   if (!isFormOf(html)) return undefined;
-  const span = html.match(/<span\b[^>]*class="[^"]*\bmention-gloss\b(?!-)[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
-  const gloss = span
+  const glossSpan = /<span\b[^>]*class="[^"]*\bmention-gloss\b(?!-)[^"]*"[^>]*>([\s\S]*?)<\/span>/gi;
+  const spans = [...html.matchAll(glossSpan)];
+  // A contraction of several words, e.g. ao from a ("to") + o ("the"), means all of them: "to the"
+  const joined = spans.length > 1 && spans.every((m, i) => i === 0 || html.slice(spans[i - 1].index! + spans[i - 1][0].length, m.index!).includes('+'))
+    ? spans.map((m) => stripDefinitionHtml(m[1])).join(' ')
+    : undefined;
+  const span = spans[0];
+  const gloss = joined ?? (span
     ? stripDefinitionHtml(span[1])
-    : (stripDefinitionHtml(html).match(/\bof\s+[^\s“”"][^“”"]*?\s[“"]([^“”"]+)[”"]\s*$/)?.[1] ?? getTextAfterFormOf(html));
+    : (stripDefinitionHtml(html).match(/\bof\s+[^\s“”"][^“”"]*?\s[“"]([^“”"]+)[”"]\s*$/)?.[1] ?? getTextAfterFormOf(html)));
   return gloss?.trim() || undefined;
 }
 

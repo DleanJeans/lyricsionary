@@ -165,6 +165,12 @@ describe('real Wiktionary responses', () => {
     expect(texts({ de: [section('German', 'Noun', [VERMIETER])] }, 'German')).toEqual(['landlord']);
   });
 
+  it('ao suggests the gloss of both words it contracts', () => {
+    const AO =
+      '<span class="form-of-definition use-with-mention"><span class="form-of-definition-link">contraction of <i class="Latn mention" lang="pt"><a href="/wiki/a#Portuguese">a</a></i> <span class="mention-gloss-paren">(</span><span class="mention-gloss-double-quote">“</span><span class="mention-gloss">to</span><span class="mention-gloss-double-quote">”</span><span class="mention-gloss-paren">)</span> + <i class="Latn mention" lang="pt"><a href="/wiki/o#Portuguese">o</a></i> <span class="mention-gloss-paren">(</span><span class="mention-gloss-double-quote">“</span><span class="mention-gloss">the</span><span class="mention-gloss-double-quote">”</span><span class="mention-gloss-paren">)</span></span></span>';
+    expect(getFormOfGloss(AO)).toBe('to the');
+  });
+
   it('Gefühle suggests the gloss of its lemma', () => {
     expect(getFormOfGloss(GEFUEHLE)).toBe('feelings');
     expect(texts({ de: [section('German', 'Noun', [GEFUEHLE])] }, 'German')).toEqual(['feelings']);

@@ -3,9 +3,10 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
-import { Colors } from '../constants/theme';
+import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { usePersistedState } from '../hooks/usePersistedState';
-import { CEFR_LEVELS, PRE_A1, type CefrProgress } from '../utils/cefr';
+import { CEFR_LEVELS, LEVEL_WEIGHTS, PRE_A1, type CefrProgress } from '../utils/cefr';
+import { MASTERY_LEVELS } from '../types';
 import ProgressRing from './ProgressRing';
 import { Text } from './Text';
 
@@ -71,12 +72,12 @@ export function CefrCard({ progress, onOpen }: { progress: CefrProgress; onOpen:
       style={styles.card}
       onPress={() => setCompact(!compact)}
       accessibilityRole="button"
-      accessibilityLabel={`Vocabulary level ${progress.level}, ${n(progress.mastered)} words mastered, ${toNextLabel(progress)}. Tap to ${compact ? 'show the ladder' : 'make it smaller'}`}
+      accessibilityLabel={`Vocabulary level ${progress.level}, ${n(progress.mastered)} words known, ${toNextLabel(progress)}. Tap to ${compact ? 'show the ladder' : 'make it smaller'}`}
     >
       <View style={styles.cardRow}>
         {compact ? (
           <Text style={styles.cardText} numberOfLines={1}>
-            <Text style={styles.cardStrong}>{progress.level}</Text> · {n(progress.mastered)} words mastered
+            <Text style={styles.cardStrong}>{progress.level}</Text> · {n(progress.mastered)} words known
           </Text>
         ) : (
           <Text style={styles.cardText} numberOfLines={1}>
@@ -157,11 +158,12 @@ export function CefrLanguageRows({ all, onPress }: { all: CefrProgress[]; onPres
 export function CefrSheet({ progress, onClose }: { progress: CefrProgress | null; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   if (!progress) return null;
-  const { scale, mastered, recognized } = progress;
+  const { scale, mastered, parts } = progress;
   const top = scale.words[scale.words.length - 1];
-  const barEnd = Math.max(progress.next ? progress.to : top, 1);
-  const masteredWidth = Math.min(1, mastered / barEnd);
-  const recognizedWidth = Math.min(1 - masteredWidth, recognized / barEnd);
+  const barEnd = Math.max(progress.next ? progress.to : top, mastered, 1);
+  // Each level's share of the bar, the surest words first
+  const shown = [...MASTERY_LEVELS].reverse().filter((l) => parts[l] > 0);
+  const filled = shown.reduce((sum, l) => sum + parts[l], 0) / barEnd;
   const reachedIndex = CEFR_LEVELS.indexOf(progress.level as never);
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -180,24 +182,22 @@ export function CefrSheet({ progress, onClose }: { progress: CefrProgress | null
             <View style={styles.big}>
               <Text style={styles.bigLevel}>{progress.level}</Text>
               <Text style={styles.bigText}>
-                <Text style={styles.cardStrong}>{n(mastered)}</Text> words Recalled or Known{'\n'}
+                <Text style={styles.cardStrong}>{n(mastered)}</Text> words known{'\n'}
                 {progress.next ? `${n(progress.to - mastered)} more to reach ${progress.next}` : 'The top level'}
               </Text>
             </View>
             <View style={styles.sheetBar}>
-              <View style={{ flex: masteredWidth, backgroundColor: Colors.primaryLight }} />
-              <View style={{ flex: recognizedWidth, backgroundColor: Colors.masteryRecognized, opacity: 0.55 }} />
-              <View style={{ flex: Math.max(0, 1 - masteredWidth - recognizedWidth) }} />
+              {shown.map((l) => (
+                <View key={l} style={{ flex: parts[l] / barEnd, backgroundColor: getMasteryLevelColor(l) }} />
+              ))}
+              <View style={{ flex: Math.max(0, 1 - filled) }} />
             </View>
             <View style={styles.legend}>
-              <Text style={styles.legendText}>
-                <Text style={{ color: Colors.primaryLight }}>●</Text> Mastered
-              </Text>
-              {recognized > 0 && (
-                <Text style={styles.legendText}>
-                  <Text style={{ color: Colors.masteryRecognized }}>●</Text> {n(recognized)} Recognized on the way
+              {[...MASTERY_LEVELS].reverse().map((l) => (
+                <Text key={l} style={styles.legendText}>
+                  <Text style={{ color: getMasteryLevelColor(l) }}>●</Text> {l} ×{LEVEL_WEIGHTS[l]}
                 </Text>
-              )}
+              ))}
             </View>
             {CEFR_LEVELS.map((level, i) => {
               const reached = i <= reachedIndex;
@@ -218,8 +218,8 @@ export function CefrSheet({ progress, onClose }: { progress: CefrProgress | null
             <View style={styles.note}>
               <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
               <Text style={styles.noteText}>
-                A rough estimate from vocabulary only, not grammar, listening or speaking. Each word counts once with its
-                forms; phrases and ignored words don't count. {scale.source}.
+                A rough estimate from vocabulary only, not grammar, listening or speaking. Each word counts by its level's
+                weight above; forms count once with their word, and phrases and ignored words don't count. {scale.source}.
               </Text>
             </View>
           </ScrollView>

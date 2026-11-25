@@ -1,12 +1,12 @@
 import { languageKey } from '../constants/languages';
-import type { WordEntry } from '../types';
+import { MASTERY_LEVELS, type MasteryLevel, type WordEntry } from '../types';
 
 export const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 export type CefrLevel = (typeof CEFR_LEVELS)[number];
 /** Below A1 */
 export const PRE_A1 = 'Pre-A1';
 
-/** How many mastered words reach each level, A1 to C2, and where the numbers come from */
+/** How many known words reach each level, A1 to C2, and where the numbers come from */
 export interface CefrScale {
   words: [number, number, number, number, number, number];
   source: string;
@@ -80,23 +80,25 @@ export function cefrScale(language: string): CefrScale {
   return SCALES[languageKey(language)] ?? DEFAULT_SCALE;
 }
 
-/** A word counts toward the level once it's Recalled or Known, like the song level bar */
-export const isMastered = (w: WordEntry) => w.masteryLevel === 'Recalled' || w.masteryLevel === 'Known';
-/** Words on the way: picked from a few but not recalled yet */
-export const isOnTheWay = (w: WordEntry) => w.masteryLevel === 'Recognized';
+/**
+ * How much a word at each level counts toward the level. The studies' numbers come from tests of
+ * knowing a word's meaning, which Recognized words have shown and Recalled words have more than shown.
+ */
+export const LEVEL_WEIGHTS: Record<MasteryLevel, number> = { Seen: 0.1, Recognized: 0.5, Recalled: 0.9, Known: 1 };
 /** A saved phrase like "auf jeden Fall" isn't a word of its own for the level */
 const isSingleWord = (w: WordEntry) => !/\s/.test(w.word.trim());
 
 export interface CefrProgress {
   language: string;
-  /** Recalled or Known words; merged forms count once with their word */
+  /** The words known, each level weighted (LEVEL_WEIGHTS) and rounded; merged forms count once with their word */
   mastered: number;
-  recognized: number;
+  /** What each level adds to `mastered`, before rounding */
+  parts: Record<MasteryLevel, number>;
   /** The level reached, or Pre-A1 */
   level: CefrLevel | typeof PRE_A1;
   /** The next level, or null at C2 */
   next: CefrLevel | null;
-  /** Mastered words the level reached needs (0 for Pre-A1) and the next one needs */
+  /** Words the level reached needs (0 for Pre-A1) and the next one needs */
   from: number;
   to: number;
   /** How far from the level reached to the next one, 0 to 1 (1 at C2) */
@@ -104,20 +106,16 @@ export interface CefrProgress {
   scale: CefrScale;
 }
 
-/** The CEFR level the mastered words of a language reach, and how far it is to the next one */
+/** The CEFR level the known words of a language reach, and how far it is to the next one */
 export function cefrProgress(words: WordEntry[], language: string): CefrProgress {
   const key = languageKey(language);
-  let mastered = 0;
-  let recognized = 0;
+  const parts: Record<MasteryLevel, number> = { Seen: 0, Recognized: 0, Recalled: 0, Known: 0 };
   for (const w of words) {
     if (!isSingleWord(w) || languageKey(w.language) !== key) continue;
-    if (isMastered(w)) mastered++;
-    else if (isOnTheWay(w)) recognized++;
+    const level = w.masteryLevel ?? 'Seen';
+    parts[level] += LEVEL_WEIGHTS[level];
   }
-  return progressFor(mastered, recognized, language);
-}
-
-export function progressFor(mastered: number, recognized: number, language: string): CefrProgress {
+  const mastered = Math.round(MASTERY_LEVELS.reduce((sum, l) => sum + parts[l], 0));
   const scale = cefrScale(language);
   const reached = scale.words.filter((n) => mastered >= n).length;
   const level = reached ? CEFR_LEVELS[reached - 1] : PRE_A1;
@@ -125,7 +123,7 @@ export function progressFor(mastered: number, recognized: number, language: stri
   const from = reached ? scale.words[reached - 1] : 0;
   const to = next ? scale.words[reached] : from;
   const fraction = next ? (mastered - from) / (to - from) : 1;
-  return { language, mastered, recognized, level, next, from, to, fraction, scale };
+  return { language, mastered, parts, level, next, from, to, fraction, scale };
 }
 
 /** Every language with saved words, the one with the most mastered words first */

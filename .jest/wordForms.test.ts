@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { findSavedWord, formIpa, hasSpelling, mergeWordEntries, splitForm } from '../src/utils/wordForms';
+import { findSavedWord, linkedForms, linkForms, formIpa, hasSpelling, mergeWordEntries, splitForm } from '../src/utils/wordForms';
 import { songWordIndex, gapWord } from '../src/utils/lyricGaps';
 
 const entry = (over: Partial<WordEntry>): WordEntry => ({
@@ -113,5 +113,21 @@ describe('form IPA', () => {
 
   it('keeps nothing extra when the IPAs match', () => {
     expect(mergeWordEntries(veux, entry({ word: 'vœux', pronunciation: '/vø/' })).formIpas).toBeUndefined();
+  });
+});
+
+describe('linkForms', () => {
+  const a = entry({ id: 'a', word: 'vouloir' });
+  const b = entry({ id: 'b', word: 'veux' });
+  const c = entry({ id: 'c', word: 'voulez' });
+  it('links forms to a base and unlinks them', () => {
+    const linked = linkForms([a, b, c], ['b', 'c'], 'a');
+    expect(linkedForms(linked, a).map((w) => w.word)).toEqual(['veux', 'voulez']);
+    expect(linkForms(linked, ['b'], undefined).find((w) => w.id === 'b')?.baseId).toBeUndefined();
+  });
+  it('keeps bases one level deep', () => {
+    const linked = linkForms([a, b, c], ['b'], 'a');
+    expect(linkForms(linked, ['c'], 'b').find((w) => w.id === 'c')?.baseId).toBe('a');
+    expect(linkForms(linked, ['a'], 'c').find((w) => w.id === 'b')?.baseId).toBe('c');
   });
 });

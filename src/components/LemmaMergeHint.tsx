@@ -11,10 +11,10 @@ import { findSavedWord } from '../utils/wordForms';
 // Hints dismissed this session, by word id
 const dismissed = new Set<string>();
 
-/** Above a saved word's card: when Wiktionary says it's a form of another saved word, e.g. veux of vouloir, offers to merge it in */
+/** Above a saved word's card: when Wiktionary says it's a form of another saved word, e.g. veux of vouloir, offers to set it as its base form */
 export default function LemmaMergeHint({ entry, compact = false }: { entry: WordEntry; compact?: boolean }) {
   const words = useStore((s) => s.words);
-  const mergeWords = useStore((s) => s.mergeWords);
+  const linkForms = useStore((s) => s.linkForms);
   const [lemmas, setLemmas] = useState<string[]>([]);
   const [hidden, setHidden] = useState(false);
 
@@ -29,24 +29,24 @@ export default function LemmaMergeHint({ entry, compact = false }: { entry: Word
   }, [entry.id, entry.word, entry.language]);
 
   const target = lemmas.map((lemma) => findSavedWord(words, lemma, entry.language)).find((w) => w && w.id !== entry.id);
-  if (!target || hidden) return null;
+  if (!target || hidden || entry.baseId === target.id) return null;
 
-  // In the word sheet: a chip, "form of der · Merge", sharing a row with the song's other lines with the word
+  // In the word sheet: a chip, "form of der · Set base", sharing a row with the song's other lines with the word
   if (compact) {
     return (
       <View style={styles.chip}>
-        <Ionicons name="git-merge-outline" size={14} color={Colors.primaryLight} />
+        <Ionicons name="arrow-up-outline" size={14} color={Colors.primaryLight} />
         <Text style={styles.chipText} numberOfLines={1}>
           form of <Text style={[styles.chipText, styles.bold]}>{target.word}</Text>
         </Text>
         <TouchableOpacity
-          onPress={() => void mergeWords(target.id, entry.id)}
+          onPress={() => void linkForms([entry.id], target.id)}
           style={styles.chipMerge}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel={`Merge into ${target.word}`}
+          accessibilityLabel={`Set ${target.word} as base form`}
         >
-          <Text style={styles.chipMergeText}>Merge</Text>
+          <Text style={styles.chipMergeText}>Set base</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => {
@@ -55,7 +55,7 @@ export default function LemmaMergeHint({ entry, compact = false }: { entry: Word
           }}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss merge hint"
+          accessibilityLabel="Dismiss base form hint"
         >
           <Ionicons name="close" size={14} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -65,17 +65,17 @@ export default function LemmaMergeHint({ entry, compact = false }: { entry: Word
 
   return (
     <View style={styles.row}>
-      <Ionicons name="git-merge-outline" size={16} color={Colors.primaryLight} />
+      <Ionicons name="arrow-up-outline" size={16} color={Colors.primaryLight} />
       <Text style={styles.text} numberOfLines={2}>
         A form of <Text style={[styles.text, styles.bold]}>{target.word}</Text>, which you saved
       </Text>
       <TouchableOpacity
-        onPress={() => void mergeWords(target.id, entry.id)}
+        onPress={() => void linkForms([entry.id], target.id)}
         style={styles.merge}
         accessibilityRole="button"
-        accessibilityLabel={`Merge into ${target.word}`}
+        accessibilityLabel={`Set ${target.word} as base form`}
       >
-        <Text style={styles.mergeText}>Merge</Text>
+        <Text style={styles.mergeText}>Set base</Text>
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => {
@@ -84,7 +84,7 @@ export default function LemmaMergeHint({ entry, compact = false }: { entry: Word
         }}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel="Dismiss merge hint"
+        accessibilityLabel="Dismiss base form hint"
       >
         <Ionicons name="close" size={16} color={Colors.textSecondary} />
       </TouchableOpacity>

@@ -150,3 +150,39 @@ export const lowercaseEntry = (entry: WordEntry): WordEntry => ({
   contexts: entry.contexts.map((c) => (c.definition ? { ...c, definition: lowerFirst(c.definition) } : c)),
   definitions: entry.definitions?.map((d) => ({ ...d, text: lowerFirst(d.text) })),
 });
+
+/** The saved words that are forms of this one, e.g. voulez and veux for vouloir */
+export const linkedForms = (words: WordEntry[], entry: WordEntry): WordEntry[] =>
+  words.filter((w) => w.baseId === entry.id && w.id !== entry.id).sort((a, b) => a.word.localeCompare(b.word));
+
+/** The word a form is linked to, if it is still saved */
+export const baseOf = (words: WordEntry[], entry: WordEntry): WordEntry | undefined =>
+  entry.baseId ? words.find((w) => w.id === entry.baseId && w.id !== entry.id) : undefined;
+
+/**
+ * Links words as forms of a base (or unlinks them when baseId is undefined). Bases stay one level deep: a base that
+ * is itself a form links to its own base, and a word that had forms takes them along to its new base.
+ */
+export function linkForms(words: WordEntry[], ids: string[], baseId: string | undefined): WordEntry[] {
+  let target = baseId;
+  const seen = new Set<string>();
+  while (target && !seen.has(target)) {
+    seen.add(target);
+    const up = words.find((w) => w.id === target)?.baseId;
+    if (!up) break;
+    target = up;
+  }
+  const moving = new Set(ids.filter((id) => id !== target));
+  return words.map((w) => {
+    if (moving.has(w.id)) {
+      if (!target) {
+        const { baseId: _gone, ...rest } = w;
+        return rest;
+      }
+      return { ...w, baseId: target };
+    }
+    // Forms of a word that became a form follow it to the new base
+    if (target && w.baseId && moving.has(w.baseId)) return { ...w, baseId: target };
+    return w;
+  });
+}

@@ -43,7 +43,7 @@ import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import { getScrapeGoogleIpaJS, getScrapeGoogleNumberJS } from '../utils/scrapeGoogleIpaJS';
 import { findSavedWord, hasCapitals } from '../utils/wordForms';
-import MergeForms from '../components/MergeForms';
+import WordForms from '../components/WordForms';
 import UnsavedContextCards from '../components/UnsavedContextCards';
 import WordFrequency from '../components/WordFrequency';
 import AnswerHistory from '../components/AnswerHistory';
@@ -87,7 +87,7 @@ export default function WordLookupScreen() {
   const words = useStore((s) => s.words);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
-  const mergeWords = useStore((s) => s.mergeWords);
+  const linkForms = useStore((s) => s.linkForms);
   const lowercaseWord = useStore((s) => s.lowercaseWord);
   const unmergeForm = useStore((s) => s.unmergeForm);
   const deleteWord = useStore((s) => s.deleteWord);
@@ -991,23 +991,17 @@ export default function WordLookupScreen() {
           {existingWord && (
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Forms</Text>
-              <MergeForms
+              <WordForms
                 entry={existingWord}
                 words={words}
-                onMerge={(picked, intoPicked) => {
-                  // The page fills in again from the merged word, with the form's contexts
-                  filledLookupRef.current = undefined;
-                  if (intoPicked) {
-                    // This word stops being one of its own, so the page moves to the word it went into
-                    navigation.setParams({ wordId: picked.id, word: picked.word });
-                    void mergeWords(picked.id, existingWord.id);
-                  } else {
-                    void mergeWords(existingWord.id, picked.id);
-                  }
-                }}
-                onUnmerge={(form) => {
+                onLink={(ids, baseId) => void linkForms(ids, baseId)}
+                onSplit={(form) => {
                   filledLookupRef.current = undefined;
                   void unmergeForm(existingWord.id, form);
+                }}
+                onOpen={(w) => {
+                  filledLookupRef.current = undefined;
+                  navigation.setParams({ wordId: w.id, word: w.word });
                 }}
               />
             </View>

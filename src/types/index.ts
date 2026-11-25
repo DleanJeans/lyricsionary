@@ -109,6 +109,8 @@ export interface WordEntry {
   emoji?: string;
   /** Quiz answers and level changes, oldest first */
   history?: WordEvent[];
+  /** The saved word this one is a form of, e.g. voulez of vouloir; each form keeps its own IPA, audio, level and contexts */
+  baseId?: string;
   /** Other spellings merged into this word, e.g. veux and voulez for vouloir */
   forms?: string[];
   /** The IPA each merged form had of its own, by spelling, e.g. voulez: /vule/ for vouloir */

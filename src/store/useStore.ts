@@ -8,7 +8,7 @@ import { MASTERY_LEVELS, MasteryLevel, Song, toMasteryLevel, Translation, WordCo
 import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
 import { ActivityLog, addActivity, DayActivity, moveField } from '../utils/activity';
-import { findSavedWord, lowercaseEntry, mergeWordEntries, splitForm } from '../utils/wordForms';
+import { findSavedWord, linkForms, lowercaseEntry, mergeWordEntries, splitForm } from '../utils/wordForms';
 import { isSameLanguage, languageKey } from '../constants/languages';
 import { addWordEvent, levelChangeEvent } from '../utils/wordHistory';
 
@@ -162,7 +162,8 @@ interface AppState {
   deleteWords: (ids: string[]) => Promise<void>;
   setWordsLevel: (ids: string[], level: MasteryLevel) => Promise<void>;
   /** Merges a form saved apart into a word, e.g. voulez into veux, keeping its contexts and quiz answers */
-  mergeWords: (keepId: string, fromId: string) => Promise<void>;
+  /** Links words as forms of a base word (or unlinks them when baseId is undefined); each stays its own saved word */
+  linkForms: (ids: string[], baseId: string | undefined) => Promise<void>;
   /** Lowercases a saved word and its meanings; merges into the lowercase word when one is saved. Returns the word it ended up as */
   lowercaseWord: (id: string) => Promise<WordEntry | undefined>;
   /** Splits a merged form back out as its own word, with the contexts whose line has it */
@@ -568,7 +569,9 @@ export const useStore = create<AppState>((set, get) => ({
 
   deleteWord: async (id) => {
     const deleted = get().words.find((w) => w.id === id);
-    const words = get().words.filter((w) => w.id !== id);
+    const words = get()
+      .words.filter((w) => w.id !== id)
+      .map((w) => (w.baseId === id ? { ...w, baseId: undefined } : w));
     set({ words });
     await persist(WORDS_KEY, () => JSON.stringify(words));
     // A word saved and removed the same day, e.g. replaced by a phrase grown from it, wasn't learned
@@ -579,7 +582,9 @@ export const useStore = create<AppState>((set, get) => ({
     const remove = new Set(ids);
     const today = localDay(Date.now());
     const savedToday = get().words.filter((w) => remove.has(w.id) && w.savedAt && localDay(w.savedAt) === today).length;
-    const words = get().words.filter((w) => !remove.has(w.id));
+    const words = get()
+      .words.filter((w) => !remove.has(w.id))
+      .map((w) => (w.baseId && remove.has(w.baseId) ? { ...w, baseId: undefined } : w));
     set({ words });
     await persist(WORDS_KEY, () => JSON.stringify(words));
     if (savedToday) await get().recordActivity({ saved: -savedToday });
@@ -597,12 +602,8 @@ export const useStore = create<AppState>((set, get) => ({
     await persist(WORDS_KEY, () => JSON.stringify(words));
   },
 
-  mergeWords: async (keepId, fromId) => {
-    const keep = get().words.find((w) => w.id === keepId);
-    const from = get().words.find((w) => w.id === fromId);
-    if (!keep || !from || keepId === fromId) return;
-    const merged = mergeWordEntries(keep, from);
-    const words = get().words.filter((w) => w.id !== fromId).map((w) => (w.id === keepId ? merged : w));
+  linkForms: async (ids, baseId) => {
+    const words = linkForms(get().words, ids, baseId);
     set({ words });
     await persist(WORDS_KEY, () => JSON.stringify(words));
   },
@@ -627,7 +628,8 @@ export const useStore = create<AppState>((set, get) => ({
   unmergeForm: async (id, form) => {
     const entry = get().words.find((w) => w.id === id);
     if (!entry?.forms?.includes(form)) return;
-    const [kept, split] = splitForm(entry, form, uuidv4(), Date.now());
+    const [kept, rawSplit] = splitForm(entry, form, uuidv4(), Date.now());
+    const split = { ...rawSplit, baseId: entry.baseId ?? entry.id };
     const words = [...get().words.map((w) => (w.id === id ? kept : w)), split];
     set({ words });
     await persist(WORDS_KEY, () => JSON.stringify(words));

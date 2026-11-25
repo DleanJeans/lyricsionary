@@ -110,9 +110,17 @@ export interface CefrProgress {
 export function cefrProgress(words: WordEntry[], language: string): CefrProgress {
   const key = languageKey(language);
   const parts: Record<MasteryLevel, number> = { Seen: 0, Recognized: 0, Recalled: 0, Known: 0 };
+  // A base word and the forms linked to it count once, at the highest level among them
+  const ids = new Set(words.map((w) => w.id));
+  const best = new Map<string, number>();
+  for (const w of words) {
+    const root = w.baseId && ids.has(w.baseId) ? w.baseId : w.id;
+    best.set(root, Math.max(best.get(root) ?? 0, MASTERY_LEVELS.indexOf(w.masteryLevel ?? 'Seen')));
+  }
   for (const w of words) {
     if (!isSingleWord(w) || languageKey(w.language) !== key) continue;
-    const level = w.masteryLevel ?? 'Seen';
+    if (w.baseId && ids.has(w.baseId)) continue;
+    const level = MASTERY_LEVELS[best.get(w.id) ?? 0];
     parts[level] += LEVEL_WEIGHTS[level];
   }
   const mastered = Math.round(MASTERY_LEVELS.reduce((sum, l) => sum + parts[l], 0));

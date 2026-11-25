@@ -82,7 +82,8 @@ export default function LearnScreen() {
   const updateSong = useStore((s) => s.updateSong);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
   const deleteWord = useStore((s) => s.deleteWord);
-  const setWordsLevel = useStore((s) => s.setWordsLevel);
+  const setPickedWordsLevel = useStore((s) => s.setPickedWordsLevel);
+  const ignoreWords = useStore((s) => s.ignoreWords);
   const restoreWord = useStore((s) => s.restoreWord);
   const ignoredWords = useStore((s) => s.ignoredWords);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
@@ -705,50 +706,47 @@ export default function LearnScreen() {
     setSelectedWord(null);
     setMarkMode(true);
   };
-  // Saves the words not saved yet at the level and moves the saved ones to it
-  const markPickedLevel = async (level: MasteryLevel) => {
+  // Saves the words not saved yet at the level and moves the saved ones to it. The picks clear, the toast
+  // shows and the store changes in one go, so the lyrics redraw once and right away; writing waits
+  const markPickedLevel = (level: MasteryLevel) => {
     const language = song?.originalLanguages?.[0];
     if (!song || !language || marked.size === 0) return;
-    const picked = [...marked.values()];
-    // Pick mode stays on with nothing picked, so more words can be picked; only its button ends it
-    setMarked(new Map());
-    const ids = new Set<string>();
-    const adds: Promise<void>[] = [];
-    for (const item of picked) {
-      // A word given a level is no longer ignored
-      if (isIgnoredWord(item.word, language)) void toggleIgnoredWord(item.word, language);
+    const picked = [...marked.values()].map((item) => {
       const saved = findSavedEntry(item.word);
-      if (saved) {
-        ids.add(saved.id);
-        continue;
-      }
+      if (saved) return { word: item.word, savedId: saved.id, context: { context: item.line } };
       const cached = getPreloadedWord(language, item.word);
       const definition = cached?.definitions?.[0];
-      adds.push(addOrUpdateWord(item.word, language, cached?.ipa || undefined, [{
-        context: item.line,
-        definition: definition?.text,
-        partOfSpeech: definition ? normalizePartOfSpeech(definition.partOfSpeech) : undefined,
-        songId: song.id,
-        songName: song.songName,
-        fromSong: true,
-        occurrence: item.occurrence,
-      }], level));
-    }
-    await Promise.all(adds);
-    if (ids.size) await setWordsLevel([...ids], level);
+      return {
+        word: item.word,
+        pronunciation: cached?.ipa || undefined,
+        context: {
+          context: item.line,
+          definition: definition?.text,
+          partOfSpeech: definition ? normalizePartOfSpeech(definition.partOfSpeech) : undefined,
+          songId: song.id,
+          songName: song.songName,
+          fromSong: true,
+          occurrence: item.occurrence,
+        },
+      };
+    });
+    // Pick mode stays on with nothing picked, so more words can be picked; only its button ends it
+    setMarked(new Map());
     setMarkedToast(`Set ${picked.length} ${picked.length === 1 ? 'word' : 'words'} ${level}`);
+    void setPickedWordsLevel(picked, language, level);
   };
 
   // Ignores the picked words that aren't saved; saved ones are left as they are
-  const ignorePicked = async () => {
+  const ignorePicked = () => {
     const language = song?.originalLanguages?.[0] || 'unknown';
-    const picked = [...marked.values()].filter((item) => !findSavedEntry(item.word) && !isIgnoredWord(item.word, language));
-    const skipped = [...marked.values()].filter((item) => findSavedEntry(item.word)).length;
     if (marked.size === 0) return;
+    const all = [...marked.values()];
+    const picked = all.filter((item) => !findSavedEntry(item.word) && !isIgnoredWord(item.word, language));
+    const skipped = all.filter((item) => findSavedEntry(item.word)).length;
     setMarked(new Map());
-    for (const item of picked) await toggleIgnoredWord(item.word, language);
     const done = `Ignored ${picked.length} ${picked.length === 1 ? 'word' : 'words'}`;
     setMarkedToast(skipped ? `${done}, ${skipped} saved left as is` : done);
+    void ignoreWords(picked.map((item) => item.word), language);
   };
 
   // The word the last tap saved as new, which a longer Chinese or Japanese word grown from it replaces
@@ -2284,9 +2282,9 @@ export default function LearnScreen() {
   };
   // Swipe the chip row up to fold it away under the title, swipe the title down to bring it back
   // Swiping down brings back the nearest hidden bar: the chip row, then the Spotify bar
-  const pickAction = (run: () => Promise<void>) => {
+  const pickAction = (run: () => void) => {
     setMarkMenuOpen(false);
-    void run();
+    run();
   };
   const markBar = (
     <View style={styles.markBarWrap}>

@@ -161,6 +161,15 @@ interface AppState {
   /** Bulk edit in Words: many words at once */
   deleteWords: (ids: string[]) => Promise<void>;
   setWordsLevel: (ids: string[], level: MasteryLevel) => Promise<void>;
+  /**
+   * Picked words in Learn at a level all at once: saved ones move to it, the others are saved at it, and none
+   * stay ignored. One change and one write, however many words, so the lyrics redraw once
+   */
+  setPickedWordsLevel: (
+    picked: { word: string; pronunciation?: string; context: WordContext; savedId?: string }[],
+    language: string,
+    level: MasteryLevel
+  ) => Promise<void>;
   /** Merges a form saved apart into a word, e.g. voulez into veux, keeping its contexts and quiz answers */
   /** Links words as forms of a base word (or unlinks them when baseId is undefined); each stays its own saved word */
   linkForms: (ids: string[], baseId: string | undefined) => Promise<void>;
@@ -193,6 +202,8 @@ interface AppState {
   loadExcludedLanguages: () => Promise<void>;
   toggleExcludedLanguage: (language: string) => Promise<void>;
   toggleIgnoredWord: (word: string, language: string) => Promise<void>;
+  /** Ignores many words at once, with one change and one write */
+  ignoreWords: (words: string[], language: string) => Promise<void>;
   toggleKeepIpa: (word: string, language: string) => Promise<void>;
 
   // Compound word actions
@@ -602,6 +613,51 @@ export const useStore = create<AppState>((set, get) => ({
     await persist(WORDS_KEY, () => JSON.stringify(words));
   },
 
+  setPickedWordsLevel: async (picked, language, level) => {
+    const now = Date.now();
+    const byId = new Map<string, WordEntry>();
+    const added: WordEntry[] = [];
+    let words = get().words;
+    for (const item of picked) {
+      const existing = item.savedId ? words.find((w) => w.id === item.savedId) : findSavedWord(words, item.word, language);
+      if (existing) {
+        byId.set(existing.id, existing);
+        continue;
+      }
+      const context = [item.context].filter((c) => c.context || c.emoji || c.ipa || c.definition);
+      added.push({
+        id: uuidv4(),
+        word: item.word,
+        language,
+        pronunciation: item.pronunciation ?? '',
+        contexts: context,
+        lastLookedUp: now,
+        savedAt: now,
+        masteryLevel: level,
+        history: [{ at: now, level, saved: true }],
+      });
+    }
+    words = words.map((w) => {
+      if (!byId.has(w.id)) return w;
+      const event = levelChangeEvent(w.masteryLevel, level, now);
+      return event ? { ...w, masteryLevel: level, history: addWordEvent(w.history, event) } : w;
+    });
+    if (added.length) words = [...words, ...added];
+    // A word given a level is no longer ignored
+    const unignore = new Set(picked.map((item) => item.word.toLowerCase()));
+    const current = get().ignoredWords;
+    const ignoredWords = current.some((w) => w.language === language && unignore.has(w.word))
+      ? current.filter((w) => !(w.language === language && unignore.has(w.word)))
+      : current;
+    const activity = added.length ? addActivity(get().activity, { saved: added.length }, now) : get().activity;
+    set({ words, ignoredWords, activity });
+    await Promise.all([
+      persist(WORDS_KEY, () => JSON.stringify(words)),
+      ignoredWords !== current ? persist(IGNORED_WORDS_KEY, () => JSON.stringify(ignoredWords)) : null,
+      added.length ? persist(ACTIVITY_KEY, () => JSON.stringify(activity)) : null,
+    ]);
+  },
+
   linkForms: async (ids, baseId) => {
     const words = linkForms(get().words, ids, baseId);
     set({ words });
@@ -675,6 +731,16 @@ export const useStore = create<AppState>((set, get) => ({
     const ignoredWords = isWordIgnored(current, lower, language)
       ? current.filter((w) => !(w.word === lower && w.language === language))
       : [...current, { word: lower, language }];
+    set({ ignoredWords });
+    await persist(IGNORED_WORDS_KEY, () => JSON.stringify(ignoredWords));
+  },
+
+  ignoreWords: async (words, language) => {
+    const current = get().ignoredWords;
+    const has = makeIgnoredWordChecker(current);
+    const lower = [...new Set(words.map((w) => w.toLowerCase()))].filter((w) => !has(w, language));
+    if (!lower.length) return;
+    const ignoredWords = [...current, ...lower.map((word) => ({ word, language }))];
     set({ ignoredWords });
     await persist(IGNORED_WORDS_KEY, () => JSON.stringify(ignoredWords));
   },

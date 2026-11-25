@@ -1850,6 +1850,28 @@ export default function LearnScreen() {
     if (together) void useStore.getState().updateWordEntry(together.id, { forms: [...(together.forms ?? []), selectedWord] });
   }, [words, selectedWord, selectedWordSaved, songLanguage]);
 
+  // Quiz mode is offered once every word in the song is saved (or ignored)
+  // Lines whose words are all ignored have nothing to quiz
+  const quizLines = useMemo(() => {
+    const language = song?.originalLanguages?.[0] || 'unknown';
+    return contentLines.filter((i) => {
+      const found = lineWordsAt(lines[i]?.original ?? '', () => false);
+      return !found.length || !found.every((w) => isIgnoredWord(w.text, language));
+    });
+  }, [contentLines, lines, isIgnoredWord, song?.originalLanguages]);
+
+  // Hooks below stay above the no-song return, so deleting the open song doesn't change their count
+  const [songReview, setSongReview] = useState<ReviewItem[] | null>(null);
+  const songReviewCount = useMemo(() => (song ? Math.min(songDueWords(song.id, words).length, SONG_REVIEW_SIZE) : 0), [song, words]);
+  const [actionBarCollapsed, setActionBarCollapsed] = usePersistedState('@lyricsionary_learn_actionbar_collapsed', false, (v): v is boolean => typeof v === 'boolean');
+  const [spotifyBarHidden, setSpotifyBarHidden] = usePersistedState('@lyricsionary_spotify_bar_hidden', false, (v): v is boolean => typeof v === 'boolean');
+  const revealMore = () => {
+    if (actionBarCollapsed) setActionBarCollapsed(false);
+    else if (spotifyBarHidden) setSpotifyBarHidden(false);
+  };
+  const headerSwipe = useSwipe(() => {}, revealMore);
+  const [markMenuOpen, setMarkMenuOpen] = useState(false);
+
   if (!song) {
     return (
       <ScreenWrapper>
@@ -2207,15 +2229,6 @@ export default function LearnScreen() {
     </View>
   ) : wordCardPanel);
 
-  // Quiz mode is offered once every word in the song is saved (or ignored)
-  // Lines whose words are all ignored have nothing to quiz
-  const quizLines = useMemo(() => {
-    const language = song?.originalLanguages?.[0] || 'unknown';
-    return contentLines.filter((i) => {
-      const found = lineWordsAt(lines[i]?.original ?? '', () => false);
-      return !found.length || !found.every((w) => isIgnoredWord(w.text, language));
-    });
-  }, [contentLines, lines, isIgnoredWord, song?.originalLanguages]);
   const canQuizSong = !lyricQuiz && contentLines.length > 0 && !!wordProgress && wordProgress.total > 0 && wordProgress.newWords === 0;
   const toggleQuizMode = () => {
     if (quizMode) {
@@ -2232,8 +2245,6 @@ export default function LearnScreen() {
   };
 
   // The song's due words, to review from the Spotify bar while it plays
-  const [songReview, setSongReview] = useState<ReviewItem[] | null>(null);
-  const songReviewCount = useMemo(() => (song ? Math.min(songDueWords(song.id, words).length, SONG_REVIEW_SIZE) : 0), [song, words]);
   const lineStep = lineByLine !== null ? contentLines.indexOf(lineByLine) : -1;
   const stepLine = (delta: number) => {
     const next = contentLines[lineStep + delta];
@@ -2244,15 +2255,7 @@ export default function LearnScreen() {
     setLineByLine(next);
   };
   // Swipe the chip row up to fold it away under the title, swipe the title down to bring it back
-  const [actionBarCollapsed, setActionBarCollapsed] = usePersistedState('@lyricsionary_learn_actionbar_collapsed', false, (v): v is boolean => typeof v === 'boolean');
-  const [spotifyBarHidden, setSpotifyBarHidden] = usePersistedState('@lyricsionary_spotify_bar_hidden', false, (v): v is boolean => typeof v === 'boolean');
   // Swiping down brings back the nearest hidden bar: the chip row, then the Spotify bar
-  const revealMore = () => {
-    if (actionBarCollapsed) setActionBarCollapsed(false);
-    else if (spotifyBarHidden) setSpotifyBarHidden(false);
-  };
-  const headerSwipe = useSwipe(() => {}, revealMore);
-  const [markMenuOpen, setMarkMenuOpen] = useState(false);
   const pickAction = (run: () => Promise<void>) => {
     setMarkMenuOpen(false);
     void run();

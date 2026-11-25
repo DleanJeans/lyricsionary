@@ -12,7 +12,7 @@ interface DropdownProps {
   label?: string;
   /** Shows the button filled, e.g. while a filter in it is on */
   selected?: boolean;
-  /** No border or fill, e.g. the language flag in the title row */
+  /** No border, fill or ▾, e.g. the language flag in the title row */
   plain?: boolean;
   accessibilityLabel: string;
   /** The menu's items; `close` closes the menu */
@@ -52,7 +52,7 @@ export default function Dropdown({ icon, label, selected = false, plain = false,
             {label}
           </Text>
         )}
-        <Ionicons name="chevron-down" size={plain ? 12 : 13} color={selected ? Colors.white : Colors.textMuted} />
+        {!plain && <Ionicons name="chevron-down" size={13} color={selected ? Colors.white : Colors.textMuted} />}
       </Pressable>
       <Modal visible={!!anchor} transparent animationType="fade" onRequestClose={close}>
         <Pressable style={styles.overlay} onPress={close} accessibilityLabel="Close menu">

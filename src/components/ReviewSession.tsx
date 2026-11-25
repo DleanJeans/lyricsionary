@@ -88,7 +88,7 @@ export default function ReviewSession(props: ReviewSessionProps) {
               <Ionicons name="close" size={22} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          <View style={[styles.languages, { paddingBottom: 16 + insets.bottom }]}>
+          <ScrollView style={styles.languageScroll} contentContainerStyle={[styles.languages, { paddingBottom: 16 + insets.bottom }]}>
             {languages.map((lang) => {
               const count = props.dueTotals?.[lang] ?? props.dueItems.filter((i) => i.entry.language === lang).length;
               const name = getLanguageNameFromCode(lang) ?? lang;
@@ -117,7 +117,7 @@ export default function ReviewSession(props: ReviewSessionProps) {
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -786,6 +786,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
   },
+  // Many languages scroll inside the dialog instead of running off the screen
+  languageScroll: { flexShrink: 1 },
   languages: { gap: 8, paddingTop: 8 },
   languageRow: {
     flexDirection: 'row',

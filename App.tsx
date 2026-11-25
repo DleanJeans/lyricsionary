@@ -127,7 +127,7 @@ export default function App() {
         const review = buildLaunchReview(songs, words.filter((w) => !isLanguageExcluded(excludedLanguages, w.language)));
         if (review.length) {
           const totals: Record<string, number> = {};
-          for (const w of dueWords(words, Date.now(), words).filter(canReview)) totals[w.language] = (totals[w.language] ?? 0) + 1;
+          for (const w of dueWords(words, Date.now(), words).filter((w) => canReview(w) && !isLanguageExcluded(excludedLanguages, w.language))) totals[w.language] = (totals[w.language] ?? 0) + 1;
           setLaunchTotals(totals);
           setLaunchReview(review);
         }

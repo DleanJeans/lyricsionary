@@ -108,15 +108,11 @@ export default function ReviewSession(props: ReviewSessionProps) {
                     <View style={styles.languageTop}>
                       <Text style={styles.languageNameText} numberOfLines={1}>{name}</Text>
                       <CefrPill level={levels[lang].level} small />
+                      <Text style={styles.dueCount}>{`${count} due`}</Text>
                     </View>
-                    <View style={styles.languageLevel}>
-                      <View style={{ flex: 1 }}>
-                        <CefrMiniBar progress={levels[lang]} />
-                      </View>
-                      <Text style={styles.sizeHint}>{toNextLabel(levels[lang])}</Text>
-                    </View>
+                    <CefrMiniBar progress={levels[lang]} />
+                    <Text style={styles.sizeHint}>{`${toNextLabel(levels[lang])} · ${levels[lang].mastered.toLocaleString('en-US')} words known`}</Text>
                   </View>
-                  <Text style={styles.sizeHint}>{`${count} due`}</Text>
                   <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
                 </TouchableOpacity>
               );
@@ -802,10 +798,10 @@ const styles = StyleSheet.create({
   },
   languageFlag: { fontSize: 22 },
   languageName: { flex: 1, fontSize: 16, color: Colors.text },
-  languageInfo: { flex: 1, gap: 6 },
+  languageInfo: { flex: 1, gap: 8 },
   languageTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   languageNameText: { fontSize: 16, color: Colors.text, flexShrink: 1 },
-  languageLevel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dueCount: { marginLeft: 'auto', fontSize: 13, color: Colors.textSecondary },
   sizeHint: {
     fontSize: 12,
     color: Colors.textMuted,

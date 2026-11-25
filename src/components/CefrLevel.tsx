@@ -29,7 +29,7 @@ export function CefrPill({ level, small }: { level: string; small?: boolean }) {
 /** A thin bar of how far it is to the next level */
 export function CefrMiniBar({ progress, width, height = 4 }: { progress: CefrProgress; width?: number; height?: number }) {
   return (
-    <View style={[styles.miniTrack, { height, borderRadius: height / 2 }, width ? { width } : { flexGrow: 1, alignSelf: 'stretch' }]}>
+    <View style={[styles.miniTrack, { height, borderRadius: height / 2 }, { width: width ?? '100%' }]}>
       <View style={[styles.miniFill, { width: `${Math.round(progress.fraction * 100)}%` }]} />
     </View>
   );
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   pillPre: { borderColor: Colors.border, backgroundColor: 'transparent' },
   pillText: { color: Colors.primaryLight, fontWeight: '700' },
   pillTextPre: { color: Colors.textSecondary },
-  miniTrack: { backgroundColor: Colors.surfaceLight, overflow: 'hidden' },
+  miniTrack: { backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
   miniFill: { height: '100%', backgroundColor: Colors.primaryLight },
   badge: {
     position: 'absolute',
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   bigLevel: { fontSize: 40, fontWeight: '700', color: Colors.primaryLight },
   bigText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19, flex: 1 },
   sheetBar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: Colors.surfaceLight },
-  legend: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, marginBottom: 6 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, rowGap: 2, marginTop: 6, marginBottom: 6 },
   legendText: { fontSize: 12, color: Colors.textSecondary },
   rung: {
     flexDirection: 'row',

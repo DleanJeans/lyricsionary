@@ -37,10 +37,17 @@ export default function WordForms({ entry, words, onLink, onSplit, onOpen }: Wor
   const base = baseOf(words, entry);
   const forms = linkedForms(words, entry);
   const merged = entry.forms ?? [];
+  // A word is either a base with forms or a form of a base, not both
+  const hasForms = forms.length > 0 || merged.length > 0;
   const candidates = useMemo(() => (mode ? mergeCandidates(words, entry) : []), [mode, words, entry]);
   const lower = query.trim().toLowerCase();
   const shown = candidates
-    .filter((w) => (mode === 'base' ? w.baseId !== entry.id : w.id !== entry.baseId))
+    // A base can't be a form, and a form can't have forms
+    .filter((w) =>
+      mode === 'base'
+        ? !w.baseId && w.baseId !== entry.id
+        : w.baseId === entry.id || (!w.baseId && !words.some((o) => o.baseId === w.id) && !w.forms?.length)
+    )
     .filter((w) => !lower || w.word.toLowerCase().includes(lower))
     .slice(0, MAX_SHOWN);
 
@@ -164,8 +171,8 @@ export default function WordForms({ entry, words, onLink, onSplit, onOpen }: Wor
         </View>
       ) : (
         <View style={styles.actions}>
-          {!base && open('base', 'Set base form', 'arrow-up-outline')}
-          {open('forms', 'Add forms', 'add-circle-outline')}
+          {!base && !hasForms && open('base', 'Set base form', 'arrow-up-outline')}
+          {!base && open('forms', 'Add forms', 'add-circle-outline')}
         </View>
       )}
     </View>

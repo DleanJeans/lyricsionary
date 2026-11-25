@@ -29,7 +29,7 @@ export default function LemmaMergeHint({ entry, compact = false }: { entry: Word
   }, [entry.id, entry.word, entry.language]);
 
   const target = lemmas.map((lemma) => findSavedWord(words, lemma, entry.language)).find((w) => w && w.id !== entry.id);
-  if (!target || hidden || entry.baseId === target.id) return null;
+  if (!target || hidden || entry.baseId || target.baseId || entry.forms?.length || words.some((w) => w.baseId === entry.id)) return null;
 
   // In the word sheet: a chip, "form of der · Set base", sharing a row with the song's other lines with the word
   if (compact) {

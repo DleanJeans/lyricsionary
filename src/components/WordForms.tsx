@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from './Text';
 import { Colors } from '../constants/theme';
 import type { WordEntry } from '../types';
-import { baseOf, linkedForms, mergeCandidates } from '../utils/wordForms';
+import { baseOf, linkedForms, mergeCandidates, similarWords } from '../utils/wordForms';
 import { shownDefinition } from '../utils/partOfSpeech';
 
 const firstDefinition = (word: WordEntry) => {
@@ -43,15 +43,16 @@ export default function WordForms({ entry, words, onLink, onSplit, onOpen, onOpe
   const hasForms = forms.length > 0 || merged.length > 0;
   const candidates = useMemo(() => (mode ? mergeCandidates(words, entry) : []), [mode, words, entry]);
   const lower = query.trim().toLowerCase();
-  const shown = candidates
+  const eligible = candidates
     // A base can't be a form, and a form can't have forms
     .filter((w) =>
       mode === 'base'
         ? !w.baseId && w.baseId !== entry.id
         : w.baseId === entry.id || (!w.baseId && !words.some((o) => o.baseId === w.id) && !w.forms?.length)
     )
-    .filter((w) => !lower || w.word.toLowerCase().includes(lower))
-    .slice(0, MAX_SHOWN);
+    .filter((w) => !lower || w.word.toLowerCase().includes(lower));
+  // Before anything is typed, the words that look like this one come first instead of the alphabet's start
+  const shown = (lower ? eligible : similarWords(eligible, entry.word)).slice(0, MAX_SHOWN);
 
   const close = () => {
     setMode(null);

@@ -1,5 +1,5 @@
 import type { WordEntry } from '../src/types';
-import { findSavedWord, linkedForms, linkForms, formIpa, hasSpelling, mergeWordEntries, splitForm } from '../src/utils/wordForms';
+import { findSavedWord, linkedForms, similarWords, linkForms, formIpa, hasSpelling, mergeWordEntries, splitForm } from '../src/utils/wordForms';
 import { songWordIndex, gapWord } from '../src/utils/lyricGaps';
 
 const entry = (over: Partial<WordEntry>): WordEntry => ({
@@ -129,5 +129,15 @@ describe('linkForms', () => {
     const linked = linkForms([a, b, c], ['b'], 'a');
     expect(linkForms(linked, ['c'], 'b').find((w) => w.id === 'c')?.baseId).toBe('a');
     expect(linkForms(linked, ['a'], 'c').find((w) => w.id === 'b')?.baseId).toBe('c');
+  });
+});
+
+describe('similarWords', () => {
+  it('puts words that look alike first and drops the rest', () => {
+    const words = ['1', '100', 'ganze', 'ganzen', 'gern', 'haus'].map((word) => entry({ id: word, word }));
+    const found = similarWords(words, 'ganz').map((w) => w.word);
+    expect(found.slice(0, 2)).toEqual(['ganze', 'ganzen']);
+    expect(found).not.toContain('1');
+    expect(found).not.toContain('haus');
   });
 });

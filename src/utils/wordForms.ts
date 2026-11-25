@@ -192,3 +192,32 @@ export const groupMates = (words: WordEntry[], entry: WordEntry): WordEntry[] =>
   const root = baseOf(words, entry) ?? entry;
   return [root, ...linkedForms(words, root)].filter((w) => w.id !== entry.id);
 };
+
+const plain = (text: string) => text.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+
+/** How alike two spellings are, higher first: a shared start counts most, then few edits, e.g. ganz and ganze */
+export function spellingSimilarity(a: string, b: string): number {
+  const x = [...plain(a)];
+  const y = [...plain(b)];
+  let prefix = 0;
+  while (prefix < x.length && prefix < y.length && x[prefix] === y[prefix]) prefix++;
+  let row = Array.from({ length: y.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= x.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= y.length; j++) {
+      next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1));
+    }
+    row = next;
+  }
+  const edits = row[y.length];
+  const longest = Math.max(x.length, y.length, 1);
+  return prefix * 2 - edits + (1 - edits / longest);
+}
+
+/** The words that look like this one (shared start or a few edits away), most alike first */
+export const similarWords = (words: WordEntry[], to: string): WordEntry[] =>
+  words
+    .map((w) => ({ w, score: spellingSimilarity(w.word, to) }))
+    .filter(({ w, score }) => score > 0 && (plain(w.word)[0] === plain(to)[0] || score > 2))
+    .sort((a, b) => b.score - a.score || a.w.word.localeCompare(b.w.word))
+    .map(({ w }) => w);

@@ -7,7 +7,7 @@ import { shownDefinition, type PartOfSpeech } from './partOfSpeech';
 export type QuizKind = 'meaning' | 'lyric';
 
 export interface QuizStats {
-  /** Points from correct answers in a row that count toward the next level (QUIZ_RULES.pointsPerLevel make a level) */
+  /** Points from correct answers in a row that count toward the next level (a picked answer is 1, typed without the IPA 2, said without the IPA 3) */
   streak: number;
   correct: number;
   wrong: number;
@@ -19,10 +19,8 @@ export interface QuizStats {
 }
 
 export const QUIZ_RULES = {
-  /** Points a level takes: a picked answer is 1, typed without the IPA 2, said without the IPA 3 */
-  pointsPerLevel: 3,
-  /** Points in a row, any day, to go from Seen to Recognized */
-  toRecognized: 3,
+  /** Points in a row, any day, to go from Seen to Recognized: 2 picked answers, or one typed without the IPA */
+  toRecognized: 2,
   /** Points in a row, counting one answer a day, to go from Recognized to Recalled */
   toRecalled: 3,
   /** Days a Recalled word goes without a quiz before a correct answer makes it Known */

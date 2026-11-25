@@ -554,6 +554,7 @@ function ReviewQuestion({
         practice={practice}
         typed={!!ipa && kind === 'lyric'}
         spoken={speak}
+        force={item.forced}
         ipaShown={!!speakIpa || !!ipa}
         audio={!listen}
         onLookUpWord={onCloseReview}

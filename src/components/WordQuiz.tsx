@@ -29,6 +29,8 @@ interface WordQuizProps {
   isWide?: boolean;
   /** Asked again for practice, e.g. a review's missed word: always shown, and the answer isn't saved */
   practice?: boolean;
+  /** Asked whatever the word's level or when it was last quizzed, but the answer is still saved, e.g. a quiz type tried from Review */
+  force?: boolean;
   /** Told whether the quiz is showing and not answered yet, e.g. to hide what would give the answer away */
   onPendingChange?: (pending: boolean) => void;
   /** Shows when the word's next quiz counts at the end of the result row, e.g. "Next quiz in 4 hours" */
@@ -61,7 +63,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, force = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -69,7 +71,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   // answer on screen. A word quizzed in the last few hours isn't asked again, e.g. when the chorus
   // repeats it.
   const [quiz] = useState(() =>
-    practice ? build() :
+    practice || force ? build() :
     alreadyAnswered || quizKindFor(entry.masteryLevel) !== kind || isCoolingDown(entry.quiz, Date.now()) ? null : build()
   );
   // The word before the answer, where the level track starts

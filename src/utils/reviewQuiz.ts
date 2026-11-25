@@ -27,6 +27,8 @@ export interface ReviewItem {
   ipa?: string;
   /** Asked by saying the word out loud, which the speech recognizer checks */
   speak?: boolean;
+  /** Asked from the quiz types list, so whatever the word's level and cooldown */
+  forced?: boolean;
   /** How the word is asked (reviewWays) */
   way?: ReviewWay;
   /** What the quiz was built from, to build it again when it's shown (rebuildReviewQuiz) */
@@ -582,7 +584,7 @@ export function buildTypeItems(type: QuizType, language: string, words: WordEntr
   const items: ReviewItem[] = [];
   const chunk = Math.max(size * 2, 4);
   for (let i = 0; i < shuffled.length && items.length < size; i += chunk) {
-    items.push(...buildReviewItems(shuffled.slice(i, i + chunk), words, Math.random, counts, songs, force));
+    items.push(...buildReviewItems(shuffled.slice(i, i + chunk), words, Math.random, counts, songs, force).map((it) => ({ ...it, forced: true })));
   }
   return items.slice(0, size);
 }

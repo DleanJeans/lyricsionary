@@ -34,7 +34,7 @@ import { Colors } from '../constants/theme';
 import { getEndonym, isSameLanguage } from '../constants/languages';
 import { isIpaKept, isWordIgnored, useStore } from '../store/useStore';
 import { contextTranslationLines } from '../utils/wordOfTheDay';
-import { MasteryLevel, RootTabParamList, WordContext } from '../types';
+import { MasteryLevel, RootTabParamList, WordContext, WordEntry } from '../types';
 import { pickDefinition } from '../utils/definitionHighlight';
 import { isGermanLanguage } from '../utils/compoundWords';
 import { germanFullForms, getGermanExpandedForm } from '../utils/wordTransform';
@@ -42,7 +42,7 @@ import { emojiData } from '../utils/emojiData';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { getScrapeIpaJS } from '../utils/scrapeIpaJS';
 import { getScrapeGoogleIpaJS, getScrapeGoogleNumberJS } from '../utils/scrapeGoogleIpaJS';
-import { findSavedWord, hasCapitals } from '../utils/wordForms';
+import { findSavedWord, groupMates, hasCapitals, hasSpelling } from '../utils/wordForms';
 import WordForms from '../components/WordForms';
 import UnsavedContextCards from '../components/UnsavedContextCards';
 import WordFrequency from '../components/WordFrequency';
@@ -174,11 +174,28 @@ export default function WordLookupScreen() {
   // A number is looked up on Google, which reads its written-out form into the note and its IPA
   const numberWord = !!displayWord && isNumberWord(displayWord);
 
+  // A word's contexts and those of its base and forms, which share their cards
+  const withGroupContexts = (entry: WordEntry) => [
+    ...(entry.contexts ?? []).map((c) => ({ c, ownerId: undefined as string | undefined })),
+    ...groupMates(useStore.getState().words, entry).flatMap((m) => m.contexts.map((c) => ({ c, ownerId: m.id as string | undefined }))),
+  ];
+
   const findExistingWord = () => (wordId ? words.find((entry) => entry.id === wordId) : findSavedWord(words, displayWord, language));
 
   useEffect(() => {
     setDisplayWord(word);
   }, [word]);
+
+  // A form merged into another word before forms were linked opens as a word of its own
+  useEffect(() => {
+    if (!displayWord || wordId) return;
+    const saved = findSavedWord(words, displayWord, language);
+    if (!saved || saved.word.toLowerCase() === displayWord.toLowerCase()) return;
+    const form = (saved.forms ?? []).find((f) => f.toLowerCase() === displayWord.toLowerCase());
+    if (!form) return;
+    filledLookupRef.current = undefined;
+    void unmergeForm(saved.id, form);
+  }, [displayWord, wordId, language, words]);
 
   // Drop the previous word's IPA right away, not once its page has been replaced
   useEffect(() => {
@@ -208,14 +225,16 @@ export default function WordLookupScreen() {
         setMasteryLevel(existingWord.masteryLevel || 'Seen');
         setNote(existingWord.note ?? '');
 
-        if (existingWord.contexts && existingWord.contexts.length > 0) {
-          const exactMatchIndex = existingWord.contexts.findIndex(c =>
+        const allContexts = withGroupContexts(existingWord);
+        if (allContexts.length > 0) {
+          const exactMatchIndex = allContexts.findIndex(({ c }) =>
             c.songId === songId && c.context === lyricsLine && (c.occurrence || 1) === (routeOccurrence || 1)
           );
           const hasNewContextFromLearn = source === 'Learn' && lyricsLine && exactMatchIndex < 0;
 
-          const mapContext = (c: WordContext): WordSenseData => ({
+          const mapContext = ({ c, ownerId }: { c: WordContext; ownerId?: string }): WordSenseData => ({
             uid: mkUid(),
+            ownerId,
             context: c.context,
             emoji: c.emoji || '',
             ipa: c.ipa || '',
@@ -231,8 +250,8 @@ export default function WordLookupScreen() {
           });
 
           if (exactMatchIndex >= 0) {
-            const first = mapContext(existingWord.contexts[exactMatchIndex]);
-            const rest = existingWord.contexts.filter((_, i) => i !== exactMatchIndex).map(mapContext);
+            const first = mapContext(allContexts[exactMatchIndex]);
+            const rest = allContexts.filter((_, i) => i !== exactMatchIndex).map(mapContext);
             setWordSenses([first, ...rest]);
           } else if (hasNewContextFromLearn) {
             const newBlock: WordSenseData = {
@@ -248,10 +267,10 @@ export default function WordLookupScreen() {
               occurrence: routeOccurrence || 1,
               isNew: true,
             };
-            const existingBlocks = existingWord.contexts.map(mapContext);
+            const existingBlocks = allContexts.map(mapContext);
             setWordSenses([...existingBlocks, newBlock]);
           } else {
-            const existingBlocks = existingWord.contexts.map(mapContext);
+            const existingBlocks = allContexts.map(mapContext);
             setWordSenses(existingBlocks);
           }
         } else {
@@ -288,8 +307,8 @@ export default function WordLookupScreen() {
       .map(normalizeSense)
       .sort()
       .join('||');
-    const storedNormalized = (existing.contexts || [])
-      .map(normalizeSense)
+    const storedNormalized = withGroupContexts(existing)
+      .map(({ c }) => normalizeSense(c))
       .sort()
       .join('||');
     return currentNormalized !== storedNormalized;
@@ -557,9 +576,7 @@ export default function WordLookupScreen() {
   const handleSave = async () => {
     if (!displayWord) return;
 
-    const contexts: WordContext[] = wordSenses
-      .filter(b => b.context || b.emoji || b.ipa || b.definition)
-      .map(b => ({
+    const toContext = (b: WordSenseData): WordContext => ({
         context: b.context,
         emoji: b.emoji || undefined,
         ipa: b.ipa || undefined,
@@ -573,7 +590,9 @@ export default function WordLookupScreen() {
         partOfSpeech: b.definition
           ? b.partOfSpeech ?? findPartOfSpeech(b.definition, definitionSuggestions)
           : undefined,
-      }));
+    });
+    const filled = (b: WordSenseData) => !!(b.context || b.emoji || b.ipa || b.definition);
+    const contexts = wordSenses.filter((b) => filled(b) && !b.ownerId).map(toContext);
 
     setIsSaving(true);
     try {
@@ -584,6 +603,15 @@ export default function WordLookupScreen() {
         displayWord, language, pronunciation, contexts, masteryLevel,
         wiktionaryPronunciation.loaded ? pronunciationAudio : undefined
       );
+      // Cards that belong to the base or another form are saved back on that word
+      const owners = new Set(wordSenses.map((b) => b.ownerId).filter((id): id is string => !!id));
+      const savedNow = findExistingWord();
+      const mates = savedNow ? groupMates(useStore.getState().words, savedNow) : [];
+      for (const mate of mates) {
+        if (!owners.has(mate.id) && !mate.contexts.length) continue;
+        const kept = wordSenses.filter((b) => filled(b) && b.ownerId === mate.id).map(toContext);
+        if (JSON.stringify(kept) !== JSON.stringify(mate.contexts)) await updateWordEntry(mate.id, { contexts: kept });
+      }
       // The note is kept apart from what addOrUpdateWord merges
       const saved = findSavedWord(useStore.getState().words, displayWord, language);
       if (saved && (saved.note ?? '') !== note.trim()) await updateWordEntry(saved.id, { note: note.trim() || undefined });

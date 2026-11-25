@@ -186,3 +186,9 @@ export function linkForms(words: WordEntry[], ids: string[], baseId: string | un
     return w;
   });
 }
+
+/** The other saved words in a word's group: its base and that base's forms, or its own forms; they share contexts */
+export const groupMates = (words: WordEntry[], entry: WordEntry): WordEntry[] => {
+  const root = baseOf(words, entry) ?? entry;
+  return [root, ...linkedForms(words, root)].filter((w) => w.id !== entry.id);
+};

@@ -22,6 +22,8 @@ export interface WordSenseData {
   // The saved or chosen word type; left out, it's found from the definition when saving
   partOfSpeech?: PartOfSpeech;
   isNew?: boolean;
+  /** The base or form this context is saved on, when it isn't the word shown; saving keeps it there */
+  ownerId?: string;
 }
 
 interface WordSenseListProps {

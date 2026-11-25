@@ -21,8 +21,9 @@ const MILTON_ENGLISH: CefrScale = {
   source: 'From learners tested at each level (Milton & Alexiou 2009) and the KELLY word list',
 };
 const MILTON_FRENCH: CefrScale = {
-  // Mean X_Lex scores of French learners at each level, Milton & Alexiou 2009
-  words: [1150, 1650, 2400, 2650, 3200, 3500],
+  // Halfway between the mean X_Lex scores of French learners at each level and the one below (1,160,
+  // 1,650, 2,422, 2,630, 3,212, 3,525; Milton & Alexiou 2009), since the means are of learners already there
+  words: [580, 1400, 2040, 2530, 2920, 3370],
   source: 'From French learners tested at each level (Milton & Alexiou 2009)',
 };
 
@@ -35,8 +36,9 @@ const SCALES: Record<string, CefrScale> = {
   italian: { ...MILTON_FRENCH, source: 'French learners\u2019 numbers (Milton & Alexiou 2009); no Italian study was found' },
   portuguese: { ...MILTON_FRENCH, source: 'French learners\u2019 numbers (Milton & Alexiou 2009); no Portuguese study was found' },
   greek: {
-    // Mean scores of Greek learners A1 to B2 (Milton & Alexiou); C1 and C2 go on in the same steps
-    words: [1500, 2250, 3300, 4000, 4750, 5500],
+    // Halfway between the mean scores of Greek learners at each level and the one below (1,486, 2,237,
+    // 3,288, 3,956; Milton & Alexiou); C1 and C2 go on in the same steps
+    words: [740, 1860, 2760, 3620, 4350, 5130],
     source: 'From Greek learners tested at A1 to B2 (Milton & Alexiou); C1 and C2 continue the steps',
   },
   german: {

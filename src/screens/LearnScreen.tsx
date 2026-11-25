@@ -2463,6 +2463,7 @@ export default function LearnScreen() {
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={[styles.headerBtn, searchOpen && { backgroundColor: Colors.primary }]}
+            hitSlop={4}
             onPress={searchOpen ? closeSearch : () => setSearchOpen(true)}
             accessibilityRole="button"
             accessibilityLabel={searchOpen ? 'Close search' : 'Search the lyrics'}
@@ -2472,6 +2473,7 @@ export default function LearnScreen() {
           {!quizMode && !lyricQuiz && (
             <TouchableOpacity
               style={[styles.headerBtn, markMode && { backgroundColor: Colors.primary }]}
+              hitSlop={4}
               onPress={markMode ? exitMarkMode : startMarkMode}
               accessibilityRole="button"
               accessibilityLabel={markMode ? 'Stop picking words' : 'Pick words to mark Known'}
@@ -2481,6 +2483,7 @@ export default function LearnScreen() {
           )}
           <TouchableOpacity
             style={styles.headerBtn}
+            hitSlop={4}
             onPress={() => setShowDropdown(true)}
             accessibilityRole="button"
             accessibilityLabel="Learn settings"
@@ -2827,10 +2830,14 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, paddingVertical: 8, color: Colors.text, fontSize: 15 },
   searchCount: { color: Colors.textMuted, fontSize: 13, minWidth: 28, textAlign: 'right' },
   searchBtn: { padding: 8 },
+  // Square buttons, all the same size
   headerBtn: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: 10,
+    borderRadius: 4,
   },
   toastStack: {
     position: 'absolute',

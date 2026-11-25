@@ -467,7 +467,7 @@ function ReviewQuestion({
   // A spelling quiz shows the meaning once answered.
   const shownHint =
     kind === 'lyric' ? (ipa && answered ? hint : (lineWord && translation) || hint) : answered ? translation : null;
-  const showHint = !!shownHint && ((!listen && !ipa) || answered);
+  const showHint = !!shownHint && ((!listen && !ipa) || answered) && !(item.noTranslation && !answered);
   return (
     <View style={styles.question}>
       {showLine && !answered && (
@@ -555,6 +555,7 @@ function ReviewQuestion({
         typed={!!ipa && kind === 'lyric'}
         spoken={speak}
         force={item.forced}
+        noHint={item.noTranslation}
         ipaShown={!!speakIpa || !!ipa}
         audio={!listen}
         onLookUpWord={onCloseReview}

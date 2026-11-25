@@ -29,6 +29,8 @@ export interface ReviewItem {
   speak?: boolean;
   /** Asked from the quiz types list, so whatever the word's level and cooldown */
   forced?: boolean;
+  /** Asked without the line's translation or meaning to go by, until answered */
+  noTranslation?: boolean;
   /** How the word is asked (reviewWays) */
   way?: ReviewWay;
   /** What the quiz was built from, to build it again when it's shown (rebuildReviewQuiz) */
@@ -559,6 +561,8 @@ export interface QuizType {
   /** The levels of words that take it, since a Recalled word's lyric quiz is typed and the others picked */
   levels?: MasteryLevel[];
   needsLine?: boolean;
+  /** Asked without the translation shown, which earns more */
+  noTranslation?: boolean;
 }
 
 export const QUIZ_TYPES: QuizType[] = [
@@ -567,6 +571,7 @@ export const QUIZ_TYPES: QuizType[] = [
   { id: 'meaning-listen', label: 'Meaning from audio', description: 'Hear the word, pick the meaning', icon: 'ear-outline', way: 'meaning-listen', kind: 'meaning' },
   { id: 'say-word', label: 'Say the word', description: 'See the word and say it out loud (3 points)', icon: 'mic-outline', way: 'speak', kind: 'meaning' },
   { id: 'lyric', label: 'Fill in the blank: pick', description: 'A lyric line with the word blanked out, pick it from options', icon: 'ellipsis-horizontal', way: 'lyric', kind: 'lyric', levels: ['Seen', 'Recognized'], needsLine: true },
+  { id: 'lyric-blind', label: 'Fill in the blank: no translation', description: 'The same, without the translation to go by (2 points)', icon: 'eye-off-outline', way: 'lyric', kind: 'lyric', levels: ['Seen', 'Recognized'], needsLine: true, noTranslation: true },
   { id: 'lyric-typed', label: 'Fill in the blank: type', description: 'The same, typed (2 points)', icon: 'create-outline', way: 'lyric', kind: 'lyric', levels: ['Recalled'], needsLine: true },
   { id: 'lyric-listen', label: 'Hear the word', description: 'Hear the word, pick it from options', icon: 'ear-outline', way: 'lyric-listen', kind: 'lyric', levels: ['Seen', 'Recognized'] },
   { id: 'lyric-ipa', label: 'Spell from IPA', description: 'See the IPA and type the word', icon: 'text-outline', way: 'lyric-ipa', kind: 'lyric' },
@@ -584,7 +589,7 @@ export function buildTypeItems(type: QuizType, language: string, words: WordEntr
   const items: ReviewItem[] = [];
   const chunk = Math.max(size * 2, 4);
   for (let i = 0; i < shuffled.length && items.length < size; i += chunk) {
-    items.push(...buildReviewItems(shuffled.slice(i, i + chunk), words, Math.random, counts, songs, force).map((it) => ({ ...it, forced: true })));
+    items.push(...buildReviewItems(shuffled.slice(i, i + chunk), words, Math.random, counts, songs, force).map((it) => ({ ...it, forced: true, noTranslation: type.noTranslation })));
   }
   return items.slice(0, size);
 }

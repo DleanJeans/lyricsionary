@@ -31,6 +31,8 @@ interface WordQuizProps {
   practice?: boolean;
   /** Asked whatever the word's level or when it was last quizzed, but the answer is still saved, e.g. a quiz type tried from Review */
   force?: boolean;
+  /** Asked without the translation to go by, so a picked answer is worth 2 */
+  noHint?: boolean;
   /** Told whether the quiz is showing and not answered yet, e.g. to hide what would give the answer away */
   onPendingChange?: (pending: boolean) => void;
   /** Shows when the word's next quiz counts at the end of the result row, e.g. "Next quiz in 4 hours" */
@@ -63,7 +65,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, force = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, force = false, noHint = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -114,7 +116,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     answered && !undone && (current.masteryLevel ?? 'Seen') !== (unanswered.masteryLevel ?? 'Seen') ? current.masteryLevel ?? null : null;
 
   /** Shows the answer's level change before it's saved */
-  const points = ipaShown || typedProp ? 1 : answerPoints(spoken ? 'spoken' : typed ? 'typed' : 'picked');
+  const points = ipaShown || typedProp ? 1 : answerPoints(spoken ? 'spoken' : typed || noHint ? 'typed' : 'picked');
   const predict = (right: boolean) =>
     setPredicted({ ...stored, ...recordAnswer(stored.masteryLevel, stored.quiz, kind, right, Date.now(), points) });
 

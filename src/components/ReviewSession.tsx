@@ -242,7 +242,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
           {typePicker && (
             <ScrollView contentContainerStyle={[styles.body, { paddingBottom: 16 + insets.bottom }]}>
               <Text style={styles.summaryText}>Try a quiz type</Text>
-              <Text style={styles.sizeHint}>{`${getFlagForLanguage(language!)} ${getLanguageNameFromCode(language!) ?? language}`}</Text>
+              <Text style={[styles.sizeHint, { textAlign: 'center' }]}>{`${getFlagForLanguage(language!)} ${getLanguageNameFromCode(language!) ?? language}`}</Text>
               <View style={{ flexDirection: 'row', alignSelf: 'center', borderWidth: 1, borderColor: Colors.primary, borderRadius: 10, overflow: 'hidden' }}>
                 {[1, 3, 5, 10].map((n, i) => (
                   <TouchableOpacity

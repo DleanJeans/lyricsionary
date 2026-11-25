@@ -710,7 +710,8 @@ export default function LearnScreen() {
     const language = song?.originalLanguages?.[0];
     if (!song || !language || marked.size === 0) return;
     const picked = [...marked.values()];
-    exitMarkMode();
+    // Pick mode stays on with nothing picked, so more words can be picked; only its button ends it
+    setMarked(new Map());
     const ids = new Set<string>();
     const adds: Promise<void>[] = [];
     for (const item of picked) {
@@ -744,7 +745,7 @@ export default function LearnScreen() {
     const picked = [...marked.values()].filter((item) => !findSavedEntry(item.word) && !isIgnoredWord(item.word, language));
     const skipped = [...marked.values()].filter((item) => findSavedEntry(item.word)).length;
     if (marked.size === 0) return;
-    exitMarkMode();
+    setMarked(new Map());
     for (const item of picked) await toggleIgnoredWord(item.word, language);
     const done = `Ignored ${picked.length} ${picked.length === 1 ? 'word' : 'words'}`;
     setMarkedToast(skipped ? `${done}, ${skipped} saved left as is` : done);

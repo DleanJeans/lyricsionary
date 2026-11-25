@@ -14,11 +14,14 @@ interface Props {
   onClose: () => void;
   onCopy: () => void;
   onEditLine: () => void;
+  /** Whether the line is left out of learning */
+  ignored: boolean;
+  onToggleIgnored: () => void;
   onEditTranslation: (language: string) => void;
 }
 
 /** What to do with a line held in Learn: copy it, or open it in the Editor (original or a translation) */
-export default function LineActionSheet({ visible, line, translationLanguages, onClose, onCopy, onEditLine, onEditTranslation }: Props) {
+export default function LineActionSheet({ visible, line, translationLanguages, onClose, onCopy, onEditLine, ignored, onToggleIgnored, onEditTranslation }: Props) {
   const bottomSpace = Math.max(useSafeAreaInsets().bottom, 48) + 16;
   const pick = (action: () => void) => () => {
     onClose();
@@ -32,6 +35,11 @@ export default function LineActionSheet({ visible, line, translationLanguages, o
           <Text style={styles.line} numberOfLines={2}>{line}</Text>
           <Action icon="copy-outline" label="Copy" onPress={pick(onCopy)} />
           <Action icon="create-outline" label="Edit line" onPress={pick(onEditLine)} />
+          <Action
+            icon={ignored ? 'eye-outline' : 'eye-off-outline'}
+            label={ignored ? 'Unignore line' : 'Ignore line'}
+            onPress={pick(onToggleIgnored)}
+          />
           {translationLanguages.map((language) => (
             <Action
               key={language}

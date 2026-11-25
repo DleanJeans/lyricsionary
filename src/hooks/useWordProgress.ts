@@ -6,6 +6,7 @@ import { Song, WordEntry } from '../types';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage } from '../utils/compoundWords';
 import { phraseStartsOf } from '../utils/cjkWords';
 import { spellingsOf } from '../utils/wordForms';
+import { isLineIgnored, lyricsToLearn } from '../utils/ignoredLines';
 import { countKnownWords, countWords } from '../utils/wordFrequency';
 import { changedSpellings, SongWordCache } from '../utils/songWordCache';
 import { useStoreWhileShown } from './useStoreWhileShown';
@@ -149,11 +150,12 @@ export function useWordProgress(songs: Song[]): Map<string, WordProgress> {
     const progress = new Map<string, WordProgress>();
     for (const song of songs) {
       const songProgress = bySong.count(song, (asking) => {
-        const total = countWords(song.originalLyrics);
+        const lyrics = lyricsToLearn(song);
+        const total = countWords(lyrics);
         const unknown = new Set<string>();
         const isKnown = knownChecker(song);
         const known = countKnownWords(
-          song.originalLyrics,
+          lyrics,
           (word) => {
             asking(word);
             return isKnown(word);
@@ -182,6 +184,7 @@ export function useNextLineToLearn(song: Song | undefined, lines: string[]): num
     const isKnown = knownChecker(song);
     return pickNextLine(lines.map((line) => {
       let unknown = 0;
+      if (isLineIgnored(song, line)) return 0;
       countKnownWords(line, isKnown, song.originalLanguages, () => unknown++, knownChecker.phraseStarts);
       return unknown;
     }));

@@ -25,6 +25,7 @@ import { findWordIndex, type WordRect } from '../components/SelectableTranslatio
 import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
+import { isLineIgnored, lineIgnoreKey } from '../utils/ignoredLines';
 import { lineWordsAt } from '../utils/lineQuiz';
 import { contextTranslation } from '../utils/wordOfTheDay';
 import { MASTERY_LEVELS, MasteryLevel, RootTabParamList, WordContext, WordEntry } from '../types';
@@ -120,6 +121,15 @@ export default function LearnScreen() {
   const song = songs.find((s) => s.id === activeSongId);
   const isGermanSong = isGermanLanguage(song?.originalLanguages);
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
+  const ignoredLineSet = useMemo(() => new Set(song?.ignoredLines ?? []), [song?.ignoredLines]);
+  const toggleLineIgnored = (line: string) => {
+    if (!song) return;
+    const key = lineIgnoreKey(line);
+    if (!key) return;
+    const current = song.ignoredLines ?? [];
+    const next = current.includes(key) ? current.filter((l) => l !== key) : [...current, key];
+    void updateSong(song.id, { ignoredLines: next.length ? next : undefined });
+  };
   const isIgnoredWord = useMemo(() => makeIgnoredWordChecker(ignoredWords), [ignoredWords]);
   const wordEntryIndex = useMemo(() => songWordIndex(words, song?.originalLanguages), [song?.originalLanguages, words]);
   // Saved phrases whose words sit apart in a line, e.g. hört … auf for aufhören
@@ -880,6 +890,17 @@ export default function LearnScreen() {
   }, [showMeaning, visibleRange, lines]);
 
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
+    // An ignored line, e.g. English lines in a Portuguese song, is plain muted text: hold it to unignore
+    if (ignoredLineSet.has(lineIgnoreKey(text))) {
+      return (
+        <Text
+          onLongPress={() => setHeldLine(lineIndex)}
+          style={{ fontSize, lineHeight: fontSize * 1.6, color: Colors.textMuted }}
+        >
+          {text}
+        </Text>
+      );
+    }
     // CJK scripts do not separate words with spaces, so each CJK character is a selectable token, joined
     // back into a word when the characters are a saved word, or the word being selected, e.g. 二人
     // Words written apart join into a saved or selected phrase the same way, e.g. "give up" or yêu thương
@@ -1412,7 +1433,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, annotationGap, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked, lines]);
+  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, annotationGap, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked, lines, ignoredLineSet]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1668,6 +1689,7 @@ export default function LearnScreen() {
     // Top to bottom, and left to right within a line
     const order = lines.map((_, i) => i).filter((i) => i >= visibleRange.from && i <= visibleRange.to);
     for (const lineIndex of order) {
+      if (isLineIgnored(song, lines[lineIndex].original)) continue;
       for (const token of splitLyricTokens(lines[lineIndex].original)) {
         if (!token.trim()) continue;
         const word = cleanLyricWord(token);
@@ -1856,9 +1878,9 @@ export default function LearnScreen() {
     const language = song?.originalLanguages?.[0] || 'unknown';
     return contentLines.filter((i) => {
       const found = lineWordsAt(lines[i]?.original ?? '', () => false);
-      return !found.length || !found.every((w) => isIgnoredWord(w.text, language));
+      return !ignoredLineSet.has(lineIgnoreKey(lines[i]?.original ?? '')) && (!found.length || !found.every((w) => isIgnoredWord(w.text, language)));
     });
-  }, [contentLines, lines, isIgnoredWord, song?.originalLanguages]);
+  }, [contentLines, lines, isIgnoredWord, ignoredLineSet, song?.originalLanguages]);
 
   // Hooks below stay above the no-song return, so deleting the open song doesn't change their count
   const [songReview, setSongReview] = useState<ReviewItem[] | null>(null);
@@ -2410,6 +2432,8 @@ export default function LearnScreen() {
           onClose={() => setHeldLine(null)}
           onCopy={() => copyLine(heldLine)}
           onEditLine={() => navigation.navigate('Editor', { songId: song.id, lineIndex: heldLine, lineKey: Date.now() })}
+          ignored={isLineIgnored(song, lines[heldLine].original)}
+          onToggleIgnored={() => toggleLineIgnored(lines[heldLine].original)}
           onEditTranslation={(language) => navigation.navigate('Editor', { songId: song.id, lineIndex: heldLine, lineKey: Date.now(), translationLanguage: language })}
         />
       )}

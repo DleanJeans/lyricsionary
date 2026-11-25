@@ -1,3 +1,4 @@
+import { lyricsToLearn } from './ignoredLines';
 import { getLanguageNameFromCode } from '../constants/languages';
 import { cjkCharacterCount, groupCjkTokens, groupSpacedWords, isCjkWord } from './cjkWords';
 import { cleanLyricWord, isLyricWord, removeSpecialChars, splitLyricTokens } from './cleanLyrics';
@@ -17,6 +18,7 @@ export interface WordFrequency {
 
 interface SongLyrics {
   originalLyrics: string;
+  ignoredLines?: string[];
   originalLanguages?: string[];
 }
 
@@ -66,7 +68,7 @@ export function countWordOccurrences(
     // By name, so a song saved as "fr" and one saved as "French" count together
     const language = getLanguageNameFromCode(songLanguage) ?? songLanguage;
     // A line's first word is capitalized whatever it is, e.g. "Des" in "Des bijoux de chez Chanel"
-    const tokens = song.originalLyrics.split('\n').flatMap((line) => {
+    const tokens = lyricsToLearn(song).split('\n').flatMap((line) => {
       const sentence = splitLyricTokens(line).map(cleanToken).filter(isLyricWord).join(' ').toLowerCase();
       return splitLyricTokens(line).filter((token) => token.trim()).map((token, index) => ({ token, startsLine: index === 0, sentence }));
     });

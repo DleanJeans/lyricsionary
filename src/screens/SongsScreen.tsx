@@ -34,6 +34,7 @@ import SpotifyNowPlaying from '../components/SpotifyNowPlaying';
 import SpotifyPlaylists from '../components/SpotifyPlaylists';
 import ReviewSession from '../components/ReviewSession';
 import { buildReviewItems, canReview, dueWords, type ReviewItem } from '../utils/reviewQuiz';
+import { lyricsToLearn } from '../utils/ignoredLines';
 import { countKnownWords } from '../utils/wordFrequency';
 import { canFillGaps, countGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 import { useStoreWhileShown } from '../hooks/useStoreWhileShown';
@@ -261,7 +262,7 @@ export default function SongsScreen() {
       const count = songGapsCache.count(song, (asking) => {
         const index = wordIndexFor(song.originalLanguages);
         return canFillGaps(index)
-          ? countGaps(song.originalLyrics, (word) => {
+          ? countGaps(lyricsToLearn(song), (word) => {
               asking(word);
               return gapWord(index, word, now);
             })
@@ -284,7 +285,7 @@ export default function SongsScreen() {
         const index = knownIndexFor(song.originalLanguages);
         const found = new Set<string>();
         // Read like the song's word count, so phrases, Chinese words and Korean stems are found too
-        countKnownWords(song.originalLyrics, (word) => {
+        countKnownWords(lyricsToLearn(song), (word) => {
           asking(word);
           const entry = index.get(word.toLowerCase());
           if (entry) found.add(entry.id);

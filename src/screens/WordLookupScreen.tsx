@@ -1027,6 +1027,10 @@ export default function WordLookupScreen() {
                   filledLookupRef.current = undefined;
                   void unmergeForm(existingWord.id, form);
                 }}
+                onOpenSpelling={(form) => {
+                  filledLookupRef.current = undefined;
+                  navigation.setParams({ wordId: undefined, word: form });
+                }}
                 onOpen={(w) => {
                   filledLookupRef.current = undefined;
                   navigation.setParams({ wordId: w.id, word: w.word });

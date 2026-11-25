@@ -21,6 +21,8 @@ interface WordFormsProps {
   onSplit: (form: string) => void;
   /** Opens another saved word's page */
   onOpen: (word: WordEntry) => void;
+  /** Opens a form merged in earlier, which Look Up splits out as its own word */
+  onOpenSpelling: (form: string) => void;
 }
 
 const MAX_SHOWN = 8;
@@ -31,7 +33,7 @@ type Mode = 'base' | 'forms' | null;
  * On a saved word's page: the word it is a form of, the saved words that are its forms, and a search to pick either.
  * Each form stays a saved word of its own, with its own IPA, audio, level and contexts.
  */
-export default function WordForms({ entry, words, onLink, onSplit, onOpen }: WordFormsProps) {
+export default function WordForms({ entry, words, onLink, onSplit, onOpen, onOpenSpelling }: WordFormsProps) {
   const [mode, setMode] = useState<Mode>(null);
   const [query, setQuery] = useState('');
   const base = baseOf(words, entry);
@@ -103,7 +105,9 @@ export default function WordForms({ entry, words, onLink, onSplit, onOpen }: Wor
           ))}
           {merged.map((form) => (
             <View key={`merged-${form}`} style={styles.formChip}>
-              <Text style={styles.formText}>{form}</Text>
+              <TouchableOpacity onPress={() => onOpenSpelling(form)} accessibilityRole="button" accessibilityLabel={`Open ${form}`}>
+                <Text style={styles.formText}>{form}</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => onSplit(form)}
                 hitSlop={8}

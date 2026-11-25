@@ -503,6 +503,7 @@ function ReviewQuestion({
         practice={practice}
         typed={!!ipa && kind === 'lyric'}
         spoken={speak}
+        ipaShown={!!speakIpa || !!ipa}
         audio={!listen}
         onLookUpWord={onCloseReview}
         missedNote="Again at the end"

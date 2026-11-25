@@ -7,7 +7,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import { moveField } from '../utils/activity';
-import { checkSpokenAnswer, checkTypedAnswer, mustCapitalize, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
+import { checkSpokenAnswer, answerPoints, checkTypedAnswer, mustCapitalize, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
 import { getFlagForLanguage } from '../constants/languages';
 import DueLabel from './DueLabel';
@@ -39,6 +39,8 @@ interface WordQuizProps {
   typed?: boolean;
   /** Said out loud instead of picked: the speech recognizer listens and what it hears is checked like a typed answer */
   spoken?: boolean;
+  /** The IPA was shown as a hint, so a typed or spoken answer is worth a point like a picked one */
+  ipaShown?: boolean;
   /** Shows the word's recordings once answered; off where they already show, e.g. in a listening quiz */
   audio?: boolean;
   /** Called before a word in the songs-and-sentences list opens its page, e.g. to close the dialog the quiz is in */
@@ -59,7 +61,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -110,8 +112,9 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     answered && !undone && (current.masteryLevel ?? 'Seen') !== (unanswered.masteryLevel ?? 'Seen') ? current.masteryLevel ?? null : null;
 
   /** Shows the answer's level change before it's saved */
+  const points = ipaShown || typedProp ? 1 : answerPoints(spoken ? 'spoken' : typed ? 'typed' : 'picked');
   const predict = (right: boolean) =>
-    setPredicted({ ...stored, ...recordAnswer(stored.masteryLevel, stored.quiz, kind, right, Date.now()) });
+    setPredicted({ ...stored, ...recordAnswer(stored.masteryLevel, stored.quiz, kind, right, Date.now(), points) });
 
   const choose = async (index: number) => {
     if (answered) return;
@@ -120,7 +123,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (practice) return;
     predict(index === quiz.answerIndex);
     await afterPaint();
-    setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex)) ?? null);
+    setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex, 1)) ?? null);
   };
 
   const submitTyped = async (giveUp = false, result?: 'right' | 'accents' | 'capital' | 'wrong') => {
@@ -132,7 +135,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (practice) return;
     predict(right);
     await afterPaint();
-    setBefore((await recordQuizAnswer(entry.id, kind, right)) ?? null);
+    setBefore((await recordQuizAnswer(entry.id, kind, right, points)) ?? null);
   };
 
   /** Listens for the word; a right try answers the quiz, a wrong one can be tried again */

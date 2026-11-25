@@ -7,7 +7,7 @@ import { shownDefinition, type PartOfSpeech } from './partOfSpeech';
 export type QuizKind = 'meaning' | 'lyric';
 
 export interface QuizStats {
-  /** Correct answers in a row that count toward the next level */
+  /** Points from correct answers in a row that count toward the next level (QUIZ_RULES.pointsPerLevel make a level) */
   streak: number;
   correct: number;
   wrong: number;
@@ -19,9 +19,11 @@ export interface QuizStats {
 }
 
 export const QUIZ_RULES = {
-  /** Meaning quiz answers in a row, any day, to go from Seen to Recognized (was 3) */
-  toRecognized: 2,
-  /** Lyric quiz answers in a row, each on another day, to go from Recognized to Recalled */
+  /** Points a level takes: a picked answer is 1, typed without the IPA 2, said without the IPA 3 */
+  pointsPerLevel: 3,
+  /** Points in a row, any day, to go from Seen to Recognized */
+  toRecognized: 3,
+  /** Points in a row, counting one answer a day, to go from Recognized to Recalled */
   toRecalled: 3,
   /** Days a Recalled word goes without a quiz before a correct answer makes it Known */
   knownAfterDays: 14,
@@ -117,9 +119,9 @@ export function progressLabel(level: MasteryLevel | undefined, quiz: QuizStats |
   const streak = quiz?.streak ?? 0;
   switch (level ?? 'Seen') {
     case 'Seen':
-      return `${QUIZ_RULES.toRecognized - streak} more to Recognized`;
+      return `${QUIZ_RULES.toRecognized - streak} more ${QUIZ_RULES.toRecognized - streak === 1 ? 'point' : 'points'} to Recognized`;
     case 'Recognized':
-      return `${QUIZ_RULES.toRecalled - streak} more, on different days, to Recalled`;
+      return `${QUIZ_RULES.toRecalled - streak} more ${QUIZ_RULES.toRecalled - streak === 1 ? 'point' : 'points'}, one answer a day, to Recalled`;
     case 'Recalled':
       return `Right again after ${QUIZ_RULES.knownAfterDays} days to make it Known`;
     default:
@@ -156,7 +158,8 @@ export function recordAnswer(
   quiz: QuizStats | undefined,
   kind: QuizKind,
   correct: boolean,
-  now: number
+  now: number,
+  points = 1
 ): { masteryLevel: MasteryLevel; quiz: QuizStats } {
   const current = level ?? 'Seen';
   const before: QuizStats = quiz ?? { streak: 0, correct: 0, wrong: 0 };
@@ -168,7 +171,7 @@ export function recordAnswer(
   const day = localDay(now);
 
   if (current === 'Seen' && kind === 'meaning') {
-    const streak = before.streak + 1;
+    const streak = before.streak + points;
     return streak >= QUIZ_RULES.toRecognized
       ? { masteryLevel: 'Recognized', quiz: { ...right, streak: 0, lastCountedDay: undefined } }
       : { masteryLevel: current, quiz: { ...right, streak } };
@@ -176,7 +179,7 @@ export function recordAnswer(
   if (current === 'Recognized' && kind === 'lyric') {
     // Only the first correct answer of a day counts
     if (before.lastCountedDay === day) return { masteryLevel: current, quiz: right };
-    const streak = before.streak + 1;
+    const streak = before.streak + points;
     return streak >= QUIZ_RULES.toRecalled
       ? { masteryLevel: 'Recalled', quiz: { ...right, streak: 0, lastCountedDay: undefined } }
       : { masteryLevel: current, quiz: { ...right, streak, lastCountedDay: day } };
@@ -461,3 +464,6 @@ export function mustCapitalize(entry: { word: string; language: string; contexts
 
 /** A Recalled word's lyric quiz is typed, since picking it out of a few is what Recognized proved */
 export const isTypedQuiz = (level: MasteryLevel | undefined, kind: QuizKind) => kind === 'lyric' && level === 'Recalled';
+
+/** Points a right answer is worth: picked 1, typed from the meaning or line (no IPA given) 2, said out loud (no IPA given) 3 */
+export const answerPoints = (how: 'picked' | 'typed' | 'spoken') => (how === 'spoken' ? 3 : how === 'typed' ? 2 : 1);

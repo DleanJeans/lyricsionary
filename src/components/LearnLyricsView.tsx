@@ -33,6 +33,11 @@ interface LearnLyricsViewProps {
   blurTranslations: boolean;
   unblurredTranslations: Set<string>;
   renderPressableText: (text: string, lineIndex: number) => ReactNode;
+  /**
+   * Changes for a line when renderPressableText draws it differently: without it, a new renderPressableText
+   * redraws every line, with it only the lines whose number changed
+   */
+  lineVersions?: number[];
   onTranslationPress: (lineIndex: number, translationIndex: number) => void;
   highlightLineIndex?: number | null;
   // One list of definitions per word to highlight, best first
@@ -240,6 +245,12 @@ function sameLine(prev: LineProps, next: LineProps): boolean {
         break;
       case 'highlightDefinitions':
         if (next.highlightLineIndex === i && JSON.stringify(prev.highlightDefinitions) !== JSON.stringify(next.highlightDefinitions)) return false;
+        break;
+      case 'renderPressableText':
+        if (!next.lineVersions || prev.lineVersions?.[i] !== next.lineVersions[i]) return false;
+        break;
+      case 'lineVersions':
+        if (prev.lineVersions?.[i] !== next.lineVersions?.[i]) return false;
         break;
       case 'dictationLineIndex':
         if ((prev.dictationLineIndex === i) !== (next.dictationLineIndex === i)) return false;

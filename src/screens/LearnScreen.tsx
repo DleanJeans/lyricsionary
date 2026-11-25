@@ -35,6 +35,7 @@ import { formatSongSections } from '../utils/songSections';
 import { formatIpa } from '../utils/ipaDisplay';
 import { meaningAbove } from '../utils/meaningDisplay';
 import { buildKnownGermanWords, getCompoundParts, isGermanLanguage, joinCompoundIpa } from '../utils/compoundWords';
+import { noteLookups, sameLookups, type LineLookupNotes, type WordLookups } from '../utils/lineLookups';
 import { canFillGaps, gapWord, songWordIndex } from '../utils/lyricGaps';
 import { draggedPhrase, groupCjkTokens, groupSpacedWords, isCjkWord } from '../utils/cjkWords';
 import { getKoreanStem, isKoreanLanguage } from '../utils/koreanWords';
@@ -893,7 +894,43 @@ export default function LearnScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showMeaning, visibleRange, lines]);
 
+  // What each drawn line looked up about its words, by line and its text
+  const lineLookupsRef = useRef(new Map<number, Map<string, LineLookupNotes>>());
+  const pressHandlersRef = useRef({ handleWordPress, selectPhrase });
+  pressHandlersRef.current = { handleWordPress, selectPhrase };
+  const pickedLanguage = song?.originalLanguages?.[0] || 'unknown';
+  // The saved, ignored and picked words: a change to them redraws only the lines it changes
+  const wordLookups = useMemo<WordLookups>(() => ({
+    saved: findSavedEntry,
+    entry: findWordEntry,
+    ignored: (word) => isIgnoredWord(word, pickedLanguage),
+    picked: (word) => markMode && marked.has(word),
+    gap: gapEntry,
+    compound: (word) => getCompoundParts(word, compoundSplits, knownGermanWords),
+    splits: () => savedSplitPhrases,
+  }), [findSavedEntry, findWordEntry, isIgnoredWord, pickedLanguage, markMode, marked, gapEntry, compoundSplits, knownGermanWords, savedSplitPhrases]);
+  // Anything else the lines show from: a change to it redraws every line
+  const drawAllLines = useMemo(() => ({}), [hasFrenchLanguage, hasItalianLanguage, isRtlSong, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, wideWordSpacing, annotationGap, highlightNewWords, quietKnownWords, dragRange, loadingWords, markMode, lines, ignoredLineSet]);
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
+    // Each lookup about the line's words is noted down, so a change to the saved, ignored or picked words
+    // redraws only the lines whose answers change (lineVersions)
+    const notes: LineLookupNotes = new Map();
+    const byText = lineLookupsRef.current.get(lineIndex) ?? new Map<string, LineLookupNotes>();
+    byText.set(text, notes);
+    lineLookupsRef.current.set(lineIndex, byText);
+    const looked = noteLookups(wordLookups, notes);
+    const findSavedEntry = looked.saved as (word: string) => WordEntry | undefined;
+    const findWordEntry = looked.entry as (word: string) => WordEntry | undefined;
+    const isIgnoredWord = (word: string, _language: string) => looked.ignored(word);
+    const isPicked = looked.picked;
+    const gapEntry = looked.gap as (word: string) => WordEntry | undefined;
+    const compoundPartsOf = looked.compound as (word: string) => ReturnType<typeof getCompoundParts>;
+    const savedSplitPhrases = looked.splits() as string[];
+    // A line not drawn again keeps its handlers, so they call the latest ones
+    const handleWordPress = (...args: Parameters<typeof pressHandlersRef.current.handleWordPress>) =>
+      pressHandlersRef.current.handleWordPress(...args);
+    const selectPhrase = (...args: Parameters<typeof pressHandlersRef.current.selectPhrase>) =>
+      pressHandlersRef.current.selectPhrase(...args);
     // An ignored line, e.g. English lines in a Portuguese song, is plain muted text: hold it to unignore
     if (ignoredLineSet.has(lineIgnoreKey(text))) {
       return (
@@ -1131,7 +1168,7 @@ export default function LearnScreen() {
                     const isPartActiveOccurrence = isStartSelected ||
                       (isPartSelected && lineIndex === selectedLineIndex && (occurrenceMap[i] || 1) === selectedOccurrence);
                     // Picking words to mark picks a word like c'est, I'm or l'envers whole, not its parts
-                    const isPartMarked = markMode && !!cleanedWord && marked.has(cleanedWord.toLowerCase());
+                    const isPartMarked = markMode && !!cleanedWord && isPicked(cleanedWord.toLowerCase());
                     const partColor = isPartSelected || isDragged(i) || isPartMarked
                       ? Colors.primary
                       : isElisionIgnored
@@ -1206,7 +1243,7 @@ export default function LearnScreen() {
           const ipaKept = isIgnored;
 
           const compoundParts = !wordEntry && !isIgnored && isGermanSong && cleanedWord && !isPhrase
-            ? getCompoundParts(cleanedWord, compoundSplits, knownGermanWords)
+            ? compoundPartsOf(cleanedWord)
             : null;
           const compoundStart = compoundParts ? word.indexOf(cleanedWord) : -1;
           const compoundEntries = compoundParts?.map((part) => findWordEntry(part.lemma));
@@ -1268,7 +1305,7 @@ export default function LearnScreen() {
             removeStressMarks(cleanedWord.toLowerCase()) === removeStressMarks(wordEntry.word.toLowerCase())
             ? addStressMark(edgePunctuation.core, stressIpa)
             : edgePunctuation.core;
-          const isMarked = markMode && !!cleanedWord && marked.has(cleanedWord.toLowerCase());
+          const isMarked = markMode && !!cleanedWord && isPicked(cleanedWord.toLowerCase());
           const wordColor = isSelected || isDragged(i) || isMarked
             ? Colors.primary
             : isIgnored
@@ -1437,7 +1474,26 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [findWordEntry, findSavedEntry, hasFrenchLanguage, hasItalianLanguage, isRtlSong, words, isIgnoredWord, compoundSplits, knownGermanWords, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, gapEntry, wideWordSpacing, annotationGap, highlightNewWords, quietKnownWords, dragRange, savedSplitPhrases, loadingWords, markMode, marked, lines, ignoredLineSet]);
+  }, [wordLookups, drawAllLines]);
+
+  // A number per line that changes when the line has to be drawn again: all of them when anything but the
+  // words changes, else only for the lines whose lookups now get other answers
+  const lineVersionsRef = useRef<{ drawAll: object; versions: number[] }>({ drawAll: drawAllLines, versions: [] });
+  const lineVersions = useMemo(() => {
+    const prev = lineVersionsRef.current;
+    const drawAll = prev.drawAll !== drawAllLines;
+    if (drawAll) lineLookupsRef.current.clear();
+    const versions = lines.map((_, i) => {
+      const version = prev.versions[i] ?? 0;
+      if (drawAll) return version + 1;
+      const byText = lineLookupsRef.current.get(i);
+      if (!byText) return version;
+      for (const notes of byText.values()) if (!sameLookups(wordLookups, notes)) return version + 1;
+      return version;
+    });
+    lineVersionsRef.current = { drawAll: drawAllLines, versions };
+    return versions;
+  }, [wordLookups, drawAllLines, lines]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -2406,6 +2462,7 @@ export default function LearnScreen() {
         blurTranslations={blurTranslations}
         unblurredTranslations={unblurredTranslations}
         renderPressableText={renderPressableText}
+        lineVersions={lineVersions}
         onTranslationPress={handleTranslationPress}
         highlightLineIndex={selectedLineIndex}
         highlightDefinitions={selectedDefinitions}

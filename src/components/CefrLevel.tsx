@@ -194,9 +194,11 @@ export function CefrSheet({ progress, onClose }: { progress: CefrProgress | null
             </View>
             <View style={styles.legend}>
               {[...MASTERY_LEVELS].reverse().map((l) => (
-                <Text key={l} style={styles.legendText}>
-                  <Text style={{ color: getMasteryLevelColor(l) }}>●</Text> {l} ×{LEVEL_WEIGHTS[l]}
-                </Text>
+                <View key={l} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: getMasteryLevelColor(l) }]} />
+                  <Text style={styles.legendText}>{l}</Text>
+                  <Text style={styles.legendWeight}>×{LEVEL_WEIGHTS[l]}</Text>
+                </View>
               ))}
             </View>
             {CEFR_LEVELS.map((level, i) => {
@@ -316,7 +318,10 @@ const styles = StyleSheet.create({
   bigLevel: { fontSize: 40, fontWeight: '700', color: Colors.primaryLight },
   bigText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19, flex: 1 },
   sheetBar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: Colors.surfaceLight },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, rowGap: 2, marginTop: 6, marginBottom: 6 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 6, marginTop: 10, marginBottom: 8 },
+  legendItem: { width: '50%', flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendWeight: { fontSize: 12, color: Colors.textMuted },
   legendText: { fontSize: 12, color: Colors.textSecondary },
   rung: {
     flexDirection: 'row',

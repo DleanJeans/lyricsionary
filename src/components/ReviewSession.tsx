@@ -427,8 +427,8 @@ function ReviewQuestion({
     : null;
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const [savedLine, setSavedLine] = useState(false);
-  // Saying a word is asked with its IPA, as there's no spelling to go by
-  const speakIpa = speak && kind === 'meaning' ? reviewIpa(entry, context) : undefined;
+  // Saying a word is asked with its IPA, as there's no spelling to go by, unless it's tried from the quiz types list
+  const speakIpa = speak && kind === 'meaning' && !item.forced ? reviewIpa(entry, context) : undefined;
   lookUpRef.current = () => onLookUp(entry, line, songId, songName);
   // The word card's IPA and meaning once answered
   const answerIpa = ipa ?? reviewIpa(entry, context);

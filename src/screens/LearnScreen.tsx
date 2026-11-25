@@ -119,6 +119,11 @@ export default function LearnScreen() {
 
   const activeSongId = route.params?.songId ?? currentSongId;
   const song = songs.find((s) => s.id === activeSongId);
+  const setCurrentSongId = useStore((s) => s.setCurrentSongId);
+  // The song open in Learn becomes the current one, so Editor can load it too
+  useEffect(() => {
+    if (song && song.id !== useStore.getState().currentSongId) setCurrentSongId(song.id);
+  }, [song?.id]);
   const isGermanSong = isGermanLanguage(song?.originalLanguages);
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
   const ignoredLineSet = useMemo(() => new Set(song?.ignoredLines ?? []), [song?.ignoredLines]);

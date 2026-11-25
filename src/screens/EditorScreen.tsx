@@ -75,6 +75,17 @@ export default function EditorScreen() {
   const [songName, setSongName] = useState('');
   const [artistName, setArtistName] = useState('');
   const [originalLyrics, setOriginalLyrics] = useState('');
+
+  // The song open in Learn is loaded here too, unless this form holds edits or a new song being typed
+  const hasUnsavedEditsRef = useRef(false);
+  const emptyNewFormRef = useRef(true);
+  useEffect(() => {
+    if (!currentSongId || currentSongId === editSongId) return;
+    if (hasUnsavedEditsRef.current || !emptyNewFormRef.current) return;
+    if (!songs.some((s) => s.id === currentSongId)) return;
+    setEditSongId(currentSongId);
+    navigation.setParams({ songId: currentSongId });
+  }, [currentSongId]);
   const [originalLanguages, setOriginalLanguages] = useState<string[]>([]);
   const [songSourceUrl, setSongSourceUrl] = useState('');
   const [translations, setTranslations] = useState<Translation[]>([]);
@@ -325,6 +336,7 @@ export default function EditorScreen() {
   const searchDisabled = !songName.trim() && !artistName.trim();
 
   // Check if current state differs from original (for Reset button)
+  emptyNewFormRef.current = isEditMode || (!songName.trim() && !artistName.trim() && !originalLyrics.trim() && translations.length === 0);
   const hasChanges = originalState ? (
     songName !== originalState.songName ||
     artistName !== originalState.artistName ||
@@ -335,6 +347,7 @@ export default function EditorScreen() {
     JSON.stringify(translations) !== JSON.stringify(originalState.translations) ||
     JSON.stringify(extraOriginals) !== JSON.stringify(originalState.extraOriginals)
   ) : false;
+  hasUnsavedEditsRef.current = hasChanges;
 
   const currentLyrics = activeTab === 0
     ? (version > 0 ? extraOriginals[version - 1]?.lyrics ?? '' : originalLyrics)

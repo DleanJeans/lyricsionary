@@ -83,7 +83,7 @@ export default function ReviewSession(props: ReviewSessionProps) {
       <View style={styles.overlay}>
         <View style={[styles.card, props.isWide && styles.cardWide]}>
           <View style={styles.header}>
-            <Text style={styles.title}>Which language?</Text>
+            <Text style={styles.title}>Choose a language to review</Text>
             <TouchableOpacity onPress={props.onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close review">
               <Ionicons name="close" size={22} color={Colors.textSecondary} />
             </TouchableOpacity>

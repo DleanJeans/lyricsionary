@@ -10,6 +10,8 @@ import { answersToday, dayStreak, nextDailyGoal, weekDays, weekTotals } from '..
 import { useDailyGoal } from '../hooks/useDailyGoal';
 import { REMINDER_HOUR, STREAK_SAVER_HOUR } from '../utils/reviewReminder';
 import { Text } from './Text';
+import { CefrLanguageRows, CefrSheet } from './CefrLevel';
+import { cefrByLanguage, type CefrProgress } from '../utils/cefr';
 
 function Stat({ icon, color, value, label }: { icon: keyof typeof Ionicons.glyphMap; color: string; value: number; label: string }) {
   return (
@@ -138,6 +140,8 @@ export default function ProgressStats() {
     for (const w of words) c[w.masteryLevel ?? 'Seen']++;
     return c;
   }, [words]);
+  const cefrLevels = React.useMemo(() => cefrByLanguage(words), [words]);
+  const [cefrSheet, setCefrSheet] = React.useState<CefrProgress | null>(null);
   const moved: Record<MasteryLevel, number> = { Seen: week.saved, Recognized: week.toRecognized, Recalled: week.toRecalled, Known: week.toKnown };
   return (
     <View style={styles.container}>
@@ -148,6 +152,16 @@ export default function ProgressStats() {
         <Stat icon="trending-up" color={Colors.success} value={week.levelUps} label="level ups this week" />
       </View>
       <LevelBar counts={counts} moved={moved} />
+      {cefrLevels.length > 0 && (
+        <View style={styles.cefr}>
+          <View style={styles.levelsHeader}>
+            <Ionicons name="school-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.goalText}>Vocabulary level</Text>
+          </View>
+          <CefrLanguageRows all={cefrLevels} onPress={setCefrSheet} />
+          <CefrSheet progress={cefrSheet} onClose={() => setCefrSheet(null)} />
+        </View>
+      )}
       <DailyGoal answers={answersToday(activity, now)} />
       {week.answers > 0 && <WeekChart days={weekDays(activity, now)} />}
       {week.answers > 0 && (
@@ -302,6 +316,12 @@ const styles = StyleSheet.create({
   levels: {
     gap: 8,
     padding: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surfaceLight,
+  },
+  cefr: {
+    paddingHorizontal: 10,
+    paddingTop: 10,
     borderRadius: 12,
     backgroundColor: Colors.surfaceLight,
   },

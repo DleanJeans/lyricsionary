@@ -19,6 +19,8 @@ import Toast from '../components/Toast';
 import WordCard from '../components/WordCard';
 import { FilterChip } from '../components/LanguageTabButtons';
 import LevelBar from '../components/LevelBar';
+import { CefrCard, CefrFlagRing, CefrPill, CefrSheet } from '../components/CefrLevel';
+import { cefrByLanguage, type CefrProgress } from '../utils/cefr';
 import Dropdown, { MenuDivider, MenuHeader, MenuItem, MenuSwitch } from '../components/Dropdown';
 import EmptyState from '../components/EmptyState';
 import IconButton from '../components/IconButton';
@@ -67,6 +69,8 @@ export default function WordsScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const songs = useStoreWhileShown((s) => s.songs);
   const ignoredWords = useStoreWhileShown((s) => s.ignoredWords);
+  const cefrLevels = React.useMemo(() => cefrByLanguage(words), [words]);
+  const [cefrSheet, setCefrSheet] = React.useState<CefrProgress | null>(null);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   // Top words just ignored with a long press, each with an Undo for a few seconds
   const [justIgnored, setJustIgnored] = useState<WordFrequency[]>([]);
@@ -389,12 +393,16 @@ export default function WordsScreen() {
 
   // The language filter: one language or all of them, picked from the flag in the title row
   const selectedLanguage = selectedLanguages.length === 1 ? selectedLanguages[0] : null;
+  // Each language's CEFR level from its mastered words; the language picked shows on the flag and a card
+  const cefrSelected = selectedLanguage ? cefrLevels.find((p) => languageKey(p.language) === languageKey(selectedLanguage)) : undefined;
   const allLanguagesCount = Object.values(languageCounts).reduce((sum, n) => sum + n, 0);
   const languageMenu = (
     <Dropdown
       plain
       icon={
-        selectedLanguage ? (
+        cefrSelected ? (
+          <CefrFlagRing progress={cefrSelected} />
+        ) : selectedLanguage ? (
           <Text style={styles.flagIcon}>{getFlagForLanguage(selectedLanguage)}</Text>
         ) : (
           <Ionicons name="globe-outline" size={22} color={Colors.textSecondary} />
@@ -556,6 +564,7 @@ export default function WordsScreen() {
 
   return (
     <ScreenWrapper>
+      <CefrSheet progress={cefrSheet} onClose={() => setCefrSheet(null)} />
       <View style={styles.titleRow}>
         {languageMenu}
         {showSearch ? searchInput : <View style={styles.titleCenter}>{viewSwitch}</View>}
@@ -599,6 +608,26 @@ export default function WordsScreen() {
         words.length > 0 && (
           <>
             <LevelBar levelCounts={levelCounts} selectedLevel={selectedLevel} onLevelChange={setSelectedLevel} />
+            {cefrSelected ? (
+              <CefrCard progress={cefrSelected} onOpen={() => setCefrSheet(cefrSelected)} />
+            ) : (
+              !selectedLanguage && cefrLevels.length > 0 && (
+                <View style={styles.cefrChips}>
+                  {cefrLevels.map((p) => (
+                    <TouchableOpacity
+                      key={p.language}
+                      style={styles.cefrChip}
+                      onPress={() => setCefrSheet(p)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${p.language} vocabulary level ${p.level}`}
+                    >
+                      <Text style={styles.menuFlag}>{getFlagForLanguage(p.language)}</Text>
+                      <CefrPill level={p.level} small />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )
+            )}
             <View style={styles.filterRow}>
               <SongFilter songs={songsWithWords} selectedSongId={songFilterId} onChange={setSelectedSongId} />
               {filtersMenu}
@@ -869,6 +898,23 @@ const styles = StyleSheet.create({
   },
   menuFlag: {
     fontSize: 16,
+  },
+  cefrChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginHorizontal: 4,
+    marginBottom: 10,
+  },
+  cefrChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   titleRow: {
     flexDirection: 'row',

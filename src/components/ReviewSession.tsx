@@ -18,6 +18,8 @@ import SwitchQuizButton from './SwitchQuizButton';
 import WordQuiz, { AnswerAudio } from './WordQuiz';
 import { MASTERY_LEVELS, type WordEntry } from '../types';
 import { dueCountAt } from '../utils/reviewReminder';
+import { cefrProgress } from '../utils/cefr';
+import { CefrMiniBar, CefrPill, toNextLabel } from './CefrLevel';
 
 interface ReviewSessionProps {
   /** A quiz for each due word (buildReviewItems) */
@@ -63,6 +65,9 @@ export default function ReviewSession(props: ReviewSessionProps) {
     [props.dueItems, props.dueTotals, byLanguage]
   );
   const [built, setBuilt] = useState<ReviewItem[] | null>(null);
+  // Each language's CEFR level, shown beside its due count
+  const allWords = useStore((s) => s.words);
+  const levels = useMemo(() => Object.fromEntries(languages.map((l) => [l, cefrProgress(allWords, l)])), [languages, allWords]);
   const [language, setLanguage] = useState<string | null>(languages.length > 1 ? null : (languages[0] ?? ''));
   const insets = useSafeAreaInsets();
   if (language !== null && byLanguage && languages.length > 1) {
@@ -99,7 +104,16 @@ export default function ReviewSession(props: ReviewSessionProps) {
                   accessibilityLabel={`Review ${name}, ${count} due`}
                 >
                   <Text style={styles.languageFlag}>{getFlagForLanguage(lang)}</Text>
-                  <Text style={styles.languageName}>{name}</Text>
+                  <View style={styles.languageInfo}>
+                    <View style={styles.languageTop}>
+                      <Text style={styles.languageNameText} numberOfLines={1}>{name}</Text>
+                      <CefrPill level={levels[lang].level} small />
+                    </View>
+                    <View style={styles.languageLevel}>
+                      <CefrMiniBar progress={levels[lang]} width={60} />
+                      <Text style={styles.sizeHint}>{toNextLabel(levels[lang])}</Text>
+                    </View>
+                  </View>
                   <Text style={styles.sizeHint}>{`${count} due`}</Text>
                   <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
                 </TouchableOpacity>
@@ -730,6 +744,10 @@ const styles = StyleSheet.create({
   },
   languageFlag: { fontSize: 22 },
   languageName: { flex: 1, fontSize: 16, color: Colors.text },
+  languageInfo: { flex: 1, gap: 6 },
+  languageTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  languageNameText: { fontSize: 16, color: Colors.text, flexShrink: 1 },
+  languageLevel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sizeHint: {
     fontSize: 12,
     color: Colors.textMuted,

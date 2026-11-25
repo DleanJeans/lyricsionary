@@ -9,13 +9,16 @@ interface Props {
   size?: number;
   thickness?: number;
   color?: string;
+  /** Shown in the middle instead of the percent, e.g. a flag */
+  children?: React.ReactNode;
+  accessibilityLabel?: string;
 }
 
 /**
  * A ring that fills clockwise from the top with the percent in the middle, drawn with plain Views
  * (two rotated half rings, each clipped to one side) so it needs no SVG library
  */
-export default function ProgressRing({ percent, size = 54, thickness = 5, color = Colors.success }: Props) {
+export default function ProgressRing({ percent, size = 54, thickness = 5, color = Colors.success, children, accessibilityLabel }: Props) {
   const p = Math.max(0, Math.min(100, percent));
   const half = size / 2;
   const ring = { width: size, height: size, borderRadius: half, borderWidth: thickness };
@@ -32,12 +35,12 @@ export default function ProgressRing({ percent, size = 54, thickness = 5, color 
   );
 
   return (
-    <View style={{ width: size, height: size }} accessible accessibilityLabel={`${Math.round(p)}% of the words known`}>
+    <View style={{ width: size, height: size }} accessible accessibilityLabel={accessibilityLabel ?? `${Math.round(p)}% of the words known`}>
       <View style={[ring, { position: 'absolute', borderColor: Colors.border }]} />
       {p > 0 && renderHalf('right', (Math.min(p, 50) / 50) * 180)}
       {p > 50 && renderHalf('left', ((p - 50) / 50) * 180)}
       <View style={[StyleSheet.absoluteFill, styles.center]}>
-        <Text style={[styles.label, { fontSize: size < 48 ? 11 : 13 }]}>{Math.round(p)}%</Text>
+        {children ?? <Text style={[styles.label, { fontSize: size < 48 ? 11 : 13 }]}>{Math.round(p)}%</Text>}
       </View>
     </View>
   );

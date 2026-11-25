@@ -142,10 +142,11 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
   const words = useStore((s) => s.words);
   // Trying one quiz type: a round of 5 words that counts like any review
   const [typePicker, setTypePicker] = useState(false);
+  const [typeCount, setTypeCount] = useState(1);
   const [typeNote, setTypeNote] = useState<string | null>(null);
   const language = dueItems[0]?.entry.language ?? session?.[0]?.entry.language;
   const tryType = (type: (typeof QUIZ_TYPES)[number]) => {
-    const picked = buildTypeItems(type, language!, words, useStore.getState().songs);
+    const picked = buildTypeItems(type, language!, words, useStore.getState().songs, typeCount);
     if (!picked.length) return setTypeNote(`No ${getLanguageNameFromCode(language!) ?? language} words suit "${type.label}" yet`);
     setTypeNote(null);
     setTypePicker(false);
@@ -245,7 +246,20 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
           {typePicker && (
             <ScrollView contentContainerStyle={[styles.body, { paddingBottom: 16 + insets.bottom }]}>
               <Text style={styles.summaryText}>Try a quiz type</Text>
-              <Text style={styles.sizeHint}>5 words of this language, answers count toward levels</Text>
+              <Text style={styles.sizeHint}>Words of this language; answers count toward levels</Text>
+              <View style={styles.sizes}>
+                {[1, 3, 5, 10].map((n) => (
+                  <TouchableOpacity
+                    key={n}
+                    style={[styles.sizeButton, n !== typeCount && styles.outlineButton]}
+                    onPress={() => setTypeCount(n)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${n} ${n === 1 ? 'word' : 'words'}`}
+                  >
+                    <Text style={n === typeCount ? styles.buttonText : styles.outlineText}>{n}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               {QUIZ_TYPES.map((type) => (
                 <TouchableOpacity key={type.id} style={styles.languageRow} onPress={() => tryType(type)} accessibilityRole="button" accessibilityLabel={type.label}>
                   <Ionicons name={type.icon as any} size={22} color={Colors.primaryLight} />

@@ -576,7 +576,8 @@ export const QUIZ_TYPES: QuizType[] = [
   { id: 'lyric-typed', label: 'Fill in the blank: type', description: 'The same, typed (2 points)', icon: 'create-outline', way: 'lyric', kind: 'lyric', levels: ['Recalled'], needsLine: true },
   { id: 'lyric-listen', label: 'Hear the word', description: 'Hear the word, pick it from options', icon: 'ear-outline', way: 'lyric-listen', kind: 'lyric', levels: ['Seen', 'Recognized'] },
   { id: 'lyric-ipa', label: 'Spell from IPA', description: 'See the IPA and type the word', icon: 'text-outline', way: 'lyric-ipa', kind: 'lyric' },
-  { id: 'say-gap', label: 'Say the missing word', description: 'A line with a gap, say the word that fits (3 points)', icon: 'mic-outline', way: 'speak', kind: 'lyric', needsLine: true },
+  { id: 'say-gap', label: 'Say the missing word', description: 'A line with a gap and its translation, say the word that fits (1 point)', icon: 'mic-outline', way: 'speak', kind: 'lyric', needsLine: true },
+  { id: 'say-gap-blind', label: 'Say the missing word: no translation', description: 'The same, without the translation to go by (2 points)', icon: 'mic-off-outline', way: 'speak', kind: 'lyric', needsLine: true, noTranslation: true },
 ];
 
 /** A round of one quiz type with words of the language that suit it; answers count like a review's */

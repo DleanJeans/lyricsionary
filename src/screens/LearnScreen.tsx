@@ -2485,14 +2485,7 @@ export default function LearnScreen() {
             accessibilityRole="button"
             accessibilityLabel="Learn settings"
           >
-            <View style={styles.headerBtnIcons}>
-              <View style={styles.languageIconWrapper}>
-                <Ionicons name="language-outline" size={22} color={Colors.primary} />
-              </View>
-              <View style={styles.settingsIconWrapper}>
-                <Ionicons name="settings-outline" size={22} color={Colors.primary} />
-              </View>
-            </View>
+            <Ionicons name="settings-outline" size={22} color={Colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -2838,25 +2831,6 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: Colors.surface,
     borderRadius: 10,
-  },
-  headerBtnIcons: {
-    position: 'relative',
-    width: 28,
-    height: 28,
-  },
-  languageIconWrapper: {
-    position: 'absolute',
-    top: -3,
-    left: 8,
-  },
-  settingsIconWrapper: {
-    position: 'absolute',
-    top: 8,
-    left: -3,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: Colors.surface,
   },
   toastStack: {
     position: 'absolute',

@@ -3,7 +3,7 @@ import React from 'react';
 import { Platform, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { MASTERY_LEVELS, type MasteryLevel } from '../types';
-import { useStore } from '../store/useStore';
+import { isLanguageExcluded, useStore } from '../store/useStore';
 import { allowReviewReminders } from '../services/reviewReminder';
 import { allowWordQuizzes, QUIZ_NOTIFICATION_FREQUENCIES } from '../services/wordQuizNotification';
 import { answersToday, dayStreak, nextDailyGoal, weekDays, weekTotals } from '../utils/activity';
@@ -140,7 +140,8 @@ export default function ProgressStats() {
     for (const w of words) c[w.masteryLevel ?? 'Seen']++;
     return c;
   }, [words]);
-  const cefrLevels = React.useMemo(() => cefrByLanguage(words), [words]);
+  const excludedLanguages = useStore((s) => s.excludedLanguages);
+  const cefrLevels = React.useMemo(() => cefrByLanguage(words.filter((w) => !isLanguageExcluded(excludedLanguages, w.language))), [words, excludedLanguages]);
   const [cefrSheet, setCefrSheet] = React.useState<CefrProgress | null>(null);
   const moved: Record<MasteryLevel, number> = { Seen: week.saved, Recognized: week.toRecognized, Recalled: week.toRecalled, Known: week.toKnown };
   return (

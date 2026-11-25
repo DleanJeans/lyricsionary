@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { Ionicons } from '@expo/vector-icons';
-import { useStore } from '../store/useStore';
+import { isLanguageExcluded, useStore } from '../store/useStore';
 import { autoPlaySpotifySong } from '../services/spotify';
 import { phraseStartsOf } from '../utils/cjkWords';
 import { Colors } from '../constants/theme';
@@ -111,6 +111,7 @@ export default function SongsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RootTabParamList, 'Songs'>>();
   const songs = useStoreWhileShown((s) => s.songs);
+  const excludedLanguages = useStoreWhileShown((s) => s.excludedLanguages);
   const setCurrentSongId = useStore((s) => s.setCurrentSongId);
   const deleteSong = useStore((s) => s.deleteSong);
   const updateSong = useStore((s) => s.updateSong);
@@ -317,8 +318,8 @@ export default function SongsScreen() {
   // quizzes are built when Review is tapped: building them all here took seconds with many saved words.
   const songDue = useMemo(() => {
     const now = Date.now();
-    return new Map([...songWords].map(([songId, entries]) => [songId, dueWords(entries, now, words).filter(canReview)]));
-  }, [songWords]);
+    return new Map([...songWords].map(([songId, entries]) => [songId, dueWords(entries, now, words).filter((w) => canReview(w) && !isLanguageExcluded(excludedLanguages, w.language))]));
+  }, [songWords, excludedLanguages]);
   const [reviewing, setReviewing] = useState<ReviewItem[] | null>(null);
 
   const archivedCount = songs.filter((s) => s.archivedAt).length;

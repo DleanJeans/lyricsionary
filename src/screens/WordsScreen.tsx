@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Text, TextInput } from '../components/Text';
 import { useNavigation } from '@react-navigation/native';
-import { makeIgnoredWordChecker, useStore } from '../store/useStore';
+import { isLanguageExcluded, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { getFlagForLanguage, languageKey } from '../constants/languages';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
@@ -69,7 +69,9 @@ export default function WordsScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const songs = useStoreWhileShown((s) => s.songs);
   const ignoredWords = useStoreWhileShown((s) => s.ignoredWords);
-  const cefrLevels = React.useMemo(() => cefrByLanguage(words), [words]);
+  const excludedLanguages = useStoreWhileShown((s) => s.excludedLanguages);
+  const toggleExcludedLanguage = useStore((s) => s.toggleExcludedLanguage);
+  const cefrLevels = React.useMemo(() => cefrByLanguage(words.filter((w) => !isLanguageExcluded(excludedLanguages, w.language))), [words, excludedLanguages]);
   const [cefrSheet, setCefrSheet] = React.useState<CefrProgress | null>(null);
   const toggleIgnoredWord = useStore((s) => s.toggleIgnoredWord);
   // Top words just ignored with a long press, each with an Undo for a few seconds
@@ -313,9 +315,9 @@ export default function WordsScreen() {
   // The words in the chosen languages that a quiz now would move toward their next level. Their quizzes
   // are built when Review is tapped: building them here took seconds with many saved words.
   const due = React.useMemo(
-    () => dueWords(languageFilteredWords, Date.now(), words).filter(canReview),
+    () => dueWords(languageFilteredWords, Date.now(), words).filter((w) => canReview(w) && !isLanguageExcluded(excludedLanguages, w.language)),
     // languageFilteredWords comes from these
-    [words, selectedLanguages, pendingDeletions, songFilterId],
+    [words, selectedLanguages, pendingDeletions, songFilterId, excludedLanguages],
   );
   const now = Date.now();
   const trickyCount = languageFilteredWords.filter((w) => isTricky(w.quiz, now)).length;
@@ -428,7 +430,7 @@ export default function WordsScreen() {
               <MenuItem
                 key={language}
                 icon={<Text style={styles.menuFlag}>{getFlagForLanguage(language)}</Text>}
-                label={language}
+                label={isLanguageExcluded(excludedLanguages, language) ? `${language} (excluded)` : language}
                 count={languageCounts[language] ?? 0}
                 checked={selectedLanguage === language}
                 onPress={() => {
@@ -437,6 +439,17 @@ export default function WordsScreen() {
                 }}
               />
             ))}
+          {selectedLanguage && (
+            <>
+              <MenuHeader title={`${selectedLanguage} review and level`} />
+              <MenuSwitch
+                icon="eye-off-outline"
+                label="Leave out of Review and level"
+                value={isLanguageExcluded(excludedLanguages, selectedLanguage)}
+                onValueChange={() => toggleExcludedLanguage(selectedLanguage)}
+              />
+            </>
+          )}
         </>
       )}
     </Dropdown>

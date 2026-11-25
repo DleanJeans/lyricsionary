@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import type { WordEntry } from '../types';
-import { useStore } from '../store/useStore';
+import { isLanguageExcluded, useStore } from '../store/useStore';
 import { buildReviewItems, dueWords, type ReviewItem } from '../utils/reviewQuiz';
 import { checkTypedAnswer, isTypedQuiz, mustCapitalize, type QuizKind } from '../utils/wordQuiz';
 import { allowReviewReminders } from './reviewReminder';
@@ -63,7 +63,8 @@ function questionFor(item: ReviewItem, typed: boolean): string {
 /** The first due word that fits in a notification: a meaning or lyric quiz, with no audio, IPA or speaking */
 function pickItem(words: WordEntry[], now: number): ReviewItem | null {
   const songs = useStore.getState().songs;
-  const due = dueWords(words, now);
+  const { excludedLanguages } = useStore.getState();
+  const due = dueWords(words, now).filter((w) => !isLanguageExcluded(excludedLanguages, w.language));
   if (!due.length) return null;
   // Shuffle so the same words don't come first every time
   const shuffled = [...due].sort(() => Math.random() - 0.5).slice(0, 40);

@@ -9,12 +9,13 @@ import type { WiktionaryAudio } from '../utils/wiktionary';
 import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
 import { ActivityLog, addActivity, DayActivity, moveField } from '../utils/activity';
 import { findSavedWord, lowercaseEntry, mergeWordEntries, splitForm } from '../utils/wordForms';
-import { isSameLanguage } from '../constants/languages';
+import { isSameLanguage, languageKey } from '../constants/languages';
 import { addWordEvent, levelChangeEvent } from '../utils/wordHistory';
 
 const SONGS_KEY = '@lyricsionary_songs';
 const WORDS_KEY = '@lyricsionary_words';
 const IGNORED_WORDS_KEY = '@lyricsionary_ignored_words';
+const EXCLUDED_LANGUAGES_KEY = '@lyricsionary_excluded_languages';
 const COMPOUND_SPLITS_KEY = '@lyricsionary_compound_splits';
 const LEARN_SETTINGS_KEY = '@lyricsionary_learn_settings';
 const ACTIVITY_KEY = '@lyricsionary_activity';
@@ -40,6 +41,10 @@ export interface AutoFetch {
 export const isWordIgnored = (ignoredWords: IgnoredWord[], word: string, language: string) =>
   ignoredWords.some((w) => w.word === word.toLowerCase() && w.language === language);
 
+/** Whether a language (name or code) is left out of Review and CEFR levels, e.g. one loaded just to try */
+export const isLanguageExcluded = (excludedLanguages: string[], language: string) =>
+  excludedLanguages.includes(languageKey(language));
+
 export const isIpaKept = (ignoredWords: IgnoredWord[], word: string, language: string) =>
   ignoredWords.some((w) => w.keepIpa && w.word === word.toLowerCase() && w.language === language);
 
@@ -58,6 +63,7 @@ interface AppState {
   songs: Song[];
   words: WordEntry[];
   ignoredWords: IgnoredWord[];
+  excludedLanguages: string[];  // languageKey of the languages left out of Review and CEFR levels
   compoundSplits: Record<string, string[]>;  // Manual compound word splits, keyed by lowercase word
   currentSongId: string | null;
   webUrl: string;
@@ -183,6 +189,8 @@ interface AppState {
 
   // Ignore list actions
   loadIgnoredWords: () => Promise<void>;
+  loadExcludedLanguages: () => Promise<void>;
+  toggleExcludedLanguage: (language: string) => Promise<void>;
   toggleIgnoredWord: (word: string, language: string) => Promise<void>;
   toggleKeepIpa: (word: string, language: string) => Promise<void>;
 
@@ -206,6 +214,7 @@ export const useStore = create<AppState>((set, get) => ({
   songs: [],
   words: [],
   ignoredWords: [],
+  excludedLanguages: [],
   compoundSplits: {},
   currentSongId: null,
   webUrl: GOOGLE_SEARCH_URL,
@@ -639,6 +648,23 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (e) {
       console.error('Failed to load ignored words', e);
     }
+  },
+
+  loadExcludedLanguages: async () => {
+    try {
+      const json = await AsyncStorage.getItem(EXCLUDED_LANGUAGES_KEY);
+      if (json) set({ excludedLanguages: JSON.parse(json) });
+    } catch (e) {
+      console.error('Failed to load excluded languages', e);
+    }
+  },
+
+  toggleExcludedLanguage: async (language) => {
+    const key = languageKey(language);
+    const current = get().excludedLanguages;
+    const excludedLanguages = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
+    set({ excludedLanguages });
+    await persist(EXCLUDED_LANGUAGES_KEY, () => JSON.stringify(excludedLanguages));
   },
 
   toggleIgnoredWord: async (word, language) => {

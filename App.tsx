@@ -9,7 +9,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { Colors } from './src/constants/theme';
 import AppNavigator from './src/navigation/AppNavigator';
-import { useStore } from './src/store/useStore';
+import { isLanguageExcluded, useStore } from './src/store/useStore';
 import { NowPlayingRequest, setupNowPlayingNotifications, useNowPlayingResponse } from './src/services/nowPlayingNotification';
 import { findSavedSong } from './src/utils/nowPlaying';
 import { useWordQuizResponse, useWordQuizSchedule } from './src/services/wordQuizNotification';
@@ -53,6 +53,7 @@ export default function App() {
   const loadSongs = useStore((s) => s.loadSongs);
   const loadWords = useStore((s) => s.loadWords);
   const loadIgnoredWords = useStore((s) => s.loadIgnoredWords);
+  const loadExcludedLanguages = useStore((s) => s.loadExcludedLanguages);
   const loadCompoundSplits = useStore((s) => s.loadCompoundSplits);
   const loadLearnSettings = useStore((s) => s.loadLearnSettings);
   const loadActivity = useStore((s) => s.loadActivity);
@@ -115,14 +116,15 @@ export default function App() {
 
     let mounted = true;
     async function initialize() {
-      await Promise.all([loadSongs(), loadWords(), loadIgnoredWords(), loadCompoundSplits(), loadLearnSettings(), loadActivity()]);
+      await Promise.all([loadSongs(), loadWords(), loadIgnoredWords(), loadExcludedLanguages(), loadCompoundSplits(), loadLearnSettings(), loadActivity()]);
       if (!mounted) return;
       const { songs, words } = useStore.getState();
       // After an update reload the app comes back to the song that was open, instead of a launch review
       const resume = await takeOtaResume();
       if (resume) setOtaResume(resume);
       else {
-        const review = buildLaunchReview(songs, words);
+        const { excludedLanguages } = useStore.getState();
+        const review = buildLaunchReview(songs, words.filter((w) => !isLanguageExcluded(excludedLanguages, w.language)));
         if (review.length) {
           const totals: Record<string, number> = {};
           for (const w of dueWords(words, Date.now(), words).filter(canReview)) totals[w.language] = (totals[w.language] ?? 0) + 1;
@@ -138,7 +140,7 @@ export default function App() {
     return () => {
       mounted = false;
     };
-  }, [loadSongs, loadWords, loadIgnoredWords, loadCompoundSplits, loadLearnSettings, loadActivity]);
+  }, [loadSongs, loadWords, loadIgnoredWords, loadExcludedLanguages, loadCompoundSplits, loadLearnSettings, loadActivity]);
 
   // Tapping the now playing notification opens the saved song in Learn,
   // or starts the automatic lyrics + translation flow in Editor

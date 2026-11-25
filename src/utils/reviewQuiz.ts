@@ -571,7 +571,7 @@ export const QUIZ_TYPES: QuizType[] = [
   { id: 'say-gap', label: 'Say the missing word', description: 'A line with a gap, say the word that fits (3 points)', icon: 'mic-outline', way: 'speak', kind: 'lyric', needsLine: true },
 ];
 
-/** A practice round of one quiz type with words of the language that suit it; answers aren't saved */
+/** A round of one quiz type with words of the language that suit it; answers count like a review's */
 export function buildTypeItems(type: QuizType, language: string, words: WordEntry[], songs: ReviewSong[], size = 5): ReviewItem[] {
   const pool = words.filter((w) => w.language === language && (!type.levels || type.levels.includes(w.masteryLevel ?? 'Seen')));
   const shuffled = [...pool].sort(() => Math.random() - 0.5);

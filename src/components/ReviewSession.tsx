@@ -140,8 +140,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
   );
   const insets = useSafeAreaInsets();
   const words = useStore((s) => s.words);
-  // Trying one quiz type: a practice round whose answers aren't saved
-  const [trying, setTrying] = useState(false);
+  // Trying one quiz type: a round of 5 words that counts like any review
   const [typePicker, setTypePicker] = useState(false);
   const [typeNote, setTypeNote] = useState<string | null>(null);
   const language = dueItems[0]?.entry.language ?? session?.[0]?.entry.language;
@@ -150,7 +149,6 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
     if (!picked.length) return setTypeNote(`No ${getLanguageNameFromCode(language!) ?? language} words suit "${type.label}" yet`);
     setTypeNote(null);
     setTypePicker(false);
-    setTrying(true);
     setRetries([]);
     setIndex(0);
     setAnswers([]);
@@ -247,7 +245,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
           {typePicker && (
             <ScrollView contentContainerStyle={[styles.body, { paddingBottom: 16 + insets.bottom }]}>
               <Text style={styles.summaryText}>Try a quiz type</Text>
-              <Text style={styles.sizeHint}>5 words of this language, answers not saved</Text>
+              <Text style={styles.sizeHint}>5 words of this language, answers count toward levels</Text>
               {QUIZ_TYPES.map((type) => (
                 <TouchableOpacity key={type.id} style={styles.languageRow} onPress={() => tryType(type)} accessibilityRole="button" accessibilityLabel={type.label}>
                   <Ionicons name={type.icon as any} size={22} color={Colors.primaryLight} />
@@ -340,7 +338,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
                 answered={answered}
                 onAnswered={onAnswered}
                 isWide={isWide}
-                practice={isRetry || trying}
+                practice={isRetry}
                 lookUpRef={lookUpRef}
                 onCloseReview={stepAside}
                 onLookUp={(entry, line, songId, songName) => {

@@ -9,7 +9,7 @@ import { Text } from './Text';
 
 const SPOTIFY_GREEN = '#1DB954';
 
-type BarMode = 'full' | 'icons' | 'thin';
+type BarMode = 'full' | 'icons';
 
 function ControlButton({ icon, label, onPress, disabled }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; disabled?: boolean }) {
   return (
@@ -123,8 +123,8 @@ function SpotifyBarBody({
   /** A second swipe up, on the already folded bar, slides the whole bar away */
   onHide: () => void;
 }) {
-  // full: everything; icons: header, progress and the buttons as icons; thin: just a thin arrow. Remembered across launches
-  const [mode, setMode] = usePersistedState<BarMode>('@lyricsionary_spotify_bar_mode', 'full', (v): v is BarMode => v === 'full' || v === 'icons' || v === 'thin');
+  // full: everything; icons: header, progress and the buttons as icons. Remembered across launches
+  const [mode, setMode] = usePersistedState<BarMode>('@lyricsionary_spotify_bar_mode', 'full', (v): v is BarMode => v === 'full' || v === 'icons');
   const collapsed = mode !== 'full';
   // 1 with the transport out, 0 folded away: it slides and fades with it
   const open = useRef(new Animated.Value(1)).current;
@@ -134,8 +134,8 @@ function SpotifyBarBody({
   }, [collapsed, open]);
   // Swipe up folds a step, again slides the bar away; swipe down unfolds a step
   const swipe = useSwipe(
-    () => (mode === 'full' ? setMode('icons') : mode === 'icons' ? setMode('thin') : onHide()),
-    () => (mode === 'thin' ? setMode('icons') : mode === 'icons' ? setMode('full') : undefined)
+    () => (mode === 'full' ? setMode('icons') : onHide()),
+    () => setMode('full')
   );
   // Line, dictation and loop only work once Spotify plays this song
   const canPlaySelected = sync.isThisSong && selectedLineIndex !== null && sync.times[selectedLineIndex] != null;
@@ -223,26 +223,20 @@ function SpotifyBarBody({
       )}
       {sync.timings === 'ready' && sync.isThisSong && (
         <View style={styles.full} {...swipe.panHandlers}>
-          {mode === 'thin' ? (
-            <TouchableOpacity style={styles.thin} onPress={() => setMode('full')} hitSlop={6} accessibilityRole="button" accessibilityLabel="Show the Spotify controls">
-              <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          ) : (
-            <>
           <View style={styles.headRow}>
             <TouchableOpacity
               style={styles.headTouch}
-              onPress={() => setMode(mode === 'full' ? 'icons' : 'thin')}
+              onPress={() => setMode(mode === 'full' ? 'icons' : 'full')}
               hitSlop={6}
               accessibilityRole="button"
-              accessibilityLabel={mode === 'full' ? 'Show the Spotify controls as icons' : 'Hide the Spotify controls'}
+              accessibilityLabel={mode === 'full' ? 'Fold the Spotify controls to icons' : 'Show the Spotify controls'}
             >
               <Ionicons name="musical-note" size={14} color={SPOTIFY_GREEN} />
               <Text style={[styles.headText, { flex: 1 }]} numberOfLines={1}>
                 {sync.currentLine !== null ? `Line ${sync.currentLine + 1} of ${sync.times.length}` : 'Between lines'}
               </Text>
               <Text style={styles.headState}>{looping ? `Looping ×${sync.loopCount}` : sync.isPlaying ? 'Playing' : 'Paused'}</Text>
-              <Ionicons name="chevron-up" size={16} color={Colors.textSecondary} />
+              <Ionicons name={mode === 'full' ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textSecondary} />
             </TouchableOpacity>
             {collapsed && (
               <TouchableOpacity
@@ -301,8 +295,6 @@ function SpotifyBarBody({
             {reviewPill}
             {canPlaySelected && onDictation && <TogglePill compact={collapsed} icon="create-outline" label="Dictate" onPress={() => onDictation(selectedLineIndex!)} accent />}
           </View>
-            </>
-          )}
         </View>
       )}
     </View>
@@ -374,7 +366,6 @@ const styles = StyleSheet.create({
   toggles: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: Colors.border },
   pillCompact: { paddingHorizontal: 9, paddingVertical: 7, minWidth: 36, justifyContent: 'center' },
-  thin: { alignItems: 'center', justifyContent: 'center', height: 20 },
   pillOn: { backgroundColor: SPOTIFY_GREEN, borderColor: SPOTIFY_GREEN },
   pillAccent: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   pillText: { fontSize: 12, fontWeight: '700', color: Colors.text },

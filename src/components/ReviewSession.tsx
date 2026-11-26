@@ -1,3 +1,4 @@
+import { setStudyLanguage } from '../services/usageTime';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, ToastAndroid, TouchableOpacity, View } from 'react-native';
@@ -136,6 +137,7 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
   );
   const insets = useSafeAreaInsets();
   const words = useStore((s) => s.words);
+  useEffect(() => setStudyLanguage(dueItems[0]?.entry.language), [dueItems]);
   // Trying one quiz type: a round of 5 words that counts like any review
   const [typePicker, setTypePicker] = useState(false);
   const [typeCount, setTypeCount] = useState(1);

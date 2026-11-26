@@ -1,3 +1,4 @@
+import { setStudyLanguage } from '../services/usageTime';
 import { resumeReview } from '../navigation/reviewResume';
 import { Ionicons } from '@expo/vector-icons';
 import { withAbbreviationNote } from '../utils/abbreviationNote';
@@ -140,6 +141,7 @@ export default function WordLookupScreen() {
   // The current language for the page opened once the entry check finishes
   const languageRef = useRef(language);
   languageRef.current = language;
+  useEffect(() => setStudyLanguage(language), [language]);
   const [pronunciation, setPronunciation] = useState('');
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('Seen');
   const [note, setNote] = useState('');

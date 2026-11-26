@@ -13,6 +13,7 @@ const DEVICE_ONLY_KEYS = [
   '@lyricsionary_last_backup',
   // Time spent in the app is counted per install
   '@lyricsionary_usage_time',
+  '@lyricsionary_usage_languages',
 ];
 const LAST_BACKUP_KEY = '@lyricsionary_last_backup';
 const BACKUP_NUDGE_DAYS = 7;

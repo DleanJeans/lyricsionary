@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { AppState, Linking, Platform } from 'react-native';
+import { AppState, Linking, Platform, View } from 'react-native';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -20,7 +20,7 @@ import { useIsWide } from './src/hooks/useLayout';
 import { navigationRef } from './src/navigation/navigationRef';
 import ReviewSession from './src/components/ReviewSession';
 import { buildLaunchReview, buildSongReview, canReview, dueWords, type ReviewItem } from './src/utils/reviewQuiz';
-import { useUsageTracker } from './src/services/usageTime';
+import { markTouched, useUsageTracker } from './src/services/usageTime';
 import { flushWrites } from './src/services/storageWrites';
 import { applyOtaResume, reloadForUpdate, takeOtaResume } from './src/utils/otaResume';
 
@@ -231,9 +231,11 @@ export default function App() {
     >
       <StatusBar style="light" />
       <SafeAreaProvider>
+        <View style={{ flex: 1 }} onStartShouldSetResponderCapture={() => { markTouched(); return false; }}>
         <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme} onReady={() => setNavigationReady(true)}>
           <AppNavigator />
         </NavigationContainer>
+        </View>
         {launchReview && <ReviewSession dueItems={launchReview} dueTotals={launchTotals} buildForLanguage={launchTotals ? buildLaunchFor : undefined} onClose={() => { setLaunchReview(null); setLaunchTotals(undefined); }} isWide={isWide} />}
       </SafeAreaProvider>
     </GestureHandlerRootView>

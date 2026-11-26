@@ -150,26 +150,41 @@ export default function LearnScreen() {
     setSelectedWord(null);
   };
   const isIgnoredWord = useMemo(() => makeIgnoredWordChecker(ignoredWords), [ignoredWords]);
-  // A line can be set to another language than the song's, for a song in several languages: its words
-  // are looked up, saved and ignored in that language. Each language set gets its own lookups
-  const lineLanguagesOf = useCallback(
-    (line?: string | null): string[] | undefined => {
-      const override = line ? song?.lineLanguages?.[lineIgnoreKey(line)] : undefined;
-      return override ? [override] : song?.originalLanguages;
-    },
-    [song?.lineLanguages, song?.originalLanguages]
-  );
-  const langCtxCache = useMemo(() => new Map<string, LangCtx>(), [words]);
+  const langCtxCache = useMemo(() => ({ ctxs: new Map<string, LangCtx>(), lines: new Map<string, string[] | undefined>() }), [words]);
   const ctxFor = useCallback(
     (languages?: string[]): LangCtx => {
       const key = (languages ?? []).join('\u0000');
-      const cached = langCtxCache.get(key);
+      const cached = langCtxCache.ctxs.get(key);
       if (cached) return cached;
       const built = buildLangCtx(words, languages);
-      langCtxCache.set(key, built);
+      langCtxCache.ctxs.set(key, built);
       return built;
     },
     [langCtxCache, words]
+  );
+  // The languages a line's words are looked up, saved and ignored in, first one first. A line set to a language
+  // from its hold dialog has just that one. In a song in several languages, a line is in the one most of its
+  // words are saved in, e.g. French in a German and French song; with none saved it goes by the song's order
+  const lineLanguagesOf = useCallback(
+    (line?: string | null): string[] | undefined => {
+      const override = line ? song?.lineLanguages?.[lineIgnoreKey(line)] : undefined;
+      if (override) return [override];
+      const songLanguages = song?.originalLanguages;
+      if (!line || !songLanguages || songLanguages.length < 2) return songLanguages;
+      if (langCtxCache.lines.has(line)) return langCtxCache.lines.get(line);
+      const tokens = splitLyricTokens(line).map(cleanLyricWord).filter(Boolean);
+      let best = 0;
+      let bestCount = 0;
+      songLanguages.forEach((language, i) => {
+        const index = ctxFor([language]);
+        const count = tokens.filter((token) => index.findWordEntry(token)).length;
+        if (count > bestCount) { best = i; bestCount = count; }
+      });
+      const languages = best === 0 ? songLanguages : [songLanguages[best], ...songLanguages.filter((_, i) => i !== best)];
+      langCtxCache.lines.set(line, languages);
+      return languages;
+    },
+    [song?.lineLanguages, song?.originalLanguages, langCtxCache, ctxFor]
   );
   const baseCtx = ctxFor(song?.originalLanguages);
   const { wordEntryIndex } = baseCtx;

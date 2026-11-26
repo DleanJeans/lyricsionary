@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View, Text as RNText } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import LanguagePill from './LanguagePill';
 import { getFlagForLanguage } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useWiktionaryPronunciation } from '../hooks/useWiktionaryPronunciation';
@@ -179,6 +180,7 @@ export default function WordCard({
                   {item.word}
                   {ipa ? <RNText style={styles.ipaInline}>{`  ${ipa}`}</RNText> : null}
                 </Text>
+                <LanguagePill language={item.language} />
                 {inSheet && wiktionary.audio.length > 0 && <PronunciationAudio audio={wiktionary.audio} compact short autoPlay={autoPlayAudio} />}
                 {justSaved && <SavedPill />}
               </View>

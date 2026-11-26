@@ -1,3 +1,4 @@
+import LanguagePill from './LanguagePill';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
@@ -113,6 +114,7 @@ export default function NewWordCard({
             {word}
             {wiktionary.ipa.length > 0 && <RNText style={styles.ipaInline}>{`  ${wiktionary.ipa.join(', ')}`}</RNText>}
           </Text>
+          <LanguagePill language={language} />
           {wiktionary.derivedFrom && (
             <Text style={styles.derivedText} accessibilityLabel={`IPA guessed from ${wiktionary.derivedFrom.join(' and ')}`}>
               ≈ {wiktionary.derivedFrom.join(' + ')}

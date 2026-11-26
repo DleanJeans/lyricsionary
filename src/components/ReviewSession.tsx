@@ -411,7 +411,9 @@ function ReviewQuestion({
   practice?: boolean;
 }) {
   // A listening quiz that can't be heard is asked without its recording instead
-  const [noAudio, setNoAudio] = useState(false);
+  // A voice quiz queued before "Can't use the mic?" was tapped is asked another way while paused,
+  // unless it was picked on purpose
+  const [noAudio, setNoAudio] = useState(() => !!askedItem.speak && !askedItem.forced && speakingPaused());
   const item: ReviewItem = noAudio
     ? { ...askedItem, listen: false, speak: false, ipa: undefined, way: askedItem.kind === 'meaning' ? 'meaning' : 'lyric' }
     : askedItem;

@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Colors } from '../constants/theme';
@@ -12,7 +11,7 @@ export default function LanguagePill({ language }: { language?: string }) {
   const code = (known?.code ?? language.slice(0, 2)).toUpperCase();
   return (
     <View style={styles.pill} accessibilityLabel={`Language: ${known?.name ?? language}`}>
-      <Ionicons name="globe-outline" size={11} color={Colors.textSecondary} />
+      {!!known && <Text style={styles.flag}>{known.flag}</Text>}
       <Text style={styles.text}>{code}</Text>
     </View>
   );
@@ -20,5 +19,6 @@ export default function LanguagePill({ language }: { language?: string }) {
 
 const styles = StyleSheet.create({
   pill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, backgroundColor: Colors.surface },
+  flag: { fontSize: 12 },
   text: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, letterSpacing: 0.4 },
 });

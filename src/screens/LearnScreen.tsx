@@ -26,6 +26,7 @@ import { useBackToQuit } from '../hooks/useBackToQuit';
 import { useIsWide } from '../hooks/useLayout';
 import { isWordIgnored, makeIgnoredWordChecker, useStore } from '../store/useStore';
 import { isLineIgnored, lineIgnoreKey } from '../utils/ignoredLines';
+import { buildLangCtx, type LangCtx } from '../utils/langCtx';
 import { lineWordsAt } from '../utils/lineQuiz';
 import { contextTranslation } from '../utils/wordOfTheDay';
 import { MASTERY_LEVELS, MasteryLevel, RootTabParamList, WordContext, WordEntry } from '../types';
@@ -126,7 +127,6 @@ export default function LearnScreen() {
   useEffect(() => {
     if (song && song.id !== useStore.getState().currentSongId) setCurrentSongId(song.id);
   }, [song?.id]);
-  const isGermanSong = isGermanLanguage(song?.originalLanguages);
   const knownGermanWords = useMemo(() => buildKnownGermanWords(words), [words]);
   const ignoredLineSet = useMemo(() => new Set(song?.ignoredLines ?? []), [song?.ignoredLines]);
   const toggleLineIgnored = (line: string) => {
@@ -137,66 +137,42 @@ export default function LearnScreen() {
     const next = current.includes(key) ? current.filter((l) => l !== key) : [...current, key];
     void updateSong(song.id, { ignoredLines: next.length ? next : undefined });
   };
+  // Sets the language a line's words are looked up and saved in, for a song in several languages; the song's own
+  // language takes the setting off. Nothing shows on the line itself
+  const setLineLanguage = (line: string, language: string) => {
+    if (!song) return;
+    const key = lineIgnoreKey(line);
+    if (!key) return;
+    const next = { ...(song.lineLanguages ?? {}) };
+    if (!language || isSameLanguage(language, song.originalLanguages?.[0] ?? '')) delete next[key];
+    else next[key] = language;
+    void updateSong(song.id, { lineLanguages: Object.keys(next).length ? next : undefined });
+    setSelectedWord(null);
+  };
   const isIgnoredWord = useMemo(() => makeIgnoredWordChecker(ignoredWords), [ignoredWords]);
-  const wordEntryIndex = useMemo(() => songWordIndex(words, song?.originalLanguages), [song?.originalLanguages, words]);
-  // Saved phrases whose words sit apart in a line, e.g. hört … auf for aufhören
-  const savedSplitPhrases = useMemo(
-    () => [...new Set(wordEntryIndex.values())].flatMap((entry) => spellingsOf(entry).filter(isSplitPhrase)),
-    [wordEntryIndex]
-  );
-  const findWordEntry = useCallback(
-    (candidate: string) => wordEntryIndex.get(candidate.toLowerCase()),
-    [wordEntryIndex]
-  );
-  const songLanguages = (song?.originalLanguages ?? []).map((language) => language.toLowerCase());
-  const hasFrenchLanguage = songLanguages.some((language) => language === 'french' || language === 'fr');
-  const hasItalianLanguage = songLanguages.some((language) => language === 'italian' || language === 'it');
-  const isKoreanSong = isKoreanLanguage(song?.originalLanguages);
-  const isStressSong = isStressLanguage(song?.originalLanguages);
-  // Arabic or Hebrew lyrics lay their words out from the right (I18nManager.isRTL is undefined on web)
-  const isRtlSong = !!song?.originalLanguages?.[0] && isRtlLanguage(song.originalLanguages[0]);
-  // The saved word a lyric word stands for: itself, or else what its shortened form is about, e.g.
-  // amour for l'amour, mélanger for mélan-mélanger, haben for hab'n
-  const findSavedEntry = useCallback(
-    (cleanedWord: string) => {
-      const entry = findWordEntry(cleanedWord);
-      if (entry) return entry;
-      // A stuttered start, e.g. mélan-mélanger, but not a word joined to a pronoun like dis-moi
-      if (hasFrenchLanguage && hasHyphenatedPrefix(cleanedWord)) {
-        const hyphenIndex = cleanedWord.indexOf('-');
-        const rest = cleanedWord.slice(hyphenIndex + 1);
-        if (rest.toLowerCase().startsWith(cleanedWord.slice(0, hyphenIndex).toLowerCase())) {
-          const withoutPrefix = findWordEntry(rest);
-          if (withoutPrefix) return withoutPrefix;
-        }
-      }
-      // (not for words written apart, or a saved ma' would pull the words after it into a phrase with it)
-      if ((hasFrenchLanguage || hasItalianLanguage) && !/\s/.test(cleanedWord)) {
-        // The last part with a saved word, e.g. aime in j't'aime
-        const parts = splitElisionParts(cleanedWord) ?? [];
-        const part = [...parts].reverse().map(findWordEntry).find(Boolean);
-        if (part) return part;
-      }
-      // A Korean word without its particles, e.g. 너 for 너를
-      const koreanStem = isKoreanSong ? getKoreanStem(cleanedWord, { loose: true }) : null;
-      if (koreanStem) return findWordEntry(koreanStem);
-      // A Spanish or Portuguese verb without its pronouns or a preposition without its article, e.g. di
-      // for dímelo, amo for amo-te, de for del
-      const romanceBase = getRomanceBaseWord(cleanedWord, song?.originalLanguages, { loose: true, contractions: false });
-      if (romanceBase) return findWordEntry(romanceBase);
-      const expanded = isGermanSong ? getGermanExpandedForm(cleanedWord, 'German') : null;
-      return expanded ? findWordEntry(expanded) : undefined;
+  // A line can be set to another language than the song's, for a song in several languages: its words
+  // are looked up, saved and ignored in that language. Each language set gets its own lookups
+  const lineLanguagesOf = useCallback(
+    (line?: string | null): string[] | undefined => {
+      const override = line ? song?.lineLanguages?.[lineIgnoreKey(line)] : undefined;
+      return override ? [override] : song?.originalLanguages;
     },
-    [findWordEntry, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong, song?.originalLanguages]
+    [song?.lineLanguages, song?.originalLanguages]
   );
-  // The parts of a French or Italian word shown split, e.g. j' and ai for j'ai, selectable on their own
-  const elidedStartsOf = useCallback(
-    (cleaned: string) =>
-      (hasFrenchLanguage || hasItalianLanguage) && !/\s/.test(cleaned) && !findWordEntry(cleaned)
-        ? (splitElisionParts(cleaned) ?? [])
-        : [],
-    [findWordEntry, hasFrenchLanguage, hasItalianLanguage]
+  const langCtxCache = useMemo(() => new Map<string, LangCtx>(), [words]);
+  const ctxFor = useCallback(
+    (languages?: string[]): LangCtx => {
+      const key = (languages ?? []).join('\u0000');
+      const cached = langCtxCache.get(key);
+      if (cached) return cached;
+      const built = buildLangCtx(words, languages);
+      langCtxCache.set(key, built);
+      return built;
+    },
+    [langCtxCache, words]
   );
+  const baseCtx = ctxFor(song?.originalLanguages);
+  const { wordEntryIndex } = baseCtx;
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   // The selected word as of the last render, for a word's Wiktionary fetch to tell it's been tapped away from
   const selectedWordRef = useRef(selectedWord);
@@ -217,6 +193,9 @@ export default function LearnScreen() {
   const closeWordCard = useCallback(() => (isWide ? setSelectedWord(null) : setClosingWordCard(true)), [isWide]);
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
+  // The words of the selected line are looked up, saved and ignored in the line's language
+  const activeCtx = ctxFor(lineLanguagesOf(selectedLine));
+  const { savedSplitPhrases, findWordEntry, findSavedEntry, elidedStartsOf, hasFrenchLanguage, hasItalianLanguage, isGermanSong, isKoreanSong, isStressSong, isRtlSong } = activeCtx;
   const [selectedOccurrence, setSelectedOccurrence] = useState<number>(1);
   const [showDropdown, setShowDropdown] = useState(false);
   const [localSelectedLanguages, setLocalSelectedLanguages] = useState<string[]>([]);
@@ -710,44 +689,58 @@ export default function LearnScreen() {
   // Saves the words not saved yet at the level and moves the saved ones to it. The picks clear, the toast
   // shows and the store changes in one go, so the lyrics redraw once and right away; writing waits
   const markPickedLevel = (level: MasteryLevel) => {
-    const language = song?.originalLanguages?.[0];
-    if (!song || !language || marked.size === 0) return;
-    const picked = [...marked.values()].map((item) => {
-      const saved = findSavedEntry(item.word);
-      if (saved) return { word: item.word, savedId: saved.id, context: { context: item.line } };
-      const cached = getPreloadedWord(language, item.word);
+    if (!song || marked.size === 0) return;
+    // Picks on a line set to another language are saved in it
+    const byLanguage = new Map<string, Parameters<typeof setPickedWordsLevel>[0]>();
+    for (const item of marked.values()) {
+      const languages = lineLanguagesOf(item.line);
+      const language = languages?.[0];
+      if (!language) continue;
+      const saved = ctxFor(languages).findSavedEntry(item.word);
+      const cached = saved ? undefined : getPreloadedWord(language, item.word);
       const definition = cached?.definitions?.[0];
-      return {
-        word: item.word,
-        pronunciation: cached?.ipa || undefined,
-        context: {
-          context: item.line,
-          definition: definition?.text,
-          partOfSpeech: definition ? normalizePartOfSpeech(definition.partOfSpeech) : undefined,
-          songId: song.id,
-          songName: song.songName,
-          fromSong: true,
-          occurrence: item.occurrence,
-        },
-      };
-    });
+      const picked = saved
+        ? { word: item.word, savedId: saved.id, context: { context: item.line } }
+        : {
+            word: item.word,
+            pronunciation: cached?.ipa || undefined,
+            context: {
+              context: item.line,
+              definition: definition?.text,
+              partOfSpeech: definition ? normalizePartOfSpeech(definition.partOfSpeech) : undefined,
+              songId: song.id,
+              songName: song.songName,
+              fromSong: true,
+              occurrence: item.occurrence,
+            },
+          };
+      byLanguage.set(language, [...(byLanguage.get(language) ?? []), picked]);
+    }
+    const count = [...byLanguage.values()].reduce((sum, list) => sum + list.length, 0);
+    if (!count) return;
     // Pick mode stays on with nothing picked, so more words can be picked; only its button ends it
     setMarked(new Map());
-    setMarkedToast(`Set ${picked.length} ${picked.length === 1 ? 'word' : 'words'} ${level}`);
-    void setPickedWordsLevel(picked, language, level);
+    setMarkedToast(`Set ${count} ${count === 1 ? 'word' : 'words'} ${level}`);
+    for (const [language, picked] of byLanguage) void setPickedWordsLevel(picked, language, level);
   };
 
   // Ignores the picked words that aren't saved; saved ones are left as they are
   const ignorePicked = () => {
-    const language = song?.originalLanguages?.[0] || 'unknown';
     if (marked.size === 0) return;
     const all = [...marked.values()];
-    const picked = all.filter((item) => !findSavedEntry(item.word) && !isIgnoredWord(item.word, language));
-    const skipped = all.filter((item) => findSavedEntry(item.word)).length;
+    const byLanguage = new Map<string, string[]>();
+    let skipped = 0;
+    for (const item of all) {
+      const languages = lineLanguagesOf(item.line);
+      const language = languages?.[0] || 'unknown';
+      if (ctxFor(languages).findSavedEntry(item.word)) skipped++;
+      else if (!isIgnoredWord(item.word, language)) byLanguage.set(language, [...(byLanguage.get(language) ?? []), item.word]);
+    }
+    const count = [...byLanguage.values()].reduce((sum, list) => sum + list.length, 0);
     setMarked(new Map());
-    const done = `Ignored ${picked.length} ${picked.length === 1 ? 'word' : 'words'}`;
+    const done = `Ignored ${count} ${count === 1 ? 'word' : 'words'}`;
     setMarkedToast(skipped ? `${done}, ${skipped} saved left as is` : done);
-    void ignoreWords(picked.map((item) => item.word), language);
+    for (const [language, picked] of byLanguage) void ignoreWords(picked, language);
   };
 
   // The word the last tap saved as new, which a longer Chinese or Japanese word grown from it replaces
@@ -880,7 +873,7 @@ export default function LearnScreen() {
       if (!line || !line.translations.some((tl) => tl.text)) continue;
       for (const token of splitLyricTokens(line.original)) {
         const word = cleanLyricWord(token);
-        const entry = word ? findSavedEntry(word) : undefined;
+        const entry = word ? ctxFor(lineLanguagesOf(line.original)).findSavedEntry(word) : undefined;
         if (!entry) continue;
         const key = `${entry.language}\u0000${entry.word}`;
         if (fittingRequestedRef.current.has(key) || peekWiktionaryDefinitions(entry.word, entry.language)) continue;
@@ -898,19 +891,31 @@ export default function LearnScreen() {
   const lineLookupsRef = useRef(new Map<number, Map<string, LineLookupNotes>>());
   const pressHandlersRef = useRef({ handleWordPress, selectPhrase });
   pressHandlersRef.current = { handleWordPress, selectPhrase };
-  const pickedLanguage = song?.originalLanguages?.[0] || 'unknown';
-  // The saved, ignored and picked words: a change to them redraws only the lines it changes
-  const wordLookups = useMemo<WordLookups>(() => ({
-    saved: findSavedEntry,
-    entry: findWordEntry,
-    ignored: (word) => isIgnoredWord(word, pickedLanguage),
-    picked: (word) => markMode && marked.has(word),
-    gap: gapEntry,
-    compound: (word) => getCompoundParts(word, compoundSplits, knownGermanWords),
-    splits: () => savedSplitPhrases,
-  }), [findSavedEntry, findWordEntry, isIgnoredWord, pickedLanguage, markMode, marked, gapEntry, compoundSplits, knownGermanWords, savedSplitPhrases]);
+  // The saved, ignored and picked words of a language set (a song's, or a line set to another language): a
+  // change to them redraws only the lines it changes
+  const lookupsFor = useMemo(() => {
+    const cache = new Map<string, WordLookups>();
+    return (languages?: string[]): WordLookups => {
+      const key = (languages ?? []).join('\u0000');
+      const cached = cache.get(key);
+      if (cached) return cached;
+      const ctx = ctxFor(languages);
+      const language = languages?.[0] || 'unknown';
+      const made: WordLookups = {
+        saved: ctx.findSavedEntry,
+        entry: ctx.findWordEntry,
+        ignored: (word) => isIgnoredWord(word, language),
+        picked: (word) => markMode && marked.has(word),
+        gap: gapEntry,
+        compound: (word) => getCompoundParts(word, compoundSplits, knownGermanWords),
+        splits: () => ctx.savedSplitPhrases,
+      };
+      cache.set(key, made);
+      return made;
+    };
+  }, [ctxFor, isIgnoredWord, markMode, marked, gapEntry, compoundSplits, knownGermanWords]);
   // Anything else the lines show from: a change to it redraws every line
-  const drawAllLines = useMemo(() => ({}), [hasFrenchLanguage, hasItalianLanguage, isRtlSong, isGermanSong, song?.originalLanguages, song?.id, isStressSong, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, wideWordSpacing, annotationGap, highlightNewWords, quietKnownWords, dragRange, loadingWords, markMode, lines, ignoredLineSet]);
+  const drawAllLines = useMemo(() => ({}), [song?.originalLanguages, song?.lineLanguages, song?.id, selectedWord, selectedLineIndex, selectedOccurrence, showIpa, showIpaBrackets, showEmoji, showMeaning, fontSize, showMasteryLevelColors, findWordContext, wideWordSpacing, annotationGap, highlightNewWords, quietKnownWords, dragRange, loadingWords, markMode, lines, ignoredLineSet]);
   const renderPressableText = useCallback((text: string, lineIndex: number) => {
     // Each lookup about the line's words is noted down, so a change to the saved, ignored or picked words
     // redraws only the lines whose answers change (lineVersions)
@@ -918,7 +923,11 @@ export default function LearnScreen() {
     const byText = lineLookupsRef.current.get(lineIndex) ?? new Map<string, LineLookupNotes>();
     byText.set(text, notes);
     lineLookupsRef.current.set(lineIndex, byText);
-    const looked = noteLookups(wordLookups, notes);
+    // A line set to another language is drawn with that language's lookups
+    const lineLanguages = lineLanguagesOf(text);
+    const lineCtx = ctxFor(lineLanguages);
+    const { hasFrenchLanguage, hasItalianLanguage, isGermanSong, isStressSong, isRtlSong } = lineCtx;
+    const looked = noteLookups(lookupsFor(lineLanguages), notes);
     const findSavedEntry = looked.saved as (word: string) => WordEntry | undefined;
     const findWordEntry = looked.entry as (word: string) => WordEntry | undefined;
     const isIgnoredWord = (word: string, _language: string) => looked.ignored(word);
@@ -1090,7 +1099,7 @@ export default function LearnScreen() {
 
             const displayParts = elisionDisplayParts(cleanedWord, word.slice(cleanStart, cleanEnd))?.display ?? elisionParts;
 
-            const isElisionIgnored = isIgnoredWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
+            const isElisionIgnored = isIgnoredWord(cleanedWord, lineLanguages?.[0] || 'unknown');
             const partEntries = elisionParts.map(part =>
               part ? findWordEntry(part) ?? null : null
             );
@@ -1238,7 +1247,7 @@ export default function LearnScreen() {
           let shouldShowEmoji = showEmoji && wordEntry && !quiet && effectiveEmoji &&
             effectiveEmoji !== getFlagForLanguage(wordEntry.language);
 
-          const isIgnored = !!cleanedWord && isIgnoredWord(cleanedWord, song?.originalLanguages?.[0] || 'unknown');
+          const isIgnored = !!cleanedWord && isIgnoredWord(cleanedWord, lineLanguages?.[0] || 'unknown');
           // Ignored words show their IPA too, so the lyrics read the same all through
           const ipaKept = isIgnored;
 
@@ -1273,7 +1282,7 @@ export default function LearnScreen() {
 
           // A new word shows the IPA preloaded for it, in white like any word not saved, without saving it
           if (showIpa && !displayContent && !wordEntry && (!isIgnored || ipaKept) && !split && !isPhrase && cleanedWord) {
-            const preloaded = getPreloadedIpa(song?.originalLanguages?.[0], cleanedWord);
+            const preloaded = getPreloadedIpa(lineLanguages?.[0], cleanedWord);
             if (preloaded) displayContent = formatIpa(preloaded, showIpaBrackets);
           }
 
@@ -1370,7 +1379,7 @@ export default function LearnScreen() {
           const isLoadingWord = !displayContent && !!cleanedWord && (
             loadingWords.has(loadingWordKey(cleanedWord, lineIndex, occurrenceMap[i] || 1)) ||
             (showIpa && !wordEntry && (!isIgnored || ipaKept) && !split && !isPhrase &&
-              preloadPendingRef.current.has(preloadKey(song?.originalLanguages?.[0], cleanedWord))));
+              preloadPendingRef.current.has(preloadKey(lineLanguages?.[0], cleanedWord))));
           const meaningText = showMeaning && wordEntry && !quiet ? meaningAbove(wordEntry, wordCtx, fittingMeaning(wordEntry, wordCtx, lineIndex)) : '';
           const hasAnnotation = !!shouldShowEmoji || !!displayContent || !!meaningText || isLoadingWord;
           const keepAnnotationSpace = hasAnnotation || !isCjkWord(word);
@@ -1474,7 +1483,7 @@ export default function LearnScreen() {
       </View>
       </GestureDetector>
     );
-  }, [wordLookups, drawAllLines]);
+  }, [ctxFor, lineLanguagesOf, lookupsFor, drawAllLines]);
 
   // A number per line that changes when the line has to be drawn again: all of them when anything but the
   // words changes, else only for the lines whose lookups now get other answers
@@ -1488,12 +1497,12 @@ export default function LearnScreen() {
       if (drawAll) return version + 1;
       const byText = lineLookupsRef.current.get(i);
       if (!byText) return version;
-      for (const notes of byText.values()) if (!sameLookups(wordLookups, notes)) return version + 1;
+      for (const [text, notes] of byText) if (!sameLookups(lookupsFor(lineLanguagesOf(text)), notes)) return version + 1;
       return version;
     });
     lineVersionsRef.current = { drawAll: drawAllLines, versions };
     return versions;
-  }, [wordLookups, drawAllLines, lines]);
+  }, [lookupsFor, lineLanguagesOf, drawAllLines, lines]);
 
   // Line shown in the settings preview: the selected line, otherwise the
   // shortest-enough line with the most saved words that have an emoji or IPA
@@ -1536,7 +1545,8 @@ export default function LearnScreen() {
   // recordings, and the meaning found in the line's translation (or else the first) for this line.
   // The saved word's card then quizzes that meaning. A word tapped away from before Wiktionary
   // answers keeps loading and is saved once it does; a phrase Wiktionary doesn't have isn't saved.
-  const songLanguage = song?.originalLanguages?.[0];
+  const activeLanguages = activeCtx.languages;
+  const songLanguage = activeLanguages?.[0];
   // Words are ignored per song language, like on the new word card
   const ignoreLanguage = songLanguage || 'unknown';
   const selectedWordSaved = !!selectedWord && !!findSavedEntry(selectedWord);
@@ -1567,7 +1577,7 @@ export default function LearnScreen() {
     // A word Wiktionary doesn't have is saved as what it's about: a Korean word without its particles,
     // e.g. 너 for 너를, or a Spanish or Portuguese verb without its pronouns, e.g. amar for amarte
     const baseWord = (isKoreanSong ? getKoreanStem(selectedWord, { loose: true }) : null) ??
-      getRomanceBaseWord(selectedWord, song.originalLanguages, { loose: true });
+      getRomanceBaseWord(selectedWord, activeLanguages, { loose: true });
     // A song in several languages, e.g. German then French, has each word looked up in the first language that
     // has it, and the word is saved in that language
     let wordLanguage = songLanguage;
@@ -1596,7 +1606,7 @@ export default function LearnScreen() {
         wordLanguage = cached.language;
         return cached;
       }
-      const languages = song.originalLanguages?.length ? song.originalLanguages : [songLanguage];
+      const languages = activeLanguages?.length ? activeLanguages : [songLanguage];
       let first: Awaited<ReturnType<typeof lookUp>> | undefined;
       for (const language of languages) {
         const found = await lookUp(word, language);
@@ -1715,7 +1725,7 @@ export default function LearnScreen() {
   // Unsaved words in the lines on screen (and a screen's worth around them) have their IPA preloaded, so it shows
   // above them like a saved word's. Only the lookup is kept for the session: nothing is saved. Words are asked
   // five at a time in reading order, each once; saved, ignored and number words are left out
-  const preloadQueueRef = useRef<{ key: string; word: string; lines: number[]; translation?: string }[]>([]);
+  const preloadQueueRef = useRef<{ key: string; word: string; lines: number[]; translation?: string; languages: string[] }[]>([]);
   const preloadActiveRef = useRef(0);
   const preloadPumpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const preloadRequestedRef = useRef(new Set<string>());
@@ -1745,19 +1755,23 @@ export default function LearnScreen() {
   useEffect(() => {
     if (!preloadCacheLoaded || !showIpa || !visibleRange || !preloadSongLanguage || !song) return;
     const language = preloadSongLanguage;
-    const candidates = new Map<string, { key: string; word: string; lines: number[]; translation?: string }>();
+    const candidates = new Map<string, { key: string; word: string; lines: number[]; translation?: string; languages: string[] }>();
     // Top to bottom, and left to right within a line
     const order = lines.map((_, i) => i).filter((i) => i >= visibleRange.from && i <= visibleRange.to);
     for (const lineIndex of order) {
       if (isLineIgnored(song, lines[lineIndex].original)) continue;
+      // A line set to another language looks its words up in that one
+      const lineLangs = lineLanguagesOf(lines[lineIndex].original);
+      const lineCtx = ctxFor(lineLangs);
+      const lineLanguage = lineLangs?.[0] ?? language;
       for (const token of splitLyricTokens(lines[lineIndex].original)) {
         if (!token.trim()) continue;
         const word = cleanLyricWord(token);
         if (!word || !isLyricWord(word) || /\p{N}/u.test(word) || word.includes(' ') || isCjkWord(word)) continue;
         // Elided words, e.g. l'essence, show their parts' IPA instead
-        if ((hasFrenchLanguage || hasItalianLanguage) && hasContractedPrefix(word)) continue;
-        if (findSavedEntry(word)) continue;
-        const key = preloadKey(language, word);
+        if ((lineCtx.hasFrenchLanguage || lineCtx.hasItalianLanguage) && hasContractedPrefix(word)) continue;
+        if (lineCtx.findSavedEntry(word)) continue;
+        const key = preloadKey(lineLanguage, word);
         if (hasPreloadedIpa(key) || preloadRequestedRef.current.has(key)) continue;
         const known = candidates.get(key);
         if (known) {
@@ -1768,7 +1782,7 @@ export default function LearnScreen() {
             .filter((tl) => !isRomanized(tl.language) && tl.text)
             .map((tl) => tl.text)
             .join(' / ');
-          candidates.set(key, { key, word, lines: [lineIndex], translation: translation || undefined });
+          candidates.set(key, { key, word, lines: [lineIndex], translation: translation || undefined, languages: lineLangs?.length ? lineLangs : [lineLanguage] });
         }
       }
     }
@@ -1787,7 +1801,6 @@ export default function LearnScreen() {
     };
     if (preloadDirtyRef.current.size && !preloadFlushRef.current) preloadFlushRef.current = setTimeout(flush, 50);
     // A song in several languages, e.g. German then French, has each word looked up in the first language that has it
-    const languages = song.originalLanguages?.length ? song.originalLanguages : [language];
     const lookUpIn = async (word: string, wordLanguage: string, translation: string | undefined, fallbacks: boolean): Promise<PreloadedWord> => {
       const first = async (candidate: string) => (await getWiktionaryPronunciation(candidate, wordLanguage))?.ipa.find(Boolean);
       const [direct, definitions] = await Promise.all([
@@ -1814,7 +1827,7 @@ export default function LearnScreen() {
       const partOfSpeech = definition ? normalizePartOfSpeech(definitions!.find((d) => d.text === definition)?.partOfSpeech) : undefined;
       return { ipa: ipa ?? '', definition, partOfSpeech, language: wordLanguage, definitions: definitions?.length ? definitions : undefined };
     };
-    const lookUp = async (word: string, translation?: string): Promise<PreloadedWord> => {
+    const lookUp = async (word: string, languages: string[], translation?: string): Promise<PreloadedWord> => {
       let firstFound: PreloadedWord | undefined;
       for (const fallbacks of [false, true]) {
         for (const wordLanguage of languages) {
@@ -1833,7 +1846,7 @@ export default function LearnScreen() {
     const pump = () => {
       if (!preloadAliveRef.current || preloadPumpTimerRef.current) return;
       if (preloadActiveRef.current >= PRELOAD_BATCH) return;
-      let job: { key: string; word: string; lines: number[]; translation?: string } | undefined;
+      let job: { key: string; word: string; lines: number[]; translation?: string; languages: string[] } | undefined;
       while (!job && preloadQueueRef.current.length) {
         const next = preloadQueueRef.current.shift()!;
         if (!preloadRequestedRef.current.has(next.key)) job = next;
@@ -1845,7 +1858,7 @@ export default function LearnScreen() {
       preloadPendingRef.current.add(started.key);
       started.lines.forEach((i) => preloadDirtyRef.current.add(i));
       flushSoon(20);
-      lookUp(started.word, started.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech, language, definitions }) => {
+      lookUp(started.word, started.languages, started.translation).catch((): PreloadedWord => ({ ipa: '' })).then(({ ipa, definition, partOfSpeech, language, definitions }) => {
         // A failed or empty lookup is left empty, and not asked again this session
         setPreloadedWord(started.key, { ipa, definition, partOfSpeech, language, definitions });
         preloadPendingRef.current.delete(started.key);
@@ -1864,7 +1877,7 @@ export default function LearnScreen() {
     pump();
     // Unsaved words, ignored words and settings are read when the lines come into view or any of them changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preloadCacheLoaded, visibleRange, lines, showIpa, preloadSongLanguage, ignoredWords, words]);
+  }, [preloadCacheLoaded, visibleRange, lines, showIpa, preloadSongLanguage, ignoredWords, words, song?.lineLanguages]);
 
   // A saved word tapped without any IPA, e.g. saved before IPA was fetched, gets it from Wiktionary
   // (including IPA put together from its etymology or inflected form). Only an empty IPA is filled
@@ -1904,7 +1917,7 @@ export default function LearnScreen() {
       let movedTo: string | undefined;
       const hasMeaning = !!entry.definitions?.length || !!entry.contexts?.some((c) => c.definition?.trim());
       if (!ipa && !hasMeaning) {
-        for (const other of song?.originalLanguages ?? []) {
+        for (const other of activeLanguages ?? []) {
           if (cancelled) return;
           if (isSameLanguage(other, lookupLanguage)) continue;
           const found = (await getWiktionaryPronunciation(entry.word, other))?.ipa.find(Boolean);
@@ -1935,12 +1948,12 @@ export default function LearnScreen() {
   // Quiz mode is offered once every word in the song is saved (or ignored)
   // Lines whose words are all ignored have nothing to quiz
   const quizLines = useMemo(() => {
-    const language = song?.originalLanguages?.[0] || 'unknown';
     return contentLines.filter((i) => {
+      const language = lineLanguagesOf(lines[i]?.original)?.[0] || 'unknown';
       const found = lineWordsAt(lines[i]?.original ?? '', () => false);
       return !ignoredLineSet.has(lineIgnoreKey(lines[i]?.original ?? '')) && (!found.length || !found.every((w) => isIgnoredWord(w.text, language)));
     });
-  }, [contentLines, lines, isIgnoredWord, ignoredLineSet, song?.originalLanguages]);
+  }, [contentLines, lines, isIgnoredWord, ignoredLineSet, lineLanguagesOf]);
 
   // Hooks below stay above the no-song return, so deleting the open song doesn't change their count
   const [songReview, setSongReview] = useState<ReviewItem[] | null>(null);
@@ -1986,7 +1999,7 @@ export default function LearnScreen() {
 
   // A split compound highlights its parts' definitions together, e.g. Liebesbrief -> "love letter"
   const selectedCompoundEntries = !selectedWordEntry && selectedWord && isGermanSong &&
-    !isWordIgnored(ignoredWords, selectedWord, song?.originalLanguages?.[0] || 'unknown')
+    !isWordIgnored(ignoredWords, selectedWord, activeLanguages?.[0] || 'unknown')
     ? getCompoundParts(selectedWord, compoundSplits, knownGermanWords)
         ?.map((part) => findWordEntry(part.lemma))
         .filter((entry): entry is WordEntry => !!entry)
@@ -2175,7 +2188,7 @@ export default function LearnScreen() {
           artistName={song.artistName}
           lyricsLine={selectedLine ?? undefined}
           translationLine={selectedTranslationLine}
-          originalLanguages={song.originalLanguages}
+          originalLanguages={activeLanguages}
           occurrence={selectedOccurrence}
           quiz={meaningQuiz(selectedWordEntry)}
           quizPending={meaningQuizPending}
@@ -2192,7 +2205,7 @@ export default function LearnScreen() {
               artistName={song.artistName}
               lyricsLine={selectedLine ?? undefined}
               translationLine={selectedTranslationLine}
-              originalLanguages={song.originalLanguages}
+              originalLanguages={activeLanguages}
               source="Learn"
               occurrence={selectedOccurrence}
               hideOriginalWord
@@ -2209,7 +2222,7 @@ export default function LearnScreen() {
         artistName={song.artistName}
         lyricsLine={selectedLine ?? undefined}
         translationLine={selectedTranslationLine}
-        originalLanguages={song.originalLanguages}
+        originalLanguages={activeLanguages}
         onClose={closeWordCard}
         isWide={isWide}
         occurrence={selectedOccurrence}
@@ -2496,6 +2509,10 @@ export default function LearnScreen() {
           ignored={isLineIgnored(song, lines[heldLine].original)}
           onToggleIgnored={() => toggleLineIgnored(lines[heldLine].original)}
           onEditTranslation={(language) => navigation.navigate('Editor', { songId: song.id, lineIndex: heldLine, lineKey: Date.now(), translationLanguage: language })}
+          language={lineLanguagesOf(lines[heldLine].original)?.[0] ?? ''}
+          languageOverridden={!!song.lineLanguages?.[lineIgnoreKey(lines[heldLine].original)]}
+          songLanguage={song.originalLanguages?.[0] ?? ''}
+          onPickLanguage={(language) => setLineLanguage(lines[heldLine].original, language)}
         />
       )}
       {copiedLine && (

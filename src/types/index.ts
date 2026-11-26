@@ -23,6 +23,8 @@ export interface Song {
   lineNotes?: Record<string, string>;
   /** Lines left out of learning, by the line's text: their words aren't colored, counted or quizzed */
   ignoredLines?: string[];
+  /** Lines set to another language than the song's, by the line's text: their words are looked up and saved in it */
+  lineLanguages?: Record<string, string>;
   /** Hidden from the Songs list, with its words kept */
   archivedAt?: number;
 }

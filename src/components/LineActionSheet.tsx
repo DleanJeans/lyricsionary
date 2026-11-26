@@ -4,6 +4,7 @@ import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 import { Text } from './Text';
+import LanguageSelect from './LanguageSelect';
 
 interface Props {
   visible: boolean;
@@ -18,10 +19,17 @@ interface Props {
   ignored: boolean;
   onToggleIgnored: () => void;
   onEditTranslation: (language: string) => void;
+  /** The language the line's words are looked up and saved in: the song's, or the one the line is set to */
+  language: string;
+  /** Whether the line is set to a language other than the song's */
+  languageOverridden: boolean;
+  songLanguage: string;
+  /** Picks the line's language; the song's own language puts the line back to it */
+  onPickLanguage: (language: string) => void;
 }
 
 /** What to do with a line held in Learn: copy it, or open it in the Editor (original or a translation) */
-export default function LineActionSheet({ visible, line, translationLanguages, onClose, onCopy, onEditLine, ignored, onToggleIgnored, onEditTranslation }: Props) {
+export default function LineActionSheet({ visible, line, translationLanguages, onClose, onCopy, onEditLine, ignored, onToggleIgnored, onEditTranslation, language, languageOverridden, songLanguage, onPickLanguage }: Props) {
   const bottomSpace = Math.max(useSafeAreaInsets().bottom, 48) + 16;
   const pick = (action: () => void) => () => {
     onClose();
@@ -40,6 +48,16 @@ export default function LineActionSheet({ visible, line, translationLanguages, o
             label={ignored ? 'Unignore line' : 'Ignore line'}
             onPress={pick(onToggleIgnored)}
           />
+          <View style={styles.languageRow}>
+            <Ionicons name="globe-outline" size={22} color={Colors.primary} />
+            <Text style={styles.actionText}>Language</Text>
+            <View style={{ flex: 1 }}>
+              <LanguageSelect value={language} onValueChange={(picked) => { onClose(); onPickLanguage(picked); }} />
+            </View>
+          </View>
+          {languageOverridden && !!songLanguage && (
+            <Action icon="arrow-undo-outline" label={`Back to ${songLanguage}`} onPress={pick(() => onPickLanguage(songLanguage))} />
+          )}
           {translationLanguages.map((language) => (
             <Action
               key={language}
@@ -69,5 +87,6 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 16, paddingHorizontal: 16, gap: 4 },
   line: { fontSize: 14, fontStyle: 'italic', color: Colors.textSecondary, paddingBottom: 10, paddingHorizontal: 4 },
   action: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, backgroundColor: Colors.surface },
+  languageRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 6, paddingLeft: 12, paddingRight: 6, borderRadius: 12, backgroundColor: Colors.surface },
   actionText: { fontSize: 16, color: Colors.text },
 });

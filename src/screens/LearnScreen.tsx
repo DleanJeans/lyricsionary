@@ -62,6 +62,7 @@ import Dictation from '../components/Dictation';
 import SplitPhraseHint from '../components/SplitPhraseHint';
 import { findSavedWord, formIpa, spellingsOf } from '../utils/wordForms';
 import { firstIpa } from '../utils/ipaList';
+import { withPreferredVariant } from '../utils/portugueseIpa';
 import { getFaviconUrl } from '../utils/getFaviconUrl';
 import { learnOriginal, originalVersionName, translationNames } from '../utils/translationNames';
 import { hasPreloadedIpa, loadPreloadedIpa, preloadedIpaKey as preloadKey, getPreloadedIpa, getPreloadedWord, setPreloadedWord, type PreloadedWord } from '../utils/preloadedIpa';
@@ -80,7 +81,13 @@ export default function LearnScreen() {
   const isWide = useIsWide();
   useBackToQuit();
   const songs = useStore((s) => s.songs);
-  const words = useStore((s) => s.words);
+  const storedWords = useStore((s) => s.words);
+  const portugueseVariant = useStore((s) => s.portugueseVariant);
+  // Portuguese words carry the preferred variant's IPA as their pronunciation here, for the IPA above words
+  const words = useMemo(
+    () => (portugueseVariant === 'pt' ? storedWords.map((w) => withPreferredVariant(w, 'pt')) : storedWords),
+    [storedWords, portugueseVariant]
+  );
   const updateSong = useStore((s) => s.updateSong);
   const addOrUpdateWord = useStore((s) => s.addOrUpdateWord);
   const deleteWord = useStore((s) => s.deleteWord);
@@ -496,6 +503,7 @@ export default function LearnScreen() {
   const toggleQuietKnownWords = useStore((s) => s.toggleQuietKnownWords);
   const toggleAutoLineByLine = useStore((s) => s.toggleAutoLineByLine);
   const autoPlayAudio = useStore((s) => s.autoPlayAudio);
+  const setPortugueseVariant = useStore((s) => s.setPortugueseVariant);
   const toggleAutoPlayAudio = useStore((s) => s.toggleAutoPlayAudio);
   const toggleWideWordSpacing = useStore((s) => s.toggleWideWordSpacing);
   const originalLines = useMemo(() => lines.map((line) => line.original), [lines]);
@@ -2678,6 +2686,8 @@ export default function LearnScreen() {
           onToggleAutoLineByLine={toggleAutoLineByLine}
           autoPlayAudio={autoPlayAudio}
           onToggleAutoPlayAudio={toggleAutoPlayAudio}
+          portugueseVariant={portugueseVariant}
+          onTogglePortugueseVariant={() => setPortugueseVariant(portugueseVariant === 'br' ? 'pt' : 'br')}
           showMasteryLevelColors={showMasteryLevelColors}
           onToggleShowMasteryLevelColors={toggleShowMasteryLevelColors}
           previewLine={previewLineIndex !== null ? lines[previewLineIndex] : null}

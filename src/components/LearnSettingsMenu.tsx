@@ -1,3 +1,4 @@
+import { PORTUGUESE_VARIANT_LABELS, type PortugueseVariant } from '../utils/portugueseIpa';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, type ReactNode } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -45,6 +46,8 @@ interface LearnSettingsMenuProps {
   onToggleAutoLineByLine: () => void;
   autoPlayAudio: boolean;
   onToggleAutoPlayAudio: () => void;
+  portugueseVariant: PortugueseVariant;
+  onTogglePortugueseVariant: () => void;
   showMasteryLevelColors: boolean;
   onToggleShowMasteryLevelColors: () => void;
   showSections: boolean;
@@ -177,6 +180,8 @@ export default function LearnSettingsMenu({
   autoLineByLine,
   onToggleAutoLineByLine,
   autoPlayAudio,
+  portugueseVariant,
+  onTogglePortugueseVariant,
   onToggleAutoPlayAudio,
   showMasteryLevelColors,
   onToggleShowMasteryLevelColors,
@@ -281,6 +286,14 @@ export default function LearnSettingsMenu({
                   icon={<Text style={[styles.slashesIcon, { color: chipIconColor(showIpaBrackets) }]}>/ /</Text>}
                   selected={showIpaBrackets}
                   onPress={onToggleShowIpaBrackets}
+                />
+              )}
+              {showIpa && (
+                <Chip
+                  label={`Portuguese IPA: ${PORTUGUESE_VARIANT_LABELS[portugueseVariant].name}`}
+                  icon={<Ionicons name="language-outline" size={18} color={chipIconColor(true)} />}
+                  selected
+                  onPress={onTogglePortugueseVariant}
                 />
               )}
             </View>

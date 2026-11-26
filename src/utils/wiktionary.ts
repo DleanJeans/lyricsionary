@@ -1,3 +1,4 @@
+import { isPortugueseLanguage, parseRegionalIpa, type RegionalIpa } from './portugueseIpa';
 const API_URL = 'https://en.wiktionary.org/w/api.php?action=query&format=json&formatversion=2&origin=*&titles=';
 
 // Wikimedia rejects requests with generic user agents (e.g. okhttp on Android), so send the device's
@@ -650,6 +651,8 @@ export function parseIpa(html: string, language: string, { affix = false } = {})
 
 export interface WiktionaryPronunciation {
   ipa: string[];
+  /** Portuguese: the IPA Wiktionary tags Brazil and Portugal, `ipa` having both, Brazilian first */
+  regional?: RegionalIpa;
   audio: WiktionaryAudio[];
   /**
    * The words the IPA was put together from when the entry has none of its own, e.g. ["leicht", "-igkeit"]
@@ -1162,7 +1165,12 @@ export async function getWiktionaryPronunciation(word: string, language: string,
     for (const title of variants) {
       const html = await fetchPageHtml(title);
       if (!html) continue;
-      const pronunciation = { ipa: parseIpa(html, language), audio: parseAudio(html, language).slice(0, MAX_AUDIO) };
+      const regional = isPortugueseLanguage(language) ? parseRegionalIpa(getLanguageSection(html, language) ?? '') : undefined;
+      const pronunciation: WiktionaryPronunciation = {
+        ipa: regional && regional.br.length + regional.pt.length > 0 ? [...regional.br, ...regional.pt] : parseIpa(html, language),
+        audio: parseAudio(html, language).slice(0, MAX_AUDIO),
+        ...(regional && { regional }),
+      };
       found ??= { html, pronunciation };
       if (pronunciation.ipa.length > 0 || pronunciation.audio.length > 0) {
         found = { html, pronunciation };

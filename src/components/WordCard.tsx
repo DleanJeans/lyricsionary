@@ -11,6 +11,7 @@ import { useStore } from '../store/useStore';
 import { WordEntry } from '../types';
 import { prepareEmojiSuggestions } from '../utils/emojiSuggestion';
 import { splitIpas } from '../utils/ipaList';
+import { brAndPt, isPortugueseLanguage } from '../utils/portugueseIpa';
 import { findSearchMatches } from '../utils/search';
 import { nextDueAt } from '../utils/wordQuiz';
 import { emojisByCategory } from 'rn-emoji-keyboard';
@@ -101,7 +102,7 @@ export default function WordCard({
   const wiktionary = useWiktionaryPronunciation(item.word, item.language, {
     enabled: showClose,
     savedAudio: item.audio,
-    needsIpa: !item.pronunciation,
+    needsIpa: !item.pronunciation || (isPortugueseLanguage(item.language) && !brAndPt(item).pt),
   });
   // Look up opens without first reading every emoji's name for its suggestions
   useEffect(() => {
@@ -114,9 +115,25 @@ export default function WordCard({
   useEffect(() => {
     if (showClose && !item.audio && wiktionary.loaded) setWordAudio(item.id, wiktionary.audio);
   }, [showClose, item.id, item.audio, wiktionary.loaded, wiktionary.audio, setWordAudio]);
-  // Wiktionary's IPA until the word has one of its own
-  const allIpas = (item.pronunciation ? splitIpas(item.pronunciation) : wiktionary.ipa)
-    .map((one) => (/[/[\]]/.test(one) ? one : `/${one}/`));
+  // Wiktionary's IPA until the word has one of its own. A Portuguese word has a Brazilian and a European one,
+  // the preferred one first, each tagged
+  const portugueseVariant = useStore((s) => s.portugueseVariant);
+  const bracket = (one: string) => (/[/[\]]/.test(one) ? one : `/${one}/`);
+  const tagged: { ipa: string; tag?: string }[] = (() => {
+    if (!isPortugueseLanguage(item.language)) {
+      return (item.pronunciation ? splitIpas(item.pronunciation) : wiktionary.ipa).map((ipa) => ({ ipa: bracket(ipa) }));
+    }
+    const own = brAndPt(item);
+    const regional = wiktionary.regional;
+    const br = own.br ? splitIpas(own.br) : regional ? regional.br : wiktionary.ipa;
+    const pt = own.pt ? splitIpas(own.pt) : regional?.pt ?? [];
+    const group = (ipas: string[], tag: string) => ipas.map((ipa) => ({ ipa: bracket(ipa), tag }));
+    const [brGroup, ptGroup] = [group(br, 'BR'), group(pt, 'PT')];
+    // A word with IPA for just one of them needs no tag
+    if (brGroup.length === 0 || ptGroup.length === 0) return [...brGroup, ...ptGroup].map(({ ipa }) => ({ ipa }));
+    return portugueseVariant === 'pt' ? [...ptGroup, ...brGroup] : [...brGroup, ...ptGroup];
+  })();
+  const allIpas = tagged.map((t) => t.ipa);
   // One IPA sits beside the word; several each get a box of their own below it
   const ipa = allIpas.length === 1 ? allIpas[0] : '';
   // The emoji of the selected line's context in Learn, otherwise the first context's
@@ -212,12 +229,13 @@ export default function WordCard({
             </View>
             {allIpas.length > 1 && (
               <View style={styles.ipaBoxes}>
-                {allIpas.map((one) => {
+                {tagged.map(({ ipa: one, tag }) => {
                   // The one this line is sung with: the context's own, else the first
                   const bare = (s: string) => s.replace(/[/[\]]/g, '').trim();
                   const used = context?.ipa ? bare(context.ipa) === bare(one) : one === allIpas[0];
                   return (
-                    <View key={one} style={[styles.ipaBox, used && styles.ipaBoxUsed]} accessibilityLabel={used ? `IPA ${one}, used in this line` : `IPA ${one}`}>
+                    <View key={`${tag}${one}`} style={[styles.ipaBox, used && styles.ipaBoxUsed]} accessibilityLabel={used ? `IPA ${one}, used in this line` : `IPA ${one}`}>
+                      {tag ? <Text style={[styles.ipaBoxTag, used && styles.ipaBoxTextUsed]}>{tag}</Text> : null}
                       <Text style={[styles.ipaBoxText, used && styles.ipaBoxTextUsed]}>{one}</Text>
                     </View>
                   );
@@ -579,6 +597,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 9,
     paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ipaBoxTag: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    color: Colors.textMuted,
   },
   ipaBoxUsed: {
     borderColor: Colors.primary,

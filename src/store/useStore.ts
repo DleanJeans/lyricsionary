@@ -10,6 +10,7 @@ import { localDay, QuizKind, recordAnswer } from '../utils/wordQuiz';
 import { ActivityLog, addActivity, DayActivity, moveField } from '../utils/activity';
 import { findSavedWord, linkForms, lowercaseEntry, mergeWordEntries, splitForm } from '../utils/wordForms';
 import { isSameLanguage, languageKey } from '../constants/languages';
+import type { PortugueseVariant } from '../utils/portugueseIpa';
 import { addWordEvent, levelChangeEvent } from '../utils/wordHistory';
 
 const SONGS_KEY = '@lyricsionary_songs';
@@ -56,7 +57,7 @@ export function makeIgnoredWordChecker(ignoredWords: IgnoredWord[]): (word: stri
 
 // Learn display settings kept across app restarts. Not showTranslations, which follows the
 // current song's selected translation languages.
-const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showMeaning', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'annotationGap', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine', 'autoPlayAudio'] as const;
+const LEARN_SETTINGS = ['fontSize', 'blurTranslations', 'showMasteryLevelColors', 'showIpa', 'showIpaBrackets', 'showEmoji', 'showMeaning', 'showSections', 'reverseLyrics', 'wideWordSpacing', 'annotationGap', 'highlightNewWords', 'quietKnownWords', 'autoLineByLine', 'autoPlayAudio', 'portugueseVariant'] as const;
 export type LearnSettings = Pick<AppState, (typeof LEARN_SETTINGS)[number]>;
 
 interface AppState {
@@ -98,6 +99,7 @@ interface AppState {
   quietKnownWords: boolean;
   autoLineByLine: boolean;
   autoPlayAudio: boolean;
+  portugueseVariant: PortugueseVariant;  // Which Portuguese IPA goes first: Brazilian or European
   matchedSongsSearchQuery: string | null;
   matchedSongsCount: number;
   isLoadingSong: boolean;
@@ -143,6 +145,7 @@ interface AppState {
   toggleHighlightNewWords: () => void;
   toggleQuietKnownWords: () => void;
   toggleAutoLineByLine: () => void;
+  setPortugueseVariant: (variant: PortugueseVariant) => void;
   toggleAutoPlayAudio: () => void;
   loadLearnSettings: () => Promise<void>;
 
@@ -154,7 +157,8 @@ interface AppState {
     pronunciation?: string,
     contexts?: WordContext[],
     masteryLevel?: MasteryLevel,
-    audio?: WiktionaryAudio[]
+    audio?: WiktionaryAudio[],
+    pronunciationPT?: string
   ) => Promise<void>;
   setWordAudio: (id: string, audio: WiktionaryAudio[]) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
@@ -256,6 +260,7 @@ export const useStore = create<AppState>((set, get) => ({
   quietKnownWords: true,
   autoLineByLine: true,
   autoPlayAudio: false,
+  portugueseVariant: 'br',
   matchedSongsSearchQuery: null,
   matchedSongsCount: 0,
   isLoadingSong: false,
@@ -395,6 +400,7 @@ export const useStore = create<AppState>((set, get) => ({
   toggleQuietKnownWords: () => setLearnSettings({ quietKnownWords: !get().quietKnownWords }),
 
   toggleAutoLineByLine: () => setLearnSettings({ autoLineByLine: !get().autoLineByLine }),
+  setPortugueseVariant: (portugueseVariant) => setLearnSettings({ portugueseVariant }),
   toggleAutoPlayAudio: () => setLearnSettings({ autoPlayAudio: !get().autoPlayAudio }),
 
   loadLearnSettings: async () => {
@@ -469,7 +475,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addOrUpdateWord: async (word, language, pronunciation, contexts, masteryLevel, audio) => {
+  addOrUpdateWord: async (word, language, pronunciation, contexts, masteryLevel, audio, pronunciationPT) => {
     const existing = findSavedWord(get().words, word, language);
     let words: WordEntry[];
     const levelChange = existing ? levelChangeEvent(existing.masteryLevel, masteryLevel, Date.now()) : null;
@@ -482,6 +488,7 @@ export const useStore = create<AppState>((set, get) => ({
               // An editor save is authoritative: removed contexts stay removed,
               // and an explicitly cleared pronunciation stays cleared.
               pronunciation: pronunciation !== undefined ? pronunciation : w.pronunciation,
+              pronunciationPT: pronunciationPT !== undefined ? pronunciationPT || undefined : w.pronunciationPT,
               contexts: contexts !== undefined
                 ? contexts.filter(c => c.context || c.emoji || c.ipa || c.definition)
                 : w.contexts,
@@ -497,6 +504,7 @@ export const useStore = create<AppState>((set, get) => ({
         word,
         language,
         pronunciation: pronunciation ?? '',
+        ...(pronunciationPT ? { pronunciationPT } : {}),
         contexts: (contexts ?? []).filter(c => c.context || c.emoji || c.ipa || c.definition),
         lastLookedUp: Date.now(),
         savedAt: Date.now(),

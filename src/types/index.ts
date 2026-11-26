@@ -101,6 +101,10 @@ export interface WordEntry {
   word: string;
   language: string;
   pronunciation: string;
+  /** Portuguese words: the European IPA, while `pronunciation` is the Brazilian one */
+  pronunciationPT?: string;
+  /** Set on a copy in Learn whose pronunciation and pronunciationPT are swapped to put European first, never saved */
+  ptFirst?: boolean;
   contexts: WordContext[];
   lastLookedUp: number;
   /** When the word was first saved, for the sidebar's count of words saved this week */

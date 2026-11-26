@@ -30,6 +30,7 @@ import WordTransformButtons from '../components/WordTransformButtons';
 import MasteryLevelSelector from '../components/MasteryLevelSelector';
 import PronunciationAudio from '../components/PronunciationAudio';
 import IpaBoxes from '../components/IpaBoxes';
+import { isPortugueseLanguage, PORTUGUESE_VARIANT_LABELS } from '../utils/portugueseIpa';
 import WordSenseList, { type WordSenseData } from '../components/WordSenseList';
 import { Colors } from '../constants/theme';
 import { getEndonym, isSameLanguage } from '../constants/languages';
@@ -110,7 +111,7 @@ export default function WordLookupScreen() {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'useDefinition' && data.text) {
         takeWiktionaryDefinition(String(data.text));
-      } else if (data.type === 'ipa' && data.results) {
+      } else if (data.type === 'ipa' && data.results && !isPortuguese) {
         setScrapedIpaResults(data.results);
         // Fill in an empty pronunciation with the page's first IPA
         const firstIpa = (data.results as string[]).find(Boolean);
@@ -143,6 +144,9 @@ export default function WordLookupScreen() {
   languageRef.current = language;
   useEffect(() => setStudyLanguage(language), [language]);
   const [pronunciation, setPronunciation] = useState('');
+  // Portuguese: `pronunciation` is the Brazilian IPA and this the European one
+  const [pronunciationPT, setPronunciationPT] = useState('');
+  const isPortuguese = isPortugueseLanguage(language);
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('Seen');
   const [note, setNote] = useState('');
   const [scrapedIpaResults, setScrapedIpaResults] = useState<string[]>([]);
@@ -224,6 +228,7 @@ export default function WordLookupScreen() {
       if (existingWord) {
         setLanguage(existingWord.language);
         setPronunciation(existingWord.pronunciation || cardIpa?.[0] || '');
+        setPronunciationPT(existingWord.pronunciationPT ?? '');
         setMasteryLevel(existingWord.masteryLevel || 'Seen');
         setNote(existingWord.note ?? '');
 
@@ -280,6 +285,7 @@ export default function WordLookupScreen() {
         }
       } else {
         setPronunciation(cardIpa?.[0] ?? '');
+        setPronunciationPT('');
         setMasteryLevel('Seen');
         setNote('');
         setWordSenses([{ uid: mkUid(), context: lyricsLine || '', emoji: '', ipa: '', definition: '', songId, songName, ...senseTranslation(songId, lyricsLine, translationLine), fromSong: !!(source === 'Learn' && lyricsLine), occurrence: routeOccurrence || 1, isNew: true }]);
@@ -301,6 +307,7 @@ export default function WordLookupScreen() {
     if (!existing) return true;
     if (language !== existing.language) return true;
     if (pronunciation !== existing.pronunciation) return true;
+    if (isPortuguese && pronunciationPT !== (existing.pronunciationPT ?? '')) return true;
     if (masteryLevel !== (existing.masteryLevel || 'Seen')) return true;
     if (note.trim() !== (existing.note ?? '')) return true;
     const normalizeSense = (s: any) => `${s.context || ''}|${s.emoji || ''}|${s.ipa || ''}|${s.definition || ''}|${s.songId || ''}|${s.occurrence || 1}|${s.partOfSpeech || ''}|${s.definitionAt ?? ''}`;
@@ -314,7 +321,7 @@ export default function WordLookupScreen() {
       .sort()
       .join('||');
     return currentNormalized !== storedNormalized;
-  }, [displayWord, isNewWord, language, pronunciation, masteryLevel, note, wordSenses, words]);
+  }, [displayWord, isNewWord, language, pronunciation, pronunciationPT, isPortuguese, masteryLevel, note, wordSenses, words]);
 
   // The word a language was picked by hand for, which stops the switch to the song's next language
   const languagePickedForRef = useRef<string | undefined>(undefined);
@@ -401,8 +408,8 @@ export default function WordLookupScreen() {
   const wiktionaryPronunciation = useWiktionaryPronunciation(wiktionaryWord, language, {
     // The saved recordings are for the saved word's language
     savedAudio: savedWord && isSameLanguage(savedWord.language, language) ? savedWord.audio : undefined,
-    // The Wiktionary tab reads the IPA itself
-    needsIpa: false,
+    // The Wiktionary tab reads the IPA itself, except Portuguese, whose Brazilian and European IPA come from the page
+    needsIpa: isPortuguese,
   });
   const pronunciationAudio = wiktionaryPronunciation.audio;
 
@@ -603,7 +610,8 @@ export default function WordLookupScreen() {
       if (moved && isSameLanguage(moved.language, language)) await updateWordEntry(moved.id, { language });
       await addOrUpdateWord(
         displayWord, language, pronunciation, contexts, masteryLevel,
-        wiktionaryPronunciation.loaded ? pronunciationAudio : undefined
+        wiktionaryPronunciation.loaded ? pronunciationAudio : undefined,
+        isPortuguese ? pronunciationPT : undefined
       );
       // Cards that belong to the base or another form are saved back on that word
       const owners = new Set(wordSenses.map((b) => b.ownerId).filter((id): id is string => !!id));
@@ -714,7 +722,17 @@ export default function WordLookupScreen() {
     return () => clearTimeout(timer);
   }, [searchingGoogleIpa]);
   const pageIpa = lookupSource === 'wiktionary' || ipaSearch || numberWord ? scrapedIpaResults : [];
-  const ipaOptions = cardIpa ?? (pageIpa.length > 0 ? pageIpa : derivedIpa);
+  const ipaOptions = isPortuguese ? [] : cardIpa ?? (pageIpa.length > 0 ? pageIpa : derivedIpa);
+  // Wiktionary's IPA tagged Brazil and Portugal fills in the two empty boxes and is offered for adding
+  const regionalIpa = isPortuguese ? wiktionaryPronunciation.regional : undefined;
+  const firstBrIpa = regionalIpa?.br[0];
+  const firstPtIpa = regionalIpa?.pt[0];
+  useEffect(() => {
+    if (firstBrIpa) setPronunciation((current) => current || firstBrIpa);
+  }, [firstBrIpa]);
+  useEffect(() => {
+    if (firstPtIpa) setPronunciationPT((current) => current || firstPtIpa);
+  }, [firstPtIpa]);
   // Fill in an empty pronunciation with the guess, as the page's own IPA would be
   const firstDerivedIpa = derivedIpa[0];
   useEffect(() => {
@@ -938,33 +956,67 @@ export default function WordLookupScreen() {
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Pronunciation</Text>
-            <IpaBoxes value={pronunciation} onChange={setPronunciation} loading={searchingGoogleIpa} />
-            {!numberWord && wiktionaryHasNoIpa && !pronunciation.trim() && !(ipaSearch && lookupSource === 'google') && (
-              <TouchableOpacity
-                style={styles.ipaSearchButton}
-                onPress={searchGoogleForIpa}
-                accessibilityRole="button"
-                accessibilityLabel={`Find the IPA of ${displayWord} on Google`}
-              >
-                <Ionicons name="logo-google" size={14} color={Colors.primary} />
-                <Text style={styles.ipaSearchButtonText}>No IPA on Wiktionary. Find it on Google</Text>
-              </TouchableOpacity>
-            )}
-            {ipaOptions.length > 0 && (
-              <View style={styles.ipaResultsRow}>
-                {ipaOptions.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.ipaResultButton, styles.ipaResultButtonRow]}
-                    // Adds it to the IPAs already there, so a word can keep several
-                    onPress={() => setPronunciation((current) => addIpa(current, ipa))}
-                    accessibilityLabel={`Add IPA ${ipa}`}
-                  >
-                    <Ionicons name="add" size={14} color={Colors.primaryLight} />
-                    <Text style={styles.ipaResultButtonText}>{ipa}</Text>
-                  </TouchableOpacity>
+            {isPortuguese ? (
+              <View style={styles.ipaColumns}>
+                {([
+                  { variant: 'br' as const, value: pronunciation, set: setPronunciation, options: regionalIpa?.br ?? [] },
+                  { variant: 'pt' as const, value: pronunciationPT, set: setPronunciationPT, options: regionalIpa?.pt ?? [] },
+                ]).map(({ variant, value, set, options }) => (
+                  <View key={variant} style={styles.ipaColumn}>
+                    <View style={styles.ipaColumnHeader}>
+                      <Ionicons name={variant === 'br' ? 'earth-outline' : 'earth'} size={14} color={Colors.textSecondary} />
+                      <Text style={styles.ipaColumnLabel}>{PORTUGUESE_VARIANT_LABELS[variant].name} ({PORTUGUESE_VARIANT_LABELS[variant].short})</Text>
+                    </View>
+                    <IpaBoxes
+                      value={value}
+                      onChange={set}
+                      loading={variant === 'br' && wiktionaryPronunciation.pending && !value.trim()}
+                    />
+                    {options.filter((ipa) => !value.includes(ipa)).map((ipa) => (
+                      <TouchableOpacity
+                        key={ipa}
+                        style={[styles.ipaResultButton, styles.ipaResultButtonRow]}
+                        onPress={() => set((current) => addIpa(current, ipa))}
+                        accessibilityLabel={`Add ${PORTUGUESE_VARIANT_LABELS[variant].name} IPA ${ipa}`}
+                      >
+                        <Ionicons name="add" size={14} color={Colors.primaryLight} />
+                        <Text style={styles.ipaResultButtonText}>{ipa}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 ))}
               </View>
+            ) : (
+              <>
+            <IpaBoxes value={pronunciation} onChange={setPronunciation} loading={searchingGoogleIpa} />
+                {!numberWord && wiktionaryHasNoIpa && !pronunciation.trim() && !(ipaSearch && lookupSource === 'google') && (
+                  <TouchableOpacity
+                    style={styles.ipaSearchButton}
+                    onPress={searchGoogleForIpa}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Find the IPA of ${displayWord} on Google`}
+                  >
+                    <Ionicons name="logo-google" size={14} color={Colors.primary} />
+                    <Text style={styles.ipaSearchButtonText}>No IPA on Wiktionary. Find it on Google</Text>
+                  </TouchableOpacity>
+                )}
+                {ipaOptions.length > 0 && (
+                  <View style={styles.ipaResultsRow}>
+                    {ipaOptions.filter(ipa => ipa && !pronunciation.includes(ipa)).map((ipa, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[styles.ipaResultButton, styles.ipaResultButtonRow]}
+                        // Adds it to the IPAs already there, so a word can keep several
+                        onPress={() => setPronunciation((current) => addIpa(current, ipa))}
+                        accessibilityLabel={`Add IPA ${ipa}`}
+                      >
+                        <Ionicons name="add" size={14} color={Colors.primaryLight} />
+                        <Text style={styles.ipaResultButtonText}>{ipa}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
             <PronunciationAudio audio={pronunciationAudio} wordId={savedWord?.id} />
           </View>
@@ -1330,6 +1382,25 @@ const styles = StyleSheet.create({
     color: Colors.text,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  ipaColumns: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  ipaColumn: {
+    flex: 1,
+    gap: 8,
+  },
+  ipaColumnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ipaColumnLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textSecondary,
   },
   ipaResultsRow: {
     flexDirection: 'row',

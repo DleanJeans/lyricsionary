@@ -13,7 +13,8 @@ import { getGermanExpandedForm, hasHyphenatedPrefix, splitElisionParts } from '.
 export type LangCtx = ReturnType<typeof buildLangCtx>;
 
 export function buildLangCtx(words: WordEntry[], languages?: string[]) {
-  const wordEntryIndex = songWordIndex(words, languages);
+  // Only the first language's saved words count: a line in a song in several languages is in one of them
+  const wordEntryIndex = songWordIndex(words, languages?.slice(0, 1));
   // Saved phrases whose words sit apart in a line, e.g. hört … auf for aufhören
   const savedSplitPhrases = [...new Set(wordEntryIndex.values())].flatMap((entry) => spellingsOf(entry).filter(isSplitPhrase));
   const findWordEntry = (candidate: string) => wordEntryIndex.get(candidate.toLowerCase());

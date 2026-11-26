@@ -172,19 +172,37 @@ export default function LearnScreen() {
       const songLanguages = song?.originalLanguages;
       if (!line || !songLanguages || songLanguages.length < 2) return songLanguages;
       if (langCtxCache.lines.has(line)) return langCtxCache.lines.get(line);
-      const tokens = splitLyricTokens(line).map(cleanLyricWord).filter(Boolean);
+      // Each saved word votes for the language it's saved in; one saved in several (que in French and
+      // Portuguese) shares its vote, so words only one language has decide
+      const voteOf = (text: string): number[] | null => {
+        const votes = songLanguages.map(() => 0);
+        for (const token of splitLyricTokens(text)) {
+          const word = cleanLyricWord(token);
+          if (!word) continue;
+          const matches = songLanguages.map((language) => !!ctxFor([language]).findWordEntry(word));
+          const count = matches.filter(Boolean).length;
+          if (count) matches.forEach((match, i) => { if (match) votes[i] += 1 / count; });
+        }
+        return votes.some((v) => v > 0) ? votes : null;
+      };
+      let votes = voteOf(line);
+      // A line with no saved words is in the language of the nearest line that has some
+      if (!votes) {
+        const all = song?.originalLyrics.split('\n') ?? [];
+        const at = all.findIndex((l) => lineIgnoreKey(l) === lineIgnoreKey(line));
+        for (let distance = 1; at >= 0 && !votes && distance < all.length; distance++) {
+          for (const neighbor of [all[at - distance], all[at + distance]]) {
+            if (neighbor && !votes) votes = voteOf(neighbor);
+          }
+        }
+      }
       let best = 0;
-      let bestCount = 0;
-      songLanguages.forEach((language, i) => {
-        const index = ctxFor([language]);
-        const count = tokens.filter((token) => index.findWordEntry(token)).length;
-        if (count > bestCount) { best = i; bestCount = count; }
-      });
+      votes?.forEach((v, i) => { if (v > votes![best] + 1e-9) best = i; });
       const languages = best === 0 ? songLanguages : [songLanguages[best], ...songLanguages.filter((_, i) => i !== best)];
       langCtxCache.lines.set(line, languages);
       return languages;
     },
-    [song?.lineLanguages, song?.originalLanguages, langCtxCache, ctxFor]
+    [song?.lineLanguages, song?.originalLanguages, song?.originalLyrics, langCtxCache, ctxFor]
   );
   const baseCtx = ctxFor(song?.originalLanguages);
   const { wordEntryIndex } = baseCtx;

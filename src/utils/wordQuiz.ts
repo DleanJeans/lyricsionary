@@ -30,6 +30,8 @@ export const QUIZ_RULES = {
   options: 4,
 };
 
+/** A hinted answer stops this short of the points a level needs */
+const HINT_CAP = 0.5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const quizKindFor = (level?: MasteryLevel): QuizKind | null =>
@@ -117,9 +119,9 @@ export function progressLabel(level: MasteryLevel | undefined, quiz: QuizStats |
   const streak = quiz?.streak ?? 0;
   switch (level ?? 'Seen') {
     case 'Seen':
-      return `${QUIZ_RULES.toRecognized - streak} more ${QUIZ_RULES.toRecognized - streak === 1 ? 'point' : 'points'} to Recognized`;
+      return `${QUIZ_RULES.toRecognized - Math.floor(streak)} more ${QUIZ_RULES.toRecognized - Math.floor(streak) === 1 ? 'point' : 'points'} to Recognized`;
     case 'Recognized':
-      return `${QUIZ_RULES.toRecalled - streak} more ${QUIZ_RULES.toRecalled - streak === 1 ? 'point' : 'points'}, one answer a day, to Recalled`;
+      return `${QUIZ_RULES.toRecalled - Math.floor(streak)} more ${QUIZ_RULES.toRecalled - Math.floor(streak) === 1 ? 'point' : 'points'}, one answer a day, to Recalled`;
     case 'Recalled':
       return `Right again after ${QUIZ_RULES.knownAfterDays} days to make it Known`;
     default:
@@ -157,7 +159,8 @@ export function recordAnswer(
   kind: QuizKind,
   correct: boolean,
   now: number,
-  points = 1
+  points = 1,
+  hinted = false
 ): { masteryLevel: MasteryLevel; quiz: QuizStats } {
   const current = level ?? 'Seen';
   const before: QuizStats = quiz ?? { streak: 0, correct: 0, wrong: 0 };
@@ -167,9 +170,11 @@ export function recordAnswer(
   }
   const right: QuizStats = { ...answered, correct: before.correct + 1, lastCorrectAt: now };
   const day = localDay(now);
+  // A hinted answer (its points already lowered by the caller) can't be the one that makes a level
+  const capped = (streak: number, needed: number) => (hinted ? Math.min(streak, needed - HINT_CAP) : streak);
 
   if (current === 'Seen' && kind === 'meaning') {
-    const streak = before.streak + points;
+    const streak = capped(before.streak + points, QUIZ_RULES.toRecognized);
     return streak >= QUIZ_RULES.toRecognized
       ? { masteryLevel: 'Recognized', quiz: { ...right, streak: 0, lastCountedDay: undefined } }
       : { masteryLevel: current, quiz: { ...right, streak } };
@@ -177,14 +182,14 @@ export function recordAnswer(
   if (current === 'Recognized' && kind === 'lyric') {
     // Only the first correct answer of a day counts
     if (before.lastCountedDay === day) return { masteryLevel: current, quiz: right };
-    const streak = before.streak + points;
+    const streak = capped(before.streak + points, QUIZ_RULES.toRecalled);
     return streak >= QUIZ_RULES.toRecalled
       ? { masteryLevel: 'Recalled', quiz: { ...right, streak: 0, lastCountedDay: undefined } }
-      : { masteryLevel: current, quiz: { ...right, streak, lastCountedDay: day } };
+      : { masteryLevel: current, quiz: { ...right, streak, lastCountedDay: hinted ? before.lastCountedDay : day } };
   }
   if (current === 'Recalled' && kind === 'lyric') {
     const gap = before.lastAnsweredAt === undefined ? 0 : now - before.lastAnsweredAt;
-    if (gap >= QUIZ_RULES.knownAfterDays * DAY_MS) {
+    if (!hinted && gap >= QUIZ_RULES.knownAfterDays * DAY_MS) {
       return { masteryLevel: 'Known', quiz: { ...right, streak: 0 } };
     }
   }

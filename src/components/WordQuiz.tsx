@@ -33,6 +33,8 @@ interface WordQuizProps {
   force?: boolean;
   /** Asked without the translation to go by, so a picked answer is worth 2 */
   noHint?: boolean;
+  /** Hints taken: each halves what a right answer is worth, down to half a point, and it can't level the word up */
+  hints?: number;
   /** Told whether the quiz is showing and not answered yet, e.g. to hide what would give the answer away */
   onPendingChange?: (pending: boolean) => void;
   /** Shows when the word's next quiz counts at the end of the result row, e.g. "Next quiz in 4 hours" */
@@ -65,7 +67,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, force = false, noHint = false, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, force = false, noHint = false, hints = 0, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -117,8 +119,10 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
 
   /** Shows the answer's level change before it's saved */
   const points = ipaShown || typedProp ? 1 : spoken && kind === 'lyric' ? (noHint ? 2 : 1) : answerPoints(spoken || (typed && noHint) ? 'spoken' : typed || noHint ? 'typed' : 'picked');
+  const hinted = hints > 0;
+  const hintedPoints = (base: number) => (hinted ? Math.max(0.5, base * 0.5 ** hints) : base);
   const predict = (right: boolean) =>
-    setPredicted({ ...stored, ...recordAnswer(stored.masteryLevel, stored.quiz, kind, right, Date.now(), points) });
+    setPredicted({ ...stored, ...recordAnswer(stored.masteryLevel, stored.quiz, kind, right, Date.now(), hintedPoints(points), hinted) });
 
   const choose = async (index: number) => {
     if (answered) return;
@@ -127,7 +131,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (practice) return;
     predict(index === quiz.answerIndex);
     await afterPaint();
-    setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex, 1)) ?? null);
+    setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex, hintedPoints(1), hinted)) ?? null);
   };
 
   const submitTyped = async (giveUp = false, result?: 'right' | 'accents' | 'capital' | 'wrong') => {
@@ -139,7 +143,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (practice) return;
     predict(right);
     await afterPaint();
-    setBefore((await recordQuizAnswer(entry.id, kind, right, points)) ?? null);
+    setBefore((await recordQuizAnswer(entry.id, kind, right, hintedPoints(points), hinted)) ?? null);
   };
 
   /** Listens for the word; a right try answers the quiz, a wrong one can be tried again */

@@ -7,7 +7,8 @@ import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/langua
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { buildTypeItems, MORE_REVIEW_SIZE, pauseSpeakingQuizzes, QUIZ_TYPES, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, speakingPaused, type ReviewItem } from '../utils/reviewQuiz';
-import type { Quiz } from '../utils/wordQuiz';
+import { isTypedQuiz, recordAnswer, type Quiz } from '../utils/wordQuiz';
+import { findDefinitionHighlight, withWordForms } from '../utils/definitionHighlight';
 import { formatIpa } from '../utils/ipaDisplay';
 import { contextTranslation } from '../utils/wordOfTheDay';
 import { Text } from './Text';
@@ -503,6 +504,41 @@ function ReviewQuestion({
   const shownHint =
     kind === 'lyric' ? (ipa && answered ? hint : (lineWord && translation) || hint) : answered ? translation : null;
   const showHint = !!shownHint && ((!listen && !ipa) || answered) && !(item.noTranslation && !answered);
+  // A hint costs points: for a quiz that hides its translation the first press shows it, and the next
+  // press (or the first, where it's already shown) highlights the matching meaning in it
+  const [hints, setHints] = useState(0);
+  const translationHidden = kind === 'meaning' || !!item.noTranslation;
+  const hintable = !!translation && !!line && !listen && !ipa && !speak && (kind === 'meaning' || !!lineWord);
+  const hintRanges = useMemo(() => {
+    if (!hintable || !translation) return null;
+    const definitions = [context?.definition, item.target?.answer, unsaved?.definition, meaning].filter((d): d is string => !!d?.trim());
+    return definitions.length ? findDefinitionHighlight(translation, withWordForms(definitions)) : null;
+  }, [hintable, translation, context?.definition, item.target?.answer, unsaved?.definition, meaning]);
+  const revealed = translationHidden && hints >= 1;
+  const highlighted = hints >= (translationHidden ? 2 : 1);
+  const nextHint: 'reveal' | 'highlight' | null =
+    !hintable || answered || practice ? null : translationHidden && hints === 0 ? 'reveal' : !highlighted && hintRanges ? 'highlight' : null;
+  // A hint stops a word that would level up from doing it
+  const hintCostsLevel = nextHint !== null && hints === 0 && (() => {
+    const before = entry.masteryLevel ?? 'Seen';
+    return recordAnswer(before, entry.quiz, kind, true, Date.now(), isTypedQuiz(before, kind) ? 2 : 1).masteryLevel !== before;
+  })();
+  const hintedTranslation = (text: string) => {
+    if (!highlighted || !hintRanges) return text;
+    // Text sets its own font size on nested Text, so the parts are given this one
+    const font = { fontSize: styles.hint.fontSize };
+    const parts: React.ReactNode[] = [];
+    let at = 0;
+    hintRanges.forEach(([start, end], i) => {
+      parts.push(text.slice(at, start));
+      parts.push(<Text key={i} style={[font, styles.hintMatch]}>{text.slice(start, end)}</Text>);
+      at = end;
+    });
+    parts.push(text.slice(at));
+    return parts;
+  };
+  const hintText = revealed && !answered ? translation : shownHint;
+  const hintShown = (showHint || (revealed && !!translation)) && !answered;
   return (
     <View style={styles.question}>
       {showLine && !answered && (
@@ -548,7 +584,22 @@ function ReviewQuestion({
       {speak && kind === 'meaning' && !answered && <PronunciationAudio audio={entry.audio ?? []} wordId={entry.id} />}
       {speakIpa && !answered && <Text style={styles.ipa}>{formatIpa(speakIpa, true)}</Text>}
       {ipa && !answered && <Text style={styles.ipa}>{formatIpa(ipa, true)}</Text>}
-      {showHint && !answered ? <Text style={styles.hint}>{shownHint}</Text> : null}
+      {hintShown ? <Text style={styles.hint}>{hintedTranslation(hintText!)}</Text> : null}
+      {nextHint ? (
+        <TouchableOpacity
+          onPress={() => setHints(hints + 1)}
+          hitSlop={8}
+          style={styles.hintButton}
+          accessibilityRole="button"
+          accessibilityLabel={`${nextHint === 'reveal' ? 'Hint: show the translation' : 'Hint: highlight the meaning in the translation'}${hintCostsLevel ? '. This answer can no longer level the word up' : ''}`}
+        >
+          <Ionicons name={nextHint === 'reveal' ? 'bulb-outline' : 'color-wand-outline'} size={16} color={Colors.primaryLight} />
+          <Text style={styles.hintButtonText}>
+            {hints > 0 ? 'More hint · highlight meaning' : nextHint === 'reveal' ? 'Hint · show translation' : 'Hint · highlight meaning'}
+            {hintCostsLevel ? ' · no level up' : ''}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
       <WordQuiz
         // Remounted for the swapped quiz, so how it's answered (typed or picked) is decided again
         key={noAudio ? 'swapped' : 'asked'}
@@ -591,6 +642,7 @@ function ReviewQuestion({
         spoken={speak}
         force={item.forced}
         noHint={item.noTranslation}
+        hints={hints}
         ipaShown={!!speakIpa || !!ipa}
         audio={!listen}
         onLookUpWord={onCloseReview}
@@ -767,6 +819,19 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontStyle: 'italic',
   },
+  hintMatch: { fontWeight: '700', fontStyle: 'normal', color: Colors.text },
+  hintButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
+  },
+  hintButtonText: { fontSize: 13, fontWeight: '600', color: Colors.primaryLight },
   quizWord: {
     fontSize: 14,
     fontWeight: '700',

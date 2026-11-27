@@ -310,3 +310,15 @@ describe('words answered right earlier today', () => {
     expect(quiz.options).toContain('love');
   });
 });
+
+describe('recordAnswer with hints', () => {
+  it('never levels a word up on a hinted answer, even one that would have', () => {
+    const quiz = { streak: 1.5, correct: 1, wrong: 0 };
+    expect(recordAnswer('Seen', quiz, 'meaning', true, 1e12, 0.5, true).masteryLevel).toBe('Seen');
+    expect(recordAnswer('Seen', quiz, 'meaning', true, 1e12, 1, false).masteryLevel).toBe('Recognized');
+  });
+  it('does not make a Recalled word Known', () => {
+    const quiz = { streak: 0, correct: 3, wrong: 0, lastAnsweredAt: 0 };
+    expect(recordAnswer('Recalled', quiz, 'lyric', true, 30 * 86400000, 0.5, true).masteryLevel).toBe('Recalled');
+  });
+});

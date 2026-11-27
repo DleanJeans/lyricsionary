@@ -27,19 +27,41 @@ export default function PronunciationAudio({ audio: audioProp, compact = false, 
   const [expanded, setExpanded] = useState(false);
   const word = useStore((s) => (wordId ? s.words.find((w) => w.id === wordId) : undefined));
   const setWordAudio = useStore((s) => s.setWordAudio);
+  const removeWordAudio = useStore((s) => s.removeWordAudio);
+  const restoreWordAudio = useStore((s) => s.restoreWordAudio);
   // The saved recordings, so a fix shows at once even where the word was passed in as a snapshot
   const audio = word?.audio ?? audioProp;
   const [fixing, setFixing] = useState(false);
   const [reloading, setReloading] = useState(false);
+  // Set when a fetch came back without any (more) recordings
+  const [none, setNone] = useState(false);
+  // The last recording flagged, so it can be put back
+  const [removed, setRemoved] = useState<{ item: WiktionaryAudio; index: number } | null>(null);
   const reload = async () => {
     if (!word) return;
     setReloading(true);
+    setNone(false);
     try {
       const result = await getWiktionaryPronunciation(word.word, word.language);
-      if (result) await setWordAudio(word.id, result.audio);
+      if (result) {
+        await setWordAudio(word.id, result.audio);
+        // Recordings flagged as wrong don't count
+        setNone(result.audio.every((a) => word.removedAudio?.includes(a.url)));
+      } else {
+        setNone(true);
+      }
+    } catch {
+      setNone(true);
     } finally {
       setReloading(false);
     }
+  };
+  const remove = async (item: WiktionaryAudio, index: number) => {
+    if (!word) return;
+    setRemoved({ item, index });
+    await removeWordAudio(word.id, item.url);
+    // Look for the next recording right away, so the word isn't left without one
+    if (audio.length <= 1) void reload();
   };
   const playerRef = useRef<AudioPlayerHandle>(null);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
@@ -55,7 +77,7 @@ export default function PronunciationAudio({ audio: audioProp, compact = false, 
     playerRef.current?.play(firstUrl);
   }, [autoPlay, firstUrl]);
 
-  if (audio.length === 0 && !(fixing && word)) return null;
+  if (audio.length === 0 && !word) return null;
 
   const play = (url: string) => {
     setPlayingUrl(url);
@@ -70,7 +92,7 @@ export default function PronunciationAudio({ audio: audioProp, compact = false, 
           <TouchableOpacity
             key={item.url}
             style={[styles.button, compact && styles.buttonCompact, playing && styles.buttonPlaying]}
-            onPress={fixing && word ? () => void setWordAudio(word.id, audio.filter((a) => a.url !== item.url)) : () => play(item.url)}
+            onPress={fixing && word ? () => void remove(item, index) : () => play(item.url)}
             accessibilityRole="button"
             accessibilityLabel={`Play pronunciation${item.label ? ` (${item.label})` : ''}`}
           >
@@ -95,7 +117,22 @@ export default function PronunciationAudio({ audio: audioProp, compact = false, 
           </TouchableOpacity>
         );
       })}
-      {fixing && word && (
+      {fixing && word && removed && (
+        <TouchableOpacity
+          style={[styles.button, compact && styles.buttonCompact, styles.moreButton]}
+          onPress={() => {
+            void restoreWordAudio(word.id, removed.item, removed.index);
+            setRemoved(null);
+            setNone(false);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Undo removing the recording"
+        >
+          <Ionicons name="arrow-undo" size={14} color={Colors.primaryLight} />
+          <Text style={[styles.buttonText, compact && styles.buttonTextCompact]}>Undo</Text>
+        </TouchableOpacity>
+      )}
+      {(audio.length === 0 || fixing) && word && (
         <TouchableOpacity
           style={[styles.button, compact && styles.buttonCompact, styles.moreButton]}
           onPress={() => void reload()}
@@ -104,9 +141,12 @@ export default function PronunciationAudio({ audio: audioProp, compact = false, 
           accessibilityLabel="Fetch the recordings from Wiktionary again"
         >
           {reloading ? <ActivityIndicator size="small" color={Colors.primaryLight} /> : <Ionicons name="refresh" size={14} color={Colors.primaryLight} />}
+          {audio.length === 0 && (
+            <Text style={[styles.buttonText, compact && styles.buttonTextCompact]}>{none ? 'No audio found, retry' : 'Fetch audio'}</Text>
+          )}
         </TouchableOpacity>
       )}
-      {word && (
+      {word && audio.length > 0 && (
         <TouchableOpacity
           style={[styles.button, compact && styles.buttonCompact, styles.moreButton]}
           onPress={() => setFixing((on) => !on)}

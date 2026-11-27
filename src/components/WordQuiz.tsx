@@ -412,7 +412,8 @@ export function AnswerAudio({ entry, collapsed = false, autoPlay = false }: { en
   useEffect(() => {
     if (!entry.audio && wiktionary.loaded) void setWordAudio(entry.id, wiktionary.audio);
   }, [entry.id, entry.audio, wiktionary.loaded, wiktionary.audio, setWordAudio]);
-  if (wiktionary.audio.length === 0) return null;
+  // A saved word with none keeps a Fetch audio button
+  if (wiktionary.audio.length === 0 && !entry.audio) return null;
   if (collapsed) return <PronunciationAudio audio={wiktionary.audio} wordId={entry.id} short compact collapsed autoPlay={autoPlay} />;
   return (
     <View style={{ alignItems: 'flex-start' }}>

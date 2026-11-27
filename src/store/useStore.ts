@@ -160,7 +160,11 @@ interface AppState {
     audio?: WiktionaryAudio[],
     pronunciationPT?: string
   ) => Promise<void>;
+  /** Saves fetched recordings, leaving out ones flagged as wrong */
   setWordAudio: (id: string, audio: WiktionaryAudio[]) => Promise<void>;
+  /** Flags a recording as wrong: removes it and keeps it from coming back; undo = restore */
+  removeWordAudio: (id: string, url: string) => Promise<void>;
+  restoreWordAudio: (id: string, item: WiktionaryAudio, index: number) => Promise<void>;
   deleteWord: (id: string) => Promise<void>;
   /** Bulk edit in Words: many words at once */
   deleteWords: (ids: string[]) => Promise<void>;
@@ -520,7 +524,26 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setWordAudio: async (id, audio) => {
-    const words = get().words.map((w) => (w.id === id ? { ...w, audio } : w));
+    const words = get().words.map((w) => (w.id === id ? { ...w, audio: audio.filter((a) => !w.removedAudio?.includes(a.url)) } : w));
+    set({ words });
+    await persist(WORDS_KEY, () => JSON.stringify(words));
+  },
+
+  removeWordAudio: async (id, url) => {
+    const words = get().words.map((w) =>
+      w.id === id ? { ...w, audio: (w.audio ?? []).filter((a) => a.url !== url), removedAudio: [...new Set([...(w.removedAudio ?? []), url])] } : w
+    );
+    set({ words });
+    await persist(WORDS_KEY, () => JSON.stringify(words));
+  },
+
+  restoreWordAudio: async (id, item, index) => {
+    const words = get().words.map((w) => {
+      if (w.id !== id) return w;
+      const audio = (w.audio ?? []).filter((a) => a.url !== item.url);
+      audio.splice(Math.min(index, audio.length), 0, item);
+      return { ...w, audio, removedAudio: (w.removedAudio ?? []).filter((u) => u !== item.url) };
+    });
     set({ words });
     await persist(WORDS_KEY, () => JSON.stringify(words));
   },

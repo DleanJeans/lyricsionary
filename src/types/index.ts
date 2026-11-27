@@ -126,6 +126,8 @@ export interface WordEntry {
   definitions?: { text: string; songId?: string; songName?: string; lyricsLine?: string }[];
   /** Wiktionary's pronunciation recordings, kept so the word doesn't fetch them again; empty when it has none */
   audio?: WiktionaryAudio[];
+  /** Recordings flagged as wrong, so fetching again skips them */
+  removedAudio?: string[];
 }
 
 export type RootTabParamList = {

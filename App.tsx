@@ -18,6 +18,7 @@ import { completeSpotifySignIn, isSpotifyCallback, isSpotifyConnected } from './
 import { usePartOfSpeechBackfill } from './src/hooks/usePartOfSpeechBackfill';
 import { useIsWide } from './src/hooks/useLayout';
 import { navigationRef } from './src/navigation/navigationRef';
+import CrashGuard from './src/components/CrashGuard';
 import ReviewSession from './src/components/ReviewSession';
 import { buildLaunchReview, buildSongReview, canReview, dueWords, type ReviewItem } from './src/utils/reviewQuiz';
 import { markTouched, useUsageTracker } from './src/services/usageTime';
@@ -45,7 +46,7 @@ const linking = {
 // Anything a screen doesn't cover shows the app background instead of the default light grey
 const navigationTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: Colors.background } };
 
-export default function App() {
+function AppContent() {
   
   const [navigationReady, setNavigationReady] = useState(false);
   const [nowPlayingRequest, setNowPlayingRequest] = useState<NowPlayingRequest | null>(null);
@@ -239,5 +240,13 @@ export default function App() {
         {launchReview && <ReviewSession dueItems={launchReview} dueTotals={launchTotals} buildForLanguage={launchTotals ? buildLaunchFor : undefined} onClose={() => { setLaunchReview(null); setLaunchTotals(undefined); }} isWide={isWide} />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+export default function App() {
+  return (
+    <CrashGuard>
+      <AppContent />
+    </CrashGuard>
   );
 }

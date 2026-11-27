@@ -243,7 +243,12 @@ function LanguageReview({ dueItems, onClose, isWide, startSize }: ReviewSessionP
   }, [finished, words]);
   // Every word due in any language, as the review reminder counts them
   const dueLeft = useMemo(() => (finished ? dueCountAt(words, Date.now()) : 0), [finished, words]);
+  // A quiz answered twice at once (Done on the keyboard and Check, or a double tap) counts once,
+  // else every question after it would start already answered
+  const answeredItem = useRef<ReviewItem | undefined>(undefined);
   const onAnswered = (correct: boolean) => {
+    if (answeredItem.current === item) return;
+    answeredItem.current = item;
     setAnswers((prev) => [...prev, correct]);
     if (!correct && !isRetry && item) setRetries((prev) => [...prev, { ...item, quiz: reshuffle(item.quiz) }]);
   };

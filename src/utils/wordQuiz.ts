@@ -450,11 +450,69 @@ function editDistance(a: string, b: string): number {
 export function checkSpokenAnswer(heardAlternatives: string[], answer: string): boolean {
   const target = spokenForm(answer);
   if (!target) return false;
-  const allowed = target.length >= 10 ? 2 : target.length >= 5 ? 1 : 0;
+  const allowed = target.length >= 10 ? 2 : target.length >= 4 ? 1 : 0;
+  // Voiced and unvoiced pairs are easy to mishear (b/p, d/t, g/k), so they count as the same sound
+  const soft = (t: string) => t.replace(/b/g, 'p').replace(/d/g, 't').replace(/g/g, 'k');
+  const softTarget = soft(target);
   return heardAlternatives.some((heard) => {
     const forms = [spokenForm(heard), ...heard.split(/\s+/).map(spokenForm)].filter(Boolean);
-    return forms.some((f) => f === target || (allowed > 0 && Math.abs(f.length - target.length) <= allowed && editDistance(f, target) <= allowed));
+    return forms.some(
+      (f) =>
+        f === target ||
+        soft(f) === softTarget ||
+        (allowed > 0 && Math.abs(f.length - target.length) <= allowed && editDistance(soft(f), softTarget) <= allowed)
+    );
   });
+}
+
+/** The guess nearest the word, e.g. the one to show as "Heard" */
+export function closestHeard(heardAlternatives: string[], answer: string): string {
+  const target = spokenForm(answer);
+  let best = heardAlternatives[0] ?? '';
+  let bestDistance = Infinity;
+  for (const heard of heardAlternatives) {
+    for (const part of [heard, ...heard.split(/\s+/)]) {
+      const f = spokenForm(part);
+      if (!f) continue;
+      const d = editDistance(f, target);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = part.trim();
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * Marks which letters of the word and of what was heard line up, by the longest run of letters they
+ * share in order (case, accents and punctuation ignored). Symbols are kept as they were written.
+ */
+export function alignSpoken(heard: string, answer: string): { heard: { char: string; hit: boolean }[]; word: { char: string; hit: boolean }[] } {
+  const fold = (c: string) => withoutAccents(c.toLowerCase());
+  const letters = (text: string) => Array.from(text).map((char) => ({ char, key: /[\p{L}\p{N}]/u.test(char) ? fold(char) : '' }));
+  const a = letters(heard);
+  const b = letters(answer);
+  const ai = a.filter((x) => x.key);
+  const bi = b.filter((x) => x.key);
+  const dp = Array.from({ length: ai.length + 1 }, () => new Array<number>(bi.length + 1).fill(0));
+  for (let i = ai.length - 1; i >= 0; i--)
+    for (let j = bi.length - 1; j >= 0; j--) dp[i][j] = ai[i].key === bi[j].key ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const hitA = new Set<object>();
+  const hitB = new Set<object>();
+  let i = 0;
+  let j = 0;
+  while (i < ai.length && j < bi.length) {
+    if (ai[i].key === bi[j].key) {
+      hitA.add(ai[i++]);
+      hitB.add(bi[j++]);
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+    else j++;
+  }
+  return {
+    heard: a.map((x) => ({ char: x.char, hit: hitA.has(x) })),
+    word: b.map((x) => ({ char: x.char, hit: !x.key || hitB.has(x) })),
+  };
 }
 
 /** Whether a typed answer must start with a capital: a German noun, or when its type is unknown a word saved capitalized */

@@ -7,7 +7,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import { moveField } from '../utils/activity';
-import { checkSpokenAnswer, answerPoints, checkTypedAnswer, mustCapitalize, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
+import { alignSpoken, closestHeard, checkSpokenAnswer, answerPoints, checkTypedAnswer, mustCapitalize, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
 import { getFlagForLanguage } from '../constants/languages';
 import DueLabel from './DueLabel';
@@ -91,6 +91,8 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const [listening, setListening] = useState(false);
   // What the speech recognizer made of the last try, when it wasn't the word
   const [speechNote, setSpeechNote] = useState<string | null>(null);
+  // The closest thing the recognizer heard on a wrong try, lined up with the word letter by letter
+  const [heardTry, setHeardTry] = useState<ReturnType<typeof alignSpoken> | null>(null);
   const stopListening = useRef<(() => void) | null>(null);
   useEffect(() => () => stopListening.current?.(), []);
   const [typedResult, setTypedResult] = useState<'right' | 'accents' | 'capital' | 'wrong' | null>(null);
@@ -150,6 +152,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   const listen = () => {
     if (answered || listening) return;
     setSpeechNote(null);
+    setHeardTry(null);
     setListening(true);
     stopListening.current = listenForWord(entry.language, entry.word, (outcome) => {
       stopListening.current = null;
@@ -158,7 +161,10 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
       if (outcome.type === 'unavailable') return setSpeechNote("This phone can't recognize speech here. Try another quiz.");
       if (outcome.type === 'nothing') return setSpeechNote("Didn't catch that. Tap the mic and try again.");
       if (checkSpokenAnswer(outcome.alternatives, entry.word)) void submitTyped(false, 'right');
-      else setSpeechNote(`Heard "${outcome.alternatives[0]}". Try again.`);
+      else {
+        setSpeechNote('Not quite. Tap the mic and try again.');
+        setHeardTry(alignSpoken(closestHeard(outcome.alternatives, entry.word), entry.word));
+      }
     });
   };
 
@@ -255,6 +261,22 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
             </TouchableOpacity>
           )}
           {!answered && <Text style={styles.speakHint}>{listening ? 'Listening…' : speechNote ?? 'Tap the mic and say it'}</Text>}
+          {!answered && !listening && heardTry && (
+            <View style={styles.heardBox}>
+              <Text style={styles.heardLabel}>Heard</Text>
+              <Text style={styles.heardText}>
+                {heardTry.heard.map((c, i) => (
+                  <Text key={i} style={[styles.heardText, { color: c.hit ? Colors.success : Colors.danger }]}>{c.char}</Text>
+                ))}
+              </Text>
+              <Text style={styles.heardLabel}>Word</Text>
+              <Text style={styles.heardText}>
+                {heardTry.word.map((c, i) => (
+                  <Text key={i} style={[styles.heardText, { color: c.hit ? Colors.success : Colors.danger }]}>{c.char}</Text>
+                ))}
+              </Text>
+            </View>
+          )}
         </View>
       ) : typed ? (
         <View style={styles.typedRow}>
@@ -677,6 +699,9 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
   },
+  heardBox: { alignItems: 'center', gap: 2, marginTop: 4 },
+  heardLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase' },
+  heardText: { fontSize: 22, fontWeight: '600', textAlign: 'center' },
   typedRow: {
     flexDirection: 'row',
     gap: 8,

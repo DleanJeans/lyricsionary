@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFlagForLanguage, getLanguageNameFromCode } from '../constants/languages';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
-import { buildTypeItems, MORE_REVIEW_SIZE, pauseSpeakingQuizzes, QUIZ_TYPES, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, type ReviewItem } from '../utils/reviewQuiz';
+import { buildTypeItems, MORE_REVIEW_SIZE, pauseSpeakingQuizzes, QUIZ_TYPES, pickReviewItems, rebuildReviewQuiz, reviewIpa, REVIEW_SIZES, speakingPaused, type ReviewItem } from '../utils/reviewQuiz';
 import type { Quiz } from '../utils/wordQuiz';
 import { formatIpa } from '../utils/ipaDisplay';
 import { contextTranslation } from '../utils/wordOfTheDay';

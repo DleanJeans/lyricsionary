@@ -92,10 +92,9 @@ export const installGlobalCrashHandlers = () => {
   };
   try {
     const hermes = (globalThis as any).HermesInternal;
+    // Hermes' own Promise; the JS fallback module can't be resolved by Metro here
     if (hermes?.hasPromise?.() && hermes.enablePromiseRejectionTracker) {
       hermes.enablePromiseRejectionTracker({ allRejections: true, onUnhandled });
-    } else {
-      require('promise/setimmediate/rejection-tracking').enable({ allRejections: true, onUnhandled });
     }
   } catch {
     // Tracking is best effort

@@ -623,3 +623,13 @@ export function buildTypeItems(type: QuizType, language: string, words: WordEntr
   }
   return items.slice(0, size);
 }
+
+/** The quiz type a question was asked as, from how WordQuiz was set up; the id is one of QUIZ_TYPES */
+export function quizTypeId(o: { kind: QuizKind; spoken?: boolean; ipa?: boolean; listen?: boolean; typed?: boolean; blind?: boolean }): string {
+  if (o.spoken) return o.kind === 'meaning' ? 'say-word' : o.blind ? 'say-gap-blind' : 'say-gap';
+  if (o.ipa) return o.kind === 'meaning' ? 'meaning-ipa' : 'lyric-ipa';
+  if (o.listen) return o.kind === 'meaning' ? 'meaning-listen' : 'lyric-listen';
+  if (o.kind === 'meaning') return 'meaning';
+  if (o.typed) return o.blind ? 'lyric-typed-blind' : 'lyric-typed';
+  return o.blind ? 'lyric-blind' : 'lyric';
+}

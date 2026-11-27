@@ -7,6 +7,7 @@ import { Colors, getMasteryLevelColor } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { MASTERY_LEVELS, MasteryLevel, WordEntry } from '../types';
 import { moveField } from '../utils/activity';
+import { quizTypeId } from '../utils/reviewQuiz';
 import { alignSpoken, closestHeard, checkSpokenAnswer, answerPoints, checkTypedAnswer, mustCapitalize, isCoolingDown, isTypedQuiz, levelProgress, progressHint, progressLabel, Quiz, QuizKind, quizKindFor, recordAnswer } from '../utils/wordQuiz';
 import { Text, TextInput } from './Text';
 import { getFlagForLanguage } from '../constants/languages';
@@ -58,6 +59,8 @@ interface WordQuizProps {
   renderAnswered?: (current: WordEntry, correct: boolean) => ReactNode;
   /** Said on the verdict of a wrong answer, e.g. "Again at the end" when a review asks it once more */
   missedNote?: string;
+  /** Asked from the word's recording, to tell Hear the word from the others in its history */
+  listenQuiz?: boolean;
 }
 
 /**
@@ -67,7 +70,7 @@ interface WordQuizProps {
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 /** A few options to pick from in the Learn word card. Remount it (key) for another word or line. */
-export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, force = false, noHint = false, hints = 0, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote }: WordQuizProps) {
+export default function WordQuiz({ entry, kind, prompt, build, hidden = false, alreadyAnswered = false, onAnswered, isWide, practice = false, force = false, noHint = false, hints = 0, onPendingChange, showDue = false, onAnsweredChange, typed: typedProp = false, spoken = false, ipaShown = false, audio: showAudio = true, onLookUpWord, renderAnswered, missedNote, listenQuiz = false }: WordQuizProps) {
   const recordQuizAnswer = useStore((s) => s.recordQuizAnswer);
   const updateWordEntry = useStore((s) => s.updateWordEntry);
   const recordActivity = useStore((s) => s.recordActivity);
@@ -122,6 +125,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
   /** Shows the answer's level change before it's saved */
   const points = ipaShown || typedProp ? 1 : spoken && kind === 'lyric' ? (noHint ? 2 : 1) : answerPoints(spoken || (typed && noHint) ? 'spoken' : typed || noHint ? 'typed' : 'picked');
   const hinted = hints > 0;
+  const quizType = quizTypeId({ kind, spoken, ipa: ipaShown, listen: listenQuiz, typed, blind: noHint });
   const hintedPoints = (base: number) => (hinted ? Math.max(0.5, base * 0.5 ** hints) : base);
   const predict = (right: boolean) =>
     setPredicted({ ...stored, ...recordAnswer(stored.masteryLevel, stored.quiz, kind, right, Date.now(), hintedPoints(points), hinted) });
@@ -133,7 +137,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (practice) return;
     predict(index === quiz.answerIndex);
     await afterPaint();
-    setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex, hintedPoints(1), hinted)) ?? null);
+    setBefore((await recordQuizAnswer(entry.id, kind, index === quiz.answerIndex, hintedPoints(1), hinted, quizType)) ?? null);
   };
 
   const submitTyped = async (giveUp = false, result?: 'right' | 'accents' | 'capital' | 'wrong') => {
@@ -145,7 +149,7 @@ export default function WordQuiz({ entry, kind, prompt, build, hidden = false, a
     if (practice) return;
     predict(right);
     await afterPaint();
-    setBefore((await recordQuizAnswer(entry.id, kind, right, hintedPoints(points), hinted)) ?? null);
+    setBefore((await recordQuizAnswer(entry.id, kind, right, hintedPoints(points), hinted, quizType)) ?? null);
   };
 
   /** Listens for the word; a right try answers the quiz, a wrong one can be tried again */

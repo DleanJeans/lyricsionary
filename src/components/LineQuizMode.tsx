@@ -309,6 +309,7 @@ function LineQuestion({
         practice={practice}
         typed={mode === 'spell'}
         audio={mode !== 'listen'}
+        listenQuiz={mode === 'listen'}
         showDue={!practice}
         isWide={isWide}
       />

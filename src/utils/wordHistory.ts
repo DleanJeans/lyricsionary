@@ -16,11 +16,15 @@ export const mergeHistories = (a: WordEvent[] | undefined, b: WordEvent[] | unde
 export const levelChangeEvent = (before: MasteryLevel | undefined, after: MasteryLevel | undefined, at: number): WordEvent | null =>
   after && after !== (before ?? 'Seen') ? { at, level: after } : null;
 
-export function describeWordEvent(event: WordEvent): string {
+export function describeWordEvent(event: WordEvent, quizLabel?: string): string {
   if (event.saved) return `Saved as ${event.level ?? 'Seen'}`;
   if (event.kind) {
-    const quiz = event.kind === 'meaning' ? 'Meaning quiz' : 'Lyric quiz';
-    const answer = `${quiz}: ${event.correct ? 'right' : 'wrong'}`;
+    const result = event.correct ? 'right' : 'wrong';
+    const hint = event.hinted ? ', with a hint' : '';
+    // Answers recorded before quiz types were kept only know their kind
+    const answer = quizLabel
+      ? `${quizLabel}: ${result}${hint}`
+      : `${event.kind === 'meaning' ? 'Meaning quiz' : 'Lyric quiz'}: ${result}${hint}`;
     return event.level ? `${answer}, now ${event.level}` : answer;
   }
   return `Set to ${event.level}`;

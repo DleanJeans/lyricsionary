@@ -650,6 +650,7 @@ function ReviewQuestion({
         hints={hints}
         ipaShown={!!speakIpa || !!ipa}
         audio={!listen}
+        listenQuiz={!!listen}
         onLookUpWord={onCloseReview}
         missedNote="Again at the end"
         renderAnswered={(current, correct) => (

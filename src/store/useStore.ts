@@ -190,7 +190,7 @@ interface AppState {
   /** Changes saved word fields without counting it as a look up, e.g. a word type found later */
   updateWordEntry: (id: string, changes: Partial<Omit<WordEntry, 'id'>>) => Promise<void>;
   /** Saves a word quiz answer, moving the word up a level when it has enough; returns the word before */
-  recordQuizAnswer: (id: string, kind: QuizKind, correct: boolean, points?: number, hinted?: boolean) => Promise<WordEntry | undefined>;
+  recordQuizAnswer: (id: string, kind: QuizKind, correct: boolean, points?: number, hinted?: boolean, quizType?: string) => Promise<WordEntry | undefined>;
   /** What was done each day, for the sidebar's progress card */
   activity: ActivityLog;
   loadActivity: () => Promise<void>;
@@ -555,13 +555,13 @@ export const useStore = create<AppState>((set, get) => ({
     await persist(WORDS_KEY, () => JSON.stringify(words));
   },
 
-  recordQuizAnswer: async (id, kind, correct, points = 1, hinted = false) => {
+  recordQuizAnswer: async (id, kind, correct, points = 1, hinted = false, quizType) => {
     const before = get().words.find((w) => w.id === id);
     if (!before) return undefined;
     const now = Date.now();
     const after = recordAnswer(before.masteryLevel, before.quiz, kind, correct, now, points, hinted);
     const changed = after.masteryLevel !== (before.masteryLevel ?? 'Seen');
-    const history = addWordEvent(before.history, { at: now, kind, correct, ...(changed ? { level: after.masteryLevel } : {}) });
+    const history = addWordEvent(before.history, { at: now, kind, correct, ...(quizType ? { type: quizType } : {}), ...(hinted ? { hinted } : {}), ...(changed ? { level: after.masteryLevel } : {}) });
     await get().updateWordEntry(id, { ...after, history });
     const levelUp = MASTERY_LEVELS.indexOf(after.masteryLevel) > MASTERY_LEVELS.indexOf(before.masteryLevel ?? 'Seen');
     const field = levelUp ? moveField(after.masteryLevel) : null;

@@ -90,6 +90,10 @@ export interface WordEvent {
   /** A quiz answer: which quiz and whether it was right */
   kind?: 'meaning' | 'lyric';
   correct?: boolean;
+  /** The quiz type's id (QUIZ_TYPES in reviewQuiz.ts), e.g. 'lyric-typed'; older answers have none */
+  type?: string;
+  /** The answer was given with a hint, which halves its points */
+  hinted?: boolean;
   /** The level the word went to, when this changed it */
   level?: MasteryLevel;
   /** The word was saved, at `level` */

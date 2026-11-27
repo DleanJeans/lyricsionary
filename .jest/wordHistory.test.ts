@@ -33,3 +33,10 @@ describe('word history', () => {
     expect(formatEventDay(new Date(2026, 9, 27, 9).getTime(), now)).toBe('4 days ago');
   });
 });
+
+describe('quiz type in history', () => {
+  it('names the quiz type and the hint, and keeps the old text without a type', () => {
+    expect(describeWordEvent({ at: 1, kind: 'lyric', correct: false, type: 'lyric-typed', hinted: true }, 'Fill in the blank: type')).toBe('Fill in the blank: type: wrong, with a hint');
+    expect(describeWordEvent({ at: 1, kind: 'meaning', correct: true })).toBe('Meaning quiz: right');
+  });
+});

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from './Text';
 import { Colors, getMasteryLevelColor } from '../constants/theme';
 import type { WordEvent } from '../types';
+import { QUIZ_TYPES } from '../utils/reviewQuiz';
 import { describeWordEvent, formatEventDay } from '../utils/wordHistory';
 
 const SHOWN_AT_FIRST = 5;
@@ -33,15 +34,19 @@ export default function AnswerHistory({ history }: { history: WordEvent[] }) {
           {right} right, {answers.length - right} wrong
         </Text>
       )}
-      {shown.map((event, i) => (
+      {shown.map((event, i) => {
+        const quizType = event.type ? QUIZ_TYPES.find((t) => t.id === event.type) : undefined;
+        return (
         <View key={`${event.at}-${i}`} style={styles.row}>
           <EventIcon event={event} />
+          {quizType && <Ionicons name={quizType.icon as any} size={15} color={Colors.textMuted} />}
           <Text style={[styles.text, event.level && { color: getMasteryLevelColor(event.level) }]} numberOfLines={1}>
-            {describeWordEvent(event)}
+            {describeWordEvent(event, quizType?.label)}
           </Text>
           <Text style={styles.day}>{formatEventDay(event.at, now)}</Text>
         </View>
-      ))}
+        );
+      })}
       {newestFirst.length > SHOWN_AT_FIRST && (
         <TouchableOpacity onPress={() => setShowAll(!showAll)} style={styles.more} accessibilityRole="button">
           <Text style={styles.moreText}>{showAll ? 'Show less' : `Show all ${newestFirst.length}`}</Text>

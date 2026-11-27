@@ -565,7 +565,7 @@ export interface QuizType {
   noTranslation?: boolean;
 }
 
-export const QUIZ_TYPES: QuizType[] = [
+const ALL_QUIZ_TYPES: QuizType[] = [
   { id: 'meaning', label: 'Pick the meaning', description: 'See the word, pick what it means', icon: 'list-outline', way: 'meaning', kind: 'meaning' },
   { id: 'meaning-ipa', label: 'Meaning from IPA', description: 'See only the IPA, pick the meaning', icon: 'text-outline', way: 'meaning-ipa', kind: 'meaning' },
   { id: 'meaning-listen', label: 'Meaning from audio', description: 'Hear the word, pick the meaning', icon: 'ear-outline', way: 'meaning-listen', kind: 'meaning' },
@@ -579,6 +579,34 @@ export const QUIZ_TYPES: QuizType[] = [
   { id: 'say-gap', label: 'Say the missing word', description: 'A line with a gap and its translation, say the word that fits (1 point)', icon: 'mic-outline', way: 'speak', kind: 'lyric', needsLine: true },
   { id: 'say-gap-blind', label: 'Say the missing word: no translation', description: 'The same, without the translation to go by (2 points)', icon: 'mic-off-outline', way: 'speak', kind: 'lyric', needsLine: true, noTranslation: true },
 ];
+
+/**
+ * Quiz type ids from easiest to hardest, the one place the difficulty order lives: the quiz types list
+ * follows it, and picking types by mastery level can reuse it (low levels the first ones, high the last).
+ * Picking from options beats producing the answer; having the translation beats going without it.
+ */
+export const QUIZ_TYPE_ORDER: string[] = [
+  'meaning', // word shown, pick the meaning from options
+  'lyric', // line with a gap and its translation, pick the word
+  'meaning-listen', // only the sound, but picking the meaning from options
+  'lyric-listen', // only the sound, pick the spelling from options
+  'meaning-ipa', // only the IPA, pick the meaning from options
+  'say-word', // word shown, say it: no options, but it's read aloud
+  'lyric-blind', // gap line without the translation, pick the word
+  'lyric-typed', // gap line with the translation, type the word
+  'say-gap', // gap line with the translation, say the word from memory
+  'lyric-ipa', // IPA shown, type the spelling with no options
+  'lyric-typed-blind', // gap line without the translation, type the word
+  'say-gap-blind', // gap line without the translation, say the word from memory
+];
+
+/** 0 for the easiest quiz type, up; unknown ids sort last */
+export const quizTypeRank = (id: string) => {
+  const i = QUIZ_TYPE_ORDER.indexOf(id);
+  return i < 0 ? QUIZ_TYPE_ORDER.length : i;
+};
+
+export const QUIZ_TYPES: QuizType[] = [...ALL_QUIZ_TYPES].sort((a, b) => quizTypeRank(a.id) - quizTypeRank(b.id));
 
 /** A round of one quiz type with words of the language that suit it; answers count like a review's */
 export function buildTypeItems(type: QuizType, language: string, words: WordEntry[], songs: ReviewSong[], size = 5): ReviewItem[] {

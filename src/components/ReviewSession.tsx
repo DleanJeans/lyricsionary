@@ -58,6 +58,18 @@ function languagesByRecency(codes: string[]): string[] {
   return [...new Set(codes)].sort((a, b) => recency(b) - recency(a));
 }
 
+const RANDOM = '__random__';
+
+/** One word from each language in turn, so any first N words are an equal mix of the languages */
+function interleaveLanguages(items: ReviewItem[], languages: string[]): ReviewItem[] {
+  const lists = languages.map((l) => items.filter((i) => i.entry.language === l));
+  const out: ReviewItem[] = [];
+  for (let n = 0; out.length < items.length; n++) {
+    for (const list of lists) if (n < list.length) out.push(list[n]);
+  }
+  return out;
+}
+
 /** Asks which language to review first when the due words are in more than one, then the session */
 export default function ReviewSession(props: ReviewSessionProps) {
   const byLanguage = !!props.buildForLanguage && !!props.dueTotals;
@@ -75,6 +87,9 @@ export default function ReviewSession(props: ReviewSessionProps) {
     const items = built ?? [];
     return <LanguageReview {...props} dueItems={items} startSize={items.length} />;
   }
+  if (language === RANDOM) {
+    return <LanguageReview {...props} dueItems={interleaveLanguages(props.dueItems, languages)} startSize={undefined} />;
+  }
   if (language !== null) {
     const items = languages.length > 1 ? props.dueItems.filter((i) => i.entry.language === language) : props.dueItems;
     return <LanguageReview {...props} dueItems={items} startSize={languages.length > 1 ? undefined : props.startSize} />;
@@ -90,6 +105,22 @@ export default function ReviewSession(props: ReviewSessionProps) {
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.languageScroll} contentContainerStyle={[styles.languages, { paddingBottom: 16 + insets.bottom }]}>
+            <TouchableOpacity
+              style={styles.languageRow}
+              onPress={() => setLanguage(RANDOM)}
+              accessibilityRole="button"
+              accessibilityLabel={`Review a random mix of ${languages.length} languages`}
+            >
+              <Ionicons name="shuffle" size={24} color={Colors.primary} />
+              <View style={styles.languageInfo}>
+                <View style={styles.languageTop}>
+                  <Text style={styles.languageNameText} numberOfLines={1}>Random</Text>
+                  <Text style={styles.dueCount}>{`${languages.length} languages`}</Text>
+                </View>
+                <Text style={styles.sizeHint}>An equal mix of every language</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
             {languages.map((lang) => {
               const count = props.dueTotals?.[lang] ?? props.dueItems.filter((i) => i.entry.language === lang).length;
               const name = getLanguageNameFromCode(lang) ?? lang;

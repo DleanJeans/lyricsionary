@@ -7,6 +7,7 @@ import { getRomanceBaseWord } from './romanceClitics';
 import { isStressLanguage } from './russianStress';
 import { isSplitPhrase } from './splitPhrases';
 import { spellingsOf } from './wordForms';
+import { germanTrailingElisionRegex } from './regex';
 import { getGermanExpandedForm, hasHyphenatedPrefix, splitElisionParts } from './wordTransform';
 
 /** What Learn looks up about a lyric word for one set of languages: a song's, or a line set to another language */
@@ -54,7 +55,9 @@ export function buildLangCtx(words: WordEntry[], languages?: string[]) {
     // for dímelo, amo for amo-te, de for del
     const romanceBase = getRomanceBaseWord(cleanedWord, languages, { loose: true, contractions: false });
     if (romanceBase) return findWordEntry(romanceBase);
-    const expanded = isGermanSong ? getGermanExpandedForm(cleanedWord, 'German') : null;
+    // A word with its ending dropped, e.g. kein' or kauf', is its own entry, not the saved keine or kaufe;
+    // only an apostrophe before a final n or m (hab'n) or a leaning 's (geht's) stands for a saved full word
+    const expanded = isGermanSong && !germanTrailingElisionRegex.test(cleanedWord) ? getGermanExpandedForm(cleanedWord, 'German') : null;
     return expanded ? findWordEntry(expanded) : undefined;
   };
   // The parts of a French or Italian word shown split, e.g. j' and ai for j'ai, selectable on their own
